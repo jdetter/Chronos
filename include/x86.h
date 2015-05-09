@@ -21,7 +21,7 @@
 #define TRAP_GP 0x0D /* General Protection (protection checks) */
 #define TRAP_PF 0x0E /* Page Fault (Memory not mapped in uvm) */
 #define TRAP_0F 0x0F /* RESERVED */
-#define TRAP_MF 0x10 /* Floating Point Error */
+#define TRAP_FP 0x10 /* Floating Point Error */
 #define TRAP_AC 0x11 /* Alignment Check */
 #define TRAP_MC 0x12 /* Machine Check */
 #define TRAP_XM 0x13 /* SIMD floating-point exception */
