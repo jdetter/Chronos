@@ -12,4 +12,4 @@ tools/bin/%: tools/%.c
 	$(CC) $(CFLAGS) -o $@ $<
 
 tools-clean:
-	rm -rf user/bin/
+	rm -rf tools/bin/

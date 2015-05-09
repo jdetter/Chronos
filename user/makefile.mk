@@ -43,9 +43,10 @@ user-bin:
 user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
-user/bin/%: user/%.o
+user/bin/%: user/%.o libs
 	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS)
 
+.PHONY: user-clean
 user-clean:
 	rm -rf user/bin
 	rm -f $(USER_OBJECTS)
