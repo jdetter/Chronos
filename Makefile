@@ -5,7 +5,7 @@ LDFLAGS := -m elf_i386
 CFLAGS := -ggdb -m32
 
 .PHONY: all
-all: tools user-test kernel/chronos.img lib
+all: lib tools user-test kernel/chronos.img
 
 .PHONY: clean
 clean: kernel-clean user-clean tools-clean lib-clean

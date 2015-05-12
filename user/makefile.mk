@@ -3,6 +3,9 @@ USER_TARGETS := \
 	example \
 	otherexample
 
+# Are you debugging?
+DEBUG = 1
+
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
 # Add user/ before all of the program names
@@ -28,12 +31,15 @@ USER_LDFLAGS := -nostdlib
 # Set the entry point
 USER_LDFLAGS += --entry=main
 # Set the memory location where the code should begin
-# USER_LDFLAGS += --section-start=.text=0x0
+USER_LDFLAGS += --section-start=.text=0x1000
 # USER_LDFLAGS += --omagic
 
+ifdef DEBUG
+USER_LDFLAGS = --entry=main
+endif
+
 .PHONY: user-test
-user-test: user-bin $(USER_OBJECTS) $(USER_BINARIES)
-	
+user-test: user-bin $(USER_OBJECTS) $(USER_BINARIES)	
 	
 .PHONY: user-bin
 user-bin: 

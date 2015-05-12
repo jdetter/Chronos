@@ -24,7 +24,7 @@ KERNEL_CFLAGS += -fno-stack-protector
 KERNEL_LDFLAGS := -nostdlib
 # Set the entry point
 KERNEL_LDFLAGS += --entry=main
-# Set the memory location where the code should begin
+# Set the memory location where the kernel will be placed
 KERNEL_LDFLAGS += --section-start=.text=0x100000
 # KERNEL_LDFLAGS += --omagic
 
