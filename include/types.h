@@ -6,6 +6,6 @@ typedef unsigned int uint;
 typedef unsigned short ushort;
 
 /* NULL */
-#define NULL (void*)0)
+#define NULL ((void*)0)
 
 #endif

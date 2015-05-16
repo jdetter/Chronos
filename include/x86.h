@@ -1,4 +1,5 @@
-#ifndef TRAP_H_
+#ifndef _X86_H_
+#define _X86_H_
 
 /* Intel 64 and IA-32 Architectures Software Developer's Manual: */
 /* http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-manual-325462.pdf*/
@@ -29,5 +30,34 @@
 
 /* Chronos Trap Definitions */
 #define TRAP_SC 0x20 /* System call trap*/
+
+/* Intel page table and page directory flags */
+#define PG_PRESENT(pg) (pg & 0x1)
+#define PG_RW(pg) (pg & 0x2)
+#define PG_USER(pg) (pg & 0x4)
+#define PG_WTWB(pg) (pg & 0x8)
+#define PG_DCACHE(pg) (pg & 0x10)
+#define PG_ACCESSED(pg) (pg & 0x20)
+/* Reserved */
+#define PG_SIZE(pg) (pg & 0x80)
+#define PG_GLBL(pg) (pg & 0x100)
+
+#define PG_FLG9(pg) (pg & 0x200)
+#define PG_FLG10(pg) (pg & 0x400)
+#define PG_FLG11(pg) (pg & 0x800)
+
+#define PG_PRESENT_SET(pg) (pg | 0x1)
+#define PG_RW_SET(pg) (pg | 0x2)
+#define PG_USER_SET(pg) (pg | 0x4)
+#define PG_WTWB_SET(pg) (pg | 0x8)
+#define PG_DCACHE_SET(pg) (pg | 0x10)
+#define PG_ACCESSED_SET(pg) (pg | 0x20)
+/* Reserved */
+#define PG_SIZE_SET(pg) (pg | 0x80)
+#define PG_GLBL_SET(pg) (pg | 0x100)
+
+#define PG_FLG9_SET(pg) (pg | 0x200)
+#define PG_FLG10_SET(pg) (pg | 0x400)
+#define PG_FLG11_SET(pg) (pg | 0x800)
 
 #endif

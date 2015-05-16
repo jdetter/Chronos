@@ -1,10 +1,12 @@
-#ifndef DEFS_H_
+#ifndef _DEFS_H_
+#define _DEFS_H_
+
+#define PGSIZE 4096
 
 /* uvm.c */
-struct pgdir {
-	
-};
-
+typedef uint pgdir;
 typedef uint pte;
+
+
 
 #endif
