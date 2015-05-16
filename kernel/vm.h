@@ -1,9 +1,6 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
-/* Get the address from a page table entry */
-#define PG_ADDR(addr) (addr & (~(PGSIZE - 1)))
-
 /**
  * Initilize a free list of pages from address phy to (phy + sz).
  */
