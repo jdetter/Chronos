@@ -3,7 +3,9 @@
 
 uint strlen(char* str)
 {
-	return 0;
+	int x;
+	for(x = 0;str[x] != 0;x++);
+	return x;	
 }
 
 void tolower(char* str)
