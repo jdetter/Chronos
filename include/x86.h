@@ -105,7 +105,7 @@ static inline void sti(void)
  * Return the value at variable and return it. This function will also
  * add inc to the current value of variable atomically.
  */
-inline int fetch_and_add(int* variable, int inc) 
+static inline int fetch_and_add(int* variable, int inc) 
 {
 	asm volatile("lock; xaddl %%eax, %2;"
 			:"=a" (inc)
