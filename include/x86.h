@@ -62,4 +62,72 @@
 
 #define PGSIZE 4096
 
+/* Inline assmebly functions */
+
+/**
+ * Read a byte from a port.
+ */
+static inline uchar inb(ushort port)
+{
+	uchar data;
+
+	asm volatile("in %1,%0" : "=a" (data) : "d" (port));
+	return data;
+}
+
+/**
+ * Write the byte data to a port.
+ */
+static inline void outb(ushort port, uchar data)
+{
+	asm volatile("out %0,%1" : : "a" (data), "d" (port));
+}
+
+/**
+ * Disable interrupts.
+ */
+static inline void cli(void)
+{
+	asm volatile("cli");
+}
+
+/**
+ * Enable interrupts.
+ */
+static inline void sti(void)
+{
+	asm volatile("sti");
+}
+
+/* Concurrency x86 instructions. */
+
+/**
+ * Return the value at variable and return it. This function will also
+ * add inc to the current value of variable atomically.
+ */
+inline int fetch_and_add(int* variable, int inc) 
+{
+	asm volatile("lock; xaddl %%eax, %2;"
+			:"=a" (inc)
+			:"a" (inc), "m" (*variable)
+			:"memory");
+	return inc;
+}
+
+/**
+ * Exchange the value in addr for newval and return the original value of addr.
+ * This happens atomically.
+ */
+static inline uint xchg(volatile uint *addr, uint newval)
+{
+	uint result;
+	asm volatile("lock; xchgl %0, %1" :
+			"+m" (*addr), "=a" (result) :
+			"1" (newval) :
+			"cc");
+	return result;
+}
+
+
+
 #endif

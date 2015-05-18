@@ -14,6 +14,9 @@ LIBS := $(addsuffix .o, $(LIBS))
 # Are you debugging?
 DEBUG = 1
 
+# Include Linux proxy functions (remove during real build)
+LIB_CFLAGS += -I linux
+
 # Include files
 LIB_CFLAGS += -I include
 # Disable Position Independant Code
@@ -25,11 +28,11 @@ LIB_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 LIB_CFLAGS += -fno-stack-protector
 
-libs: $(LIBS) $(LIBS_TEST)
+libs: li_proxy $(LIBS) $(LIBS_TEST)
 
 lib/test/%.o: lib/test/%.c
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $< $(LIBS)
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) -o $@ $< $(LIBS)
+	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(LIB_CFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
 
 lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
