@@ -25,8 +25,9 @@ void itoa(int val, char* dst, uint sz, uint base){
 	if(val==0){
 		dst[0] = '0';
 		return;
-	} 
-	for(int i = 0; i<sz; i++){
+	}
+	int i; 
+	for(i = 0; i<sz; i++){
 		int mod = val % base;
 		int ascii = 0;
 		if(mod>9){
@@ -40,7 +41,7 @@ void itoa(int val, char* dst, uint sz, uint base){
 
 	}
 	int temp;
-	for(int i = 0 ; i<=strlen(dst)/2; i++){
+	for(i = 0 ; i<=strlen(dst)/2; i++){
 		temp = dst[i];
 		dst[i] = dst[strlen(dst)-1-i];
 		dist[strlen(dst)-1-i] = temp;
