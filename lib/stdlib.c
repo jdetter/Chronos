@@ -1,5 +1,8 @@
 #include "types.h"
+#include "x86.h"
 #include "stdlib.h"
+
+#include <unistd.h>
 
 uint strlen(char* str)
 {
@@ -82,6 +85,9 @@ typedef struct alloc_node
 	void* magic; /* Make sure this node isn't currupted. */
 } alloc_node;
 
+struct free_node* head; /* The head of the free list */
+struct free_node* curr; /* Pointer to the current location. */
+
 void* malloc(uint sz)
 {
 	if(!mem_init) minit();
@@ -99,4 +105,21 @@ int mfree(void* ptr)
 void minit(void)
 {
 	mem_init = 1;
+
+	head = sbrk(0);
+	void* result = sbrk(M_AMT);
+	if((int)result == -1 || result == head) 
+	{
+		mem_init = 0;
+		return;
+	}
+
+	/* Check to make sure we are page aligned. */
+	curr = head;
+	head = (void*)(((uint)head) & ~(PGSIZE - 1));
+	if(curr != head)
+	{
+		mem_init = 0;
+		return;
+	}
 }

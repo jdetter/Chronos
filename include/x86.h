@@ -60,4 +60,6 @@
 #define PG_FLG10_SET(pg) (pg | 0x400)
 #define PG_FLG11_SET(pg) (pg | 0x800)
 
+#define PGSIZE 4096
+
 #endif
