@@ -8,9 +8,30 @@
 #define VID_COLOR_BASE (int*) 0xB8000
 int console_pos;
 
+void printCharacter(uint row, uint col, char character);
+
 int cprintf(char* fmt, ...)
 {
+	va_list args;
+	va_start(args, fmt);
+	int x;
+	for(x = 0;x < strlen(fmt);x++)
+	{
+		if(fmt[x] == '%')
+		{
+
+		} else printNextCharacter(fmt[x]);
+	}
+
 	return 0;
+}
+
+void printNextCharacter(char character)
+{
+	int col = console_pos % VID_COLS;
+	int row = (console_pos - col) / VID_COLS;
+	printCharacter(row, col, character);
+	console_pos++;	
 }
 
 void printCharacter(uint row, uint col, char character){
