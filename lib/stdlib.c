@@ -106,10 +106,11 @@ void minit(void)
 {
 	mem_init = 1;
 
-	head = sbrk(0);
-	void* result = sbrk(M_AMT);
+	head = sbrk(0); /* Get the start of the new region */
+	void* result = sbrk(M_AMT); /* Allocate M_AMT bytes*/
 	if((int)result == -1 || result == head) 
 	{
+		/* There was a problem with the allocation. */
 		mem_init = 0;
 		return;
 	}
@@ -119,6 +120,7 @@ void minit(void)
 	head = (void*)(((uint)head) & ~(PGSIZE - 1));
 	if(curr != head)
 	{
+		/* We were not page aligned. */
 		mem_init = 0;
 		return;
 	}
