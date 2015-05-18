@@ -1,4 +1,5 @@
-#include "types.h"
+typedef unsigned int uint;
+
 #include "li_proxy.h"
 
 #include <sys/mman.h>
@@ -7,8 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
 #include <stdarg.h>
+#include <string.h>
+
 
 void* li_mmap(void* a, uint l, int p, int fl, int fd, uint o)
 {
@@ -21,4 +23,9 @@ void li_printf(const char *format , ... )
 	va_start(arglist, format);
 	vprintf(format, arglist);
 	va_end(arglist);
+}
+
+int li_strlen(char* str)
+{
+	return strlen(str);
 }

@@ -1,8 +1,9 @@
 #include "types.h"
 #include "x86.h"
 #include "stdlib.h"
+#include "li_proxy.h"
 
-#include <stdio.h>
+#define printf li_printf
 
 void test(char*, int (*)(void));
 int strlen_1(void);

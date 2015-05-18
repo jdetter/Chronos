@@ -1,6 +1,7 @@
 # Library files
 LIBS_TARGET = \
-	stdlib
+	stdmem \
+	stdarg
 
 LIBS_TEST = \
 	string \
@@ -28,11 +29,20 @@ LIB_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 LIB_CFLAGS += -fno-stack-protector
 
-libs: li_proxy $(LIBS) $(LIBS_TEST)
+# Test compile flags
+LIB_TEST_CFLAGS += -I linux
+LIB_TEST_CFLAGS += -I include
+LIB_TEST_CFLAGS += -I lib
+LIB_TEST_CFLAGS += -fno-builtin
+LIB_TEST_CFLAGS += -fno-stack-protector
+LIB_TEST_CFLAGS += -fno-strict-aliasing
+
+libs: $(LIBS)
+lib-tests: li_proxy libs $(LIBS_TEST)
 
 lib/test/%.o: lib/test/%.c
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
+	$(CC) $(CFLAGS) $(LIB_TEST_CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(LIB_TEST_CFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
 
 lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
