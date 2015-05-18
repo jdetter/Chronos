@@ -2,8 +2,6 @@
 #include "x86.h"
 #include "stdlib.h"
 
-#include <unistd.h>
-
 uint strlen(char* str)
 {
 	int x;
@@ -105,23 +103,4 @@ int mfree(void* ptr)
 void minit(void)
 {
 	mem_init = 1;
-
-	head = sbrk(0); /* Get the start of the new region */
-	void* result = sbrk(M_AMT); /* Allocate M_AMT bytes*/
-	if((int)result == -1 || result == head) 
-	{
-		/* There was a problem with the allocation. */
-		mem_init = 0;
-		return;
-	}
-
-	/* Check to make sure we are page aligned. */
-	curr = head;
-	head = (void*)(((uint)head) & ~(PGSIZE - 1));
-	if(curr != head)
-	{
-		/* We were not page aligned. */
-		mem_init = 0;
-		return;
-	}
 }

@@ -25,10 +25,6 @@ LIB_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 LIB_CFLAGS += -fno-stack-protector
 
-ifdef DEBUG
-USER_LDFLAGS = --entry=main
-endif
-
 libs: $(LIBS) $(LIBS_TEST)
 
 lib/test/%.o: lib/test/%.c
