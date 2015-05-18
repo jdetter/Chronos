@@ -62,7 +62,7 @@
 
 #define PGSIZE 4096
 
-/* Inline assmebly functions */
+/* Inline assembly functions */
 
 /**
  * Read a byte from a port.
@@ -99,6 +99,14 @@ static inline void sti(void)
 	asm volatile("sti");
 }
 
+/**
+ * Busy work for waiting for an io to finish.
+ */
+static inline void io_wait(void)
+{
+    asm volatile ( "outb %%al, $0x80" : : "a"(0) );
+}
+
 /* Concurrency x86 instructions. */
 
 /**
@@ -128,6 +136,31 @@ static inline uint xchg(volatile uint *addr, uint newval)
 	return result;
 }
 
+/**
+ * We are remapping the original PIC definitions. The new defs are here.
+ */
 
+#define INT_PIC_MAP_OFF_1 0x20
+#define INT_PIC_MAP_OFF_2 0x28
+
+#define INT_PIC_ORIG_OFF_1 0x08
+#define INT_PIC_ORIG_OFF_2 0x70
+
+#define INT_PIC_TIMER 		0x00 + INT_PIC_MAP_OFF_1
+#define INT_PIC_KEYBOARD 	0x01 + INT_PIC_MAP_OFF_1
+#define INT_PIC_SLAVE 		0x02 + INT_PIC_MAP_OFF_1
+#define INT_PIC_COM2 		0x03 + INT_PIC_MAP_OFF_1
+#define INT_PIC_COM1 		0x04 + INT_PIC_MAP_OFF_1
+#define INT_PIC_LPT2 		0x05 + INT_PIC_MAP_OFF_1
+#define INT_PIC_FLOPPY 		0x06  + INT_PIC_MAP_OFF_1
+#define INT_PIC_LPT1 		0x07  + INT_PIC_MAP_OFF_1
+#define INT_PIC_CMOS 		0x00  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT09 		0x01  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT10	 	0x02  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT11 		0x03  + INT_PIC_MAP_OFF_2
+#define INT_PIC_MOUSE 		0x04  + INT_PIC_MAP_OFF_2
+#define INT_PIC_COPROCESSOR 	0x05  + INT_PIC_MAP_OFF_2
+#define INT_PIC_ATA1 		0x06  + INT_PIC_MAP_OFF_2
+#define INT_PIC_ATA2 		0x07  + INT_PIC_MAP_OFF_2
 
 #endif

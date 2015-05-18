@@ -1,3 +1,6 @@
+# Build files
+*.o
+
 .project
 .cproject
 .settings/

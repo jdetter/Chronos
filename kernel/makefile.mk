@@ -6,7 +6,9 @@ KERNEL_TARGETS := \
 KERNEL_DRIVERS := \
 	ata \
 	keyboard \
-	console
+	console \
+	pic\
+	pit
 
 # Add user/ before all of the program names
 KERNEL_TARGETS := $(addprefix kernel/, $(KERNEL_TARGETS))
