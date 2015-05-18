@@ -2,24 +2,39 @@
 #include "x86.h"
 #include "stdlib.h"
 
+#define MAX_NUM 15
 #define GREY_COLOR 0x07
 #define VID_ROWS 20
 #define VID_COLS 80
 #define VID_COLOR_BASE (int*) 0xB8000
 int console_pos;
 
+void itoa(int val, char* dst, uint sz, uint base);
 void printCharacter(uint row, uint col, char character);
 
 int cprintf(char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
+	int arg_pos = 0;
 	int x;
 	for(x = 0;x < strlen(fmt);x++)
 	{
 		if(fmt[x] == '%')
 		{
-
+			if(fmt[x + 1] == 'd')
+			{
+				char number[MAX_NUM];
+				itoa(va_arg(args, arg_pos), number, MAX_NUM, 10);
+				for(;number;number++)printNextCharacter(*number);
+				arg_pos++;
+			} else if(fmt[x + 1] == 'x')
+			{
+				char number[MAX_NUM];
+				itoa(va_arg(args, arg_pos), number, MAX_NUM, 16);
+				for(;number;number++)printNextCharacter(*number);
+				arg_pos++;
+			}
 		} else printNextCharacter(fmt[x]);
 	}
 
@@ -41,11 +56,11 @@ void printCharacter(uint row, uint col, char character){
 }
 
 /**
-*WARNING: dst must be large enough to hold val
-*/ 
+ *WARNING: dst must be large enough to hold val
+ */ 
 void itoa(int val, char* dst, uint sz, uint base){
 	memset(dst, 0, sz);
-	
+
 	if(val==0){
 		dst[0] = '0';
 		return;
@@ -69,9 +84,9 @@ void itoa(int val, char* dst, uint sz, uint base){
 		temp = dst[i];
 		dst[i] = dst[strlen(dst)-1-i];
 		dst[strlen(dst)-1-i] = temp;
-		
+
 	}
-	
+
 }
 
 int cinit(){
