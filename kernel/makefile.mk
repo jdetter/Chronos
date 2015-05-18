@@ -25,6 +25,8 @@ KERNEL_DRIVERS := $(addsuffix .o, $(KERNEL_DRIVERS))
 KERNEL_CFLAGS += -I include
 # Include driver headers
 KERNEL_CFLAGS += -I kernel/drivers/
+# Include libraries
+KERNEL_CFLAGS += -I lib/
 # Disable Position Independant Code
 KERNEL_CFLAGS += -fno-pic
 # Disable built in functions

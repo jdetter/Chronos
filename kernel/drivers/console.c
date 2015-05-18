@@ -1,4 +1,7 @@
+#include "types.h"
+#include "x86.h"
 #include "stdlib.h"
+
 #define GREY_COLOR 0x07
 #define VID_ROWS 20
 #define VID_COLS 80
@@ -10,7 +13,7 @@ int cprintf(char* fmt, ...)
 	return 0;
 }
 
-void PrintCharacter(uint row, uint col, char character){
+void printCharacter(uint row, uint col, char character){
 	int* vid_addr = VID_COLOR_BASE + (row * VID_COLS *2) +(col *2);
 	*vid_addr = character;
 	*(vid_addr +1) = GREY_COLOR;
