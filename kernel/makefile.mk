@@ -77,8 +77,8 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
-kernel/boot/boot-stage2.img: 
-	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
+kernel/boot/boot-stage2.img: includes
+	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include -c -o kernel/boot/bootc.o kernel/boot/bootc.c
 	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.img	
 

@@ -1,3 +1,7 @@
+#include "types.h"
+#include "ata-read.h"
+#include "elf.h"
+
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
  * and then jump into the main method of the kernel.
