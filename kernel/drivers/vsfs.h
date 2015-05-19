@@ -37,7 +37,24 @@ int vsfs_lookup(char* path, vsfs_inode* dst);
  */
 int vsfs_unlink(char* path);
 
+/**
+ * Add the inode new_inode to the file system at path. Make sure to add the
+ * directory entry in the parent directory. If there are no more inodes
+ * available in the file system, or there is any other error return 1.
+ * Return 0 on success.
+ */
+int vsfs_link(char* path, vsfs_inode* new_inode);
 
+/**
+ * Create the directory entry new_file that is a hard link to file. Return 0
+ * on success, return 1 otherwise.
+ */
+int vsfs_hard_link(char* new_file, char* link);
+
+/**
+ * Create a soft link called new_file that points to link.
+ */
+int vsfs_soft_link(char* new_file, char* link);
 
 /**
  * Read sz bytes from inode node at the position start (start is the seek in
@@ -58,6 +75,5 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
  * be written to fully.
  */
 int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src);
-
 
 #endif 
