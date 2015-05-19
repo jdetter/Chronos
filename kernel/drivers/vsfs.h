@@ -25,6 +25,22 @@ typedef struct vsfs_inode {
 } vsfs_inode;
 
 /**
+ * File system information. The superblock is followed by the inode bitmap which
+ * is followed by the block bitmap. The 0th inode should ALWAYS be free. The
+ * root (topmost directory) is always inode 1. The root cannot be unlinked.
+ */
+typedef struct vsfs_superblock {
+	uint blocks; /* Total amount of blocks in the file system */
+	uint inodes; /* How many inodes are there? */
+} vsfs_superblock;
+
+/**
+ * Setup the file system driver with the file system starting at the given
+ * sector. The first sector of the disk contains the super block (see above).
+ */
+int init(int start_sector);
+
+/**
  * Find an inode in a file system. If the inode is found, load it into the dst
  * buffer and return 0. If the inode is not found, return 1.
  */

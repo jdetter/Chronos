@@ -99,8 +99,8 @@ protected_mode:
 	sub $4, %esp # local for our current sector
 	sub $4, %esp # local for our current location in memory
 	
-	# mov STAGE2_ADDR, %eax # initial location in memory
-	# mov %eax, (%esp)
+	mov STAGE2_ADDR, %eax # initial location in memory
+	mov %eax, (%esp)
 
 	# mov $1, 0x4(%esp) # initial sector we need to read
 
