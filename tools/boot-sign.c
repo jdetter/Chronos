@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 	size = lseek(fd, 0, SEEK_END); /*offset from beginning to end in bytes*/
 	lseek(fd, 0, SEEK_SET); /*back to beginning of file*/
 	if(size<510){
-		char val[] = {0xAA, 0x55};
+		char val[] = {0x55, 0xAA};
 		lseek(fd, 510, SEEK_CUR); /* put 0x55 at 510 bytes from beginning*/
 		write(fd, val , 2);
 	}else{
