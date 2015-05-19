@@ -28,7 +28,9 @@ KERNEL_CLEAN := \
         kernel/boot/bootasm.o \
         kernel/boot/boot-stage1.img \
         kernel/boot/boot-stage1.o \
-        chronos.img
+        chronos.img \
+	boot-stage1.sym \
+	chronos.sym
 
 # Include files
 KERNEL_CFLAGS += -I include

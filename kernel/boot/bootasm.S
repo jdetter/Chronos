@@ -13,7 +13,10 @@ start:
 # Disable interrupts
 	cli
 
-
+# Loop Forever(Test)
+loop_forever:
+	nop
+	jmp loop_forever
 
 # First test the A20 gate
 	inb 	PORT_A20, %al

@@ -24,19 +24,18 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 .PHONY: all
 all: tools chronos.img lib-tests
 
-QEMU_CPU_COUNT := 1
+QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
-QEMU_MAX_RAM := 512M
-QEMU_SERIAL := -serial mon:stdin
+QEMU_MAX_RAM := -m 512M
 QEMU_NOX := -nographic
 
+QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
+
 qemu: all
-	$(QEMU) -m $(QEMU_MAX_RAM) $(QEMU_BOOT_DISK) -smp $(QEMU_CPU_COUNT)	
+	$(QEMU) $(QEMU_OPTIONS)	
 
 qemu-gdb: all kernel-symbols
-
-test:
-	$(QEMU) -m $(QEMU_MAX_RAM) $(QEMU_BOOT_DISK) -smp $(QEMU_CPU_COUNT) -s -S
+	$(QEMU) $(QEMU_OPTIONS) -s -S
 
 include kernel/makefile.mk
 include user/makefile.mk
