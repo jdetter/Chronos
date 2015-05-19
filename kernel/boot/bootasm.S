@@ -1,5 +1,4 @@
 #include "asm.h"
-#include "ata.h"
 
 # Load the kernel and jump into it.
 
