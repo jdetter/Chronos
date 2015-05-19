@@ -35,12 +35,12 @@ int ata_readsect(uint sect, void* dst)
         outb(PRIMARY_ATA_COMMAND, 0x20);
 
         ata_wait();
-        insl(PRIMARY_ATA_DATA, dst, SECT_SZ/4);
+        insl(PRIMARY_ATA_DATA, dst, SECTSIZE/4);
 
         return 0;
 }
 
-int ata_writesect(uint sect, char* src)
+int ata_writesect(uint sect, void* src)
 {
   outb(PRIMARY_ATA_SECTOR_COUNT, 0x1);
   outb(PRIMARY_ATA_SECTOR_NUMBER, sect);
@@ -51,7 +51,7 @@ int ata_writesect(uint sect, char* src)
 
   ata_wait();
 
-  ushort* srcw = (ushort *) src;
+  ushort* srcw = (ushort*)src;
 
   int i; 
   for(i = 0; i < SECTSIZE / 4; i++){

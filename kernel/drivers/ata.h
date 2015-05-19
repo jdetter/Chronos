@@ -12,7 +12,7 @@ void ata_wait();
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * dst buffer is expected to be at least 512 bytes.
  */
-int ata_readsect(uint sect, char* dst);
+int ata_readsect(uint sect, void* dst);
 
 /**
  * Write the bytes in src to a hard drive sector. Returns the amount of bytes
@@ -20,5 +20,5 @@ int ata_readsect(uint sect, char* dst);
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * src buffer is expected to be at least 512 bytes. 
  */
-int ata_writesect(uint sect, char* src);
+int ata_writesect(uint sect, void* src);
 #endif

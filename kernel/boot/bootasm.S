@@ -93,48 +93,43 @@ PANIC_16:
 .code32			# Generate 32 bit code (Protected mode)
 protected_mode:
 	# We need a couple of function calls here, so lets make a stack.
-	movl $start, %esp
-	movl %esp, %ebp
+	movl 	$start, %esp
+	movl 	%esp, %ebp
 
-	subl $4, %esp # local for our current sector
-	subl $4, %esp # local for our current location in memory
+	subl 	$4, %esp # local for our current sector
+	subl 	$4, %esp # local for our current location in memory
 	
-	movl $STAGE2_ADDR, %eax # initial location in memory
-	movl %eax, (%esp)
-	movl $1, 0x4(%esp) # initial sector we need to read
+	movl 	$STAGE2_ADDR, %eax # initial location in memory
+	movl 	%eax, (%esp)
+	movl	$1, 0x4(%esp) # initial sector we need to read
 
 READ_SECT:
-	movl -4(%ebp), %eax # current sector we are reading 
-	movl -8(%ebp), %ecx # current location in memory
+	movl 	-4(%ebp), %eax # current sector we are reading 
+	movl 	-8(%ebp), %ecx # current location in memory
 	
-	subl $8, %esp
-	movl %eax, (%esp)
-	movl %ecx, 4(%esp)
-	call ata_readsect
+	subl 	$8, %esp
+	movl 	%eax, (%esp)
+	movl 	%ecx, 4(%esp)
+	call 	ata_readsect
 
 	# get rid of stack parameters
-	addl $8, %esp
+	addl 	$8, %esp
 	
 	# increment address and sector.
-	movl -4(%ebp), %eax # current sector we are reading 
-        movl -8(%ebp), %ecx # current location in memory
+	movl 	-4(%ebp), %eax # current sector we are reading 
+        movl 	-8(%ebp), %ecx # current location in memory
 
-	addl $1, %eax
-	addl $512, %ecx
+	addl 	$1, %eax
+	addl 	$512, %ecx
 
 	# Save values
-	movl %eax, -4(%ebp) # current sector we are reading 
-        movl %ecx, -8(%ebp) # current location in memory
+	movl 	%eax, -4(%ebp) # current sector we are reading 
+        movl 	%ecx, -8(%ebp) # current location in memory
 
-	test $STAGE2_FINAL_SECT, %eax
-	jne READ_SECT
+	test 	$STAGE2_FINAL_SECT, %eax
+	jne 	READ_SECT
 
-NIRVANA:
-	nop
-	nop
-	nop
-	hlt
-	jmp NIRVANA
+	ljmp    $(KERNEL_CODE << 3), $0x100000
 
 	jmp PANIC_32
 
