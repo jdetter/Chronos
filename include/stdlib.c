@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "stdlib.h"
+#include "stdarg.h"
 
 uint strlen(char* str)
 {
@@ -39,7 +40,7 @@ uint strncpy(char* dst, char* src, uint sz)
 	for(x=0; x<sz; x++)
 	{
 		dst[x] = src[x];
-		if(src[x]== NULL)
+		if(src[x] == 0)
 		{
 			break;
 		}
@@ -50,51 +51,54 @@ uint strncpy(char* dst, char* src, uint sz)
 
 uint strncat(char* str1, char* str2, uint sz)
 {
-	int x, y=0;
-	for(x=0; x<sz; x++)
+	int start = strlen(str1);
+	int x;
+	for(x = 0;x < sz;x++)
 	{
-		if(str1[x]==NULL||x>strlen(str1))
-		{
-			if(str2[y]==NULL)
-			{
-				break;
-			}
-			str1[x] = str2[y];
-			y++;
-
-		}
+		str1[start + x] = str2[x];
+		if(str2[x] == 0) break;
 	}
-	str1[x-1]=0;
-	return strlen(str1);
 
+	str1[sz - 1] = 0;
 
+	return x + start;
 }
 
 int strcmp(char* str1, char* str2)
 {
-	int x;
-	for(x=0; x < str1; x++)
+	while(*str1 && *str2)
 	{
-		if(str1[x]==str2[0])
-		{
-			return 0;
-		}
-		else if((str1[x]>=48 && str1[x] <= 57)&&(str2[x]>=48 && str2[x] <= 57))
-		{
-
-		}
+		if(*str1 >= 'A' && *str1 <= 'Z')
+			*str1 += 32;
+		if(*str2 >= 'A' && *str2 <= 'Z')
+			*str2 += 32;
+		if(*str1 == *str2) continue;
+		if(*str1 > *str2) return 1;
+		else return -1;
 	}
-	return -1;
+
+	return 0;
 }
 
 void memmove(void* dst, void* src, uint sz)
 {
+	uchar* usrc = (uchar*)src;
+	uchar* udst = (uchar*)dst;
 
+	uchar c_src[sz];
+	int x;
+	for(x = 0;x < sz;x++)
+		c_src[x] = usrc[x];
+	for(x = 0;x < sz;x++)
+		udst[x] = c_src[x];
 }
 
 void memset(void* dst, char val, uint sz)
 {
-
+	uchar* udst = dst;
+	int x;
+        for(x = 0;x < sz;x++)
+		udst[x] = val;	
 }
 
 int memcmp(void* buff1, void* buff2, uint sz)
@@ -114,29 +118,5 @@ float atof(char* str)
 
 int snprintf(char* dst, uint sz, char* fmt, ...)
 {
-	va_list list;
-	va_start(&list, &fmt);
-	int arg = 0;
-
-	int dst_index;
-	int index;
-	for(index = 0;index < sz;index++, dst++)
-	{
-		if(fmt[index] == '%')
-		{
-			/* Special character */
-			if(fmt[index + 1] == '%')
-			{
-				*dst = '%';
-			} else if (fmt[index + 1] == 'd')
-			{
-				/* print integer*/
-			}
-			index += 1;
-		} else *dst = fmt[index];
-	
-		if(fmt[index] == 0) break;
-	}
-
-	return index;
+	return 0;
 }
