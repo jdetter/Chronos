@@ -45,7 +45,7 @@ int li_strcmp(char* str1, char* str2)
 	return strcmp(str1, str2);
 }
 
-int li_strtol(char* str, char** dptr, int len)
+int li_strtol(char* str, int len)
 {
-        return strtol(str, dptr, len);
+        return strtol(str, (char**)0, len);
 }

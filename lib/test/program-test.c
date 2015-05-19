@@ -36,12 +36,18 @@ int main(int argc, char** argv)
 	li_printf("linux : %d\n", li_strcmp("These \0 should be equal.", "These \0 should be equal."));
 	
 	li_printf("atoi decimal\n");
-	li_printf("stdlib: %d\n", atoi("123456789", 10));
-	li_printf("linux : %d\n", li_strtol("123456789", (char**)0, 10));
-	li_printf("stdlib: %d\n",      atoi("123456789abcdef", 16));
-        li_printf("linux : %d\n", li_strtol("123456789abcdef", (char**)0, 16));
-	li_printf("stdlib: %d\n",      atoi("123456789ABCDEF", 16));
-        li_printf("linux : %d\n", li_strtol("123456789ABCDEF", (char**)0, 16));
+	li_printf("stdlib: %d\n", 
+		atoi("123456789", 10));
+	li_printf("linux : %d\n", li_strtol("123456789", 10));
+	li_printf("stdlib: %d\n",      
+		atoi("def", 16));
+        li_printf("linux : %d\n", li_strtol("def",  16));
+	li_printf("stdlib: %d\n",      
+		atoi("12345", 16));
+        li_printf("linux : %d\n", li_strtol("12345", 16));
+        li_printf("stdlib: %d\n",      
+		atoi("123abc", 16));
+        li_printf("linux : %d\n", li_strtol("123abc", 16));
 
 	return 0;
 }
