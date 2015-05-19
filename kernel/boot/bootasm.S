@@ -15,7 +15,10 @@
 #define KERNEL_DATA	0x2
 #define STAGE2_ADDR	0x100000
 
-#define STAGE2_SECTORS $62
+#define STAGE2_FINAL_SECT $63
+
+.globl ata_readsect
+.globl ata_init
 
 .code16			# Start generating 16 bit code. (Real mode)
 .globl start
@@ -91,8 +94,20 @@ PANIC_16:
 protected_mode:
 	# We need a couple of function calls here, so lets make a stack.
 	mov $start, %esp
+	mov %esp, %ebp
 
+	sub $4, %esp # local for our current sector
+	sub $4, %esp # local for our current location in memory
+	
+	# mov STAGE2_ADDR, %eax # initial location in memory
+	# mov %eax, (%esp)
 
+	# mov $1, 0x4(%esp) # initial sector we need to read
+
+READ_SECT:
+	mov (%ebp), %eax 
+	mov 0x4(%ebp), %ecx
+	
 
 	# Lets load the next stage of the boot loader
 
