@@ -64,12 +64,12 @@ chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chro
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/boot/boot-stage2.img of=chronos.img count=63 bs=512 conv=notrunc seek=1
+	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 
 kernel/chronos.o: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
 
-kernel/boot/boot-stage1.img:
+kernel/boot/boot-stage1.img: kernel/drivers/ata.o
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
 	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
