@@ -1,5 +1,6 @@
 TOOLS := boot-sign \
-	mkfs
+	mkfs \
+	disk-part
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
 

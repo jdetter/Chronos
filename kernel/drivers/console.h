@@ -11,6 +11,6 @@ int cprintf(char* fmt, ...);
 /**
 * Sets up video memory
 */
-int cinit(void);
+void cinit(void);
 
 #endif

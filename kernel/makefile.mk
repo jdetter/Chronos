@@ -8,7 +8,8 @@ KERNEL_DRIVERS := \
 	ata \
 	keyboard \
 	pic\
-	pit
+	pit \
+	console
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
@@ -33,8 +34,8 @@ KERNEL_LDFLAGS += --entry=main
 KERNEL_LDFLAGS += --section-start=.text=0x100000
 # KERNEL_LDFLAGS += --omagic
 
-kernel/chronos.img: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) \
-		kernel/boot/boot-stage1.img
+
+kernel/chronos.img: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
 
 kernel/boot/boot-stage1.img:

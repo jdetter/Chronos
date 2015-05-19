@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "stdlib.h"
+#include "stdarg.h"
 
 #define MAX_NUM 15
 #define GREY_COLOR 0x07
@@ -9,14 +10,14 @@
 #define VID_COLOR_BASE (int*) 0xB8000
 int console_pos;
 
-
+void printNextCharacter(char character);
 void printCharacter(uint row, uint col, char character);
 /* do string char %%(to print % ) and pointer addresses*/
 int cprintf(char* fmt, ...)
 {
 	va_list args;
-	va_start(args, fmt);
-	//int arg_pos = 0; I don't think we need this
+	va_start(&args, (void**)&fmt);
+	int arg_pos = 0;
 	int x;
 	char *s;
 	void *pointer;
@@ -25,42 +26,42 @@ int cprintf(char* fmt, ...)
 	{
 		if(fmt[x] == '%')
 		{
+			char number[MAX_NUM];
+			char* number_ptr = number;
 			if(fmt[x + 1] == 'd')
 			{
-				char number[MAX_NUM];
-				snprintf(number, MAX_NUM, "%d", va_arg(args, int));
-				for(;number;number++)printNextCharacter(*number);
-				//arg_pos++;
+				snprintf(number, MAX_NUM, "%d", *((int*)va_arg(args, arg_pos)));
+				for(;*number_ptr;number_ptr++)printNextCharacter(*number_ptr);
+
+				arg_pos++;
 			} else if(fmt[x + 1] == 'x')
 			{
-				char number[MAX_NUM];
-				snprintf(number, MAX_NUM, "%x", va_arg(args, int));
-				for(;number;number++)printNextCharacter(*number);
-				//arg_pos++;
+				snprintf(number, MAX_NUM, "%x",*((int*)va_arg(args, arg_pos)));
+				for(;*number_ptr;number_ptr++)printNextCharacter(*number_ptr);
+				arg_pos++;
 			}else if(fmt[x + 1] == 'c')
 			{
-				printNextCharacter(va_arg(args, char));
-				//arg_pos++;
+				printNextCharacter(*((char*)va_arg(args, arg_pos)));
+				arg_pos++;
 			}else if(fmt[x + 1] == 's')
 			{
-				s = va_arg(args, char *);
-				for(int i = 0; i< strlen(s); i++)
+				s = *((char**)va_arg(args, arg_pos));
+				int i;
+				for(i = 0; i< strlen(s); i++)
 				{
-					printNextCharacter(char[i]);
+					printNextCharacter(number[i]);
 				}
-				//arg_pos++;
+				arg_pos++;
 			}else if(fmt[x + 1] == '%')
 			{
 				printNextCharacter('%');
-				//arg_pos++;
 			}else if(fmt[x + 1] == 'p')
 			{
-				char number[MAX_NUM];
-				pointer = va_arg(args, void *);
+				pointer = *((void**)va_arg(args, arg_pos));
 				pa = (int) pointer;
 				snprintf(number, MAX_NUM, "%x",  pa);
-				for(;number;number++)printNextCharacter(*number);
-				//arg_pos++;
+				for(;*number_ptr;number_ptr++)printNextCharacter(*number_ptr);
+				arg_pos++;
 			}
 			
 			
@@ -126,7 +127,8 @@ void itoa(int val, char* dst, uint sz, uint base){
 }
 */
 
-int cinit(){
+void cinit(void)
+{
 	console_pos = 0;
 	int row;
 	int col;
