@@ -1,8 +1,11 @@
 CC=gcc
 LD=ld
+AS=gcc
+OBJCOPY=objcopy
 
-LDFLAGS := -m elf_i386
+LDFLAGS := -m elf_i386 --omagic
 CFLAGS := -ggdb -m32 -Werror -Wall
+ASFLAGS += -m32 -Werror -Wall
 
 # Flags for building indipendant binaries
 
@@ -14,6 +17,8 @@ BUILD_CFLAGS += -fno-builtin
 BUILD_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 BUILD_CFLAGS += -fno-stack-protector
+
+BUILD_ASFLAGS += $(BUILD_CFLAGS)
 
 .PHONY: all
 all: tools kernel/chronos.img lib-tests

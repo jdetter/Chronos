@@ -33,16 +33,24 @@ KERNEL_LDFLAGS += --entry=main
 KERNEL_LDFLAGS += --section-start=.text=0x100000
 # KERNEL_LDFLAGS += --omagic
 
-kernel/chronos.img: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
+kernel/chronos.img: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) \
+		kernel/boot/boot-stage1.img
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
+
+kernel/boot/boot-stage1.img:
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
+	$(LD) $(LDFLAGS) --section-start=.text=0x7c00 --entry=start  -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o
+	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
+	
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<
+
 
 kernel/drivers/%.o: kernel/drivers/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS)-c -o $@ $<
 
 kernel-clean:
 	rm -f $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
-	rm -f kernel/chronos.o
-	rm -f kernel/chronos.img
+	rm -f kernel/chronos.img kernel/chronos.o 
+	rm -f kernel/boot/bootasm.o kernel/boot/boot-stage1.img kernel/boot/boot-stage1.o 
