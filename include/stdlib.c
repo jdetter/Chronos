@@ -121,7 +121,7 @@ int atoi(char* str, int radix)
 	int x;
 	int negative = 1;
 	int total = 0;
-	int num = 0;
+	//int num = 0;
 	if(str[0]=='-')
 	{
 		negative = -1;
