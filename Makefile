@@ -2,7 +2,7 @@ CC=gcc
 LD=ld
 
 LDFLAGS := -m elf_i386
-CFLAGS := -ggdb -m32
+CFLAGS := -ggdb -m32 -Werror -Wall
 
 # Flags for building indipendant binaries
 

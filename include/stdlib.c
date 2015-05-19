@@ -61,5 +61,29 @@ float atof(char* str)
 
 int snprintf(char* dst, uint sz, char* fmt, ...)
 {
-	return 0;
+	va_list list;
+	va_start(&list, &fmt);
+	int arg = 0;
+
+	int dst_index;
+	int index;
+	for(index = 0;index < sz;index++, dst++)
+	{
+		if(fmt[index] == '%')
+		{
+			/* Special character */
+			if(fmt[index + 1] == '%')
+			{
+				*dst = '%';
+			} else if (fmt[index + 1] == 'd')
+			{
+				/* print integer*/
+			}
+			index += 1;
+		} else *dst = fmt[index];
+	
+		if(fmt[index] == 0) break;
+	}
+
+	return index;
 }

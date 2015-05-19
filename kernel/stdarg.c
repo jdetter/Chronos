@@ -5,7 +5,7 @@
 
 void va_start(va_list* list, void** first_arg)
 {
-	struct va_list_node** curr_ptr;
+	struct va_list_node** curr_ptr = list;
 	*curr_ptr = NULL;
 	first_arg++;
 
