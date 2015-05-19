@@ -13,6 +13,7 @@
 # segments in the gdt, see below
 #define KERNEL_CODE	0x1
 #define KERNEL_DATA	0x2
+#define STAGE2_ADDR	0x100000
 
 .code16			# Start generating 16 bit code. (Real mode)
 .globl start

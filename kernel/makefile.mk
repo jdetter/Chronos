@@ -61,6 +61,7 @@ chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chro
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
+	dd if=kernel/boot/boot-stage2.img of=chronos.img count=63 bs=512 conv=notrunc seek=1
 
 kernel/chronos.o: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
