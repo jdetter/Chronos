@@ -116,7 +116,61 @@ float atof(char* str)
 	return 0;
 }
 
+void itoa(int val, char* dst, uint sz, uint radix)
+{
+	memset(dst, 0, sz);
+	if(sz <= 1) return;
+
+	if(val == 0)
+	{
+		*dst = '0';
+		return;
+	}
+
+	int x;
+	for(x = 0;x < sz;x++)
+	{
+		if(x == 0 && val < 0)
+		{
+			dst[x] = '-';
+			val = -val;
+			continue;
+		}
+
+		int mod = val % radix;
+		char character = mod + '0';
+		if(mod > 10)
+			character = mod - 10 + 'A';
+		dst[x] = character;
+	}
+	dst[sz - 1] = 0;
+}
+
 int snprintf(char* dst, uint sz, char* fmt, ...)
 {
-	return 0;
+	va_list list;
+	va_start(&list, (void**)&fmt);
+	int arg = 0;
+
+	int fmt_index = 0;
+	int dst_index = 0;
+	for(;dst_index < sz;fmt_index++, dst_index++)
+	{
+		if(fmt[fmt_index] == '%')
+		{
+			if(fmt[fmt_index + 1] == '%')
+			{
+				dst[dst_index] = '%';
+			} else if(fmt[fmt_index + 1] == 'd')
+			{
+				int val = *((int*)va_arg(list, arg));
+				itoa(val, dst + dst_index, sz - dst_index, 10);
+			}
+			fmt_index++;
+		} else dst[dst_index] = fmt[fmt_index];
+	}
+
+	dst[sz - 1] = 0;
+	va_end(list);
+	return dst_index;
 }

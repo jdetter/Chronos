@@ -29,3 +29,23 @@ int li_strlen(char* str)
 {
 	return strlen(str);
 }
+
+void li_strncpy(char* dst, char* src, unsigned int sz)
+{
+	strncpy(dst, src, sz);
+}
+
+void li_strncat(char* dst, char* src, unsigned int sz)
+{
+	strncat(dst, src, sz);
+}
+
+int li_strcmp(char* str1, char* str2)
+{
+	return strcmp(str1, str2);
+}
+
+int li_strtol(char* str, char** dptr, int len)
+{
+        return strtol(str, dptr, len);
+}

@@ -19,3 +19,8 @@ void* va_arg(va_list list, int arg)
 {
 	return NULL;
 }
+
+void va_end(va_list list)
+{
+
+}

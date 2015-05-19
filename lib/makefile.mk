@@ -5,7 +5,8 @@ LIBS_TARGET = \
 
 LIBS_TEST = \
 	string \
-	malloc
+	malloc \
+	program
 
 LIBS_TEST := $(addsuffix -test.o, $(LIBS_TEST))
 LIBS_TEST := $(addprefix lib/test/, $(LIBS_TEST))
