@@ -1,9 +1,6 @@
 #ifndef _ATA_H_
 #define _ATA_H_
 
-
-
-
 /**
  * Initializes the hard drive.
  */
