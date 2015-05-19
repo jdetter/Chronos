@@ -2,14 +2,9 @@
 #define _ATA_H_
 
 /**
- * Initializes the hard drive.
- */
-int ata_init();
-
-/**
  * Polls the hard drive until it is ready for a PIO read/write.
  */
-int ata_wait();
+void ata_wait();
 
 /**
  * Read a hard drive sector into the destination buffer, dst. Returns the

@@ -11,50 +11,31 @@
 #define PRIMARY_ATA_COMMAND 0x1F7
 
 #define ATA_ERR 0x0
-#define ATA_DRQ 0x1 << 3
-#define ATA_SRV 0x1 << 4
-#define ATA_DF 0x1 << 5
-#define ATA_RDY 0x1 << 6
-#define ATA_BSY 0x1 << 7
+#define ATA_DRQ (0x1 << 3)
+#define ATA_SRV (0x1 << 4)
+#define ATA_DF (0x1 << 5)
+#define ATA_RDY (0x1 << 6)
+#define ATA_BSY (0x1 << 7)
 
 #define SECT_SZ 512
 
-int ata_init()
+void ata_wait()
 {
-  outb(PRIMARY_ATA_COMMAND, 0x4); 
-  return 0;
+	while((inb(PRIMARY_ATA_COMMAND) & (ATA_RDY | ATA_BSY)) != ATA_RDY); 
 }
 
+int ata_readsect(uint sect, void* dst)
+{ 
+	ata_wait();
+	outb(PRIMARY_ATA_SECTOR_COUNT, 0x1);
+	outb(PRIMARY_ATA_SECTOR_NUMBER, sect);
+	outb(PRIMARY_ATA_CYLINDER_LOW, sect >> 8);
+	outb(PRIMARY_ATA_CYLINDER_HIGH, sect >> 16);
+	outb(PRIMARY_ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
+	outb(PRIMARY_ATA_COMMAND, 0x20);
 
-int ata_wait()
-{
-  uchar status;
+	ata_wait();
+	insl(PRIMARY_ATA_DATA, dst, SECT_SZ/4);
 
-  do 
-  {
-    status = inb(PRIMARY_ATA_COMMAND);
-  } while((status & ATA_BSY & ATA_RDY) != ATA_RDY);
-}
-
-int ata_readsect(uint sect, char* dst)
-{
-  ata_wait();
-  // outb(PRIMARY_ATA_DRIVE, 0xE0 | ((sect >> 24) & 0x0F));
-  // outb(PRIMARY_ATA_FEATURES_ERROR, 0x00);
-  outb(PRIMARY_ATA_SECTOR_COUNT, 0x1);
-  outb(PRIMARY_ATA_SECTOR_NUMBER, sect);
-  outb(PRIMARY_ATA_CYLINDER_LOW, sect >> 8);
-  outb(PRIMARY_ATA_CYLINDER_HIGH, sect >> 16);
-  outb(PRIMARY_ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
-  outb(PRIMARY_ATA_COMMAND, 0x20);
-
-  ata_wait();
-
-  ushort* dstw = (ushort *) dst;
-  int i;
-  for(i = 0; i < SECT_SZ / 4; i++){
-    dstw[i] = inw(PRIMARY_ATA_DATA);
-  }  
-
-  return 0;
+	return 0;
 }
