@@ -24,13 +24,20 @@ typedef struct vsfs_inode {
 	uint double_indirect;
 } vsfs_inode;
 
+
+typedef struct directent {
+	char name[124];
+	int inode_num;
+} directent;
 /**
  * File system information. The superblock is followed by the inode bitmap which
  * is followed by the block bitmap. The 0th inode should ALWAYS be free. The
  * root (topmost directory) is always inode 1. The root cannot be unlinked.
  */
 typedef struct vsfs_superblock {
-	uint blocks; /* Total amount of blocks in the file system */
+	uint dmap; /* Amount of blocks for the d block bitmap. */
+	uint dblocks; /* Total amount of data blocks in the file system */
+	uint imap; /* Amount of blocks for inode bitmap. */
 	uint inodes; /* How many inodes are there? */
 } vsfs_superblock;
 
