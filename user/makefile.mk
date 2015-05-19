@@ -15,6 +15,11 @@ USER_OBJECTS := $(addsuffix .o, $(USER_TARGETS))
 # Source files
 USER_SOURCE := $(addsuffix .c, $(USER_TARGETS))
 
+# Specify clean targets
+USER_CLEAN := \
+	user/bin \
+	$(USER_OBJECTS)
+
 # Include files
 USER_CFLAGS += -I include
 # Disable Position Independant Code
@@ -51,8 +56,3 @@ user/%.o: user/%.c
 # Recipe for binary files
 user/bin/%: user/%.o libs
 	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
-
-.PHONY: user-clean
-user-clean:
-	rm -rf user/bin
-	rm -f $(USER_OBJECTS)

@@ -19,6 +19,17 @@ KERNEL_OBJECTS := $(addsuffix .o, $(KERNEL_OBJECTS))
 KERNEL_DRIVERS := $(addprefix kernel/drivers/, $(KERNEL_DRIVERS))
 KERNEL_DRIVERS := $(addsuffix .o, $(KERNEL_DRIVERS))
 
+# Specify files to clean
+KERNEL_CLEAN := \
+        $(KERNEL_OBJECTS) \
+        $(KERNEL_DRIVERS) \
+        kernel/chronos.img \
+        kernel/chronos.o \
+        kernel/boot/bootasm.o \
+        kernel/boot/boot-stage1.img \
+        kernel/boot/boot-stage1.o \
+        chronos.img
+
 # Include files
 KERNEL_CFLAGS += -I include
 # Include driver headers
@@ -34,8 +45,16 @@ KERNEL_LDFLAGS += --entry=main
 KERNEL_LDFLAGS += --section-start=.text=0x100000
 # KERNEL_LDFLAGS += --omagic
 
+kernel-symbols: kernel/chronos.o
+	$(OBJCOPY) --only-keep-debug kernel/chronos.o chronos.sym
+	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage1.o boot-stage1.sym
 
-kernel/chronos.img: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
+chronos.img: kernel/boot/boot-stage1.img kernel/chronos.o
+	dd if=/dev/zero of=chronos.img bs=512 count=2048
+	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
+
+
+kernel/chronos.o: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
 
 kernel/boot/boot-stage1.img:
@@ -50,8 +69,3 @@ kernel/%.o: kernel/%.c
 
 kernel/drivers/%.o: kernel/drivers/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS)-c -o $@ $<
-
-kernel-clean:
-	rm -f $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
-	rm -f kernel/chronos.img kernel/chronos.o 
-	rm -f kernel/boot/bootasm.o kernel/boot/boot-stage1.img kernel/boot/boot-stage1.o 

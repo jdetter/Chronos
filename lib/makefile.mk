@@ -13,6 +13,8 @@ LIBS_TEST := $(addprefix lib/test/, $(LIBS_TEST))
 LIBS := $(addprefix lib/, $(LIBS_TARGET))
 LIBS := $(addsuffix .o, $(LIBS))
 
+LIBS_CLEAN := $(LIBS) $(LIBS_TEST)
+
 # Are you debugging?
 DEBUG = 1
 
@@ -47,6 +49,3 @@ lib/test/%.o: lib/test/%.c
 
 lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
-
-lib-clean:
-	rm -f $(LIBS) $(LIBS_TEST)
