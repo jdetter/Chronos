@@ -70,9 +70,28 @@
 static inline uchar inb(ushort port)
 {
 	uchar data;
-
-	asm volatile("in %1,%0" : "=a" (data) : "d" (port));
+	asm volatile("inb %w1,%b0" : "=a" (data) : "d" (port));
 	return data;
+}
+
+/**
+ * Read a short from a port.
+ */
+static inline ushort inw(ushort port)
+{
+        uchar data;
+        asm volatile("inw %w1,%w0" : "=a" (data) : "d" (port));
+        return data;
+}
+
+/**
+ * Read a int from a port.
+ */
+static inline uint inl(ushort port)
+{
+        uchar data;
+        asm volatile("inl %w1,%0" : "=a" (data) : "d" (port));
+        return data;
 }
 
 /**
@@ -80,7 +99,23 @@ static inline uchar inb(ushort port)
  */
 static inline void outb(ushort port, uchar data)
 {
-	asm volatile("out %0,%1" : : "a" (data), "d" (port));
+	asm volatile("outb %b0,%w1" : : "a" (data), "d" (port));
+}
+
+/**
+ * Write the short data to a port.
+ */
+static inline void outw(ushort port, ushort data)
+{
+        asm volatile("outw %w0,%w1" : : "a" (data), "d" (port));
+}
+
+/**
+ * Write the int data to a port.
+ */
+static inline void outl(ushort port, uint data)
+{
+        asm volatile("outl %0,%w1" : : "a" (data), "d" (port));
 }
 
 /**

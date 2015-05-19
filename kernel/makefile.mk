@@ -33,6 +33,7 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.o \
         chronos.img \
 	boot-stage1.sym \
+	boot-stage2.sym \
 	chronos.sym
 
 # Include files
@@ -56,6 +57,8 @@ BOOT_STAGE2_LDFLAGS := --section-start=.text=0x100000 --entry=main
 kernel-symbols: kernel/chronos.o
 	$(OBJCOPY) --only-keep-debug kernel/chronos.o chronos.sym
 	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage1.o boot-stage1.sym
+	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage2.o boot-stage2.sym
+
 
 chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chronos.o
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
