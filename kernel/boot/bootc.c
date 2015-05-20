@@ -1,20 +1,29 @@
 #include "types.h"
 #include "serial.h"
 #include "stdlib.h"
+#include "ata.h"
 
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
  * and then jump into the main method of the kernel.
  */
 
-char* buffer = "Remember, no Russian.\n";
+char* welcome = "Welcome to Chronos!\n";
+char* disk = "Writing to disk...\n";
 
 int main(void)
 {
 	serial_init(0);
-	serial_write(buffer, strlen(buffer));
+	serial_write(welcome, strlen(welcome));
 
+	uchar buffer[512];
+	int x;
+	for(x = 0;x < 512;x++)
+		buffer[x] = x;
+
+	serial_write(disk, strlen(disk));
+	ata_writesect(0, buffer);
+	
 	for(;;);
-
 	return 0;
 }
