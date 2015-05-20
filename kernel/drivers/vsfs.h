@@ -24,11 +24,11 @@ typedef struct vsfs_inode {
 	uint double_indirect;
 } vsfs_inode;
 
-
 typedef struct directent {
 	char name[124];
 	int inode_num;
 } directent;
+
 /**
  * File system information. The superblock is followed by the inode bitmap which
  * is followed by the block bitmap. The 0th inode should ALWAYS be free. The
