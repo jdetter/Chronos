@@ -1,3 +1,9 @@
+# Section files
+*.data
+*.rodata
+*.bss
+*.text
+
 # Project files
 .project
 .cproject
