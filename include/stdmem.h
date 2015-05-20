@@ -16,11 +16,11 @@ void* malloc(uint sz);
 int mfree(void* ptr);
 
 /**
- * minit should setup the global variables needed for this allocator to 
- * function. It should call mmap and request an amount of memory. This memory 
- * amount should be defined using #define MEM_AMT so that it can easily be 
- * changed for tuning.
+ * If mem_map is 1, then minit should ignore start_addr and end_addr and
+ * map a page into memory and use that as it's allocator space. If mem_map
+ * is 0, the start_addr and end_addr will be used as the space for the
+ * memory allocator.
  */
-void minit(void);
+void minit(uint start_addr, uint end_addr, uint mem_map);
 
 #endif

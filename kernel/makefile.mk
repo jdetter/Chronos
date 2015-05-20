@@ -1,7 +1,6 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
-	main \
-	stdarg
+	main
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -42,6 +41,8 @@ KERNEL_CLEAN := \
 KERNEL_CFLAGS += -I include
 # Include driver headers
 KERNEL_CFLAGS += -I kernel/drivers
+# Include library files
+KERNEL_CFLAGS += -I lib
 
 # Don't link the standard library
 KERNEL_LDFLAGS := -nostdlib
@@ -69,17 +70,17 @@ chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chro
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
 	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 
-kernel/chronos.o: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
-	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
+kernel/chronos.o: $(LIBS) $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
+	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS)
 
 kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
 	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
-kernel/boot/boot-stage2.img: includes
+kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o
+	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS)
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.img	
 
 kernel/boot/ata-read.o:

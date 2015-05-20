@@ -24,10 +24,13 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 .PHONY: all
 all: tools chronos.img lib-tests
 
+virtualbox: tools chronos.img
+	./tools/virtualbox.sh
+
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
-QEMU_NOX := -nographic
+# QEMU_NOX := -nographic
 
 QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
@@ -42,10 +45,9 @@ include user/makefile.mk
 include tools/makefile.mk
 include lib/makefile.mk
 include linux/makefile.mk
-include include/makefile.mk
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(INCLUDE_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(LINUX_CLEAN)
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(LINUX_CLEAN)
 
 .DEFAULT: all

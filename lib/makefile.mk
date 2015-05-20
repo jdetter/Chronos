@@ -1,7 +1,8 @@
 # Library files
 LIBS_TARGET = \
 	stdmem \
-	stdarg
+	stdarg \
+	stdlib
 
 LIBS_TEST = \
 	string \
