@@ -9,24 +9,22 @@
  */
 
 char* welcome = "Welcome to Chronos!\n";
-char* disk = "Writing to disk...\n";
-char* done = "Writing to disk complete.\n";
+char* prompt = "Enter text: \n";
+char* done = "Done listening.\n";
 
 int main(void)
 {
 	serial_init(0);
 	serial_write(welcome, strlen(welcome));
+	serial_write(prompt, strlen(prompt));
 
-	uchar buffer[512];
-	int x;
-	for(x = 0;x < 512;x++)
-		buffer[x] = x;
+	char buffer[1000];
 
-	serial_write(disk, strlen(disk));
-	ata_writesect(0, buffer);
-
-	serial_write(done, strlen(done));
+	serial_read(buffer, 10);
 	
+	serial_write(done, strlen(done));
+	serial_write(buffer, strlen(buffer));
+
 	for(;;);
 	return 0;
 }

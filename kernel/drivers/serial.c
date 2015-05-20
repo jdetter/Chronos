@@ -48,7 +48,7 @@ void serial_init(int pic)
  */
 uint serial_received(void)
 {
-	return inb(COM1_LSR) & 1;
+	return inb(COM1_LSR) & 0x1;
 }
 
 /**
