@@ -60,4 +60,107 @@
 #define PG_FLG10_SET(pg) (pg | 0x400)
 #define PG_FLG11_SET(pg) (pg | 0x800)
 
+#define PGSIZE 4096
+
+/* Inline assembly functions */
+
+/**
+ * Read a byte from a port.
+ */
+static inline uchar inb(ushort port)
+{
+	uchar data;
+
+	asm volatile("in %1,%0" : "=a" (data) : "d" (port));
+	return data;
+}
+
+/**
+ * Write the byte data to a port.
+ */
+static inline void outb(ushort port, uchar data)
+{
+	asm volatile("out %0,%1" : : "a" (data), "d" (port));
+}
+
+/**
+ * Disable interrupts.
+ */
+static inline void cli(void)
+{
+	asm volatile("cli");
+}
+
+/**
+ * Enable interrupts.
+ */
+static inline void sti(void)
+{
+	asm volatile("sti");
+}
+
+/**
+ * Busy work for waiting for an io to finish.
+ */
+static inline void io_wait(void)
+{
+    asm volatile ( "outb %%al, $0x80" : : "a"(0) );
+}
+
+/* Concurrency x86 instructions. */
+
+/**
+ * Return the value at variable and return it. This function will also
+ * add inc to the current value of variable atomically.
+ */
+static inline int fetch_and_add(int* variable, int inc) 
+{
+	asm volatile("lock; xaddl %%eax, %2;"
+			:"=a" (inc)
+			:"a" (inc), "m" (*variable)
+			:"memory");
+	return inc;
+}
+
+/**
+ * Exchange the value in addr for newval and return the original value of addr.
+ * This happens atomically.
+ */
+static inline uint xchg(volatile uint *addr, uint newval)
+{
+	uint result;
+	asm volatile("lock; xchgl %0, %1" :
+			"+m" (*addr), "=a" (result) :
+			"1" (newval) :
+			"cc");
+	return result;
+}
+
+/**
+ * We are remapping the original PIC definitions. The new defs are here.
+ */
+
+#define INT_PIC_MAP_OFF_1 0x20
+#define INT_PIC_MAP_OFF_2 0x28
+
+#define INT_PIC_ORIG_OFF_1 0x08
+#define INT_PIC_ORIG_OFF_2 0x70
+
+#define INT_PIC_TIMER 		0x00 + INT_PIC_MAP_OFF_1
+#define INT_PIC_KEYBOARD 	0x01 + INT_PIC_MAP_OFF_1
+#define INT_PIC_SLAVE 		0x02 + INT_PIC_MAP_OFF_1
+#define INT_PIC_COM2 		0x03 + INT_PIC_MAP_OFF_1
+#define INT_PIC_COM1 		0x04 + INT_PIC_MAP_OFF_1
+#define INT_PIC_LPT2 		0x05 + INT_PIC_MAP_OFF_1
+#define INT_PIC_FLOPPY 		0x06  + INT_PIC_MAP_OFF_1
+#define INT_PIC_LPT1 		0x07  + INT_PIC_MAP_OFF_1
+#define INT_PIC_CMOS 		0x00  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT09 		0x01  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT10	 	0x02  + INT_PIC_MAP_OFF_2
+#define INT_PIC_INT11 		0x03  + INT_PIC_MAP_OFF_2
+#define INT_PIC_MOUSE 		0x04  + INT_PIC_MAP_OFF_2
+#define INT_PIC_COPROCESSOR 	0x05  + INT_PIC_MAP_OFF_2
+#define INT_PIC_ATA1 		0x06  + INT_PIC_MAP_OFF_2
+#define INT_PIC_ATA2 		0x07  + INT_PIC_MAP_OFF_2
+
 #endif

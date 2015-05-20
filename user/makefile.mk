@@ -50,7 +50,7 @@ user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
 user/bin/%: user/%.o libs
-	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS)
+	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
 
 .PHONY: user-clean
 user-clean:

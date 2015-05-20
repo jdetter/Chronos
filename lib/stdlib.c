@@ -1,4 +1,5 @@
 #include "types.h"
+#include "x86.h"
 #include "stdlib.h"
 
 uint strlen(char* str)
@@ -81,6 +82,9 @@ typedef struct alloc_node
 	int sz; /* The size of this allocated region. */
 	void* magic; /* Make sure this node isn't currupted. */
 } alloc_node;
+
+struct free_node* head; /* The head of the free list */
+struct free_node* curr; /* Pointer to the current location. */
 
 void* malloc(uint sz)
 {
