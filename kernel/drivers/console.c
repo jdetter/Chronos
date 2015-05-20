@@ -3,7 +3,7 @@
 #define VID_ROWS 20
 #define VID_COLS 80
 #define VID_COLOR_BASE (int*) 0xB8000
-int console_pos
+int console_pos;
 
 int cprintf(char* fmt, ...)
 {
@@ -19,7 +19,7 @@ void PrintCharacter(uint row, uint col, char character){
 /**
 *WARNING: dst must be large enough to hold val
 */ 
-void itoa(int val, char* dst, uint sz, unint base){
+void itoa(int val, char* dst, uint sz, uint base){
 	memset(dst, 0, sz);
 	
 	if(val==0){
@@ -54,7 +54,7 @@ int cinit(){
 	int row;
 	int col;
 	for(row=0; row< VID_ROWS; row++){
-		for(col = 0; row<VID_COL; col++){
+		for(col = 0; row<VID_COLS; col++){
 			printCharacter(row, col, 0x20);
 		}
 	}
