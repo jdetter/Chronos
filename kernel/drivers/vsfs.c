@@ -24,70 +24,87 @@ int init(int start_sector)
  * buffer and return 0. If the inode is not found, return 1.
  */
 int vsfs_lookup(char* path, vsfs_inode* dst)
-{
-  
+{  
   char paths[16][64];
-
-
-
-/*
+  directent* nextlevel = NULL;
   if(path[0] == '/'){
-    paths = vsfs_path_split(path);
+    int depth = vsfs_path_split(path, paths);
+    inode_num = 1;
+    int k;
+    for(k = 0; k < (depth - 2); k++){
+    if((k == 0) || (paths[k][0] != '/')){
     uchar traversal_inode[512];
-    ata_readsect(start + 1 + super->dmap + super->imap , traversal_inode);
-    vsfs_inode* root = (vsfs_inode*) traversal_inode[sizeof(vsfs_inode)];
-    root++;
+    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 512) , traversal_inode);
+    vsfs_inode* curr = ((vsfs_inode*) traversal_inode) + (inode_num % 8);
     int i;
-    int directents = root->size / sizeof(directent);
-    for(i = 0; i < root->blocks; i++){
-      uchar entries[512];
-      ata_readsect(root->direct[i], entries);
-      int j;
-      for(j = 0; j < 4; j++){
-        directent* entry = (directent*) entries;
-        if(strcmp(paths[1],entry->name) == 0){
-          int k = 0;
-          int inode_num = entry->inode_num;
-          while((*(paths[k]) != NULL) && (*(paths[k+1]) != NULL)){
-            if(paths[k][0] == NULL){
-              k++;
-            }
+    int directents = curr->size / sizeof(directent);
+    if(root->blocks <= 9){
+      for(i = 0; i < curr->blocks; i++){
+        uchar datablock[512];
+        ata_readsect(curr->direct[i], datablock);
+        directent *subentry = (directent*) datablock;
+        int j;
+        int r = 1;
+        for(j = 0; (j < 4) && (directents > 0); j++){
+          if(strcmp(subentry->name, paths[k+r]) == 0){
+            if(r == 1){ r = 2;};
+            nextlevel = subentry;
+            inode_num = firstlevel->inode_num;
+          } 
+          else{
+            subentry++;
+            directents--;
           }
         }
-        else{
-          entry++;
-        }      
+        if(directents == 0){
+          return 0;
+        }
       }
-    } 
-         
+    }
+    else if(root->blocks <= 81){
+
+    }
+    else{
+
+    }
+    }     
   } 
+  if(nextlevel == NULL){
+    return 0;
+  }   
+  else{
+    uchar final_inode[512];
+    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 512), final_inode);
+    vsfs_inode* ret_inode = ((vsfs_inode*) final_inode) + (inode_num % 8);
+    dst = ret_inode;
+    return 1;
+  }
+
   else{
     return 0;
-  }  */
+  }  
 }
 
 /**
  * Splits the file/folder path into a 2D array and returns it.
  */
-char** vsfs_path_split(char* path){
-
-  char paths[16][64];
+int vsfs_path_split(char* path, char** dst){
 
   int i = 0;
   int j = 0;
   int k = 0;
   while(path[i] != NULL){
     if(path[i] == '/'){
-      paths[j][0] = NULL;
+      dst[j][0] = '/';
       j++;
       k = 0;
     }
     else{
-      paths[j][k] = path[i];
+      dst[j][k] = path[i];
     }
     i++;
   }
-  return paths;
+  return j;
 }
 
 /**
@@ -95,7 +112,22 @@ char** vsfs_path_split(char* path){
  * count of the file. If the file now has 0 links to it, free the file and
  * all of the blocks it is holding onto.
  */
-int vsfs_unlink(char* path);
+int vsfs_unlink(char* path){
+
+  vsfs_inode* unlinked;
+  
+  if(vsfs_lookup(path, unlinked) == 1){
+    unlinked->links_count--;
+    if(unlinked->links_count == 0){
+      //free in the bitmap
+      //free data blocks in bitmap
+    }
+
+  }
+  else{
+    return 0;
+  }
+}
 
 /**
  * Add the inode new_inode to the file system at path. Make sure to add the
@@ -103,18 +135,37 @@ int vsfs_unlink(char* path);
  * available in the file system, or there is any other error return 1.
  * Return 0 on success.
  */
-int vsfs_link(char* path, vsfs_inode* new_inode);
+int vsfs_link(char* path, vsfs_inode* new_inode)
+{
+  vsfs_inode* parent;
+
+  if(vsfs_lookup(path, parent) == 1){
+    // where to put directent
+    // traverse to get next free inode
+    bit search =
+  
+  }
+  else{
+    return 1;
+  }
+}
 
 /**
  * Create the directory entry new_file that is a hard link to file. Return 0
  * on success, return 1 otherwise.
  */
-int vsfs_hard_link(char* new_file, char* link);
+int vsfs_hard_link(char* new_file, char* link)
+{
+  // ?
+}
 
 /**
  * Create a soft link called new_file that points to link.
  */
-int vsfs_soft_link(char* new_file, char* link);
+int vsfs_soft_link(char* new_file, char* link)
+{
+  // ?
+}
 
 /**
  * Read sz bytes from inode node at the position start (start is the seek in
@@ -122,7 +173,10 @@ int vsfs_soft_link(char* new_file, char* link);
  * the user has requested a read that is outside of the bounds of the file,
  * don't read any bytes and return 0.
  */
-int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
+int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
+{
+  // ?
+}
 
 /**
  * Write sz bytes to the inode node starting at position start. No more than
@@ -134,4 +188,7 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
  * WARNING: Blocks allocated to files should be zerod if they aren't going to
  * be written to fully.
  */
-int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src);
+int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
+{
+  // ?
+}
