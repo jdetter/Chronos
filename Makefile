@@ -30,12 +30,12 @@ virtualbox: tools chronos.img
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
-QEMU_NOX := -nographic
+# QEMU_NOX := -nographic
 
 QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
 qemu: all
-	$(QEMU) $(QEMU_OPTIONS)
+	$(QEMU) -nographic $(QEMU_OPTIONS)
 
 qemu-gdb: all kernel-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S

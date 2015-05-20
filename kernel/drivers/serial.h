@@ -5,7 +5,7 @@
  * Initilize the serial ports. If pic is enabled, it will modify
  * the pic mask so that the pic gets serial interrupts.
  */
-void serial_init(int pic);
+int serial_init(int pic);
 
 /**
  * Write sz bytes in buffer dst to the serial port. Returns the amount

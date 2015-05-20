@@ -17,7 +17,7 @@
 uint serial_received(void);
 uint transmit_ready(void);
 
-void serial_init(int pic)
+int serial_init(int pic)
 {
 	/* Turn off FIFO */
 	outb(COM1_INT_IDENT, 0);
@@ -33,7 +33,9 @@ void serial_init(int pic)
 	outb(COM1_INT, 0x01); /* Allow interrupts */
 
 	if(inb(COM1_LSR) == 0xFF)
-		for(;;); /* PANIC */
+	{
+		return 1;
+	}
 
 	/* Clear pending interrupts */
 	inb(COM1_INT_IDENT);
@@ -41,6 +43,8 @@ void serial_init(int pic)
 
 	/* Should we enable pic? */
 	if(pic) pic_enable(COM1_IRQ);
+
+	return 0;
 }
 
 /**
