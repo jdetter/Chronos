@@ -32,6 +32,7 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.img \
 	kernel/boot/boot-stage2.o \
         chronos.img \
+	chronos.vdi \
 	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \

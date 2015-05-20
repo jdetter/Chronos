@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "stdmem.h"
+#include "stdlib.h"
 
 #define M_AMT 0x5000 /* 5K heap space*/
 #define M_MAGIC (void*)(0x43524E53)
@@ -25,10 +26,16 @@ struct free_node* curr; /* Pointer to the current location. */
 
 void* malloc(uint sz)
 {
+	/* As init gotten called yet? */
 	if(!mem_init) minit(0, 0, 1);
 
+	/* Do we have any free space? */
 	if(head == NULL) return NULL;
+	/* Has the user requested 0 bytes of space? */
 	if(sz == 0) return NULL;
+
+	/* Round up to a 4 byte boundary (performance) */
+	sz = B4_ROUNDUP(sz);
 
 	/* 
 	 * If we get back to start_search, we know that we have 
@@ -63,26 +70,131 @@ void* malloc(uint sz)
 		return NULL;
 	}
 
-	/* We did find a large enough node */
-	uint remaining_bytes = curr->sz - sz;
-	if(remaining_bytes == 0)
+	/* We did find a large enough node. */
+	int remaining_bytes = curr->sz - sz - sizeof(free_node);
+	alloc_node* new_header = NULL;
+	if(remaining_bytes < 0)
 	{
+		/* We are just going to allocate the entire node */
 		/* Theres going to be a broken pointer. */
-		alloc_node* new_block = (alloc_node*)curr;
-		new_block->sz = sz;
-		new_block->magic = M_MAGIC;
+		sz = curr->sz;
+		new_header = (alloc_node*)curr;
+
+		/* If we are the head, there is no broken pointer. */
+		/* We must iterate the list forward. */
+		if(curr == head)
+		{
+			head = curr->next;
+		} else {
+			/* Something was pointing to us. */
+			free_node* broken = head;
+			while(broken->next != curr) 
+				broken = broken->next;
+
+			/* Fix the pointer. */
+			broken->next = curr->next;
+		}
 	} else {
-		
+		/* Split the left over memory. */
+		curr->sz = remaining_bytes;
+		new_header = (alloc_node*)(((uchar*)curr) + remaining_bytes);
 	}
 
-	/* Fix broken pointer */
+	/* Assign new header size and magic */
+	new_header->sz = sz;
+	new_header->magic = M_MAGIC;
 
-	return NULL;
+	/* Give the user their pointer. */
+	uchar* user_mem = (uchar*)new_header;
+	return user_mem + sizeof(free_node);
 }
 
 int mfree(void* ptr)
 {
+	if(ptr == NULL) return 0;
 	if(!mem_init) minit(0, 0, 1);
+
+	/* Security: check magic */
+	alloc_node* allocated = (alloc_node*)
+		(((uchar*)ptr) - sizeof(free_node));
+	if(allocated->magic != M_MAGIC)
+		return 1;
+
+	uint sz = allocated->sz;
+	free_node* free = (free_node*)allocated;
+	free->sz = sz;
+	free->next = NULL;
+
+	/* If we didn't have a head, we have one now. */
+	if(head == NULL)
+	{
+		head = free;
+		return 0;
+	}
+
+        /* If ptr is before the head, there is a new head. */
+        uint head_i = (uint)head;
+        uint free_i = (uint)allocated;
+
+        if(free_i < head_i)
+        {
+		free->next = head;
+		head = free;
+		return 0;
+        }
+
+	/* We will assume everything is ok. */
+	free_node* above = NULL; /* The node above us in the address space. */
+	free_node* below = NULL; /* The node below us in the address space. */
+	free_node* curr_search = head;
+
+	/* Find the node above and below the new free node. */
+	while(curr_search)
+	{
+		below = curr_search;
+		uint below_node = (uint)curr_search;
+		uint above_node = (uint)curr_search->next;
+		if(below_node < free_i && above_node > free_i)
+		{
+			below = above->next;
+			break;
+		}
+
+		/* We didn't find the above and below nodes, keep searching. */
+		curr_search = curr_search->next;
+	}
+
+	/* Adjust the list. */
+	below->next = free;
+	free->next = above;
+
+	/* Try to merge below with current */
+	uint below_i = (uint)below;
+	if(below_i + sizeof(free_node) + below->sz == (uint)free)
+	{
+		/* We can merge with the node below us */
+		below->sz += sizeof(free_node) + free->sz;
+		below->next = free->next;
+
+		/* Clear this node (Security) */
+		free->next = NULL;
+		free->sz = (uint)-1;
+		free = below;
+	}
+
+	if(!above) return 0;
+
+	/* Try to merge above with current */
+	if(free_i + sizeof(free_node) + free->sz == (uint)below)
+	{
+		/* We can merge with the node above us. */
+		free->next = above->next;
+		free->sz += sizeof(free_node) + above->sz;
+		
+		/* Clear above node (Security) */
+		above->next = NULL;
+		above->sz = (uint)-1;
+	}
 
 	return 0;
 }
@@ -93,7 +205,7 @@ void minit(uint start_addr, uint end_addr, uint mem_map)
 	uint total_bytes = end_addr - start_addr;
 	/* Start of the free list were creating */
 	free_node* start_list = (free_node*)start_addr;
-	start_list->sz = total_bytes - sizeof(struct free_node);
+	start_list->sz = B4_ROUNDDOWN(total_bytes - sizeof(struct free_node));
 	start_list->next = NULL; /* The only element in the list */
 
 	head = start_list; /* Assign head */
