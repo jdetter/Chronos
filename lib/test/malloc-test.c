@@ -30,6 +30,8 @@ int main(int argc, char** argv)
 
 void test(char* test_name, int (*function)(void))
 {
+	char memory_region[4096];
+	minit((uint)memory_region, (uint)memory_region + 4096, 0);
 	printf("%s...\t\t", test_name);
 	int result = function();
 	if(result == 0) printf("[ OK ]\n");
@@ -50,7 +52,7 @@ int aligned_alloc(void)
 	for(x = 0;x < 13;x++)
 		i_ptr = malloc(sizeof(int));
 	uint value = (uint)i_ptr;
-	if((value & ~((uint)4095)) != value)
+	if((value & ~((uint)3)) != value)
 		return 1;
 	if(i_ptr == NULL) return 1;
 	return 0;
