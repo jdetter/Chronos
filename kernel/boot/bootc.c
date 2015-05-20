@@ -10,6 +10,7 @@
 
 char* welcome = "Welcome to Chronos!\n";
 char* disk = "Writing to disk...\n";
+char* done = "Writing to disk complete.\n";
 
 int main(void)
 {
@@ -23,6 +24,8 @@ int main(void)
 
 	serial_write(disk, strlen(disk));
 	ata_writesect(0, buffer);
+
+	serial_write(done, strlen(done));
 	
 	for(;;);
 	return 0;

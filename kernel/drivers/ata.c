@@ -51,13 +51,10 @@ int ata_writesect(uint sect, void* src)
 
   ata_wait();
 
-  ushort* srcw = (ushort*)src;
+  uint* srcw = (uint*)src;
 
-  int i; 
-  for(i = 0; i < SECTSIZE / 4; i++){
-    outw(PRIMARY_ATA_DATA, srcw[i]);
-    io_wait();
-  }  
+  outsl(PRIMARY_ATA_DATA, srcw, 512/4);
+
 
   outb(PRIMARY_ATA_COMMAND, 0xE7);
   ata_wait();
