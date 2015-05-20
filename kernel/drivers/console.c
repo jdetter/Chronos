@@ -43,7 +43,7 @@ void itoa(int val, char* dst, uint sz, uint base){
 	for(int i = 0 ; i<=strlen(dst)/2; i++){
 		temp = dst[i];
 		dst[i] = dst[strlen(dst)-1-i];
-		dist[strlen(dst)-1-i] = temp;
+		dst[strlen(dst)-1-i] = temp;
 		
 	}
 	
