@@ -20,10 +20,10 @@ int main(int argc, char** argv)
 	if(size<510){
 		int val = 0x55;
 		lseek(fd, 510, SEEK_CUR); /* put 0x55 at 510 bytes from beginning*/
-		write(fd, &val ,1);
+		write(fd, &val ,2);
 		lseek(fd, 1, SEEK_CUR); /* put 0xAA at 511 bytes from beginning*/
 		val = 0xAA
-		write(fd, &val, 1);
+		write(fd, &val, 2);
 	}else{
 		return 1;
 	}

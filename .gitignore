@@ -1,9 +1,11 @@
-# Build files
-*.o
-
+# Project files
 .project
 .cproject
 .settings/
 
-*.o
+# Linux Files
 *.swp
+
+# Build Files
+*.o
+*.img
