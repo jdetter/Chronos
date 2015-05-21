@@ -4,10 +4,10 @@
 #include "pic.h"
 #include "pit.h"
 
-int main_stack();
+void main_stack();
 
 /* Entry point for the kernel */
-void main()
+int main()
 {
 	/* WARNING: we don't have a proper stack right now. */
 
@@ -16,9 +16,10 @@ void main()
 
 	main_stack();
 	/* main_stack doesn't return. */
+	return 0;
 }
 
-int main_stack()
+void main_stack()
 {
 	/* We now have a proper kernel stack */
 }

@@ -1,8 +1,11 @@
-#include <stdio.h>
-#include "stdlib.h"
-//#include "types.h"
 typedef unsigned int uint;
+#define NULL (void*)0
 
+#include "li_proxy.h"
+#include "stdlib.h"
+#include "stdmem.h"
+
+#define printf li_printf
 #define MAX_ALLOC 4096
 #define ALLOC_STRUCT 12
 
