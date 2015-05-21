@@ -103,12 +103,71 @@ void memset(void* dst, char val, uint sz)
 
 int memcmp(void* buff1, void* buff2, uint sz)
 {
+	int x;
+	for(x=0; x<sz; x++)
+	{
+		if(buff1[x]!=buff2[x])
+		{
+			return -1;
+		}
+	}
 	return 0;
 }
 
 int atoi(char* str, int radix)
 {
-	return 0;
+	int x;
+	int negative = 1;
+	int total = 0;
+	int num = 0;
+	if(str[0]=='-')
+	{
+		negative = -1;
+	}
+
+	for(x=0; x<strlen(str); x++)
+	{
+		if(radix==16)
+		{
+			if(str[x]>='a'&&str[x]<='f')
+			{
+				num = (str[x]-'a')+10;
+			}
+			else if(str[x]>='A'&&str[x]<='F')
+			{
+				num = (str[x]-'A')+10;
+			}
+			else if(str[x]<='9' && str[x] >= '0')
+			{
+				num = str[x]-'0';
+			}
+
+		}
+		if(radix == 2 && str[x]!= '0' && str[x]!= '1')
+		{
+			break;
+		}
+		else if(radix == 10 && (str[x]> '9' || str[x] <'0'))
+		{
+			break;
+		}
+		else if(radix == 16 && (num > '15' || num < '0'))
+		{
+			break;
+		}
+		if(radix ==16 && num < '15' && num >'0')
+		{
+			total *= radix;
+			total = total + num;
+		}
+		else
+		{
+			total *= radix;
+			total = total + str[x]-'0';
+		}
+
+	}
+	return total * negative;
 }
 
 float atof(char* str)
