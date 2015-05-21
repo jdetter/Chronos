@@ -126,49 +126,76 @@ int atoi(char* str, int radix)
 	{
 		negative = -1;
 	}
-
-	for(x=0; x<strlen(str); x++)
+	if(radix==16)
 	{
-		num = 0;
-		if(radix==16)
+		for(x=0; x<strlen(str); x++)
 		{
-			if(str[x]>='a'&&str[x]<='f')
+			if(str[x] >= 'A' && str[x] <= 'Z')/* if str1 is a capital letter of the alphabet */
 			{
-				num = (str[x]-'a')+10;
+				str[x] += 32; /* convert to lower case */
 			}
-			else if(str[x]>='A'&&str[x]<='F')
+			if((str[x]<'a' && str[x] > 'f')&&(str[x]> '9' || str[x] <'0'))
 			{
-				num = (str[x]-'A')+10;
+				break;
 			}
-			else if(str[x]<='9' && str[x] >= '0')
+			if(str[x]=='a')
 			{
-				num = str[x]-'0';
+				total *= radix;
+				total = total + 10;
+			}
+			else if(str[x]=='b')
+			{
+				total *= radix;
+				total = total + 11;
+			}
+			else if(str[x]=='c')
+			{
+				total *= radix;
+				total = total + 12;
+			}
+			else if(str[x]=='d')
+			{
+				total *= radix;
+				total = total + 13;
+			}
+			else if(str[x]=='e')
+			{
+				total *= radix;
+				total = total + 14;
+			}
+			else if(str[x]=='f')
+			{
+				total *= radix;
+				total = total + 15;
+			}
+			else if(str[x]<='9'&&str[x]>='0')
+			{
+				total *= radix;
+				total = total + str[x]-'0';
+			}
+		}
+
+	}
+	else
+	{
+		for(x=0; x<strlen(str); x++)
+		{
+
+			if(radix == 2 && str[x]!= '0' && str[x]!= '1')
+			{
+				break;
+			}
+			else if(radix == 10 && (str[x]> '9' || str[x] <'0'))
+			{
+				break;
+			}
+			else
+			{
+				total *= radix;
+				total = total + str[x]-'0';
 			}
 
 		}
-		if(radix == 2 && str[x]!= '0' && str[x]!= '1')
-		{
-			break;
-		}
-		else if(radix == 10 && (str[x]> '9' || str[x] <'0'))
-		{
-			break;
-		}
-		else if(radix == 16 && (num > 15 || num < 0))
-		{
-			break;
-		}
-		if(radix ==16 && num <= 15 && num >=0)
-		{
-			total *= radix;
-			total = total + num;
-		}
-		else
-		{
-			total *= radix;
-			total = total + str[x]-'0';
-		}
-
 	}
 	return total * negative;
 }
