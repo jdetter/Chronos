@@ -9,15 +9,18 @@
 #define VID_COLOR_BASE (int*) 0xB8000
 int console_pos;
 
-void itoa(int val, char* dst, uint sz, uint base);
-void printCharacter(uint row, uint col, char character);
 
+void printCharacter(uint row, uint col, char character);
+/* do string char %%(to print % ) and pointer addresses*/
 int cprintf(char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	int arg_pos = 0;
+	//int arg_pos = 0; I don't think we need this
 	int x;
+	char *s;
+	void *pointer;
+	int pa;
 	for(x = 0;x < strlen(fmt);x++)
 	{
 		if(fmt[x] == '%')
@@ -25,19 +28,52 @@ int cprintf(char* fmt, ...)
 			if(fmt[x + 1] == 'd')
 			{
 				char number[MAX_NUM];
-				itoa(va_arg(args, arg_pos), number, MAX_NUM, 10);
+				snprintf(number, MAX_NUM, "%d", va_arg(args, int));
 				for(;number;number++)printNextCharacter(*number);
-				arg_pos++;
+				//arg_pos++;
 			} else if(fmt[x + 1] == 'x')
 			{
 				char number[MAX_NUM];
-				itoa(va_arg(args, arg_pos), number, MAX_NUM, 16);
+				snprintf(number, MAX_NUM, "%x", va_arg(args, int));
 				for(;number;number++)printNextCharacter(*number);
-				arg_pos++;
+				//arg_pos++;
+			}else if(fmt[x + 1] == 'c')
+			{
+				printNextCharacter(va_arg(args, char));
+				//arg_pos++;
+			}else if(fmt[x + 1] == 's')
+			{
+				s = va_arg(args, char *);
+				for(int i = 0; i< strlen(s); i++)
+				{
+					printNextCharacter(char[i]);
+				}
+				//arg_pos++;
+			}else if(fmt[x + 1] == '%')
+			{
+				printNextCharacter('%');
+				//arg_pos++;
+			}else if(fmt[x + 1] == 'p')
+			{
+				char number[MAX_NUM];
+				pointer = va_arg(args, void *);
+				pa = (int) pointer;
+				snprintf(number, MAX_NUM, "%x",  pa);
+				for(;number;number++)printNextCharacter(*number);
+				//arg_pos++;
 			}
-		} else printNextCharacter(fmt[x]);
+			
+			
+		} else if(fmt[x] == '\n'){
+			
+			console_pos = console_pos + (VID_COLS - (console_pos % VID_COLS));
+		}
+		else 
+		{
+			printNextCharacter(fmt[x]);
+		}
 	}
-
+	va_end(args);
 	return 0;
 }
 
@@ -56,8 +92,8 @@ void printCharacter(uint row, uint col, char character){
 }
 
 /**
- *WARNING: dst must be large enough to hold val
- */ 
+ * NOT USING THIS
+ * 
 void itoa(int val, char* dst, uint sz, uint base){
 	memset(dst, 0, sz);
 
@@ -88,6 +124,7 @@ void itoa(int val, char* dst, uint sz, uint base){
 	}
 
 }
+*/
 
 int cinit(){
 	console_pos = 0;
