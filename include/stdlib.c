@@ -103,10 +103,12 @@ void memset(void* dst, char val, uint sz)
 
 int memcmp(void* buff1, void* buff2, uint sz)
 {
+	uchar* ubuff1 = (uchar*)buff1;
+	uchar* ubuff2 = (uchar*)buff2;
 	int x;
 	for(x=0; x<sz; x++)
 	{
-		if(buff1[x]!=buff2[x])
+		if(ubuff1[x]!=ubuff2[x])
 		{
 			return -1;
 		}
@@ -151,11 +153,11 @@ int atoi(char* str, int radix)
 		{
 			break;
 		}
-		else if(radix == 16 && (num > '15' || num < '0'))
+		else if(radix == 16 && (num > 15 || num < 0))
 		{
 			break;
 		}
-		if(radix ==16 && num < '15' && num >'0')
+		if(radix ==16 && num < 15 && num >0)
 		{
 			total *= radix;
 			total = total + num;
