@@ -129,6 +129,7 @@ int atoi(char* str, int radix)
 
 	for(x=0; x<strlen(str); x++)
 	{
+		num = 0;
 		if(radix==16)
 		{
 			if(str[x]>='a'&&str[x]<='f')
