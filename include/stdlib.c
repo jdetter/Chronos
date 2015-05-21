@@ -6,16 +6,16 @@
 uint strlen(char* str)
 {
 	int x;
-	for(x = 0;str[x] != 0;x++);
-	return x;	
+	for(x = 0;str[x] != 0;x++); /* counts the length of the string */
+	return x;	/* returns length of string */
 }
 
 void tolower(char* str)
 {
 	int x;
-	for(x=0; x < strlen(str); x++)
+	for(x=0; x < strlen(str); x++) /* for the given length of the string */
 	{
-		if(str[x]>='Z' && str[x]<='A')
+		if(str[x]>='Z' && str[x]<='A') /* if string is within the ASCII upper case alphabet, add 32 to convert to lower case equivalent */
 		{
 			str[x] = str[x] + 32;
 		}
@@ -25,9 +25,9 @@ void tolower(char* str)
 void toupper(char* str)
 {
 	int x;
-	for(x=0; x < strlen(str); x++)
+	for(x=0; x < strlen(str); x++) /* for the given length of the string */
 	{
-		if(str[x]>='z' && str[x]<='a')
+		if(str[x]>='z' && str[x]<='a') /* if string is within the ASCII lower case alphabet, subtract 32 to convert to upper case equivalent */
 		{
 			str[x] = str[x] - 32;
 		}
@@ -37,44 +37,44 @@ void toupper(char* str)
 uint strncpy(char* dst, char* src, uint sz)
 {
 	int x;
-	for(x=0; x<sz; x++)
+	for(x=0; x<sz; x++) /* iterates through source until reaches max memory size */
 	{
-		dst[x] = src[x];
-		if(src[x] == 0)
+		dst[x] = src[x]; /* set destination to source */
+		if(src[x] == 0) /* break if null */
 		{
 			break;
 		}
 	}
-	dst[sz-1]=0;
-	return x;
+	dst[sz-1]=0; /* ensures last element is null char */
+	return x; /* returns number of bytes */
 }
 
 uint strncat(char* str1, char* str2, uint sz)
 {
-	int start = strlen(str1);
+	int start = strlen(str1); /* set variable as length of string */
 	int x;
-	for(x = 0;x < sz;x++)
+	for(x = 0;x < sz;x++) /* traverse through until max mem */
 	{
-		str1[start + x] = str2[x];
-		if(str2[x] == 0) break;
+		str1[start + x] = str2[x]; /* begin string 2 at end next element of string 1 */
+		if(str2[x] == 0) break; /* break at null */
 	}
 
-	str1[sz - 1] = 0;
+	str1[sz - 1] = 0; /* ensures last element is null of new string */
 
-	return x + start;
+	return x + start; /* returns length of combined string */
 }
 
 int strcmp(char* str1, char* str2)
 {
-	while(*str1 && *str2)
+	while(*str1 && *str2) /* while str1 and str2 not equal to null */
 	{
-		if(*str1 >= 'A' && *str1 <= 'Z')
-			*str1 += 32;
-		if(*str2 >= 'A' && *str2 <= 'Z')
-			*str2 += 32;
-		if(*str1 == *str2) continue;
-		if(*str1 > *str2) return 1;
-		else return -1;
+		if(*str1 >= 'A' && *str1 <= 'Z') /* if str1 is a capital letter of the alphabet */
+			*str1 += 32; /* convert to lower case */
+		if(*str2 >= 'A' && *str2 <= 'Z') /* if str2 is a capital letter of the alphabet */
+			*str2 += 32; /* convert to lower case */
+		if(*str1 == *str2) continue; /* if they are equal, continue */
+		if(*str1 > *str2) return 1; /* if str1 comes after str2, return 1 */
+		else return -1; /* if str1 is before str2, return -1 */
 	}
 
 	return 0;
@@ -82,38 +82,38 @@ int strcmp(char* str1, char* str2)
 
 void memmove(void* dst, void* src, uint sz)
 {
-	uchar* usrc = (uchar*)src;
-	uchar* udst = (uchar*)dst;
+	uchar* usrc = (uchar*)src; /* able to hold value other than void */
+	uchar* udst = (uchar*)dst; /* able to hold value other than void */
 
-	uchar c_src[sz];
+	uchar c_src[sz]; /* creating source array length sz */
 	int x;
-	for(x = 0;x < sz;x++)
-		c_src[x] = usrc[x];
-	for(x = 0;x < sz;x++)
-		udst[x] = c_src[x];
+	for(x = 0;x < sz;x++) /* for x is less than max memory size */
+		c_src[x] = usrc[x]; /* making a copy of source */
+	for(x = 0;x < sz;x++) /* for x is less than max memory size */
+		udst[x] = c_src[x]; /* assigning the udst the value of the copy made from usrc[x] */
 }
 
 void memset(void* dst, char val, uint sz)
 {
-	uchar* udst = dst;
+	uchar* udst = dst; /* creating udst variable to hold value for dst */
 	int x;
-        for(x = 0;x < sz;x++)
-		udst[x] = val;	
+        for(x = 0;x < sz;x++) /* for x is less than max memory size */
+		udst[x] = val;	/* assigning each element of udst val */
 }
 
 int memcmp(void* buff1, void* buff2, uint sz)
 {
-	uchar* ubuff1 = (uchar*)buff1;
-	uchar* ubuff2 = (uchar*)buff2;
+	uchar* ubuff1 = (uchar*)buff1; /* able to hold value other than void */
+	uchar* ubuff2 = (uchar*)buff2; /* able to hold value other than void */
 	int x;
-	for(x=0; x<sz; x++)
+	for(x=0; x<sz; x++) /* for x is less than max memory size */
 	{
-		if(ubuff1[x]!=ubuff2[x])
+		if(ubuff1[x]!=ubuff2[x]) /* compares buff1 and buff2 at current index, if unequal returns -1 */
 		{
 			return -1;
 		}
 	}
-	return 0;
+	return 0; /* if buff1 equals buff2, return 0 */
 }
 
 int atoi(char* str, int radix)
@@ -157,7 +157,7 @@ int atoi(char* str, int radix)
 		{
 			break;
 		}
-		if(radix ==16 && num < 15 && num >0)
+		if(radix ==16 && num <= 15 && num >=0)
 		{
 			total *= radix;
 			total = total + num;
