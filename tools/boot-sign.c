@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 		lseek(fd, 510, SEEK_CUR); /* put 0x55 at 510 bytes from beginning*/
 		write(fd, &val ,2);
 		lseek(fd, 1, SEEK_CUR); /* put 0xAA at 511 bytes from beginning*/
-		val = 0xAA
+		val = 0xAA;
 		write(fd, &val, 2);
 	}else{
 		return 1;
