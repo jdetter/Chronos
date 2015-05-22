@@ -15,6 +15,8 @@
 #define KERNEL_DATA	0x2
 #define STAGE2_ADDR	0x100000
 
+#define STAGE2_SECTORS $62
+
 .code16			# Start generating 16 bit code. (Real mode)
 .globl start
 start:
@@ -87,6 +89,11 @@ PANIC_16:
 
 .code32			# Generate 32 bit code (Protected mode)
 protected_mode:
+	# We need a couple of function calls here, so lets make a stack.
+	mov $start, %esp
+
+
+
 	# Lets load the next stage of the boot loader
 
 	jmp PANIC_32
