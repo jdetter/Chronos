@@ -89,7 +89,9 @@ int ata_writesect(uint sect, char* src)
   int i;
   
   for(i = 0; i < 256; i++){
-    outw(PRIMARY_ATA_DATA, srcw[i]); 
+    outw(PRIMARY_ATA_DATA, srcw[i]);
+    io_wait();
+    outb(PRIMARY_ATA_COMMAND, 0xE7); 
   }  
 
   return 0;
