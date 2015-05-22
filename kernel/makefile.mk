@@ -26,12 +26,14 @@ KERNEL_CLEAN := \
         kernel/chronos.img \
         kernel/chronos.o \
         kernel/boot/bootasm.o \
+	kernel/boot/ata-read.o \
         kernel/boot/boot-stage1.img \
         kernel/boot/boot-stage1.o \
 	kernel/boot/bootc.o \
 	kernel/boot/boot-stage2.img \
 	kernel/boot/boot-stage2.o \
         chronos.img \
+	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \
 	chronos.sym
@@ -54,10 +56,11 @@ BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 BOOT_STAGE2_CFLAGS  := -I kernel/drivers -I include  
 BOOT_STAGE2_LDFLAGS := --section-start=.text=0x100000 --entry=main
 
-kernel-symbols: kernel/chronos.o
+kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/chronos.o chronos.sym
 	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage1.o boot-stage1.sym
 	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage2.o boot-stage2.sym
+	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
 
 chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chronos.o
@@ -69,15 +72,18 @@ chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chro
 kernel/chronos.o: includes $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(INCLUDES)
 
-kernel/boot/boot-stage1.img: kernel/drivers/ata.o
+kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
-	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o
+	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
 kernel/boot/boot-stage2.img: 
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
 	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.img	
+
+kernel/boot/ata-read.o:
+	$(CC) $(CFLAGS) $(BUILD_CFLAGS) -I include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<

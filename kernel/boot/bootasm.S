@@ -15,7 +15,7 @@
 #define KERNEL_DATA	0x2
 #define STAGE2_ADDR	0x100000
 
-#define STAGE2_FINAL_SECT $63
+#define STAGE2_FINAL_SECT 63
 
 .globl ata_readsect
 .globl ata_init
@@ -93,23 +93,48 @@ PANIC_16:
 .code32			# Generate 32 bit code (Protected mode)
 protected_mode:
 	# We need a couple of function calls here, so lets make a stack.
-	mov $start, %esp
-	mov %esp, %ebp
+	movl $start, %esp
+	movl %esp, %ebp
 
-	sub $4, %esp # local for our current sector
-	sub $4, %esp # local for our current location in memory
+	subl $4, %esp # local for our current sector
+	subl $4, %esp # local for our current location in memory
 	
-	mov STAGE2_ADDR, %eax # initial location in memory
-	mov %eax, (%esp)
-
-	# mov $1, 0x4(%esp) # initial sector we need to read
+	movl $STAGE2_ADDR, %eax # initial location in memory
+	movl %eax, (%esp)
+	movl $1, 0x4(%esp) # initial sector we need to read
 
 READ_SECT:
-	mov (%ebp), %eax 
-	mov 0x4(%ebp), %ecx
+	movl -4(%ebp), %eax # current sector we are reading 
+	movl -8(%ebp), %ecx # current location in memory
 	
+	subl $8, %esp
+	movl %eax, (%esp)
+	movl %ecx, 4(%esp)
+	call ata_readsect
 
-	# Lets load the next stage of the boot loader
+	# get rid of stack parameters
+	addl $8, %esp
+	
+	# increment address and sector.
+	movl -4(%ebp), %eax # current sector we are reading 
+        movl -8(%ebp), %ecx # current location in memory
+
+	addl $1, %eax
+	addl $512, %ecx
+
+	# Save values
+	movl %eax, -4(%ebp) # current sector we are reading 
+        movl %ecx, -8(%ebp) # current location in memory
+
+	test $STAGE2_FINAL_SECT, %eax
+	jne READ_SECT
+
+NIRVANA:
+	nop
+	nop
+	nop
+	hlt
+	jmp NIRVANA
 
 	jmp PANIC_32
 
