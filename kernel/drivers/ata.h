@@ -1,13 +1,26 @@
 #ifndef _ATA_H_
 #define _ATA_H_
 
+
+
+
+/**
+ * Initializes the hard drive.
+ */
+int ata_init();
+
+/**
+ * Polls the hard drive until it is ready for a PIO read/write.
+ */
+int ata_wait();
+
 /**
  * Read a hard drive sector into the destination buffer, dst. Returns the
  * amount of bytes read from the disk. If there was an error return 0.
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * dst buffer is expected to be at least 512 bytes.
  */
-int readsect(uint sect, char* dst);
+int ata_readsect(uint sect, char* dst);
 
 /**
  * Write the bytes in src to a hard drive sector. Returns the amount of bytes
@@ -15,5 +28,5 @@ int readsect(uint sect, char* dst);
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * src buffer is expected to be at least 512 bytes. 
  */
-int writesect(uint sect, char* src);
+int ata_writesect(uint sect, char* src);
 #endif
