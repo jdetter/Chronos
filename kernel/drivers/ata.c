@@ -21,7 +21,7 @@
 int ata_init()
 {
   outb(PRIMARY_ATA_COMMAND, 0x4); 
-
+  return 0;
 }
 
 
@@ -56,17 +56,17 @@ int ata_readsect(uint sect, char* dst)
   outb(PRIMARY_ATA_SECTOR_COUNT, 0x1);
   outb(PRIMARY_ATA_SECTOR_NUMBER, sect);
   outb(PRIMARY_ATA_CYLINDER_LOW, sect >> 8);
-  outb(PRIMARY_ATA_CLYDINER_HIGH, sect >> 16);
+  outb(PRIMARY_ATA_CYLINDER_HIGH, sect >> 16);
   outb(PRIMARY_ATA_COMMAND, 0x20);
 
   ata_wait();
 
-  dst = (ushort *) dst;
+  ushort * dstw = (ushort *) dst;
   int i;
   int word;
   for(i = 0; i < 256; i++){
     word = inw(PRIMARY_ATA_DATA);
-    dst[i] = word;  
+    dstw[i] = word;  
   }  
 
   return 0;
@@ -79,17 +79,17 @@ int ata_writesect(uint sect, char* src)
   outb(PRIMARY_ATA_SECTOR_COUNT, 0x1);
   outb(PRIMARY_ATA_SECTOR_NUMBER, sect);
   outb(PRIMARY_ATA_CYLINDER_LOW, sect >> 8);
-  outb(PRIMARY_ATA_CLYDINER_HIGH, sect >> 16);
+  outb(PRIMARY_ATA_CYLINDER_HIGH, sect >> 16);
   outb(PRIMARY_ATA_COMMAND, 0x30);
 
   ata_wait();
 
-  src = (ushort *) src;
+  ushort * srcw = (ushort *) src;
 
   int i;
   
   for(i = 0; i < 256; i++){
-    outw(PRIMARY_ATA_DATA, src[i]); 
+    outw(PRIMARY_ATA_DATA, srcw[i]); 
   }  
 
   return 0;
