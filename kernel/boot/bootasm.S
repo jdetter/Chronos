@@ -71,10 +71,6 @@ KEYBOARD2:
 set_A20_DONE:
 # We should have access to the 2^16 address space now.
 
-# Let's load the next stage of the boot loader.
-
-
-
 # Lets let the global descriptor table register and jump into protected mode
 	lgdt 	gdt_descriptor
 	
@@ -91,11 +87,13 @@ PANIC_16:
 
 .code32			# Generate 32 bit code (Protected mode)
 protected_mode:
+	# Lets load the next stage of the boot loader
+
+	jmp PANIC_32
+
+PANIC_32:
 	nop
-	nop
-	nop
-	mov $12, %eax
-	jmp protected_mode
+	jmp PANIC_32
 
 
 .p2align 2 # All values here are 4 byte-boundary aligned.
