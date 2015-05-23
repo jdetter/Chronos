@@ -3,6 +3,7 @@
 #include "ata.h"
 
 vsfs_superblock* super;
+int start;
 
 #define BLOCKSIZE 512
 /**
@@ -11,8 +12,9 @@ vsfs_superblock* super;
  */
 int init(int start_sector)
 {
+  start = start_sector;
   uchar super_block[512];
-  ata_readsector(start_sector, super_block);
+  ata_readsect(start_sector, super_block);
   super = (vsfs_superblock*) super_block;
   return 0;
 }
@@ -24,6 +26,68 @@ int init(int start_sector)
 int vsfs_lookup(char* path, vsfs_inode* dst)
 {
   
+  char paths[16][64];
+
+
+
+/*
+  if(path[0] == '/'){
+    paths = vsfs_path_split(path);
+    uchar traversal_inode[512];
+    ata_readsect(start + 1 + super->dmap + super->imap , traversal_inode);
+    vsfs_inode* root = (vsfs_inode*) traversal_inode[sizeof(vsfs_inode)];
+    root++;
+    int i;
+    int directents = root->size / sizeof(directent);
+    for(i = 0; i < root->blocks; i++){
+      uchar entries[512];
+      ata_readsect(root->direct[i], entries);
+      int j;
+      for(j = 0; j < 4; j++){
+        directent* entry = (directent*) entries;
+        if(strcmp(paths[1],entry->name) == 0){
+          int k = 0;
+          int inode_num = entry->inode_num;
+          while((*(paths[k]) != NULL) && (*(paths[k+1]) != NULL)){
+            if(paths[k][0] == NULL){
+              k++;
+            }
+          }
+        }
+        else{
+          entry++;
+        }      
+      }
+    } 
+         
+  } 
+  else{
+    return 0;
+  }  */
+}
+
+/**
+ * Splits the file/folder path into a 2D array and returns it.
+ */
+char** vsfs_path_split(char* path){
+
+  char paths[16][64];
+
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  while(path[i] != NULL){
+    if(path[i] == '/'){
+      paths[j][0] = NULL;
+      j++;
+      k = 0;
+    }
+    else{
+      paths[j][k] = path[i];
+    }
+    i++;
+  }
+  return paths;
 }
 
 /**
