@@ -1,6 +1,6 @@
 #include "types.h"
-#include "ata-read.h"
-#include "elf.h"
+#include "serial.h"
+#include "stdlib.h"
 
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
@@ -9,6 +9,11 @@
 
 int main(void)
 {
+	serial_init(0);
+	char* buffer = "Remember, no Russian.\n";
+
+	serial_write(buffer, strlen(buffer));
+
 	for(;;);
 
 	return 0;

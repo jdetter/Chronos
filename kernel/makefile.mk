@@ -8,6 +8,7 @@ KERNEL_DRIVERS := \
 	keyboard \
 	pic\
 	pit \
+	serial \
 	console
 
 # Add kernel/ before all of the kernel targets
