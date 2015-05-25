@@ -22,8 +22,6 @@ void serial_init(int pic)
 	/* Turn off FIFO */
 	outb(COM1_INT_IDENT, 0);
 
-	/* Disable interrupts. */
-	//outb(COM1_INT, 0);
 	/* Enable frequency divisor */
 	outb(COM1_LCR, 0x80);
 	/* Set frequency */

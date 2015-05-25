@@ -7,11 +7,11 @@
  * and then jump into the main method of the kernel.
  */
 
+char* buffer = "Remember, no Russian.\n";
+
 int main(void)
 {
 	serial_init(0);
-	char* buffer = "Remember, no Russian.\n";
-
 	serial_write(buffer, strlen(buffer));
 
 	for(;;);
