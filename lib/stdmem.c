@@ -64,15 +64,15 @@ void* malloc(uint sz)
 	}
 
 	/* We did find a large enough node */
-
 	uint remaining_bytes = curr->sz - sz;
 	if(remaining_bytes == 0)
 	{
-		alloc_node* new_block = curr;
+		/* Theres going to be a broken pointer. */
+		alloc_node* new_block = (alloc_node*)curr;
 		new_block->sz = sz;
 		new_block->magic = M_MAGIC;
 	} else {
-			
+		
 	}
 
 	/* Fix broken pointer */
