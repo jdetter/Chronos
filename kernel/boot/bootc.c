@@ -22,9 +22,8 @@ int main(void)
 	minit(0x110000, 0x120000, 0);
 
 	cinit();
-	cprintf("Remember, no Russian.\n");
+	cprintf("Welcome to Chronos!\n");
 	cprintf("New line.\n");
-	cprintf("number: %d", 87);
 
 	for(;;);
 	return 0;
