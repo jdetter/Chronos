@@ -5,6 +5,7 @@
 #include "stdlib.h"
 #include "stdmem.h"
 #include "console.h"
+#include "keyboard.h"
 
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
@@ -24,6 +25,17 @@ int main(void)
 	cinit();
 	cprintf("Welcome to Chronos!\n");
 	cprintf("New line.\n");
+
+	cprintf("Number: %c %d\n", 'G', 100);
+
+	//kbd_init();
+	char c;
+	for(c = 0;!c;)
+	{
+		c = kbd_getc();
+	}
+	cprintf("Character: %c\n", c);
+	cprintf("Character: %c\n", 'a');
 
 	for(;;);
 	return 0;

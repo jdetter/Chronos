@@ -1,5 +1,6 @@
 #include "types.h"
 #include "x86.h"
+#include "console.h"
 #define dataReg 0x60
 #define cntrlReg 0x64
 int lShift = 0x12;
@@ -23,13 +24,14 @@ int kbd_init(){
 char kbd_getc(){
 	int scancode = inb(dataReg);
 	int released = 0; 
+	if(scancode == 0){
+                return -1;
+        }
 	if(scancode & 0x80){
 		released = 1;
 		scancode &= 127;
-	}
-	if(scancode==0){
-		return -1;
-	}
+		cprintf("Key released: 0x%d\n", scancode);
+	} else cprintf("Key pressed: 0x%d\n", scancode);
 	
 	if(scancode == lShift || scancode == rShift){// LShift or Rshift pressed and not released
 		if(released){
