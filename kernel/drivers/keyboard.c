@@ -4,7 +4,7 @@
 #define cntrlReg 0x64
 int lShift = 0x12;
 int rShift = 0x59;
-int enableKbd = 0xf4;
+#define enableKbd 0xf4
 int set1 = 0xf1;
 int shift = 0;
 int cntrl = 0;
@@ -21,6 +21,10 @@ int kbd_init(){
 }
 
 char kbd_getc(){
+	int status = (cntrlReg & 0x1);
+	if(status == 0){
+		return 0;
+	}
 	int scancode = inb(dataReg);
 	int released = 0; 
 	if(scancode & 0x80){
