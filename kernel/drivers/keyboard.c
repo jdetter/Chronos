@@ -15,12 +15,7 @@ int capskey = 0x58
 int kbd_init(){
 	outb(cntrlReg, enableKbd);	
 	outb(cntrlReg, set1);
-	if(inb(cntrlReg)==0){
-		return -1;
-	}
-	else{
-		return 0;
-	}
+	return 0;
 }
 
 char kbd_getc(){
