@@ -8,7 +8,7 @@ vsfs_superblock* super;
 int start;
 
 /* Forward declarations */
-int vsfs_path_split(char* path, char** dst);
+int vsfs_path_split(char* path, char dst[][64]);
 void free_inode(uint inode_num);
 void free_block(uint block_num);
 int find_free_inode();
@@ -48,7 +48,7 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
   directent* nextlevel = NULL;
   if(path[0] == '/'){
     int depth = vsfs_path_split(path, paths);
-    inode_num = 1;
+    int inode_num = 1;
     int k;
     for(k = 0; k < (depth - 2); k++){
     if((k == 0) || (paths[k][0] != '/')){
@@ -58,17 +58,16 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
     int directents = curr.size / sizeof(directent);
       for(i = 0; i < (curr.size + 511)/512; i++){
         directent entries[4];
-        read_block(curr, i, entries);
+        read_block(&curr, i, entries);
         int j;
         int r = 1;
         for(j = 0; (j < 4) && (directents > 0); j++){
-          if(strcmp(subentry->name, paths[k+r]) == 0){
+          if(strcmp(entries[j].name, paths[k+r]) == 0){
             if(r == 1){ r = 2;};
-            nextlevel = subentry;
-            inode_num = firstlevel->inode_num;
+            nextlevel = &entries[j];
+            inode_num = entries[j].inode_num;
           } 
           else{
-            subentry++;
             directents--;
           }
         }
@@ -99,7 +98,7 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
 /**
  * Splits the file/folder path into a 2D array and returns it.
  */
-int vsfs_path_split(char* path, char** dst){
+int vsfs_path_split(char* path, char dst[][64]){
 
   int i = 0;
   int j = 0;
@@ -474,7 +473,7 @@ void parent_path(char *path, char* dst)
  */
 int vsfs_link(char* path, vsfs_inode* new_inode)
 {
-  vsfs_inode* parent;
+  vsfs_inode parent;
   char* curr = path;
   while(*(curr) != 0){
     curr++;
@@ -484,7 +483,7 @@ int vsfs_link(char* path, vsfs_inode* new_inode)
   }
   *(curr) = 0;
 
-  int parent_num = vsfs_lookup(path, parent);
+  int parent_num = vsfs_lookup(path, &parent);
   if(parent_num != 0){
     // where to put directent
     // traverse to get next free inode
@@ -494,11 +493,11 @@ int vsfs_link(char* path, vsfs_inode* new_inode)
     }
     else{
       curr++;
-      allocate_directent(parent, curr, inode_num);
+      allocate_directent(&parent, curr, inode_num);
       new_inode->links_count = 1;
       new_inode->size = 0;
       new_inode->blocks = 0;
-      write_inode(parent_num, parent);
+      write_inode(parent_num,&parent);
       write_inode(inode_num, new_inode);
       return 0;
     }

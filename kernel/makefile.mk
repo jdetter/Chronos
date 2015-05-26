@@ -6,10 +6,11 @@ KERNEL_OBJECTS := \
 KERNEL_DRIVERS := \
 	ata \
 	keyboard \
-	pic\
+	pic \
 	pit \
 	serial \
-	console
+	console \
+        vsfs
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
