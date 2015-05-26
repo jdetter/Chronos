@@ -8,6 +8,7 @@ KERNEL_DRIVERS := \
 	keyboard \
 	pic\
 	pit \
+	serial \
 	console
 
 # Add kernel/ before all of the kernel targets
@@ -31,6 +32,10 @@ KERNEL_CLEAN := \
 	kernel/boot/bootc.o \
 	kernel/boot/boot-stage2.img \
 	kernel/boot/boot-stage2.o \
+	kernel/boot/boot-stage2.data \
+	kernel/boot/boot-stage2.rodata \
+	kernel/boot/boot-stage2.text \
+	kernel/boot/boot-stage2.bss \
         chronos.img \
 	chronos.vdi \
 	ata-read.sym \
@@ -56,7 +61,10 @@ KERNEL_LDFLAGS += --section-start=.text=0x01000000
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 
 BOOT_STAGE2_CFLAGS  := -I kernel/drivers -I include  
-BOOT_STAGE2_LDFLAGS := --section-start=.text=0x100000 --entry=main
+BOOT_STAGE2_LDFLAGS := --section-start=.text=0x100000 --entry=main \
+		--section-start=.data=0x107400 \
+		--section-start=.rodata=0x107800 \
+		--section-start=.bss=0x107C00
 
 kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/chronos.o chronos.sym
@@ -82,7 +90,14 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include -c -o kernel/boot/bootc.o kernel/boot/bootc.c
 	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS)
-	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.img	
+	$(OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
+	$(OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
+	$(OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	
+	$(OBJCOPY) -O binary -j .bss kernel/boot/boot-stage2.o kernel/boot/boot-stage2.bss
+	dd if=kernel/boot/boot-stage2.text of=kernel/boot/boot-stage2.img bs=512 count=58 seek=0
+	dd if=kernel/boot/boot-stage2.data of=kernel/boot/boot-stage2.img bs=512 count=2 seek=58
+	dd if=kernel/boot/boot-stage2.rodata of=kernel/boot/boot-stage2.img bs=512 count=2 seek=60
+	dd if=kernel/boot/boot-stage2.bss of=kernel/boot/boot-stage2.img bs=512 count=2 seek=62
 
 kernel/boot/ata-read.o:
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) -I include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c
