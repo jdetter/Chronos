@@ -31,7 +31,7 @@ char kbd_getc(){
 		return -1;
 	}
 	
-	if(scancode == lShift || scancode == rShift) ){// LShift or Rshift pressed and not released
+	if(scancode == lShift || scancode == rShift){// LShift or Rshift pressed and not released
 		if(released){
 			shift = 0;
 		}else{
@@ -103,17 +103,17 @@ char kbd_getc(){
 				if(c == '='){
 					c+=18;
 				}
-				if(c >= 91 c <=93){
+				if(c >= 91 && c <=93){
 					c += 32; 
 				}
 				if( c == '`'){
 					c+=82;
 				}
 				if( c == ';'){
-					c -=1
+					c -=1;
 				}
 				if( c == '\''){
-					c-=5
+					c-=5;
 				}
 				if(c == ',' || c == '.'){
 					c+=16;
@@ -123,9 +123,10 @@ char kbd_getc(){
 				}
 
 			}
+			return c;
 		}
 
-		return c;
+		
 	}
 	return 0;
 }
