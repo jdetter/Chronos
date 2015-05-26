@@ -64,7 +64,7 @@ int cprintf(char* fmt, ...)
 				arg_pos++;
 			}
 			
-			
+			x++;			
 		} else if(fmt[x] == '\n'){
 			
 			console_pos = console_pos + (VID_COLS - (console_pos % VID_COLS));
