@@ -31,7 +31,7 @@ char kbd_getc(){
 		return -1;
 	}
 	
-	if((scancode == lShift || scancode == rShift) ){// LShift or Rshift pressed and not released
+	if(scancode == lShift || scancode == rShift) ){// LShift or Rshift pressed and not released
 		if(released){
 			shift = 0;
 		}else{
@@ -49,7 +49,7 @@ char kbd_getc(){
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
 	} 
-	else if((scancode == altkey){// LShift or Rshift pressed and not released
+	else if(scancode == altkey){// LShift or Rshift pressed and not released
 		if(released){
 			alt = 0;
 		}else{
@@ -58,7 +58,7 @@ char kbd_getc(){
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
 	} 
-	else if((scancode == capskey){// LShift or Rshift pressed and not released
+	else if(scancode == capskey){// LShift or Rshift pressed and not released
 		if(released){
 			caps = 0;
 		}else{
