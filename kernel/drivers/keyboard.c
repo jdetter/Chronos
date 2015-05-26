@@ -173,7 +173,7 @@ char sctoa(int scancode){
 	    0,	/* F12 Key */
 	    0,	/* All other keys are undefined */
 	};
-	return(kbdus[scancode]);
+	return (kbdus[scancode]);
 }
 
 
