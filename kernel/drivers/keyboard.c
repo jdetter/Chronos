@@ -22,7 +22,7 @@ int kbd_init(){
 }
 
 char kbd_getc(){
-	int status = (cntrlReg & 0x1);
+	int status = (inb(cntrlReg) & 0x1);
 	if(status == 0){
 		return 0;
 	}
