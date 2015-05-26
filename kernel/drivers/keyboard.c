@@ -1,7 +1,7 @@
 #include "types.h"
 #include "x86.h"
-int dataReg = 0x60;
-int cntrlReg = 0x64; /*wut am i doing wit dis*/
+#define dataReg 0x60
+#define cntrlReg 0x64
 int lShift = 0x12;
 int rShift = 0x59;
 int enableKbd = 0xf4;
