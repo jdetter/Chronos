@@ -10,8 +10,8 @@ int alt = 0;
 int caps = 0;
 int cntrlkey = 0x14;
 int altkey = 0x11;
-int capskey = 0x58
-
+int capskey = 0x58;
+char sctoa(int scancode);
 int kbd_init(){
 	outb(cntrlReg, enableKbd);	
 	outb(cntrlReg, set1);
@@ -19,7 +19,7 @@ int kbd_init(){
 }
 
 char kbd_getc(){
-	scancode = inb(dataReg);
+	int scancode = inb(dataReg);
 	int released = 0; 
 	if(scancode & 0x80){
 		released = 1;
@@ -29,7 +29,7 @@ char kbd_getc(){
 		return -1;
 	}
 	
-	if((scancode == lShift || scancode == rShitft) ){// LShift or Rshift pressed and not released
+	if((scancode == lShift || scancode == rShift) ){// LShift or Rshift pressed and not released
 		if(released){
 			shift = 0;
 		}else{
@@ -39,7 +39,7 @@ char kbd_getc(){
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
 	} 
-	else if((scancode == cntrlkey){// LShift or Rshift pressed and not released
+	else if(scancode == cntrlkey){// LShift or Rshift pressed and not released
 		if(released){
 			cntrl = 0;
 		}else{
@@ -173,7 +173,7 @@ char sctoa(int scancode){
 	    0,	/* F12 Key */
 	    0,	/* All other keys are undefined */
 	};
-	return (kbdus[scancode]);
+	return kbdus[scancode];
 }
 
 
