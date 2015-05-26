@@ -40,6 +40,9 @@ qemu: all
 qemu-gdb: all kernel-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
+qemu-x: all 
+	$(QEMU) $(QEMU_OPTIONS)
+
 include kernel/makefile.mk
 include user/makefile.mk
 include tools/makefile.mk
