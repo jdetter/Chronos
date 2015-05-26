@@ -1,3 +1,5 @@
+#include "types.h"
+#include "x86.h"
 int dataReg = 0x60;
 int cntrlReg = 0x64; /*wut am i doing wit dis*/
 int lShift = 0x12;
@@ -34,7 +36,6 @@ char kbd_getc(){
 			shift = 0;
 		}else{
 			shift = 1;
-			return kbrd_getc();
 		}
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
@@ -44,7 +45,6 @@ char kbd_getc(){
 			cntrl = 0;
 		}else{
 			cntrl = 1;
-			return kbrd_getc();
 		}
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
@@ -54,7 +54,6 @@ char kbd_getc(){
 			alt = 0;
 		}else{
 			alt = 1;
-			return kbrd_getc();
 		}
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
@@ -64,7 +63,6 @@ char kbd_getc(){
 			caps = 0;
 		}else{
 			caps = 1;
-			return kbrd_getc();
 		}
 		/* get next scan code and convert to ascii then convert to uppercase*/
 		
@@ -173,7 +171,8 @@ char sctoa(int scancode){
 	    0,	/* F12 Key */
 	    0,	/* All other keys are undefined */
 	};
-	return kbdus[scancode];
+	char letter= kbdus[scancode];
+	return letter;
 }
 
 
