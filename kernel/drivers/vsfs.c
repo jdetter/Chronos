@@ -1,4 +1,6 @@
 // VSFS driver
+#include "types.h"
+#include "stdlib.h"
 #include "vsfs.h"
 #include "ata.h"
 
@@ -373,7 +375,7 @@ int write_block(vsfs_inode* inode, uint block_index, void* src)
 }
 
 
-int allocate_directent(vsfs_inode* parent, char* name, unint inode_num){
+int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
 
   directent new_directory;
 
@@ -398,6 +400,7 @@ int allocate_directent(vsfs_inode* parent, char* name, unint inode_num){
 
   parent->size += sizeof(directent);
 
+  return 0;
 }
 
 void write_inode(uint inode_num, vsfs_inode* inode)
