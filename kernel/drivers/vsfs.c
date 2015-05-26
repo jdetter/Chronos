@@ -33,16 +33,13 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
     int k;
     for(k = 0; k < (depth - 2); k++){
     if((k == 0) || (paths[k][0] != '/')){
-    uchar traversal_inode[512];
-    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 512) , traversal_inode);
-    vsfs_inode* curr = ((vsfs_inode*) traversal_inode) + (inode_num % 8);
+    vsfs_inode curr;
+    read_inode(inode_num, &curr);
     int i;
-    int directents = curr->size / sizeof(directent);
-    if(root->blocks <= 9){
-      for(i = 0; i < curr->blocks; i++){
-        uchar datablock[512];
-        ata_readsect(curr->direct[i], datablock);
-        directent *subentry = (directent*) datablock;
+    int directents = curr.size / sizeof(directent);
+      for(i = 0; i < (curr.size + 511)/512; i++){
+        directent entries[4];
+        read_block(curr, i, entries);
         int j;
         int r = 1;
         for(j = 0; (j < 4) && (directents > 0); j++){
@@ -61,23 +58,17 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
         }
       }
     }
-    else if(root->blocks < 137){
-
-    }
-    else{
-
-    }
-    }     
-  } 
+   }   
   if(nextlevel == NULL){
     return 0;
   }   
   else{
     uchar final_inode[512];
-    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 512), final_inode);
+    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 4096), final_inode);
     vsfs_inode* ret_inode = ((vsfs_inode*) final_inode) + (inode_num % 8);
     memmove(dst, ret_inode, sizeof(vsfs_inode));
     return inode_num;
+  }
   }
   else{
     return 0;
@@ -106,6 +97,55 @@ int vsfs_path_split(char* path, char** dst){
   return j;
 }
 
+void free_inode(uint inode_num)
+{
+  vsfs_inode tofree;
+  read_inode(inode_num, &tofree);
+  int i;
+  for(i = 0; i < (tofree.size + 511)/512; i++){
+    if(i < 9){
+   free_block(inode->direct[i]);
+  }
+  else if(i < 137){
+    int ind_index = i - 9;
+    uint indirect_block[128];
+    ata_readsect(inode->indirect, indirect_block);
+    free_block(indirect_block[ind_index]);
+  }
+  else if(i < 16521){
+    int ind_ind_index = i - 137; 
+    int index1 = ind_ind_index / 128;
+    int index2 = ind_ind_index % 128;
+    uint dindirect[128];
+    uint indirect[128];
+    ata_readsect(inode->double_indirect, dindirect);
+    ata_readsect(dindirect[index1], indirect);
+    free_block(indirect[index2]);
+  }
+  } 
+  uchar free[512];
+  ata_readsect(start + 1 + inode_num/4096, free);
+  uint inode_index = inode_num % 4096;
+  uint inode_byte =  free[inode_index / 8];
+  uchar mask = (1 << (inode_index % 8));
+  mask = ~mask;
+  free[inode_index / 8] = inode_byte & mask;
+  ata_writesect(start + 1 + inode_num/4096, free); 
+}
+
+void free_block(uint block_num)
+{
+  block_num -= start + 1 + super->imap + super->dmap;
+  uchar free[512];
+  ata_readsect(start + 1 + super->imap + block_num/4096, free);
+  uint block_index = block_num % 4096;
+  uint block_byte =  free[block_index / 8];
+  uchar mask = (1 << (block_index % 8));
+  mask = ~mask;
+  free[block_index / 8] = block_byte & mask;
+  ata_writesect(start + 1 + super->imap + block_num/4096, free);
+}
+
 /**
  * Remove the file from the directory in which it lives and decrement the link
  * count of the file. If the file now has 0 links to it, free the file and
@@ -123,10 +163,46 @@ int vsfs_unlink(char* path)
   
   directent last_entry;
 
-  directent last_entries[4];
+  directent entries[4];
 
-  read_block
+  read_block(&parent, parent.size / 512, entries);
+  int last_index = 0;
+  for(last_index = 0; last_index < 4; last_index++){
+    if(entries[last_index].inode_num == 0){
+      last_index--;
+      break;
+    }
+  }
+  memmove(&last_entry, &entries[last_index], sizeof(directent));
+  
+  int blocks;
+  int done = 0;
+  for(blocks = 0; !done && blocks < ((parent.size+ 511)/512); blocks++){
+    read_block(&parent, blocks, entries);
+    int i;
+    for(i = 0; i < (512/sizeof(directent)); i++){
+      if(entries[i].inode_num = child_num){
+        child.links_count--;
+        if(child.links_count == 0){
+          free_inode(child_num);
+        }
+        else{
+          write_inode(child_num, &child);
+        }
+        if(last_entry.inode_num == child.inode_num){
+          done = 1;
+          break;
+        } 
+        memmove(&entries[i], &last_entry, sizeof(directent));
+        write_block(&child, blocks, entries);
+        parent.size -= sizeof(directent);
+        write_inode(parent_num, &parent);
+        done = 1;
+      }
+    }
+  }    
 }
+
 
 int find_free_inode(){
     
@@ -168,9 +244,9 @@ int find_free_block(){
             bitmap[j] |= (1 << k);
             uchar zero_sect[512];
             memset(zero_sect, 0, 512);
-            ata_writesect(i*512 + j*8 + k, zero_sect);
+            ata_writesect(i*512 + j*8 + k + start + 1 + super->imap + super->dmap, zero_sect);
             ata_writesect(start + 1 + i + super->imap, bitmap);
-            return i*512 + j*8 + k;
+            return i*512 + j*8 + k + start + 1 + super->imap + super->dmap;
           }
         }
       }
@@ -450,11 +526,35 @@ int vsfs_soft_link(char* new_file, char* link)
  * Read sz bytes from inode node at the position start (start is the seek in
  * the file). Copy the bytes into dst. Return the amount of bytes read. If
  * the user has requested a read that is outside of the bounds of the file,
- * don't read any bytes and return 0.
+ * don't read any bytes and return -1.
  */
 int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
 {
-  // ?
+  if((start + sz) > node->size){
+    return -1;
+  }
+  char* dst_c = (char*) dst;
+  uint startblock = start / 512;
+  uint endblock = startblock + (sz + 511)/512;
+  uint curr = 0;
+  uint currblock = 0;
+  uchar block[512];
+  for(curr = 0; curr < sz; currblock++){
+    read_block(node, currblock + startblock, block);
+    if(curr == 0){
+      uint start_read = start % 512;
+      memmove(dst_c + curr, block + start_read, 512 - start_read);
+      curr += (512 - start_read);
+    }
+    else if(currblock == endblock){
+      memmove(dst_c + curr, block, (start + sz) % 512);
+      break;
+    }
+    else{
+      memmove(dst_c + curr, block, 512);
+    }
+  }
+  return sz;
 }
 
 /**
