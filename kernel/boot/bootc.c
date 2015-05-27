@@ -28,14 +28,17 @@ int main(void)
 
 	cprintf("Number: %c %d\n", 'G', 100);
 
-	//kbd_init();
-	char c;
-	for(c = 0;!c;)
+	while(1)
 	{
-		c = kbd_getc();
+		//kbd_init();
+		char c;
+		for(c = 0;!c;)
+		{
+			c = kbd_getc();
+		}
+		cprintf("Character: %c\n", c);
+		cprintf("Character: %c\n", 'a');
 	}
-	cprintf("Character: %c\n", c);
-	cprintf("Character: %c\n", 'a');
 
 	for(;;);
 	return 0;
