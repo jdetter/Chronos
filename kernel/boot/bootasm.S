@@ -128,8 +128,8 @@ READ_SECT:
 
 	test 	$STAGE2_FINAL_SECT, %eax
 	jne 	READ_SECT
-
-	ljmp    $(KERNEL_CODE << 3), $0x100000
+STAGE2_JMP:
+	ljmp    $(KERNEL_CODE << 3), $STAGE2_ADDR
 
 	jmp PANIC_32
 

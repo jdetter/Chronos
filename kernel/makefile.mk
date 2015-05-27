@@ -63,9 +63,9 @@ BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 
 BOOT_STAGE2_CFLAGS  := -I kernel/drivers -I include  
 BOOT_STAGE2_LDFLAGS := --section-start=.text=0x7E00 --entry=main \
-		--section-start=.data=0xEE00 \
-		--section-start=.rodata=0xF200 \
-		--section-start=.bss=0xF600
+		--section-start=.data=0xF200 \
+		--section-start=.rodata=0xF600 \
+		--section-start=.bss=0xFA00
 
 kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/chronos.o chronos.sym

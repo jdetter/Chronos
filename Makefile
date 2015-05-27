@@ -38,7 +38,7 @@ qemu: all
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 
 qemu-gdb: all kernel-symbols
-	$(QEMU) $(QEMU_OPTIONS) -s -S
+	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 
 qemu-x: all 
 	$(QEMU) $(QEMU_OPTIONS)
