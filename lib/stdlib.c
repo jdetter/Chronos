@@ -3,7 +3,7 @@
 #include "stdlib.h"
 #include "stdarg.h"
 
-uint strlen(char* str)
+uint strlen(const char* str)
 {
 	int x;
 	for(x = 0;str[x] != 0;x++); /* counts the length of the string */
@@ -64,20 +64,30 @@ uint strncat(char* str1, char* str2, uint sz)
 	return x + start; /* returns length of combined string */
 }
 
-int strcmp(char* str1, char* str2)
+int strcmp(const char* str1, const char* str2)
 {
 	while(*str1 && *str2) /* while str1 and str2 not equal to null */
 	{
-		if(*str1 >= 'A' && *str1 <= 'Z') /* if str1 is a capital letter of the alphabet */
-			*str1 += 32; /* convert to lower case */
-		if(*str2 >= 'A' && *str2 <= 'Z') /* if str2 is a capital letter of the alphabet */
-			*str2 += 32; /* convert to lower case */
-		if(*str1 == *str2) continue; /* if they are equal, continue */
-		if(*str1 > *str2) return 1; /* if str1 comes after str2, return 1 */
-		else return -1; /* if str1 is before str2, return -1 */
+		char str1_c = *str1;
+		char str2_c = *str2;
+
+		if(str1_c >= 'A' && str1_c <= 'Z') 
+			str1_c += 32; /* convert to lower case */
+		if(str2_c >= 'A' && str2_c <= 'Z') 
+			str2_c += 32; /* convert to lower case */
+
+		str1++;
+		str2++;
+
+		/* if they are equal, check next letter */
+		if(str1_c == str2_c) continue;
+		if(str1_c > str2_c) return 1; /* str1 comes after str2 */
+		else return -1; /* str1 comes before str2 */
 	}
 
-	return 0;
+	if(*str1 || *str2) return 0;
+	else if(*str1) return -1;
+	else return 1;
 }
 
 void memmove(void* dst, void* src, uint sz)

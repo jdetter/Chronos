@@ -49,7 +49,7 @@ int cprintf(char* fmt, ...)
 				int i;
 				for(i = 0; i< strlen(s); i++)
 				{
-					printNextCharacter(number[i]);
+					printNextCharacter(s[i]);
 				}
 				arg_pos++;
 			}else if(fmt[x + 1] == '%')

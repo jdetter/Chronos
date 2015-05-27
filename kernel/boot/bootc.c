@@ -16,29 +16,19 @@ char* welcome = "Welcome to Chronos!\n";
 
 int main(void)
 {
-	//serial_init(0);
-	//serial_write(welcome, strlen(welcome));
+	int serial = 1;
+	if(serial_init(0))
+	{
+		/* There is no serial port. */
+		serial = 0;
+	}
+	if(serial) serial_write(welcome, strlen(welcome));
 
 	/* Initilize memory allocator. */
-	minit(0x110000, 0x120000, 0);
+	minit(0x60600, 0x70000, 0);
 
 	cinit();
-	cprintf("Welcome to Chronos!\n");
-	cprintf("New line.\n");
-
-	cprintf("Number: %c %d\n", 'G', 100);
-
-	while(1)
-	{
-		//kbd_init();
-		char c;
-		for(c = 0;!c;)
-		{
-			c = kbd_getc();
-		}
-		cprintf("Character: %c\n", c);
-		cprintf("Character: %c\n", 'a');
-	}
+	cprintf("%s", welcome);
 
 	for(;;);
 	return 0;

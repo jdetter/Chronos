@@ -32,6 +32,7 @@ int serial_init(int pic)
 	outb(COM1_MCR, 0x00); 
 	outb(COM1_INT, 0x01); /* Allow interrupts */
 
+	/* Is there a serial connection? */
 	if(inb(COM1_LSR) == 0xFF)
 	{
 		return 1;

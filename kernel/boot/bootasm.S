@@ -13,7 +13,7 @@
 # segments in the gdt, see below
 #define KERNEL_CODE	0x1
 #define KERNEL_DATA	0x2
-#define STAGE2_ADDR	0x100000
+#define STAGE2_ADDR	0x7E00
 
 #define STAGE2_FINAL_SECT 63
 

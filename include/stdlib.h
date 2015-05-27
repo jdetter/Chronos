@@ -13,7 +13,7 @@
  * Returns the length of the string. The null character doesn't count towards
  * the length of the string.
  */
-uint strlen(char* str);
+uint strlen(const char* str);
 
 /**
  * Change the case of all alphabetical ASCII characters in string str to their 
@@ -45,7 +45,7 @@ uint strncat(char* str1, char* str2, uint sz);
  * return -1. If str1 would come after str2 in the dictionary, return 1. If
  * the strings are equal, return 0. This function ignores case.
  */
-int strcmp(char* str1, char* str2);
+int strcmp(const char* str1, const char* str2);
 
 /**
  * Copy the memory from src to dst. If the two buffers overlap, this function
