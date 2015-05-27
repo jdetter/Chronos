@@ -33,7 +33,7 @@ int main(void)
 	cprintf("%s", welcome);
 
 	/* Lets try to load the kernel */
-	uchar* kernel = (uchar*)KERNEL_LOAD;
+	//uchar* kernel = (uchar*)KERNEL_LOAD;
 
 
 
