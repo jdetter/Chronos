@@ -571,10 +571,12 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
     }
     else if(currblock == endblock){
       memmove(dst_c + curr, block, (start + sz) % 512);
+      curr = sz;
       break;
     }
     else{
       memmove(dst_c + curr, block, 512);
+      curr += 512;
     }
   }
   return sz;
@@ -592,6 +594,39 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
  */
 int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
 {
-  // ?
-  return 0;
+  if((start + sz) > node->size){
+    int newblocks = ((start + sz) - (node->size) + 511)/512;
+    int i;        
+    for(i = 0; i < newblocks; i++){
+      int new_num = find_free_block();
+      add_block_to_inode(node, new_num);
+    }
+  }
+  if(start > node->size){
+    start = node->size;
+  }
+  uint startblock = start / 512;
+  uint endblock = startblock + (sz + 511)/512;
+  uint curr = 0;
+  uint currblock = 0;
+  uchar block[512];
+  for(curr = 0; curr < sz; currblock++){
+    read_block(node, currblock + startblock, block);
+    if(curr == 0){
+      uint start_write = start % 512;
+      memmove(block + start_write, src, 512 - start_write);
+      curr += (512 - start_write);
+    }
+    else if(currblock == endblock){
+      memmove(block, src + curr, (start + sz) % 512);
+      curr = sz;
+      break;
+    }
+    else{
+      memmove(block, src + curr, 512);
+      curr += 512;
+    }
+    write_block(node, currblock + startblock, block);
+  }
+  return sz;
 }
