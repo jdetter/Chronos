@@ -602,9 +602,6 @@ int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
       add_block_to_inode(node, new_num);
     }
   }
-  if(start > node->size){
-    start = node->size;
-  }
   uint startblock = start / 512;
   uint endblock = startblock + (sz + 511)/512;
   uint curr = 0;
