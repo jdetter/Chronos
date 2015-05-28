@@ -50,20 +50,17 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
     int depth = vsfs_path_split(path, paths);
     int inode_num = 1;
     int k;
-    for(k = 0; k < (depth - 2); k++){
-    if((k == 0) || (paths[k][0] != '/')){
-    vsfs_inode curr;
-    read_inode(inode_num, &curr);
-    int i;
-    int directents = curr.size / sizeof(directent);
-      for(i = 0; i < (curr.size + 511)/512; i++){
+    for(k = 1; k < depth; k++){
+      vsfs_inode curr;
+      read_inode(inode_num, &curr);
+      int i; 
+      int directents = curr.size / sizeof(directent);
+      for(i = 0; i < (curr.size + 511)/512; i++){ 
         directent entries[4];
         read_block(&curr, i, entries);
         int j;
-        int r = 1;
         for(j = 0; (j < 4) && (directents > 0); j++){
-          if(strcmp(entries[j].name, paths[k+r]) == 0){
-            if(r == 1){ r = 2;};
+          if(strcmp(entries[j].name, paths[k]) == 0){
             nextlevel = &entries[j];
             inode_num = entries[j].inode_num;
           } 
@@ -75,23 +72,19 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
           return 0;
         }
       }
-    }
-   }   
-  if(nextlevel == NULL){
-    return 0;
-  }   
-  else{
-    uchar final_inode[512];
+      if(nextlevel == NULL){
+        return 0;
+      }
+    }       
+    vsfs_inode final_inode[8];
     ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 4096), final_inode);
-    vsfs_inode* ret_inode = ((vsfs_inode*) final_inode) + (inode_num % 8);
+    vsfs_inode ret_inode = final_inode[inode_num % 8];
     memmove(dst, ret_inode, sizeof(vsfs_inode));
     return inode_num;
   }
-  }
   else{
     return 0;
   }
-
   return 0;  
 }
 
@@ -103,9 +96,9 @@ int vsfs_path_split(char* path, char dst[][64]){
   int i = 0;
   int j = 0;
   int k = 0;
-  while(path[i] != 0){
+  dst[0][0] = '/';
+  while(path[i] != NULL){
     if(path[i] == '/'){
-      dst[j][0] = '/';
       j++;
       k = 0;
     }
