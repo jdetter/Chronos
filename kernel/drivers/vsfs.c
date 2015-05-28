@@ -79,7 +79,7 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
     vsfs_inode final_inode[8];
     ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 4096), final_inode);
     vsfs_inode ret_inode = final_inode[inode_num % 8];
-    memmove(dst, ret_inode, sizeof(vsfs_inode));
+    memmove(dst, &ret_inode, sizeof(vsfs_inode));
     return inode_num;
   }
   else{
@@ -97,7 +97,7 @@ int vsfs_path_split(char* path, char dst[][64]){
   int j = 0;
   int k = 0;
   dst[0][0] = '/';
-  while(path[i] != NULL){
+  while(path[i] != 0x00){
     if(path[i] == '/'){
       j++;
       k = 0;
