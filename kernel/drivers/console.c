@@ -116,9 +116,10 @@ void cinit(void)
 			  	   0xF - Cursor Location Low
 	By writing an index offset value into the index Register, it indicates what register the Data Register points to
 */
-void update_cursor(int pos){
+void update_cursor(int pos)
+{
 	outb(0x3D4, 0xF);
-	outb(0x3D5, (char) (pos&0xFF));
+	outb(0x3D5, (uchar) (pos & 0xFF));
 	outb(0x3D4, 0xE);
-	outb(0x3D5, (char) ((pos >> 8)&0xFF); 
+	outb(0x3D5, (uchar) ((pos >> 8)&0xFF)); 
 }
