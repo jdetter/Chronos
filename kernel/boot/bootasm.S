@@ -5,17 +5,27 @@
 # When the i386 starts, it will be in Real mode (16 bit). We need to
 # disable interrupts and jump into protected mode.
 
-#define PORT_A20 	$0x92
-#define PORT_A20_EN	$0x02
+#define KEYBOARD_DATA 0x60
+#define KEYBOARD_COMM 0x64
 
-#define PROTECT_EN	$0x1
+#define KEYBOARD_DATA_FILL 	0x02
+#define KEYBOARD_CONTROL_READ 	0xD0
+#define KEYBOARD_CONTROL_WRITE 	0xD1
+#define A20_ENABLE_FLAG 	0x02
+
+#define PROTECT_EN 0x01
 
 # segments in the gdt, see below
-#define KERNEL_CODE	0x1
-#define KERNEL_DATA	0x2
-#define STAGE2_ADDR	0x7E00
+#define KERNEL_CODE		0x01
+#define KERNEL_DATA		0x02
+#define STAGE2_ADDR		0x7E00
 
-#define STAGE2_FINAL_SECT 63
+#define KEYBOARD_LIGHT_COMM	0xED
+#define KEYBOARD_SCROLL_LOCK 	0x0
+#define KEYBOARD_SCROLL_NUM  	0x1
+#define KEYBOARD_SCROLL_CAPS 	0x2
+
+#define STAGE2_FINAL_SECT 	63
 
 .globl ata_readsect
 .globl ata_init
@@ -33,66 +43,130 @@ start:
 	mov	%ax, %es # Extra Segment
 	mov	%ax, %ds # Data Segment
 
-# First test the A20 gate
-	inb 	PORT_A20, %al
-        test	 $2, %al
-	jnz 	set_A20_DONE
+	xorl	%esp, %esp
+	mov	$0x7c00, %sp
 
-# Ask the bios to activate the A20 line on our behalf.
-A20_BIOS:
-	mov 	$0x2401, %ax
-	int 	$0x15
+	call	KEYBOARD_ALL_16
 
-# Retest A20
-        inb     PORT_A20, %al
-        test     $2, %al
-        jnz     set_A20_DONE
+A20_STEP1:
+  	inb     $KEYBOARD_COMM, %al
+  	testb   $KEYBOARD_DATA_FILL, %al
+  	jnz     A20_STEP1
 
-# That didn't work, try the keyboard method.
-KEYBOARD1:
-  	inb    	$0x64,%al               # Wait for not busy
-	testb  	$0x2,%al
-	jnz    	KEYBOARD1
+  	movb    $KEYBOARD_CONTROL_WRITE, %al
+  	outb    %al, $KEYBOARD_COMM
 
-  	movb   	$0xd1,%al               # 0xd1 -> port 0x64
-  	outb   	%al,$0x64
+A20_STEP2:
+  	inb     $KEYBOARD_COMM, %al
+  	testb   $KEYBOARD_DATA_FILL, %al
+  	jnz     A20_STEP2
 
-KEYBOARD2:
-  	inb    	$0x64,%al               # Wait for not busy
-  	testb  	$0x2,%al
-  	jnz    	KEYBOARD2
+  	movb    $0xdf, %al
+  	outb    %al, $KEYBOARD_DATA
 
-  	movb    $0xdf,%al               # 0xdf -> port 0x60
-  	outb    %al,$0x60
-
-# Retest A20
-        inb     PORT_A20, %al
-        test     $2, %al
-        jnz     set_A20_DONE
-
-# Nothing worked, panic
-	jmp 	PANIC_16
+	jmp	set_A20_DONE
 
 set_A20_DONE:
 # We should have access to the 2^16 address space now.
 
 # Lets let the global descriptor table register and jump into protected mode
-	lgdt 	gdt_descriptor
+	lgdt 	gdt_descriptor	
 	
 # Enable protected (32 bit) mode
-	mov	%cr0, %eax
-	or	PROTECT_EN, %eax
-	mov	%eax, %cr0
+	movl	%cr0, %eax
+	orl	PROTECT_EN, %eax
+	movl	%eax, %cr0
+
+	call KEYBOARD_NONE_16
 
 # Long jump into 32 bit mode =D
 	ljmp	$(KERNEL_CODE << 3), $protected_mode	
 
 PANIC_16:
-	jmp PANIC_16
+	mov	$0x0E, %ah
+	mov	$0x40, %al
+	mov	$0x0, %bh
+	mov	$0x05, %bl
+	int	$0x10
+	jmp 	PANIC_16
+
+KEYBOARD_WAIT_16:
+        inb     $KEYBOARD_COMM, %al
+        testb   $KEYBOARD_DATA_FILL, %al
+        jnz     KEYBOARD_WAIT_16
+        ret
+
+KEYBOARD_ALL_16:
+        call    KEYBOARD_WAIT_16
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT_16
+        movb    $0x07, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT_16
+        ret
+
+KEYBOARD_NONE_16:
+        call    KEYBOARD_WAIT_16
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT_16
+        movb    $0x00, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT_16
+        ret
 
 .code32			# Generate 32 bit code (Protected mode)
+
+KEYBOARD_WAIT:
+        inb     $KEYBOARD_COMM, %al
+        testb   $KEYBOARD_DATA_FILL, %al
+        jnz     KEYBOARD_WAIT
+        ret
+
+KEYBOARD_SCROLL:
+        call    KEYBOARD_WAIT
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        movb    $0x01, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        ret
+
+KEYBOARD_NUM:
+        call    KEYBOARD_WAIT
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        movb    $0x02, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        ret
+
+KEYBOARD_CAPS:
+        call    KEYBOARD_WAIT
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        movb    $0x04, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        ret
+
+KEYBOARD_RESET:
+        call    KEYBOARD_WAIT
+        movb    $KEYBOARD_LIGHT_COMM, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        movb    $0x02, %al
+        outb    %al, $KEYBOARD_DATA
+        call    KEYBOARD_WAIT
+        ret
+
 protected_mode:
 	# We need a couple of function calls here, so lets make a stack.
+	movl 	$0x07690748,0xb0000
 	movl 	$start, %esp
 	movl 	%esp, %ebp
 
