@@ -4,7 +4,9 @@ KERNEL_OBJECTS := \
 	proc \
 	tty \
 	panic \
-	vm
+	vm \
+	kcond \
+	syscall
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \

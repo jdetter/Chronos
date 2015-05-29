@@ -1,10 +1,19 @@
+#define  _SYSCALL_ASMONLY_
 #include "chronos.h"
-#include "traps.h"
 
 /* Create the system call code for each system call */
 #define SYSCALL(name) \
 	.globl name; \
 	name: \
-		movl $SC_##name, %eax; \
+		movl $SYS_##name, %eax; \
 		int $TRAP_SC; \
 		ret
+
+SYSCALL(fork)
+SYSCALL(wait)
+SYSCALL(exec)
+SYSCALL(exit)
+SYSCALL(open)
+SYSCALL(close)
+SYSCALL(read)
+SYSCALL(write)

@@ -52,7 +52,7 @@ void freepgdir(pgdir* dir);
 void switch_kvm(void);
 
 /**
- * Switch to a user's page table and resume execution.
+ * Switch to a user's page table and restore the context.
  */
 void switch_uvm(pgdir* dir);
 

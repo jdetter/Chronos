@@ -2,15 +2,9 @@
 LIBS_TARGET = \
 	stdmem \
 	stdarg \
-	stdlib
+	stdlib \
+	stdlock
 
-LIBS_TEST = \
-	string \
-	malloc \
-	program
-
-LIBS_TEST := $(addsuffix -test.o, $(LIBS_TEST))
-LIBS_TEST := $(addprefix lib/test/, $(LIBS_TEST))
 LIBS := $(addprefix lib/, $(LIBS_TARGET))
 LIBS := $(addsuffix .o, $(LIBS))
 
@@ -42,11 +36,6 @@ LIB_TEST_CFLAGS += -fno-stack-protector
 LIB_TEST_CFLAGS += -fno-strict-aliasing
 
 libs: $(LIBS)
-lib-tests: li_proxy libs $(LIBS_TEST)
-
-lib/test/%.o: lib/test/%.c
-	$(CC) $(CFLAGS) $(LIB_TEST_CFLAGS) -c -o $@ $<
-	$(CC) $(CFLAGS) $(LIB_TEST_CFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
 
 lib/%.o: lib/%.c
 	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<

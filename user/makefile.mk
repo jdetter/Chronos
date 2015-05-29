@@ -1,10 +1,8 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
 	example \
-	otherexample
-
-# Are you debugging?
-DEBUG = 1
+	otherexample \
+	cat
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
@@ -39,20 +37,19 @@ USER_LDFLAGS += --entry=main
 USER_LDFLAGS += --section-start=.text=0x1000
 # USER_LDFLAGS += --omagic
 
-ifdef DEBUG
-USER_LDFLAGS = --entry=main
-endif
-
-.PHONY: user-test
-user-test: user-bin $(USER_OBJECTS) $(USER_BINARIES)	
+.PHONY: user
+user: libs user-syscall user-bin $(USER_OBJECTS) $(USER_BINARIES) 
 	
 .PHONY: user-bin
 user-bin: 
 	mkdir -p user/bin	
 
+user-syscall:
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
+
 # Recipe for object files
 user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
-user/bin/%: user/%.o libs
-	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) linux/li_proxy.o
+user/bin/%: user/%.o
+	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o

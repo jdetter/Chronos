@@ -28,8 +28,7 @@
 #define TRAP_XM 0x13 /* SIMD floating-point exception */
 /* 0x14 - 0x1F are reserved */
 
-/* Chronos Trap Definitions */
-#define TRAP_SC 0x80 /* System call trap*/
+/* Chronos Trap Definitions are in chronos.h */
 
 /* Intel page table and page directory flags */
 #define PG_PRESENT(pg) (pg & 0x1)

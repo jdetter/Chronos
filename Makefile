@@ -22,7 +22,7 @@ BUILD_CFLAGS += -fno-stack-protector
 BUILD_ASFLAGS += $(BUILD_CFLAGS)
 
 .PHONY: all
-all: tools chronos.img lib-tests
+all: tools chronos.img libs user
 
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
@@ -47,10 +47,9 @@ include kernel/makefile.mk
 include user/makefile.mk
 include tools/makefile.mk
 include lib/makefile.mk
-include linux/makefile.mk
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(LINUX_CLEAN)
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN)
 
 .DEFAULT: all
