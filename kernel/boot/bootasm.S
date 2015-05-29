@@ -38,15 +38,15 @@ start:
 	cli
 
 # Disable Segmentation for now
-	xor	%ax, %ax
-	mov	%ax, %ss # Stack Segment
-	mov	%ax, %es # Extra Segment
-	mov	%ax, %ds # Data Segment
+	xorw	%ax, %ax
+	movw	%ax, %ss # Stack Segment
+	movw	%ax, %es # Extra Segment
+	movw	%ax, %ds # Data Segment
 
 	xorl	%esp, %esp
-	mov	$0x7c00, %sp
+	movw	$0x7c00, %sp
 
-	call	KEYBOARD_ALL_16
+	#call	KEYBOARD_NONE_16
 
 A20_STEP1:
   	inb     $KEYBOARD_COMM, %al
@@ -74,24 +74,15 @@ set_A20_DONE:
 	
 # Enable protected (32 bit) mode
 	movl	%cr0, %eax
-	orl	PROTECT_EN, %eax
+	orl	$PROTECT_EN, %eax
 	movl	%eax, %cr0
-
-	call KEYBOARD_NONE_16
+	call	KEYBOARD_ALL_16
 
 # Long jump into 32 bit mode =D
 	ljmp	$(KERNEL_CODE << 3), $protected_mode	
 
-PANIC_16:
-	mov	$0x0E, %ah
-	mov	$0x40, %al
-	mov	$0x0, %bh
-	mov	$0x05, %bl
-	int	$0x10
-	jmp 	PANIC_16
-
 KEYBOARD_WAIT_16:
-        inb     $KEYBOARD_COMM, %al
+	inb     $KEYBOARD_COMM, %al
         testb   $KEYBOARD_DATA_FILL, %al
         jnz     KEYBOARD_WAIT_16
         ret
@@ -159,14 +150,21 @@ KEYBOARD_RESET:
         movb    $KEYBOARD_LIGHT_COMM, %al
         outb    %al, $KEYBOARD_DATA
         call    KEYBOARD_WAIT
-        movb    $0x02, %al
+        movb    $0x00, %al
         outb    %al, $KEYBOARD_DATA
         call    KEYBOARD_WAIT
         ret
 
 protected_mode:
 	# We need a couple of function calls here, so lets make a stack.
-	movl 	$0x07690748,0xb0000
+	  movw    $(KERNEL_DATA << 3), %ax    # Our data segment selector
+  movw    %ax, %ds                # -> DS: Data Segment
+  movw    %ax, %es                # -> ES: Extra Segment
+  movw    %ax, %ss                # -> SS: Stack Segment
+  movw    $0, %ax                 # Zero segments not ready for use
+  movw    %ax, %fs                # -> FS
+  movw    %ax, %gs                # -> GS
+
 	movl 	$start, %esp
 	movl 	%esp, %ebp
 
@@ -209,16 +207,17 @@ STAGE2_JMP:
 
 PANIC_32:
 	nop
+	call KEYBOARD_NUM
 	jmp PANIC_32
 
 
 .p2align 2 # All values here are 4 byte-boundary aligned.
 # Our Global Descriptor table for boot-stage1
 gdt_stage1:
-	ASM_GDT_NULL_ENTRY # NULL Segment 
-	ASM_GDT_ENTRY(0x0, 0xFFFFFFFF, 1, 1, 0) # Kernel stack segment
-	ASM_GDT_ENTRY(0x0, 0xFFFFFFFF, 0, 1, 0) # Kernel data segment
+  SEG_NULLASM                             # null seg
+  SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
+  SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
 
 gdt_descriptor:
-	.word (gdt_stage1 - gdt_stage1 - 1) 	# 2 bytes
+	.word (gdt_descriptor - gdt_stage1 - 1) 	# 2 bytes
 	.long gdt_stage1			# 4 bytes

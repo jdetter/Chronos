@@ -24,18 +24,16 @@ int main(void)
 		/* There is no serial port. */
 		serial = 0;
 	}
-	if(serial) serial_write(welcome, strlen(welcome));
+	if(serial) serial_write((char*)welcome, strlen(welcome));
 
 	/* Initilize memory allocator. */
 	minit(0x60A00, 0x70000, 0);
 
 	cinit();
-	cprintf("%s", welcome);
+	cprintf(welcome);
 
 	/* Lets try to load the kernel */
 	//uchar* kernel = (uchar*)KERNEL_LOAD;
-
-
 
 	for(;;);
 	return 0;
