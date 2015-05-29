@@ -12,7 +12,8 @@ int console_pos;
 
 void printNextCharacter(char character);
 void printCharacter(uint row, uint col, char character);
-/* do string char %%(to print % ) and pointer addresses*/
+void update_cursor(int pos);
+
 int cprintf(char* fmt, ...)
 {
 	va_list args;
@@ -91,6 +92,7 @@ void printCharacter(uint row, uint col, char character){
 		+ (row * VID_COLS * 2) + (col * 2);
 	*vid_addr = character;
 	*(vid_addr +1) = GREY_COLOR;
+	update_cursor(console_pos);
 }
 
 void cinit(void)
@@ -105,4 +107,18 @@ void cinit(void)
 	}
 
 	console_pos = 0;
+}
+
+//The Index Register is mapped to ports 0x3D5 or 0x3B5.
+//The Data Register is mapped to ports 0x3D4 or 0x3B4.
+/*
+	index offset : 0xE - Cursor Location High
+			  	   0xF - Cursor Location Low
+	By writing an index offset value into the index Register, it indicates what register the Data Register points to
+*/
+void update_cursor(int pos){
+	outb(0x3D4, 0xF);
+	outb(0x3D5, (char) (pos&0xFF));
+	outb(0x3D4, 0xE);
+	outb(0x3D5, (char) ((pos >> 8)&0xFF); 
 }
