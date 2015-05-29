@@ -2,14 +2,11 @@
 #include "x86.h"
 #include "stdlib.h"
 #include "stdarg.h"
+#include "console.h"
 
 #define MAX_NUM 15
-#define GREY_COLOR 0x07
-#define VID_ROWS 20
-#define VID_COLS 80
-#define VID_COLOR_BASE ((char*) 0xB8000)
-int console_pos;
 
+uint console_pos = 0;
 void printNextCharacter(char character);
 void printCharacter(uint row, uint col, char character);
 void update_cursor(int pos);
@@ -68,7 +65,7 @@ int cprintf(char* fmt, ...)
 			x++;			
 		} else if(fmt[x] == '\n'){
 			
-			console_pos = console_pos + (VID_COLS - (console_pos % VID_COLS));
+			console_pos = console_pos + (CONSOLE_COLS - (console_pos % CONSOLE_COLS));
 		}
 		else 
 		{
@@ -81,17 +78,17 @@ int cprintf(char* fmt, ...)
 
 void printNextCharacter(char character)
 {
-	int col = console_pos % VID_COLS;
-	int row = (console_pos - col) / VID_COLS;
+	int col = console_pos % CONSOLE_COLS;
+	int row = (console_pos - col) / CONSOLE_COLS;
 	printCharacter(row, col, character);
 	console_pos++;	
 }
 
 void printCharacter(uint row, uint col, char character){
-	char* vid_addr = VID_COLOR_BASE 
-		+ (row * VID_COLS * 2) + (col * 2);
+	char* vid_addr = CONSOLE_COLOR_BASE 
+		+ (row * CONSOLE_COLS * 2) + (col * 2);
 	*vid_addr = character;
-	*(vid_addr +1) = GREY_COLOR;
+	*(vid_addr +1) = CONSOLE_DEFAULT_COLOR;
 	update_cursor(console_pos);
 }
 
@@ -100,8 +97,8 @@ void cinit(void)
 	console_pos = 0;
 	int row;
 	int col;
-	for(row=0; row< VID_ROWS; row++){
-		for(col = 0; col<VID_COLS; col++){
+	for(row=0; row< CONSOLE_ROWS; row++){
+		for(col = 0; col<CONSOLE_COLS; col++){
 			printCharacter(row, col, ' ');
 		}
 	}

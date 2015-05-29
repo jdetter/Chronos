@@ -1,6 +1,10 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
-	main
+	main \
+	proc \
+	tty \
+	panic \
+	vm
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \

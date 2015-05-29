@@ -1,10 +1,19 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
+typedef uint* pgdir;
+typedef uint* pgtbl;
+
+#define PGROUNDDOWN(pg)	(pg & ~(PGSIZE - 1))	
+
+#define KVM_START 	0x100000
+#define KVM_END		0xEFFFFF
+#define KVM_MALLOC	0x200000
+
 /**
- * Initilize a free list of pages from address phy to (phy + sz).
+ * Initilize a free list of pages from address start to address end.
  */
-void vminit(uint phy, uint sz);
+uint vm_init(uint start, uint end);
 
 /**    
  * Allocate a page. Return NULL if there are no more free pages. The address
@@ -20,7 +29,7 @@ void pfree(uint pg);
 
 /**
  * Map the page at virtual address virt, to the physical address phy into the
- * page directory dir.
+ * page directory dir. This will create entries and tables where needed.
  */
 void mappage(uint phy, uint virt, pgdir* dir);
 
@@ -38,13 +47,13 @@ uint findpg(uint virt, int create, pgdir* dir);
 void freepgdir(pgdir* dir);
 
 /**
- * Enable paging and set the page table base register to dir.
+ * Use the kernel's page table
  */
-void pgenable(pgdir* dir);
+void switch_kvm(void);
 
 /**
- * Disable paging and clear the page table base register.
+ * Switch to a user's page table and resume execution.
  */
-void pgdisable(pgdir* dir);
+void switch_uvm(pgdir* dir);
 
 #endif

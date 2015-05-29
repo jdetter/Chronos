@@ -29,7 +29,7 @@
 /* 0x14 - 0x1F are reserved */
 
 /* Chronos Trap Definitions */
-#define TRAP_SC 0x20 /* System call trap*/
+#define TRAP_SC 0x80 /* System call trap*/
 
 /* Intel page table and page directory flags */
 #define PG_PRESENT(pg) (pg & 0x1)
@@ -63,8 +63,6 @@
 #define PGSIZE 4096
 
 /* Inline assembly functions */
-
-
 static inline uchar
 inb(ushort port)
 {
