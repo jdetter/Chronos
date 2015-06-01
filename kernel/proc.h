@@ -15,6 +15,7 @@
 struct file_descriptor
 {
 	uchar type;
+	int inode_pos;
 	struct vsfs_inode inode;
 };
 

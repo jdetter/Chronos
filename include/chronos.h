@@ -13,6 +13,10 @@
 #define SYS_read 	0x6
 #define SYS_write 	0x7
 
+#define FSEEK_CUR	0x0
+#define FSEEK_SET	0x1
+#define FSEEK_END	0x2
+
 #ifndef _SYSCALL_ASMONLY_
 int fork(void);
 int wait(int pid);
@@ -22,6 +26,7 @@ int open(const char* path);
 int close(int fd);
 int read(int fd, char* dst, uint sz); 
 int write(int fd, char* dst, uint sz);
+int fseek(int fd, int offset, int whence);
 #endif
 
 #endif

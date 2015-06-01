@@ -83,3 +83,8 @@ int sys_write(int fd, char* dst, uint sz)
 {
 	return 0;
 }
+
+int fseek(int fd, int offset, int whence)
+{
+	return 0;
+}
