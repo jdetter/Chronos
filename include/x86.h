@@ -181,4 +181,46 @@ static inline uint xchg(volatile uint *addr, uint newval)
 #define INT_PIC_ATA1 		0x06  + INT_PIC_MAP_OFF_2
 #define INT_PIC_ATA2 		0x07  + INT_PIC_MAP_OFF_2
 
+struct task_segment
+{
+	uint_16 previous_task_link; /* Segment selector of prev task*/
+	uint_16 reserved_1;
+	uint_32 ESP0;
+	uint_16 SS0;
+	uint_16 reserved_2;
+	uint_32 ESP1;
+	uint_16 SS1;
+	uint_16 reserved_3;
+	uint_32 ESP2;
+	uint_16 SS2;
+	uint_16 reserved_4;
+	uint_32 cr3; /* Saved page table base register */
+	uint_32 eip; /* Instruction pointer */
+	uint_32 eflags;
+	uint_32 eax;
+	uint_32 ecx;
+	uint_32 edx;
+	uint_32 ebx;
+	uint_32 esp;
+	uint_32 ebp;
+	uint_32 esi;
+	uint_32 edi;
+	uint_16 es;
+	uint_16 reserved5;
+	uint_16 cs;
+	uint_16 reserved6;
+	uint_16 ss;
+	uint_16 reserved7;
+	uint_16 ds;
+	uint_16 reserved8;
+	uint_16 fs;
+	uint_16 reserved9;
+	uint_16 gs;
+	uint_16 reserved10;
+	uint_16 ldt;
+	uint_16 reserved11;
+	uint_16 reserved12;
+	uint_16 io_base_address_map;
+}; /* Size MUST be 104.*/
+
 #endif

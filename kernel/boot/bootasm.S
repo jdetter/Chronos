@@ -156,14 +156,14 @@ KEYBOARD_RESET:
         ret
 
 protected_mode:
-	# We need a couple of function calls here, so lets make a stack.
-	  movw    $(KERNEL_DATA << 3), %ax    # Our data segment selector
-  movw    %ax, %ds                # -> DS: Data Segment
-  movw    %ax, %es                # -> ES: Extra Segment
-  movw    %ax, %ss                # -> SS: Stack Segment
-  movw    $0, %ax                 # Zero segments not ready for use
-  movw    %ax, %fs                # -> FS
-  movw    %ax, %gs                # -> GS
+	# Setup the data selectors with the correct index into the gdt.
+	movw    $(KERNEL_DATA << 3), %ax    # Our data segment selector
+  	movw    %ax, %ds                # -> DS: Data Segment
+  	movw    %ax, %es                # -> ES: Extra Segment
+  	movw    %ax, %ss                # -> SS: Stack Segment
+  	movw    $0, %ax                 # Zero segments not ready for use
+  	movw    %ax, %fs                # -> FS
+  	movw    %ax, %gs                # -> GS
 
 	movl 	$start, %esp
 	movl 	%esp, %ebp
@@ -213,9 +213,9 @@ PANIC_32:
 .p2align 2 # All values here are 4 byte-boundary aligned.
 # Our Global Descriptor table for boot-stage1
 gdt_stage1:
-  SEG_NULLASM                             # null seg
-  SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg
-  SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg
+  SEG_NULLASM                            # null seg
+  SEG_ASM(SEG_EXE, 0x0, 0xffffffff)   	# code seg
+  SEG_ASM(0, 0x0, 0xffffffff)         	# data seg
 
 gdt_descriptor:
 	.word (gdt_descriptor - gdt_stage1 - 1) 	# 2 bytes

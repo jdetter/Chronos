@@ -6,7 +6,8 @@ KERNEL_OBJECTS := \
 	panic \
 	vm \
 	kcond \
-	syscall
+	syscall \
+	boot_pic
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
