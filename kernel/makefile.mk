@@ -43,8 +43,6 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.rodata \
 	kernel/boot/boot-stage2.text \
 	kernel/boot/boot-stage2.bss \
-        chronos.img \
-	chronos.vdi \
 	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \
@@ -79,12 +77,6 @@ kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/boot/boot-stage2.o boot-stage2.sym
 	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
-
-chronos.img: kernel/boot/boot-stage1.img kernel/boot/boot-stage2.img kernel/chronos.o
-	dd if=/dev/zero of=chronos.img bs=512 count=2048
-	tools/bin/boot-sign kernel/boot/boot-stage1.img
-	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 
 kernel/chronos.o: $(LIBS) $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS)

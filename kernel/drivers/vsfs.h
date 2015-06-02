@@ -7,6 +7,9 @@
 #define VSFS_DEV  0x2 /* Device node */
 #define VSFS_SYM  0x3 /* Symbolic link to another file */
 
+#define VSFS_DIRECT 9
+#define VSFS_MAX_NAME 124
+
 /**
  * A disk representation of an inode.
  */
@@ -18,14 +21,15 @@ typedef struct vsfs_inode {
 	uint type; /* type of this file, see above.*/
 	uint size; /* How many bytes are in the file */
 	uint blocks; /* Blocks allocated to file */
-	uint direct[9]; /* Direct pointers to data blocks */
+	/* Direct pointers to data blocks */
+	uint direct[VSFS_DIRECT]; 
 	uint indirect; /* A pointer to a sector of pointers */
 	/* A pointer to a sector of pointers to sectors of pointers. */
 	uint double_indirect;
 } vsfs_inode;
 
 typedef struct directent {
-	char name[124];
+	char name[VSFS_MAX_NAME];
 	int inode_num;
 } directent;
 
@@ -45,7 +49,7 @@ typedef struct vsfs_superblock {
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int init(int start_sector);
+int vsfs_init(int start_sector);
 
 /**
  * Find an inode in a file system. If the inode is found, load it into the dst
@@ -99,4 +103,8 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
  */
 int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src);
 
+/**
+ * Clear the given inode structure.
+ */
+void vsfs_clear(vsfs_inode* node);
 #endif 

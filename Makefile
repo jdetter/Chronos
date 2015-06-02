@@ -24,8 +24,25 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 .PHONY: all
 all: tools chronos.img libs user
 
+chronos.img: kernel/boot/boot-stage1.img \
+		kernel/boot/boot-stage2.img \
+		fs.img
+	dd if=/dev/zero of=chronos.img bs=512 count=2048
+	tools/bin/boot-sign kernel/boot/boot-stage1.img
+	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
+	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
+	dd if=fs.img of=chronos.img bs=512 conv=notrunc seek=64
+
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
+
+fs.img: tools kernel/chronos.o user
+	mkdir -p fs
+	mkdir -p fs/boot
+	mkdir -p fs/bin
+	cp kernel/chronos.o fs/boot/chronos.elf
+	cp -R user/bin/* fs/bin/
+	./tools/bin/mkfs -i 128 -s 262144 -r fs fs.img
 
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
@@ -50,6 +67,6 @@ include lib/makefile.mk
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN)
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img
 
 .DEFAULT: all

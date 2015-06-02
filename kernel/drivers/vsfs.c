@@ -1,10 +1,24 @@
 // VSFS driver
+
+#ifndef VSFS_MKFS 
 #include "types.h"
 #include "stdlib.h"
+#else
+
+typedef unsigned int uint;
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned long ulong;
+
+#include <stdlib.h>
+#include <string.h>
+
+#endif
+
 #include "vsfs.h"
 #include "ata.h"
 
-vsfs_superblock* super;
+vsfs_superblock super;
 int start;
 
 /* Forward declarations */
@@ -29,12 +43,12 @@ void parent_path(char *path, char* dst);
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int init(int start_sector)
+int vsfs_init(int start_sector)
 {
   start = start_sector;
   uchar super_block[512];
   ata_readsect(start_sector, super_block);
-  super = (vsfs_superblock*) super_block;
+  memmove(&super, super_block, sizeof(vsfs_superblock));
   return 0;
 }
 
@@ -77,7 +91,7 @@ int vsfs_lookup(char* path, vsfs_inode* dst)
       }
     }       
     vsfs_inode final_inode[8];
-    ata_readsect(start + 1 + super->dmap + super->imap + (inode_num / 4096), final_inode);
+    ata_readsect(start + 1 + super.dmap + super.imap + (inode_num / 4096), final_inode);
     vsfs_inode ret_inode = final_inode[inode_num % 8];
     memmove(dst, &ret_inode, sizeof(vsfs_inode));
     return inode_num;
@@ -148,15 +162,15 @@ void free_inode(uint inode_num)
 
 void free_block(uint block_num)
 {
-  block_num -= start + 1 + super->imap + super->dmap;
+  block_num -= start + 1 + super.imap + super.dmap;
   uchar free[512];
-  ata_readsect(start + 1 + super->imap + block_num/4096, free);
+  ata_readsect(start + 1 + super.imap + block_num/4096, free);
   uint block_index = block_num % 4096;
   uint block_byte =  free[block_index / 8];
   uchar mask = (1 << (block_index % 8));
   mask = ~mask;
   free[block_index / 8] = block_byte & mask;
-  ata_writesect(start + 1 + super->imap + block_num/4096, free);
+  ata_writesect(start + 1 + super.imap + block_num/4096, free);
 }
 
 /**
@@ -219,17 +233,20 @@ int vsfs_unlink(char* path)
 }
 
 
-int find_free_inode(){
+int find_free_inode(void){
     
   int i;
   uchar bitmap[512];
-  for(i = 0; i < super->imap; i++){
+  for(i = 0; i < super.imap; i++){
     ata_readsect(start + 1 + i, bitmap);
     int j;
     for(j = 0; j < 512; j++){
       if(bitmap[j] != 0xFF){
-        int k;
-        for(k = 0; k < 8; k++){
+        int k = 0;
+	/* Never return inode 0. */
+	if(j == 0 && k == 0) k = 1;
+
+        for(; k < 8; k++){
           if(((1 << k) & bitmap[j]) == 0){
             bitmap[j] |= (1 << k);
             ata_writesect(start + 1 + i, bitmap); 
@@ -246,8 +263,8 @@ int find_free_block(){
 
   int i;
   uchar bitmap[512];
-  for(i = 0; i < super->dmap; i++){
-    ata_readsect(start + 1 + i + super->imap, bitmap);
+  for(i = 0; i < super.dmap; i++){
+    ata_readsect(start + 1 + i + super.imap, bitmap);
     int j;
     for(j = 0; j < 512; j++){
       if(bitmap[j] != 0xFF){
@@ -257,9 +274,9 @@ int find_free_block(){
             bitmap[j] |= (1 << k);
             uchar zero_sect[512];
             memset(zero_sect, 0, 512);
-            ata_writesect(i*512 + j*8 + k + start + 1 + super->imap + super->dmap, zero_sect);
-            ata_writesect(start + 1 + i + super->imap, bitmap);
-            return i*512 + j*8 + k + start + 1 + super->imap + super->dmap;
+            ata_writesect(i*512 + j*8 + k + start + 1 + super.imap + super.dmap, zero_sect);
+            ata_writesect(start + 1 + i + super.imap, bitmap);
+            return i*512 + j*8 + k + start + 1 + super.imap + super.dmap;
           }
         }
       }
@@ -287,8 +304,8 @@ int trailing_slash(char* buff){
 
 int add_block_to_inode(vsfs_inode* inode, uint blocknum)
 {
-  int block_index = inode->size / 512;
-  
+  int block_index = inode->blocks;
+
   if(block_index < 9){
    inode->direct[block_index] = blocknum;
   }
@@ -326,6 +343,8 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum)
     //gg
     return -1;
   }
+
+  inode->blocks++;
   return 0;
 }
 
@@ -397,6 +416,7 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
     int block_num = find_free_block();
     add_block_to_inode(parent, block_num);  
   }
+
   directent entries[4];
   read_block(parent, parent->size / 512 , entries); 
 
@@ -410,6 +430,11 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
   write_block(parent, parent->size / 512, entries);
 
   parent->size += sizeof(directent);
+  /* Increment child's link count */
+  vsfs_inode child_inode;
+  read_inode(inode_num, &child_inode);
+  child_inode.links_count++;
+  write_inode(inode_num, &child_inode);
 
   return 0;
 }
@@ -417,16 +442,16 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
 void write_inode(uint inode_num, vsfs_inode* inode)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  ata_readsect(start + 1 + super->imap + super->dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_readsect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(&inodes[offset], inode, sizeof(vsfs_inode));
-  ata_writesect(start + 1 + super->imap + super->dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_writesect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
 }
 
 void read_inode(uint inode_num, vsfs_inode* inode)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  ata_readsect(start + 1 + super->imap + super->dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_readsect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(inode, &inodes[offset], sizeof(vsfs_inode));
 }
@@ -466,40 +491,50 @@ void parent_path(char *path, char* dst)
  */
 int vsfs_link(char* path, vsfs_inode* new_inode)
 {
+  /* Create a temporary buffer for our path*/
+  char tmp_path[1024];
+  strncpy(tmp_path, path, 1024);
+
+  /* Find the parent directory.*/
   vsfs_inode parent;
-  char* curr = path;
-  while(*(curr) != 0){
-    curr++;
-  }
+  char* curr = tmp_path + strlen(path);
   while(*(curr) != '/'){
     curr--;
   }
   *(curr) = 0;
 
-  int parent_num = vsfs_lookup(path, &parent);
+  /* Check to see if parent is the root */
+  int parent_num = 0;
+  if(strlen(tmp_path) == 0) 
+  {
+     parent_num = 1;
+     read_inode(1, &parent);
+  }  else parent_num = vsfs_lookup(tmp_path, &parent);
+
   if(parent_num != 0){
-    // where to put directent
-    // traverse to get next free inode
     int inode_num = find_free_inode();
     if(inode_num == 0){
       return 1;
-    }
-    else{
+    } else {
       curr++;
       allocate_directent(&parent, curr, inode_num);
       new_inode->links_count = 1;
       new_inode->size = 0;
       new_inode->blocks = 0;
-      write_inode(parent_num,&parent);
+
+      if(new_inode->type == VSFS_DIR)
+      {
+          /* If this is a directory, do . and ..*/
+          allocate_directent(new_inode, ".", inode_num);
+          allocate_directent(new_inode, "..", parent_num);
+      }
+      write_inode(parent_num, &parent);
       write_inode(inode_num, new_inode);
       return 0;
     }
   }
-  else{
-    return 1;
-  }
 
-  return 0;
+  return 1;
 }
 
 /**
@@ -596,10 +631,11 @@ int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
     }
   }
   uint startblock = start / 512;
-  uint endblock = startblock + (sz + 511)/512;
+  uint endblock = startblock + (sz /512);
   uint curr = 0;
   uint currblock = 0;
   uchar block[512];
+
   for(curr = 0; curr < sz; currblock++){
     read_block(node, currblock + startblock, block);
     if(curr == 0){
@@ -619,4 +655,9 @@ int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
     write_block(node, currblock + startblock, block);
   }
   return sz;
+}
+
+void vsfs_clear(vsfs_inode* node)
+{
+	memset(node, 0, sizeof(vsfs_inode));
 }
