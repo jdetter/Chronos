@@ -85,6 +85,11 @@ void pfree(uint pg)
 	head = new_free;
 }
 
+void mappages(uint va, uint sz, pgdir* dir, uchar user)
+{
+
+}
+
 void mappage(uint phy, uint virt, pgdir* dir, uchar user)
 {
 	uint dir_flags = KDIRFLAGS;

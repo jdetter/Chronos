@@ -60,6 +60,12 @@ uint palloc(void);
 void pfree(uint pg);
 
 /**
+ * Maps pages from va to sz. If certain pages are already mapped, they will be
+ * ignored. 
+ */
+void mappages(uint va, uint sz, pgdir* dir, uchar user);
+
+/**
  * Map the page at virtual address virt, to the physical address phy into the
  * page directory dir. This will create entries and tables where needed.
  */
