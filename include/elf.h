@@ -39,11 +39,8 @@ struct elf32_header
 	uint_8 endianess; /* 1 = little, 2 = big */
 	uint_8 version; /* Set to 1 */
 	uint_8 os_abi; /* This is often 0, reguardless of the target platform.*/
-	uint_8 abi_version; /* Further defines abi */
-	uint_32  padding_low4;
-	uint_8 padding_5;
-	uint_8 padding_6;
-	uint_8 padding_7;
+	uint_32 padding_low_abi; /* Further defines abi */
+	uint_32  padding_high;
 	uint_16 e_type; /* See e_type definitions above */	
 	uint_16 e_machine; /* See e_machine definitions above */	
 	uint_32 e_version; /* Set to 1 */	
@@ -88,4 +85,5 @@ struct elf32_program_header
 	uint_32 align; /* The memory alignment requrired by this segment. */
 };
 
+	uint_8 padding_7;
 #endif

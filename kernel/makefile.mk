@@ -37,6 +37,7 @@ KERNEL_CLEAN := \
         kernel/boot/boot-stage1.img \
         kernel/boot/boot-stage1.o \
 	kernel/boot/bootc.o \
+	kernel/boot/bootc_jmp.o \
 	kernel/boot/boot-stage2.img \
 	kernel/boot/boot-stage2.o \
 	kernel/boot/boot-stage2.data \
@@ -60,7 +61,7 @@ KERNEL_LDFLAGS := -nostdlib
 # Set the entry point
 KERNEL_LDFLAGS += --entry=main
 # Set the memory location where the kernel will be placed
-KERNEL_LDFLAGS += --section-start=.text=0x01000000
+KERNEL_LDFLAGS += --section-start=.text=0x0100000
 # KERNEL_LDFLAGS += --omagic
 
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
@@ -88,7 +89,8 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 
 kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS)
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/boot/bootc_jmp.o kernel/boot/bootc_jmp.S
+	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS) kernel/boot/bootc_jmp.o
 	$(OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	

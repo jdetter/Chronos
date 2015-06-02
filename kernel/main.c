@@ -1,8 +1,13 @@
-
 #include "types.h"
 #include "x86.h"
 #include "pic.h"
 #include "pit.h"
+#include "stdlib.h"
+#include "serial.h"
+#include "stdmem.h"
+#include "console.h"
+
+char* loaded = "Welcome to the Chronos kernel!\n";
 
 void main_stack();
 
@@ -10,6 +15,13 @@ void main_stack();
 int main()
 {
 	/* WARNING: we don't have a proper stack right now. */
+	serial_write(loaded, strlen(loaded));
+
+	minit(0x00008000, 0x00070000, 0);
+	cinit();
+	cprintf(loaded);	
+
+	for(;;);
 
 	/* Setup virtual memory and allocate a proper stack. */
 

@@ -210,7 +210,6 @@ PANIC_32:
 	call KEYBOARD_NUM
 	jmp PANIC_32
 
-
 .p2align 2 # All values here are 4 byte-boundary aligned.
 # Our Global Descriptor table for boot-stage1
 gdt_stage1:
