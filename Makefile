@@ -36,6 +36,12 @@ chronos.img: kernel/boot/boot-stage1.img \
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
 
+fs-simple: tools
+	mkdir -p fs
+	echo "file1" > fs/file1.txt
+	echo "Hello, World!" > fs/file2.txt
+	./tools/bin/mkfs -i 128 -s 262144 -r fs fs.img
+
 fs.img: tools kernel/chronos.o user
 	mkdir -p fs
 	mkdir -p fs/boot
@@ -43,6 +49,9 @@ fs.img: tools kernel/chronos.o user
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
 	./tools/bin/mkfs -i 128 -s 262144 -r fs fs.img
+
+fsck: fs.img tools/bin/fsck
+	tools/bin/fsck fs.img
 
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img

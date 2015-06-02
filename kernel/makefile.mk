@@ -78,7 +78,7 @@ kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
 
-kernel/chronos.o: $(LIBS) $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
+kernel/chronos.o: libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS)
 
 kernel/boot/boot-stage1.img: kernel/boot/ata-read.o

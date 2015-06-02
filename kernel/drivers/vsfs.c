@@ -21,8 +21,13 @@ typedef unsigned long ulong;
 vsfs_superblock super;
 int start;
 
+int i_off;
+int imap_off;
+int b_off;
+int bmap_off;
+
 /* Forward declarations */
-int vsfs_path_split(char* path, char dst[][64]);
+int vsfs_path_split(char* path, char* dst[MAX_PATH_DEPTH]);
 void free_inode(uint inode_num);
 void free_block(uint block_num);
 int find_free_inode();
@@ -49,79 +54,114 @@ int vsfs_init(int start_sector)
   uchar super_block[512];
   ata_readsect(start_sector, super_block);
   memmove(&super, super_block, sizeof(vsfs_superblock));
-  return 0;
+  imap_off = start + 1;
+  bmap_off = imap_off + super.imap;
+  i_off = bmap_off + super.dmap;
+  b_off = i_off + (super.inodes / (512 / sizeof(vsfs_inode)));
+
+ return 0;
+}
+
+int vsfs_lookup(char* path_orig, vsfs_inode* dst)
+{
+	char path[strlen(path_orig) + 1];
+	strncpy(path, path_orig, strlen(path_orig) + 1);
+	char* path_split[MAX_PATH_DEPTH];
+	memset(path_split, 0, MAX_PATH_DEPTH);
+	int max_depth = vsfs_path_split(path, path_split);	
+	if(max_depth == 0) return 0;
+	
+	int inode_num = 1;
+	struct vsfs_inode curr_inode;
+	read_inode(1, &curr_inode);
+	int path_pos = 1;
+
+	int entries_per_block = 512 / sizeof(struct directent);
+	char sector[512];
+	struct directent* entries = (struct directent*)sector;
+	while(path_split[path_pos] && path_pos < max_depth)
+	{
+		/* Enumerate the current inode. */
+		int found = 0;
+		int x;
+		for(x = 0;x < curr_inode.blocks;x++)
+		{
+			read_block(&curr_inode, x, sector);
+			int entry;
+			for(entry = 0;entry < entries_per_block; entry++)
+			{
+				if(!strcmp(entries[entry].name, 
+					path_split[path_pos]))
+				{
+					found = 1;
+					
+					path_pos++;
+					/* Get the next inode. */
+					inode_num = entries[entry].inode_num;
+					read_inode(inode_num, &curr_inode);
+
+					/* If were at the end, the break.*/
+					if(path_pos == max_depth) break;
+
+					/* 
+					 * If this isn't a directory, somthing
+					 * is wrong.
+					 */
+					if(curr_inode.type != VSFS_DIR)	
+						return 0;
+					break;
+				}
+			}
+
+			if(found) break;
+		}
+
+		if(!found)
+		{
+			/* No such directory error */
+			return 0;
+		}
+	}
+
+	/* We should be at the final path element now. */
+	memmove(dst, &curr_inode, sizeof(struct vsfs_inode));
+	/* return the inode number we found */
+	return inode_num;
 }
 
 /**
- * Find an inode in a file system. If the inode is found, load it into the dst
- * buffer and return 0. If the inode is not found, return 1.
+ * Splits the path into a 2D array and returns the
+ * count of directories.
  */
-int vsfs_lookup(char* path, vsfs_inode* dst)
-{  
-  char paths[16][64];
-  directent* nextlevel = NULL;
-  if(path[0] == '/'){
-    int depth = vsfs_path_split(path, paths);
-    int inode_num = 1;
-    int k;
-    for(k = 1; k < depth; k++){
-      vsfs_inode curr;
-      read_inode(inode_num, &curr);
-      int i; 
-      int directents = curr.size / sizeof(directent);
-      for(i = 0; i < (curr.size + 511)/512; i++){ 
-        directent entries[4];
-        read_block(&curr, i, entries);
-        int j;
-        for(j = 0; (j < 4) && (directents > 0); j++){
-          if(strcmp(entries[j].name, paths[k]) == 0){
-            nextlevel = &entries[j];
-            inode_num = entries[j].inode_num;
-          } 
-          else{
-            directents--;
-          }
-        }
-        if(directents == 0){
-          return 0;
-        }
-      }
-      if(nextlevel == NULL){
-        return 0;
-      }
-    }       
-    vsfs_inode final_inode[8];
-    ata_readsect(start + 1 + super.dmap + super.imap + (inode_num / 4096), final_inode);
-    vsfs_inode ret_inode = final_inode[inode_num % 8];
-    memmove(dst, &ret_inode, sizeof(vsfs_inode));
-    return inode_num;
-  }
-  else{
-    return 0;
-  }
-  return 0;  
-}
+int vsfs_path_split(char* path, char* dst[MAX_PATH_DEPTH])
+{
+	/* Absolute paths only */
+	if(path[0] != '/') return 0;
+	dst[0] = 0; 
+	if(!strcmp(path, "/"))
+	{
+		dst[1] = 0;
+		return 1;
+	}
+	dst[1] = path + 1;
+	char* c = path + 1;
+	int x;
+	for(x = 2;x < MAX_PATH_DEPTH && *c;)
+	{
+		if(*c == '/')
+		{
+			/* Set *c to zero and increment. */
+			*c = 0;c++;
+			/* Is this the end of the string? */
+			if(!*c) break;
+			/* There is a new section */
+			dst[x] = c;
+			x++;
+		} else c++;
+	}
 
-/**
- * Splits the file/folder path into a 2D array and returns it.
- */
-int vsfs_path_split(char* path, char dst[][64]){
-
-  int i = 0;
-  int j = 0;
-  int k = 0;
-  dst[0][0] = '/';
-  while(path[i] != 0x00){
-    if(path[i] == '/'){
-      j++;
-      k = 0;
-    }
-    else{
-      dst[j][k] = path[i];
-    }
-    i++;
-  }
-  return j;
+	dst[x] = 0;
+	return x;
 }
 
 void free_inode(uint inode_num)
@@ -260,30 +300,45 @@ int find_free_inode(void){
 }
 
 int find_free_block(){
+	uchar zero_sect[512];
+	memset(zero_sect, 0, 512);
 
-  int i;
-  uchar bitmap[512];
-  for(i = 0; i < super.dmap; i++){
-    ata_readsect(start + 1 + i + super.imap, bitmap);
-    int j;
-    for(j = 0; j < 512; j++){
-      if(bitmap[j] != 0xFF){
-        int k;
-        for(k = 0; k < 8; k++){
-          if(((1 << k) & bitmap[j]) == 0){
-            bitmap[j] |= (1 << k);
-            uchar zero_sect[512];
-            memset(zero_sect, 0, 512);
-            ata_writesect(i*512 + j*8 + k + start + 1 + super.imap + super.dmap, zero_sect);
-            ata_writesect(start + 1 + i + super.imap, bitmap);
-            return i*512 + j*8 + k + start + 1 + super.imap + super.dmap;
-          }
-        }
-      }
-    }
-  }
-  return 0;
+	uchar sect[512];
+	int bmap;
+	for(bmap = 0;bmap < super.dmap;bmap++)
+	{
+		/* read the bitmap */
+		ata_readsect(bmap_off + bmap, sect);
 
+		/* Search for a byte, b such that: b != 0xFF */
+	
+		int x;	
+		/* Note: make sure we skip block 0 for debugging. */
+		for(x = 1;x < 512;x++)
+		{
+			uchar val = sect[x];
+			if(val != 0xFF)
+			{
+				/* Found one. Now get the bit. */
+				int bit;
+				for(bit = 0;val & 0x01;bit++)
+					val >>= 1;
+				/* Calculate sector number */
+				int sector_num = 
+					bmap * (512 * 8)
+					+ x * 8
+					+ bit;
+				/* allocate this block. */
+				sect[x] |= 1 << bit;
+				ata_writesect(bmap_off + bmap, sect);
+
+				/* Return the sector.*/
+				return sector_num;
+			}
+		}
+	}
+	
+	return 0;
 }
 
 int trailing_slash(char* buff){
@@ -315,9 +370,9 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum)
       inode->indirect = find_free_block();
     }
     uint indirect_block[128];
-    ata_readsect(inode->indirect, indirect_block);
+    ata_readsect(b_off + inode->indirect, indirect_block);
     indirect_block[ind_index] = blocknum;
-    ata_writesect(inode->indirect, indirect_block);
+    ata_writesect(b_off + inode->indirect, indirect_block);
   }
   else if(block_index < 16521){
     int ind_ind_index = block_index - 137; 
@@ -328,16 +383,16 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum)
     } 
     if(ind_ind_index % 128 == 0){
       uint double_block[128];
-      ata_readsect(inode->double_indirect, double_block);
+      ata_readsect(b_off + inode->double_indirect, double_block);
       double_block[index1] = find_free_block();
-      ata_writesect(inode->double_indirect, double_block);
+      ata_writesect(b_off + inode->double_indirect, double_block);
     }
       uint dindirect[128];
       uint indirect[128];
-      ata_readsect(inode->double_indirect, dindirect);
-      ata_readsect(dindirect[index1], indirect);
+      ata_readsect(b_off + inode->double_indirect, dindirect);
+      ata_readsect(b_off + dindirect[index1], indirect);
       indirect[index2] = blocknum;
-      ata_writesect(dindirect[index1], indirect);
+      ata_writesect(b_off + dindirect[index1], indirect);
   }
   else{
     //gg
@@ -351,13 +406,13 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum)
 int read_block(vsfs_inode* inode, uint block_index, void* dst)
 {
   if(block_index < 9){
-   ata_readsect(inode->direct[block_index], dst);
+   ata_readsect(b_off + inode->direct[block_index], dst);
   }
   else if(block_index < 137){
     int ind_index = block_index - 9;
     uint indirect_block[128];
-    ata_readsect(inode->indirect, indirect_block);
-    ata_readsect(indirect_block[ind_index], dst);
+    ata_readsect(b_off + inode->indirect, indirect_block);
+    ata_readsect(b_off + indirect_block[ind_index], dst);
   }
   else if(block_index < 16521){
     int ind_ind_index = block_index - 137; 
@@ -365,9 +420,9 @@ int read_block(vsfs_inode* inode, uint block_index, void* dst)
     int index2 = ind_ind_index % 128;
     uint dindirect[128];
     uint indirect[128];
-    ata_readsect(inode->double_indirect, dindirect);
-    ata_readsect(dindirect[index1], indirect);
-    ata_readsect(indirect[index2], dst);
+    ata_readsect(b_off + inode->double_indirect, dindirect);
+    ata_readsect(b_off + dindirect[index1], indirect);
+    ata_readsect(b_off + indirect[index2], dst);
   }
   else{
     //gg
@@ -378,14 +433,14 @@ int read_block(vsfs_inode* inode, uint block_index, void* dst)
 
 int write_block(vsfs_inode* inode, uint block_index, void* src)
 {
-  if(block_index < 9){
-   ata_writesect(inode->direct[block_index], src);
+  if(block_index < VSFS_DIRECT){
+   ata_writesect(b_off + inode->direct[block_index], src);
   }
   else if(block_index < 137){
     int ind_index = block_index - 9;
     uint indirect_block[128];
-    ata_readsect(inode->indirect, indirect_block);
-    ata_writesect(indirect_block[ind_index], src);
+    ata_readsect(b_off + inode->indirect, indirect_block);
+    ata_writesect(b_off + indirect_block[ind_index], src);
   }
   else if(block_index < 16521){
     int ind_ind_index = block_index - 137; 
@@ -393,32 +448,36 @@ int write_block(vsfs_inode* inode, uint block_index, void* src)
     int index2 = ind_ind_index % 128;
     uint dindirect[128];
     uint indirect[128];
-    ata_readsect(inode->double_indirect, dindirect);
-    ata_readsect(dindirect[index1], indirect);
-    ata_writesect(indirect[index2], src);
-  }
-  else{
-    //gg
+    ata_readsect(b_off + inode->double_indirect, dindirect);
+    ata_readsect(b_off + dindirect[index1], indirect);
+    ata_writesect(b_off + indirect[index2], src);
+  } else {
+    // file is too large
     return -1;
   }
   return 0; 
 }
 
-
-int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
-
+/**
+ * Add a directory entry to a file.
+ */
+int allocate_directent(vsfs_inode* parent, char* name, uint inode_num)
+{
   directent new_directory;
+  memset(&new_directory, 0, sizeof(directent));
 
-  memmove(&new_directory.name, name, 124);
+  strncpy((char*)&new_directory.name, name, VSFS_MAX_NAME);
   new_directory.inode_num = inode_num;
+  int block = parent->size / 512;
 
-  if(parent->size % 512 == 0){
+  if(parent->size % 512 == 0)
+  {
     int block_num = find_free_block();
     add_block_to_inode(parent, block_num);  
   }
 
-  directent entries[4];
-  read_block(parent, parent->size / 512 , entries); 
+  directent entries[512 / sizeof(directent)];
+  read_block(parent, block , entries); 
 
   int i;
   for(i = 0; i < (512 / sizeof(directent)); i++){
@@ -427,9 +486,9 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
     }
   }
   memmove(&entries[i], &new_directory, sizeof(directent));
-  write_block(parent, parent->size / 512, entries);
-
   parent->size += sizeof(directent);
+  write_block(parent, block, entries);
+
   /* Increment child's link count */
   vsfs_inode child_inode;
   read_inode(inode_num, &child_inode);
@@ -442,16 +501,16 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num){
 void write_inode(uint inode_num, vsfs_inode* inode)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  ata_readsect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_readsect(i_off + inode_num/(512/sizeof(vsfs_inode)), inodes);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(&inodes[offset], inode, sizeof(vsfs_inode));
-  ata_writesect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_writesect(i_off + inode_num/(512/sizeof(vsfs_inode)), inodes);
 }
 
 void read_inode(uint inode_num, vsfs_inode* inode)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  ata_readsect(start + 1 + super.imap + super.dmap + inode_num/(512/sizeof(vsfs_inode)), inodes);
+  ata_readsect(i_off + inode_num/(512/sizeof(vsfs_inode)), inodes);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(inode, &inodes[offset], sizeof(vsfs_inode));
 }
@@ -483,12 +542,6 @@ void parent_path(char *path, char* dst)
   *(dst) = 0;
 }
 
-/**
- * Add the inode new_inode to the file system at path. Make sure to add the
- * directory entry in the parent directory. If there are no more inodes
- * available in the file system, or there is any other error return 1.
- * Return 0 on success.
- */
 int vsfs_link(char* path, vsfs_inode* new_inode)
 {
   /* Create a temporary buffer for our path*/
@@ -511,10 +564,12 @@ int vsfs_link(char* path, vsfs_inode* new_inode)
      read_inode(1, &parent);
   }  else parent_num = vsfs_lookup(tmp_path, &parent);
 
-  if(parent_num != 0){
+  if(parent_num != 0)
+  {
     int inode_num = find_free_inode();
-    if(inode_num == 0){
-      return 1;
+    if(inode_num == 0)
+    {
+      return -1;
     } else {
       curr++;
       allocate_directent(&parent, curr, inode_num);
@@ -524,17 +579,19 @@ int vsfs_link(char* path, vsfs_inode* new_inode)
 
       if(new_inode->type == VSFS_DIR)
       {
+          write_inode(parent_num, &parent);
+          write_inode(inode_num, new_inode);
           /* If this is a directory, do . and ..*/
           allocate_directent(new_inode, ".", inode_num);
           allocate_directent(new_inode, "..", parent_num);
       }
       write_inode(parent_num, &parent);
       write_inode(inode_num, new_inode);
-      return 0;
+      return inode_num;
     }
   }
 
-  return 1;
+  return -1;
 }
 
 /**
@@ -586,15 +643,20 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
   }
   char* dst_c = (char*) dst;
   uint startblock = start / 512;
-  uint endblock = startblock + (sz + 511)/512;
+  uint endblock = (start + sz) / 512;
   uint curr = 0;
   uint currblock = 0;
   uchar block[512];
   for(curr = 0; curr < sz; currblock++){
     read_block(node, currblock + startblock, block);
-    if(curr == 0){
+    if(startblock == endblock)
+    {
       uint start_read = start % 512;
-      memmove(dst_c + curr, block + start_read, 512 - start_read);
+      memmove(dst_c, block + start_read, sz);
+      curr = sz;
+    } else if(curr == 0){
+      uint start_read = start % 512;
+      memmove(dst_c, block + start_read, 512 - start_read);
       curr += (512 - start_read);
     }
     else if(currblock == endblock){
@@ -623,37 +685,46 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
 int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src)
 {
   if((start + sz) > node->size){
-    int newblocks = ((start + sz) - (node->size) + 511)/512;
+    int newblocks = ((start + sz + 511)/512) - node->blocks;
     int i;        
     for(i = 0; i < newblocks; i++){
       int new_num = find_free_block();
       add_block_to_inode(node, new_num);
     }
+
+    /* Update metadata */
+    node->size = start + sz;
   }
+
   uint startblock = start / 512;
-  uint endblock = startblock + (sz /512);
+  uint endblock = (start + sz) / 512;
   uint curr = 0;
   uint currblock = 0;
   uchar block[512];
 
   for(curr = 0; curr < sz; currblock++){
     read_block(node, currblock + startblock, block);
-    if(curr == 0){
+    if(startblock == endblock)
+    {
+      uint start_write = start % 512;
+      memmove(block + start_write, src, sz);
+      curr = sz;
+    } else if(curr == 0){
       uint start_write = start % 512;
       memmove(block + start_write, src, 512 - start_write);
       curr += (512 - start_write);
     }
     else if(currblock == endblock){
-      memmove(block, src + curr, (start + sz) % 512);
+      memmove(block, src + curr, sz - curr);
       curr = sz;
-      break;
-    }
-    else{
+    } else{
       memmove(block, src + curr, 512);
       curr += 512;
     }
+
     write_block(node, currblock + startblock, block);
   }
+
   return sz;
 }
 

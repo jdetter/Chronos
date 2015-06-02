@@ -2,8 +2,8 @@
 #define _CONSOLE_H_
 
 #define CONSOLE_DEFAULT_COLOR 0x07
-#define CONSOLE_ROWS 80
-#define CONSOLE_COLS 25
+#define CONSOLE_ROWS 25
+#define CONSOLE_COLS 80
 //#define CONSOLE_COLOR_BASE ((char*)0xB0000)
 #define CONSOLE_COLOR_BASE ((char*)0xB8000)
 

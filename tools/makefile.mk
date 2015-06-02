@@ -1,6 +1,7 @@
 TOOLS := boot-sign \
 	mkfs \
-	disk-part
+	disk-part \
+	fsck
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
 
@@ -19,6 +20,8 @@ tools/bin/mkfs:
 	$(CC) $(CFLAGS) -I kernel/drivers/ -c -o tools/bin/vsfs.o tools/bin/vsfs.c
 	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o
 	
+tools/bin/fsck: tools/bin/mkfs
+	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o
 
 tools/bin/boot-sign:
 	$(CC) $(CFLAGS) -o tools/bin/boot-sign tools/boot-sign.c

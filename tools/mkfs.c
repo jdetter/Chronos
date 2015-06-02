@@ -79,7 +79,8 @@ int add_dir(char* directory, char* path)
 				new_inode.perm = s.st_mode & 511;
 				new_inode.type = VSFS_FILE;
 				/* Link the file */
-				vsfs_link(path_buffer, &new_inode);
+				int inode_num = 
+					vsfs_link(path_buffer, &new_inode);
 				/* Copy data */
 				char contents[s.st_size];
 				int reg_file = open(name_buffer, O_RDWR);
@@ -97,6 +98,8 @@ int add_dir(char* directory, char* path)
 				}
 			
 				vsfs_write(&new_inode, 0, s.st_size, contents);
+				/* Update metadata */
+				write_inode(inode_num, &new_inode);
 			} else {
 				printf("Unknown file: %s\n", name);
 			}
@@ -144,10 +147,10 @@ int ata_writesect(uint sect, void* src)
 }
 
 
-int main(int argc, char** argv)
+int main(int argc, char** argv_old)
 {
-	//char* argv[] = {"", "-i", "128","-s", "262144", "-r", "fs", "fs.img"};
-	//argc = 8;
+	char* argv[] = {"", "-i", "128","-s", "262144", "-r", "fs", "fs.img"};
+	argc = 8;
 	memset(zero, 0, SECTSIZE);
 
 	if(argc == 1)
@@ -265,6 +268,7 @@ int main(int argc, char** argv)
 	vsfs_clear(&root_i);
 	root_i.perm = 0644;
 	root_i.links_count = 1;
+	root_i.type = VSFS_DIR;
 
 	int next_free;
 	if((next_free = find_free_inode()) != 1)
@@ -273,9 +277,8 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	allocate_directent(&root_i, ".", 0);
-	allocate_directent(&root_i, "..", 0);
-
+	allocate_directent(&root_i, ".", 1);
+	allocate_directent(&root_i, "..", 1);
 	write_inode(1, &root_i);	
 	add_dir(root, "/");
 

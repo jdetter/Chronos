@@ -9,6 +9,7 @@
 
 #define VSFS_DIRECT 9
 #define VSFS_MAX_NAME 124
+#define MAX_PATH_DEPTH 16
 
 /**
  * A disk representation of an inode.
@@ -53,7 +54,7 @@ int vsfs_init(int start_sector);
 
 /**
  * Find an inode in a file system. If the inode is found, load it into the dst
- * buffer and return 0. If the inode is not found, return 1.
+ * buffer and return the inode number. If not found, return 0.
  */
 int vsfs_lookup(char* path, vsfs_inode* dst);
 
@@ -67,8 +68,8 @@ int vsfs_unlink(char* path);
 /**
  * Add the inode new_inode to the file system at path. Make sure to add the
  * directory entry in the parent directory. If there are no more inodes
- * available in the file system, or there is any other error return 1.
- * Return 0 on success.
+ * available in the file system, or there is any other error return -1.
+ * Return the new inode number on success.
  */
 int vsfs_link(char* path, vsfs_inode* new_inode);
 

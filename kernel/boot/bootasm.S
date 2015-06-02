@@ -198,7 +198,7 @@ READ_SECT:
 	movl 	%eax, -4(%ebp) # current sector we are reading 
         movl 	%ecx, -8(%ebp) # current location in memory
 
-	test 	$STAGE2_FINAL_SECT, %eax
+	cmpl 	$STAGE2_FINAL_SECT, %eax
 	jne 	READ_SECT
 STAGE2_JMP:
 	ljmp    $(KERNEL_CODE << 3), $STAGE2_ADDR

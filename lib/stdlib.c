@@ -85,9 +85,9 @@ int strcmp(const char* str1, const char* str2)
 		else return -1; /* str1 comes before str2 */
 	}
 
-	if(*str1 || *str2) return 0;
-	else if(*str1) return -1;
-	else return 1;
+	if(!(*str1) && !(*str2)) return 0;
+	else if(*str1) return 1;
+	else return -1;
 }
 
 void memmove(void* dst, void* src, uint sz)
@@ -215,34 +215,51 @@ float atof(char* str)
 	return 0;
 }
 
-void itoa(int val, char* dst, uint sz, uint radix)
+void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 {
-	memset(dst, 0, sz);
+	char dst[128];
+	memset(dst, 0, 128);
+	memset(dst_c, 0, sz);
 	if(sz <= 1) return;
 
-	if(val == 0)
+	if(val_signed == 0)
 	{
-		*dst = '0';
+		dst_c[0] = '0';
+		dst_c[1] = 0;
 		return;
 	}
 
-	int x;
-	for(x = 0;x < sz;x++)
+	int neg = 0;
+	if(val_signed < 0)
 	{
-		if(x == 0 && val < 0)
-		{
-			dst[x] = '-';
-			val = -val;
-			continue;
-		}
+		neg = 1;
+	}
 
+	if(radix == 16) neg = 0;
+	uint val = val_signed;
+
+	int x;
+	for(x = 0;x < 128 && val > 0;x++)
+	{
 		int mod = val % radix;
 		char character = mod + '0';
-		if(mod > 10)
-			character = mod - 10 + 'A';
+		if(mod >= 10)
+			character = (mod - 10) + 'A';
 		dst[x] = character;
+		val /= radix;
 	}
-	dst[sz - 1] = 0;
+
+	/* Flip the number into the buffer. */
+	x = 0;
+	if(neg)
+	{
+		dst_c[0] = 0;
+		x = 1;	
+	}
+	int pos = strlen(dst) - 1;
+	for(;x < sz && pos >= 0;x++, pos--)
+		dst_c[x] = dst[pos];
+	dst_c[sz - 1] = 0;
 }
 
 int snprintf(char* dst, uint sz, char* fmt, ...)
@@ -262,9 +279,25 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 				dst[dst_index] = '%';
 			} else if(fmt[fmt_index + 1] == 'd')
 			{
+				char num_buff[64];
 				int val = *((int*)va_arg(list, arg));
-				itoa(val, dst + dst_index, sz - dst_index, 10);
-			}
+				itoa(val, num_buff, 64, 10);
+				int num_pos;
+				for(num_pos = 0;num_buff[num_pos];num_pos++)
+					dst[dst_index + num_pos] = 
+						num_buff[num_pos];
+				dst_index += num_pos - 1;
+			} else if(fmt[fmt_index + 1] == 'x')
+                        {
+                                char num_buff[64];
+                                int val = *((int*)va_arg(list, arg));
+                                itoa(val, num_buff, 64, 16);
+                                int num_pos;
+                                for(num_pos = 0;num_buff[num_pos];num_pos++)
+                                        dst[dst_index + num_pos] =
+                                                num_buff[num_pos];
+                                dst_index += num_pos - 1;
+                        }
 			fmt_index++;
 		} else dst[dst_index] = fmt[fmt_index];
 	}
