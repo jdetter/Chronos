@@ -29,4 +29,4 @@ tools/bin/boot-sign:
 tools/bin/disk-part:
 	$(CC) $(CFLAGS) -o tools/bin/disk-part tools/disk-part.c
 tools/bin/mkvect:
-	$(CC) $(CFLAGS) -o tools/bin/mkvect tools/mkvect.c -I kernel -I include
+	$(CC) $(CFLAGS) -o tools/bin/mkvect tools/mkvect.c -I kernel -I tools/bin

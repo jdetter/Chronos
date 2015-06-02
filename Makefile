@@ -53,6 +53,9 @@ fs.img: tools kernel/chronos.o user
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img
 
+kernel/idt.c:
+	tools/bin/mkvect > kernel/idt.c
+
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
@@ -76,6 +79,6 @@ include lib/makefile.mk
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img kernel/idt.c
 
 .DEFAULT: all

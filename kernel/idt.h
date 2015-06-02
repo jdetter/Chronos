@@ -5,7 +5,7 @@
 #define GATE_USER 	(0x00)
 #define GATE_TASK_CONST	(0x8500)
 
-#define MKTASK_GATE(tss, opt) {0, (uint_16)tss, (opt | GATE_TASK_CONST), 0}
+#define MKTASK_GATE(tss, opt) {0, ((uint_16)tss), (opt | GATE_TASK_CONST), 0}
 
 struct task_gate
 {
@@ -30,7 +30,7 @@ struct int_gate
 
 #define GATE_TRAP_CONST (0x8F00)
 #define MKTRAP_GATE(ss, offset, opt) \
-        {((uint_16)offset), (ss), ((opt) | GATE_INT_CONST), \
+        {((uint_16)offset), (ss), ((opt) | GATE_TRAP_CONST), \
         ((uint_16)(offset >> 8))}
 
 struct trap_gate
