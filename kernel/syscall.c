@@ -14,37 +14,46 @@ int sys_fork(void)
 	return 0;
 }
 
-int sys_wait(void)
+int sys_wait(int pid)
 {
 	return 0;
 }
 
-int sys_exec(void)
+int sys_exec(const char* path, const char** argv)
 {
 	return 0;
 }
 
 void sys_exit(void)
 {
-	
+  int i;
+  for(i = 0; i < MAXFILES; i++){
+    if(rproc->file_descriptors[i]->type != 0x00){
+      sys_close(i);
+    }  
+  }
+  sched();       	
 }
 
-int sys_open(void)
+int sys_open(const char* path)
 {
 	return 0;
 }
 
-int sys_close(void)
+int sys_close(int fd)
+{
+  if(fd >= MAXFILES){return -1};
+  rproc->file_descriptors[fd]->type = 0x00;
+  rproc->file_descruptors[fd]->inode = NULL;  
+  return 0;
+}
+
+int sys_read(int fd, char* dst, uint sz)
 {
 	return 0;
 }
 
-int sys_read(void)
-{
-	return 0;
-}
-
-int sys_write(void)
+int sys_write(int fd, char* dst, uint sz)
 {
 	return 0;
 }
