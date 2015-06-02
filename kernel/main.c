@@ -6,6 +6,7 @@
 #include "serial.h"
 #include "stdmem.h"
 #include "console.h"
+#include "boot_pic.h"
 
 char* loaded = "Welcome to the Chronos kernel!\n";
 
@@ -19,12 +20,12 @@ int main()
 
 	minit(0x00008000, 0x00070000, 0);
 	cinit();
-	cprintf(loaded);	
+	//cprintf(loaded);	
 
+	display_boot_pic();
 	for(;;);
 
 	/* Setup virtual memory and allocate a proper stack. */
-
 
 	main_stack();
 	/* main_stack doesn't return. */
