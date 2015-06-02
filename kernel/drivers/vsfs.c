@@ -641,6 +641,7 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst)
   if((start + sz) > node->size){
     return -1;
   }
+
   char* dst_c = (char*) dst;
   uint startblock = start / 512;
   uint endblock = (start + sz) / 512;

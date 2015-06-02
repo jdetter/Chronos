@@ -45,19 +45,24 @@
 #define PG_FLG10(pg) (pg & 0x400)
 #define PG_FLG11(pg) (pg & 0x800)
 
-#define PG_PRESENT_SET(pg) (pg | 0x1)
-#define PG_RW_SET(pg) (pg | 0x2)
-#define PG_USER_SET(pg) (pg | 0x4)
-#define PG_WTWB_SET(pg) (pg | 0x8)
-#define PG_DCACHE_SET(pg) (pg | 0x10)
-#define PG_ACCESSED_SET(pg) (pg | 0x20)
+#define PGDIR_PRESENT	(1 << 0x1)
+#define PGDIR_RW 	(1 << 0x2)
+#define PGDIR_USER	(1 << 0x4)
+#define PGDIR_WTWB 	(1 << 0x8)
+#define PGDIR_DCACHE 	(1 << 0x10)
+#define PGDIR_ACCESSED	(1 << 0x20)
 /* Reserved */
-#define PG_SIZE_SET(pg) (pg | 0x80)
-#define PG_GLBL_SET(pg) (pg | 0x100)
+#define PGDIR_SIZE	(1 << 0x80)
+#define PGDIR_GLBL	(1 << 0x100)
 
-#define PG_FLG9_SET(pg) (pg | 0x200)
-#define PG_FLG10_SET(pg) (pg | 0x400)
-#define PG_FLG11_SET(pg) (pg | 0x800)
+#define PGTBL_PRESENT   (1 << 0x1)
+#define PGTBL_RW        (1 << 0x2)
+#define PGTBL_USER      (1 << 0x4)
+#define PGTBL_WTWB      (1 << 0x8)
+#define PGTBL_CACHE_DIS (1 << 0x10)
+#define PGTBL_ACCESSED  (1 << 0x20)
+#define PGTBL_DIRTY     (1 << 0x40)
+/* Reserved */
 
 #define PGSIZE 4096
 
@@ -99,6 +104,17 @@ outsl(int port, const void *addr, int cnt)
                "=S" (addr), "=c" (cnt) :
                "d" (port), "0" (addr), "1" (cnt) :
                "cc");
+}
+
+static inline void
+lgdt(uint table_addr, int size)
+{
+	volatile ushort descriptor[3];
+	descriptor[0] = size - 1;
+	descriptor[1] = (uint)((uint)table_addr & 0xFFFF);
+	descriptor[2] = (uint)(((uint)table_addr >> 16) & 0xFFFF);
+
+	asm volatile("lgdt (%0)" : : "r" (descriptor));
 }
 
 /**

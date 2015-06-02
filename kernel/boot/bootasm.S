@@ -213,9 +213,9 @@ PANIC_32:
 .p2align 2 # All values here are 4 byte-boundary aligned.
 # Our Global Descriptor table for boot-stage1
 gdt_stage1:
-  SEG_NULLASM                            # null seg
-  SEG_ASM(SEG_EXE, 0x0, 0xffffffff)   	# code seg
-  SEG_ASM(0, 0x0, 0xffffffff)         	# data seg
+  SEG_NULLASM                            	# null seg
+  SEG_ASM(SEG_EXE, SEG_READ, SEG_KERN, 0x0, 0xffffffff)   # code seg
+  SEG_ASM(SEG_DATA, SEG_WRITE, SEG_KERN, 0x0, 0xffffffff) # data seg
 
 gdt_descriptor:
 	.word (gdt_descriptor - gdt_stage1 - 1) 	# 2 bytes

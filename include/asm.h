@@ -17,7 +17,7 @@
 #define SEG_READ 	0x02
 #define SEG_WRITE 	0x02
 
-#define SEG_DEFAULT_ACCESS (SEG_KERN | SEG_PRES | SEG_READ | SEG_CONF)
+#define SEG_DEFAULT_ACCESS (SEG_PRES | SEG_CONF)
 #define SEG_DEFAULT_FLAGS (0xC0)
 /**
  * Page granularity and 32bit entries are enabled by default.
@@ -31,13 +31,12 @@
 	.byte 0; \
 	.byte 0
 
-#define SEG_ASM(exe_data, base, limit) 				\
+#define SEG_ASM(exe_data, read_write, priv, base, limit) 	\
 	.word ((limit >> 12) & 0xFFFF);				\
 	.word (base & 0xFFFF);					\
 	.byte ((base >> 16) & 0xFF);				\
-	.byte ((SEG_DEFAULT_ACCESS | exe_data) & 0xFF);		\
+	.byte ((SEG_DEFAULT_ACCESS | exe_data | read_write | priv) & 0xFF); \
 	.byte (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF); 	\
 	.byte ((base >> 24) & 0xFF)
-
 
 #endif

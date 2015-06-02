@@ -45,6 +45,7 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.rodata \
 	kernel/boot/boot-stage2.text \
 	kernel/boot/boot-stage2.bss \
+	kernel/asm.o \
 	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \
@@ -80,8 +81,8 @@ kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
 
-kernel/chronos.o: libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS)
-	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS)
+kernel/chronos.o: libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) kernel/asm.o
+	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS) kernel/asm.o
 
 kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
@@ -103,6 +104,9 @@ kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
 
 kernel/boot/ata-read.o:
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) -I include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c
+
+kernel/asm.o:
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/asm.o kernel/asm.S
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<

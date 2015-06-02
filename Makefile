@@ -4,7 +4,7 @@ AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := -m elf_i386 --omagic
-CFLAGS := -ggdb -m32 -Werror -Wall
+CFLAGS := -ggdb -m32 -Werror -Wall -gdwarf-2
 ASFLAGS += -ggdb -m32 -Werror -Wall
 QEMU := qemu-system-i386
 

@@ -1,7 +1,8 @@
 TOOLS := boot-sign \
 	mkfs \
 	disk-part \
-	fsck
+	fsck \
+	mkvect
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
 
@@ -27,3 +28,5 @@ tools/bin/boot-sign:
 	$(CC) $(CFLAGS) -o tools/bin/boot-sign tools/boot-sign.c
 tools/bin/disk-part:
 	$(CC) $(CFLAGS) -o tools/bin/disk-part tools/disk-part.c
+tools/bin/mkvect:
+	$(CC) $(CFLAGS) -o tools/bin/mkvect tools/mkvect.c -I kernel -I include
