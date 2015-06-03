@@ -53,7 +53,10 @@ struct proc
 	struct proc* parent; /* The process that spawned this process */
 	struct vsfs_inode* cwd; /* The current working directory */
 	char name[MAX_PROC_NAME];
-	pgdir* pgdir;
+
+	pgdir* pgdir; /* The page directory for the process */
+	uchar* k_stack; /* A pointer to the kernel stack for this process. */
+	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
 };
 
 /**
@@ -77,5 +80,7 @@ void sched(void);
  * this loop. (lock required)
  */
 void scheduler(void);
+
+
 
 #endif

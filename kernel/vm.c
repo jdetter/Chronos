@@ -51,21 +51,25 @@ uint vm_init(uint start, uint end)
  * 0x00200000 -> 0x00EFFFFF Kernel paging space
  * 0x00100000 -> 0x001FFFFF Kernel binary space
  * 0x00000000 -> 0x000FFFFF User process space (this changes between procs) 
+ *
+ * Segment positions are defined in chronos.h (see SEG_KERNEL_* and SEG_USER_*)
+ *
  */
 
 
-#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 5)
-struct vm_segment_descriptor table[] ={
+#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 6)
+struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG_NULL, 
 	MKVMSEG(SEG_KERN, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG(SEG_USER, SEG_EXE , SEG_READ,  0x0, KVM_START),
-	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, KVM_START)
+	MKVMSEG(SEG_USER, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
+	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
+	MKVMSEG_NULL /* This will become an active TSS gate*/
 };
 
 void vm_seg_init(void)
 {
-	lgdt((uint)table, GDT_SIZE);	
+	lgdt((uint)global_descriptor_table, GDT_SIZE);
 }
 
 uint palloc(void)

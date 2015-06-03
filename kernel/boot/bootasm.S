@@ -1,5 +1,8 @@
 #include "asm.h"
 
+#define _CHRONOS_ASMONLY_
+#include "chronos.h"
+
 # Load the kernel and jump into it.
 
 # When the i386 starts, it will be in Real mode (16 bit). We need to
@@ -16,8 +19,6 @@
 #define PROTECT_EN 0x01
 
 # segments in the gdt, see below
-#define KERNEL_CODE		0x01
-#define KERNEL_DATA		0x02
 #define STAGE2_ADDR		0x7E00
 
 #define KEYBOARD_LIGHT_COMM	0xED
@@ -79,7 +80,7 @@ set_A20_DONE:
 	call	KEYBOARD_ALL_16
 
 # Long jump into 32 bit mode =D
-	ljmp	$(KERNEL_CODE << 3), $protected_mode	
+	ljmp	$(SEG_KERNEL_CODE << 3), $protected_mode	
 
 KEYBOARD_WAIT_16:
 	inb     $KEYBOARD_COMM, %al
@@ -157,7 +158,7 @@ KEYBOARD_RESET:
 
 protected_mode:
 	# Setup the data selectors with the correct index into the gdt.
-	movw    $(KERNEL_DATA << 3), %ax    # Our data segment selector
+	movw    $(SEG_KERNEL_DATA << 3), %ax    # Our data segment selector
   	movw    %ax, %ds                # -> DS: Data Segment
   	movw    %ax, %es                # -> ES: Extra Segment
   	movw    %ax, %ss                # -> SS: Stack Segment
@@ -201,7 +202,7 @@ READ_SECT:
 	cmpl 	$STAGE2_FINAL_SECT, %eax
 	jne 	READ_SECT
 STAGE2_JMP:
-	ljmp    $(KERNEL_CODE << 3), $STAGE2_ADDR
+	ljmp    $(SEG_KERNEL_CODE << 3), $STAGE2_ADDR
 
 	jmp PANIC_32
 

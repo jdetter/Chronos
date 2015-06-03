@@ -3,6 +3,7 @@
 #include "tty.h"
 #include "stdlock.h"
 #include "vm.h"
+#include "trap.h"
 #include "proc.h"
 #include "panic.h"
 #include "stdlib.h"

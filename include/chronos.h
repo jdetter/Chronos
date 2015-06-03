@@ -17,7 +17,14 @@
 #define FSEEK_SET	0x1
 #define FSEEK_END	0x2
 
-#ifndef _SYSCALL_ASMONLY_
+/* Segment descriptions */
+#define SEG_KERNEL_CODE	0x01
+#define SEG_KERNEL_DATA 0x02
+#define SEG_USER_CODE   0x03
+#define SEG_USER_DATA   0x04
+#define SEG_TSS		0x05
+
+#ifndef _CHRONOS_ASMONLY_
 int fork(void);
 int wait(int pid);
 int exec(const char* path, const char** argv);

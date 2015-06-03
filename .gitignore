@@ -17,4 +17,4 @@
 *.img
 *.vdi
 fs/
-kernel/idt.c
+kernel/idt.S

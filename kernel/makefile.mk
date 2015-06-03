@@ -7,7 +7,8 @@ KERNEL_OBJECTS := \
 	vm \
 	kcond \
 	syscall \
-	boot_pic
+	boot_pic \
+	trap
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -46,6 +47,7 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.text \
 	kernel/boot/boot-stage2.bss \
 	kernel/asm.o \
+	kernel/idt.S \
 	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \
@@ -81,7 +83,7 @@ kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
 
-kernel/chronos.o: libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) kernel/asm.o
+kernel/chronos.o: kernel/idt.S libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) kernel/asm.o
 	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS) kernel/asm.o
 
 kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
@@ -106,10 +108,13 @@ kernel/boot/ata-read.o:
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) -I include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c
 
 kernel/asm.o:
-	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/asm.o kernel/asm.S
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/asm.o kernel/asm.S
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<
 
 kernel/drivers/%.o: kernel/drivers/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS)-c -o $@ $<
+
+kernel/idt.S: tools
+	tools/bin/mkvect > kernel/idt.S

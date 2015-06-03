@@ -1,12 +1,13 @@
 #include "types.h"
 #include "idt.h"
+#include "trap.h"
 
-void interrupt_handler()
+void trap_init(void)
 {
 
 }
 
-void trap_handler()
+void trap_handler(struct trap_frame* tf)
 {
 
 }
