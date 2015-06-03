@@ -35,6 +35,6 @@ void console_update_cursor(int pos);
 /**
  * Copy to buffer to video memory.
  */
-void conole_print_buffer(char* buffer, uchar colored);
+void console_print_buffer(char* buffer, uchar colored);
 
 #endif

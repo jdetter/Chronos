@@ -101,6 +101,16 @@ void console_init(void)
 	}
 }
 
+void console_print_buffer(char* buffer, uchar colored)
+{
+	uchar* vid_mem = CONSOLE_COLOR_BASE;
+	if(!colored)
+		vid_mem = CONSOLE_MONO_BASE;
+	uint sz = CONSOLE_ROWS * CONSOLE_COLS;
+	if(colored) sz *= 2;
+	memmove(vid_mem, buffer, sz);
+}
+
 //The Index Register is mapped to ports 0x3D5 or 0x3B5.
 //The Data Register is mapped to ports 0x3D4 or 0x3B4.
 /*
