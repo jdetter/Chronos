@@ -76,9 +76,10 @@ include kernel/makefile.mk
 include user/makefile.mk
 include tools/makefile.mk
 include lib/makefile.mk
+include user/lib/makefile.mk
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN)
 
 .DEFAULT: all

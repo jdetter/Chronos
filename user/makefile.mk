@@ -16,6 +16,7 @@ USER_SOURCE := $(addsuffix .c, $(USER_TARGETS))
 # Specify clean targets
 USER_CLEAN := \
 	user/bin \
+	user/syscall.o \
 	$(USER_OBJECTS)
 
 # Include files
@@ -38,7 +39,7 @@ USER_LDFLAGS += --section-start=.text=0x1000
 # USER_LDFLAGS += --omagic
 
 .PHONY: user
-user: libs user-syscall user-bin $(USER_OBJECTS) $(USER_BINARIES) 
+user: user-lib libs user-syscall user-bin $(USER_OBJECTS) $(USER_BINARIES) 
 	
 .PHONY: user-bin
 user-bin: 
@@ -52,4 +53,4 @@ user/%.o: user/%.c
 	$(CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
 user/bin/%: user/%.o
-	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o
+	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o $(USER_LIB_OBJECTS)

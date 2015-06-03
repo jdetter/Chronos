@@ -5,6 +5,7 @@
 #include "stdlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "file.h"
 #include "chronos.h"
 #include "stdlock.h"
 #include "vsfs.h"
@@ -207,7 +208,7 @@ int sys_write(int fd, char* src, uint sz)
   return sz;
 }
 
-int fseek(int fd, int offset, int whence)
+int lseek(int fd, int offset, int whence)
 {
   if(rproc->file_descriptors[fd].type != FD_TYPE_FILE){
     return -1;
@@ -225,4 +226,9 @@ int fseek(int fd, int offset, int whence)
   if(seek_pos < 0){ seek_pos = 0;}
   rproc->file_descriptors[fd].inode_pos = seek_pos;
   return seek_pos;
+}
+
+void* mmap(void* hint, uint sz, int protection)
+{
+	return NULL;
 }

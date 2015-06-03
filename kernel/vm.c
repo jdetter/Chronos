@@ -2,6 +2,7 @@
 #include "x86.h"
 #include "asm.h"
 #include "vsfs.h"
+#include "file.h"
 #include "chronos.h"
 #include "tty.h"
 #include "stdlock.h"
@@ -194,7 +195,9 @@ void switch_uvm(struct proc* p)
 		(uint_8)(limit >> 16) | flag;
 	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
 
-
+	struct task_segment* ts = (struct task_segment*)p->k_stack;
+	ts->SS0 = SEG_KERNEL_DATA << 3;
+	ts->ESP0 = base + PGSIZE;
 
 	ltr(SEG_TSS << 3);
 	__enable_paging__(p->pgdir);
