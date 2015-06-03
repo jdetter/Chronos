@@ -62,8 +62,8 @@ void spawn_tty(tty_t t)
 	p->gid = 0; /* group is also root */
 	memset(p->file_descriptors, 0, 
 		sizeof(struct file_descriptor) * MAX_FILES);
-	p->stack_sz = 0;
-	p->heap_sz = 0;
+	//p->stack_sz = 0;
+	//p->heap_sz = 0;
 	p->block_type = PROC_BLOCKED_NONE;
 	p->b_condition = NULL;
 	p->b_pid = 0;

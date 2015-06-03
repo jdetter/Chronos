@@ -13,11 +13,113 @@
 #include "elf.h"
 #include "stdlib.h"
 #include "syscall.h"
+#include "serial.h"
 
 extern slock_t ptable_lock; /* Process table lock */
 extern struct proc* ptable; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
+/* Is the given address safe to access? */
+uchar syscall_addr_safe(uchar* address)
+{
+	if(rproc->stack_end <= (uint)address 
+		&& (uint)address < rproc->stack_start
+		&& rproc->heap_end > (uint)address 
+		&& (uint)address >= rproc->heap_start)
+	{
+		/* Invalid memory access */
+		return 1;
+	}
+	/* Valid memory access */
+	return 0;
+}
+
+/**
+ * Get an integer argument. The arg_num determines the offset to the argument.
+ */
+int syscall_get_int(int* dst, uint* esp, uint arg_num)
+{
+	arg_num++;
+	esp += arg_num;
+	uchar* num_start = (uchar*)esp;
+	uchar* num_end = (uchar*)esp + 3;
+
+	if(syscall_addr_safe(num_start) || syscall_addr_safe(num_end))
+		return 1;
+
+	*dst = *esp;
+	return 0;
+}
+
+/**
+ * Get a string argument. The arg_num determines the offset to the argument.
+ */
+int syscall_get_str(char* dst, uint sz, uint* esp, uint arg_num)
+{
+	arg_num++;
+	esp += arg_num; /* This is a pointer to the string we need */
+	uchar* str = (uchar*)esp;
+	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz - 1))
+		return 1;
+
+	memmove(dst, str, sz);
+	return 0;
+}
+
+int syscall_handler(uint* esp)
+{
+	/* Get the number of the system call */
+	int syscall_number = -1;
+	if(syscall_get_int(&syscall_number, esp, 0)) return 1;
+
+	switch(syscall_number)
+	{
+		case SYS_fork:
+			break;
+		case SYS_wait:
+			break;
+		case SYS_exec:
+			break;
+		case SYS_exit:
+			break;
+		case SYS_open:
+			break;
+		case SYS_close:
+			break;
+		case SYS_read:
+			break;
+		case SYS_write:
+			break;
+		case SYS_lseek:
+			break;
+		case SYS_mmap:
+			break;
+		case SYS_chdir:
+			break;
+		case SYS_cwd:
+			break;
+		case SYS_create:
+			break;
+		case SYS_mkdir:
+			break;
+		case SYS_rmdir:
+			break;
+		case SYS_rm:
+			break;
+		case SYS_mv:
+			break;
+		case SYS_fstat:
+			break;
+		case SYS_wait_s:
+			break;
+		case SYS_wait_t:
+			break;
+		case SYS_signal:
+			break;
+	}
+	
+	return 0; /* Syscall successfully handled. */
+}
 
 int sys_fork(void)
 { 

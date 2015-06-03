@@ -1,14 +1,27 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
-#define PGROUNDDOWN(pg)	(pg & ~(PGSIZE - 1))	
+#define PGROUNDDOWN(pg)	((pg) & ~(PGSIZE - 1))	
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
 
+/**
+ * MEMORY MAPPINGS
+ *
+ * These are the memory mappings that are used by chronos.
+ */
 #define KVM_START 	0x00100000 /* Where the kernel is loaded */
-#define KVM_END		0x00EFFFFF /* Where the address space ends */
+#define KVM_END		0x1F400000 /* Where the address space ends */
 #define KVM_MALLOC	0x00200000 /* Where the kvm allocator starts */
 #define KVM_MAX		0xFFFFFFFF /* Maximum address */
+
+#define KVM_KMALLOC_S	0x1F500000 /* Start of kmalloc */
+#define KVM_KMALLOC_E	0x1F510000 /* end of kmalloc */
+
+#define KVM_COLOR_START	0x20000000
+#define KVM_COLOR_SZ	4000 /* Size of color memory */
+#define KVM_MONO_START	0x20001000	
+#define KVM_MONO_SZ	4000 /* Size of mono chrome memory */	
 
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
@@ -32,7 +45,7 @@ struct vm_segment_descriptor
 /**
  * Initilize a free list of pages from address start to address end.
  */
-uint vm_init(uint start, uint end);
+uint vm_init(void);
 
 /**
  * Initilize kernel segments
@@ -52,10 +65,20 @@ uint palloc(void);
 void pfree(uint pg);
 
 /**
+ * Setup the kernel portion of the page table.
+ */
+void setup_kvm(pgdir* dir);
+
+/**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
  * ignored. 
  */
 void mappages(uint va, uint sz, pgdir* dir, uchar user);
+
+/**
+ * Directly map the pages into the page table.
+ */
+void dir_mappages(uint start, uint end, pgdir* dir, uchar user);
 
 /**
  * Map the page at virtual address virt, to the physical address phy into the

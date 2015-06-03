@@ -4,15 +4,27 @@
 /* Chronos traps */
 #define TRAP_SC 	0x80 /* System call trap*/
 
-#define SYS_fork 	0x0
-#define SYS_wait 	0x1
-#define SYS_exec 	0x2
-#define SYS_exit 	0x3
-#define SYS_open 	0x4
-#define SYS_close 	0x5
-#define SYS_read 	0x6
-#define SYS_write 	0x7
-#define SYS_mmap 	0x8
+#define SYS_fork 	0x00
+#define SYS_wait 	0x01
+#define SYS_exec 	0x02
+#define SYS_exit 	0x03
+#define SYS_open 	0x04
+#define SYS_close 	0x05
+#define SYS_read 	0x06
+#define SYS_write 	0x07
+#define SYS_lseek	0x08
+#define SYS_mmap 	0x09
+#define SYS_chdir 	0x0A
+#define SYS_cwd 	0x0B
+#define SYS_create 	0x0C
+#define SYS_mkdir 	0x0D
+#define SYS_rmdir 	0x0E
+#define SYS_rm 		0x0F
+#define SYS_mv 		0x10
+#define SYS_fstat 	0x11
+#define SYS_wait_s	0x12
+#define SYS_wait_t	0x13
+#define SYS_signal 	0x14
 
 /* From where to seek in lseek */
 #define FSEEK_CUR	0x0
@@ -171,12 +183,18 @@ int fstat(const char* path, struct stat* dst);
 /**
  * Wait on the given condition variable c and release the spin lock.
  */
-int cond_wait_s(struct cond* c, struct slock* lock);
+int wait_s(struct cond* c, struct slock* lock);
 
 /**
  * Wait on the given condition variable c and release the ticket lock.
  */
-int cond_wait_t(struct cond* c, struct tlock* lock);
+int wait_t(struct cond* c, struct tlock* lock);
+
+/**
+ * Signal (single wakeup) a condition variable.
+ */
+int signal(struct cond* c);
+
 #endif
 
 #endif

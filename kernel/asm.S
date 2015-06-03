@@ -7,10 +7,10 @@
 #define CR0_PGENABLE (1<<31)
 .globl __enable_paging__
 __enable_paging__:
-	push	%ebp
+	pushl	%ebp
 	movl	%esp, %ebp
 
-	movl	12(%ebp), %eax
+	movl	8(%ebp), %eax
 	movl	%eax, %cr3 # set the pgdir base register
 
 	# Enable paging
@@ -82,3 +82,23 @@ trap_return:
 
 	# Restore the stack pointer, esp and EFLAGS, finish context switch.
 	iret
+
+.globl fake_trap
+fake_trap:
+	pushl 	%ebp
+	movl	%esp, %ebp
+
+# Arguments
+	pushl $0x02
+
+# Sycall number
+	pushl $0x01
+
+	pushl $0
+	pushl %esp
+	int $0x80
+	
+	movl	%ebp, %esp
+	popl	%ebp
+
+	ret

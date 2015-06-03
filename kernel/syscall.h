@@ -1,6 +1,7 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
+int syscall_handler(uint* esp);
 int sys_close(int fd);
 int sys_fork(void);
 int sys_wait(int pid);

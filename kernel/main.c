@@ -16,21 +16,28 @@
 #include "x86.h"
 
 char* loaded = "Welcome to the Chronos kernel!\n";
-char* str_vm = "Initilizing Virtual Memory...\t\t\t";
-char* str_stack = "Creating kernel stack...\t\t\t";
-char* str_gdt = "Loading Global Descriptor table...\t\t";
-char* str_kmalloc = "Initilizing kmalloc...\t\t\t\t";
-char* str_display = "Starting display driver...\t\t\t";
-char* str_idt = "Installing Interrupt Descriptor table...\t";
-char* str_pic = "Starting Programmable Interrupt Controller Driver...\t";
-char* str_pit = "Starting Programmable Interrupt Timer Driver...\t";
-char* str_int = "Enabling Interrupts...\t\t\t";
+char* str_vm = "Initilizing Virtual Memory...\t\t\t\t\t\t";
+char* str_stack = "Creating kernel stack...\t\t\t\t\t\t";
+char* str_gdt = "Loading Global Descriptor table...\t\t\t\t\t";
+char* str_kmalloc = "Initilizing kmalloc...\t\t\t\t\t\t\t";
+char* str_display = "Starting display driver...\t\t\t\t\t\t";
+char* str_idt = "Installing Interrupt Descriptor table...\t\t\t\t";
+char* str_pic = "Starting Programmable Interrupt Controller Driver...\t\t\t";
+char* str_pit = "Starting Programmable Interrupt Timer Driver...\t\t\t\t";
+char* str_int = "Enabling Interrupts...\t\t\t\t\t\t\t";
+char* str_paging = "Enabling kernel paging...\t\t\t\t\t\t";
 
 char* str_ok = "[ OK ]\n";
 char* str_fail = "[FAIL]\n";
 
+extern struct proc* rproc;
+void fake_trap(void);
+
+
 void __set_stack__(uint addr);
 void main_stack(void);
+
+extern uint k_stack;
 
 /* Entry point for the kernel */
 int main(void)
@@ -40,7 +47,7 @@ int main(void)
 	/* WARNING: we don't have a proper stack right now. */
 	/* Get vm up */
 	serial_write(str_vm, strlen(str_vm));
-	vm_init(KVM_MALLOC, KVM_END);
+	vm_init();
 	serial_write(str_ok, strlen(str_ok));
 
 	/* Setup proper stack */
@@ -48,6 +55,7 @@ int main(void)
 	uint new_stack = palloc();
 	new_stack += PGSIZE;
 	__set_stack__(new_stack);
+	k_stack = new_stack;
 
 	main_stack();
 	serial_write(str_fail, strlen(str_fail));
@@ -60,7 +68,6 @@ int main(void)
 void main_stack(void)
 {
 	serial_write(str_ok, strlen(str_ok));
-
 	/* We now have a proper kernel stack */
 
 	/* Install global descriptor table */
@@ -68,15 +75,13 @@ void main_stack(void)
         vm_seg_init();
 	serial_write(str_ok, strlen(str_ok));
 
+	serial_write(str_paging, strlen(str_paging));
+	switch_kvm();
+	serial_write(str_ok, strlen(str_ok));
+	
 	/* Bring up kmalloc. */
 	serial_write(str_kmalloc, strlen(str_kmalloc));
-        minit(0x00008000, 0x00070000, 0);
-	serial_write(str_ok, strlen(str_ok));
-
-	/* Start display driver */
-	serial_write(str_display, strlen(str_display));
-        //cinit();
-        //display_boot_pic();
+        minit(KVM_KMALLOC_S, KVM_KMALLOC_E, 0);
 	serial_write(str_ok, strlen(str_ok));
 
 	/* Install interrupt descriptor table */
@@ -91,11 +96,22 @@ void main_stack(void)
 	
 	/* Enable PIT */
         //serial_write(str_pit, strlen(str_pit));
-        pit_init();
+        //pit_init();
         //serial_write(str_ok, strlen(str_ok));
 
+	serial_write(str_int, strlen(str_int));
 	asm volatile("sti");	
+	serial_write(str_ok, strlen(str_ok));
+
+	/* Setup a fake process */
+	struct proc p;
+	memset(&p, 0, sizeof(struct proc));
+	p.stack_start = k_stack;
+	p.stack_end = k_stack + PGSIZE;
+	rproc = &p;
+
+	fake_trap();
+	
 	/* Force an interrupt */
-	//fault();
 	for(;;);
 }

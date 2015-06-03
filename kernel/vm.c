@@ -6,62 +6,95 @@
 #include "stdlock.h"
 #include "chronos.h"
 #include "tty.h"
+#include "trap.h"
 #include "proc.h"
 #include "vm.h"
 #include "stdlib.h"
 #include "panic.h"
+#include "console.h"
 
 #define KDIRFLAGS (PGDIR_PRESENT | PGDIR_RW)
 #define KTBLFLAGS (PGTBL_PRESENT | PGTBL_RW)
 #define UDIRFLAGS (PGDIR_PRESENT | PGDIR_RW | PGDIR_USER)
 #define UTBLFLAGS (PGTBL_PRESENT | PGTBL_RW | PGTBL_USER)
+#define REGION_COUNT 0x3
+#define MAPPING_COUNT 0x2
 
-void __enable_paging__(uint* pgdir);
-pgdir* kernel_pgdir;
-
-struct vm_free_node
+struct vm_free_node{uint next;};
+struct kvm_region {uint start; uint end;};
+struct kvm_region free_regions[] =
 {
-	uint next;
+	{0x00000500, 0x00007BFF},
+	{0x00007E00, 0x0007FFFF},
+	{KVM_MALLOC, KVM_END} /* 500 MB boundary*/
 };
 
+struct kvm_mapping {uint virt; uint phy; uint sz;};
+struct kvm_mapping hardware_mappings[] = 
+{
+	{KVM_COLOR_START, (uint)CONSOLE_COLOR_BASE_ORIG, KVM_COLOR_SZ},
+	{KVM_MONO_START, (uint)CONSOLE_MONO_BASE_ORIG, KVM_MONO_SZ}
+};
+
+void vm_add_pages(uint start, uint end);
+void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user);
+void __enable_paging__(uint* pgdir);
+void __set_stack__(uint addr);
+
+uint k_pages; /* How many pages are left? */
+uint k_stack; /* Kernel stack */
+pgdir* kernel_pgdir; /* Kernel page directory */
 struct vm_free_node* head;
 
-uint vm_init(uint start, uint end)
+uint vm_init(void)
+{
+	k_pages = 0;
+	head = NULL;
+	int x;
+	for(x = 0;x < REGION_COUNT;x++)
+		vm_add_pages(free_regions[x].start, free_regions[x].end);
+	
+	/* Initilize the kernel page table */
+	kernel_pgdir = (pgdir*)palloc();
+	setup_kvm(kernel_pgdir);
+	
+	/* make sure kmalloc has been mapped into memory. */
+	mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, 
+			kernel_pgdir, 0);
+
+	/* Do hardware mappings */
+	for(x = 0;x < MAPPING_COUNT;x++)
+		mapping(hardware_mappings[x].phy,
+				hardware_mappings[x].virt,
+				hardware_mappings[x].sz,
+				kernel_pgdir, 0);
+
+	return k_pages;
+}
+
+/* Take pages from start to end and add them to the free list. */
+void vm_add_pages(uint start, uint end)
 {
 	/* Make sure the start and end are page aligned. */
-	start = PGROUNDDOWN(start);
+	start = PGROUNDDOWN(start + PGSIZE - 1);
 	end = PGROUNDDOWN(end);
-
 	/* There must be at least one page. */
-	if(end - start < PGSIZE) return 0;
-	
-	/* Set the start of the list */
-	head = (struct vm_free_node*)start;
-	struct vm_free_node* curr = head;
-	uint addr = start + PGSIZE; /* The address of the next page */
-	for(;addr <= (end - PGSIZE);addr += PGSIZE)
-	{
-		curr->next = addr;
-		curr = (struct vm_free_node*)(((uchar*)curr) + PGSIZE);
-	}
-
-	curr->next = 0; /* Set the end of the list */
-
-	/* Return the amount of pages added to the list */
-	return (end - start) / PGSIZE;
+	if(end - start < PGSIZE) return;
+	int x;
+	for(x = start;x != end;x += PGSIZE) pfree(x);
 }
 
 /**
  * Here is the memory map for chronos:
  *
- * 0x00200000 -> 0x00EFFFFF Kernel paging space
  * 0x00100000 -> 0x001FFFFF Kernel binary space
  * 0x00000000 -> 0x000FFFFF User process space (this changes between procs) 
+ *
+ * See above for paging memory locations.
  *
  * Segment positions are defined in chronos.h (see SEG_KERNEL_* and SEG_USER_*)
  *
  */
-
 
 #define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 6)
 struct vm_segment_descriptor global_descriptor_table[] ={
@@ -81,6 +114,7 @@ void vm_seg_init(void)
 uint palloc(void)
 {
 	if(head == NULL) panic("No more free pages");
+	k_pages--;
 	uint addr = (uint)head;
 	head = (struct vm_free_node*)head->next;
 	memset((uchar*)addr, 0, PGSIZE);
@@ -90,6 +124,7 @@ uint palloc(void)
 void pfree(uint pg)
 {
 	if(pg == 0) panic("Free null page.\n");
+	k_pages++;
 	struct vm_free_node* new_free = (struct vm_free_node*)pg;
 	new_free->next = (uint)head;
 	head = new_free;
@@ -98,12 +133,44 @@ void pfree(uint pg)
 void mappages(uint va, uint sz, pgdir* dir, uchar user)
 {
 	/* round va + sz up to a page */
-	uint end = (va + sz + PGSIZE - 1) & ~PGSIZE;
+	uint end = (va + sz + PGSIZE - 1) & ~(PGSIZE - 1);
 	uint start = PGROUNDDOWN(va);
 	if(end <= start) return;
 	uint x;
 	for(x = start;x != end;x += PGSIZE)
 		findpg(x, 1, dir, user);
+}
+
+void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
+{
+	start = PGROUNDDOWN(start);
+	end = PGROUNDDOWN(end);
+	uint x;
+	for(x = start;x != end;x += PGSIZE)
+		mappage(x, x, dir, user);
+}
+
+void setup_kvm(pgdir* dir)
+{
+	uint start = PGROUNDDOWN(KVM_START);
+	uint end = (KVM_END + PGSIZE - 1) & ~(PGSIZE - 1);
+	dir_mappages(start, end, kernel_pgdir, 0);
+}
+
+void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user)
+{
+	phy = PGROUNDDOWN(phy);
+	virt = PGROUNDDOWN(virt);
+	uint end_phy = PGROUNDDOWN(phy + sz + PGSIZE - 1);
+	uint end_virt = PGROUNDDOWN(virt + sz + PGSIZE - 1);
+	uint pages = end_phy - phy;
+	if(end_virt - virt > end_phy - phy)
+		pages = end_virt - virt;
+	pages /= PGSIZE;
+
+	uint x;
+	for(x = 0;x < pages;x++)
+		mappage(phy + x, virt + x, dir, user);
 }
 
 void mappage(uint phy, uint virt, pgdir* dir, uchar user)
@@ -135,14 +202,14 @@ void mappage(uint phy, uint virt, pgdir* dir, uchar user)
 
 uint findpg(uint virt, int create, pgdir* dir, uchar user)
 {
-        uint dir_flags = KDIRFLAGS;
-        uint tbl_flags = KTBLFLAGS;
+	uint dir_flags = KDIRFLAGS;
+	uint tbl_flags = KTBLFLAGS;
 
-        if(user)
-        {
-                dir_flags = UDIRFLAGS;
-                tbl_flags = UTBLFLAGS;
-        }
+	if(user)
+	{
+		dir_flags = UDIRFLAGS;
+		tbl_flags = UTBLFLAGS;
+	}
 
 	virt = PGROUNDDOWN(virt);
 	uint dir_index = PGDIRINDEX(virt);
@@ -153,7 +220,7 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user)
 	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
 	uint page;
 	if(!(page = tbl[tbl_index]))
-                page = tbl[tbl_index] = palloc() | tbl_flags;
+		page = tbl[tbl_index] = palloc() | tbl_flags;
 
 	return page;
 }
@@ -182,6 +249,7 @@ void freepgdir(pgdir* dir)
 
 void switch_kvm(void)
 {
+	//__set_stack__(k_stack);
 	__enable_paging__(kernel_pgdir);
 }
 
@@ -207,4 +275,9 @@ void switch_uvm(struct proc* p)
 
 	ltr(SEG_TSS << 3);
 	__enable_paging__(p->pgdir);
+
+	/* Switch to the user's stack */
+	__set_stack__((uint)p->tf->espx);
+	/* Do the trap return */
+	asm("jmp trap_return");
 }

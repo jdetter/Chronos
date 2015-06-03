@@ -14,7 +14,8 @@ int main(int argc, char** argv)
 	{
 		printf(".globl handle_int_%d\n", x);
 		printf("handle_int_%d:\n", x);
-		printf("\tpushl $0\n");
+		if(x != 3)
+			printf("\tpushl $0\n");
 		printf("\tpushl $%d\n", x);
 		printf("\tjmp mktf\n");
 	}

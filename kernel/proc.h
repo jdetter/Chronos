@@ -45,8 +45,23 @@ struct proc
 	struct file_descriptor file_descriptors[MAX_FILES];
 	
 	uint state; /* The state of the process */
-	uint stack_sz; /* Size of the stack in bytes. */
-	uint heap_sz; /* Size of the heap in bytes. */
+	
+	/**
+	 * Security note: The kernel should never try to access memory that
+	 * is outside of:
+	 *     ->   stack_end <= x < stack_start
+	 *     ->   heap_end > x >= heap_start
+	 *
+	 * Accesses outside of these ranges could cause page faults or other
+	 * types of faults.
+	 */
+	
+	/* Stack start will be greater than stack end */
+	uint stack_start; /* The high memory, start of the stack */
+	uint stack_end; /* Size of the stack in bytes. */
+	/* Heap end will be greater than heap start. */
+	uint heap_start; /* The low memory, start of the heap */
+	uint heap_end; /* Size of the heap in bytes. */
 
 	uchar block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */

@@ -7,7 +7,8 @@
 /* IA32 Traps numbers from the reference */
 #define TRAP_DE 0x00 /* Divide Error (DIV and IDIV instructions) */
 #define TRAP_DB 0x01 /* Debug (code or data reference) */
-#define TRAP_BP 0x02 /* Break received */
+#define TRAP_N1 0x02 /* Non maskable interrupt */
+#define TRAP_BP 0x03 /* Break received */
 #define TRAP_OF 0x04 /* Overflow caught */
 #define TRAP_BR 0x05 /* BOUND Range Exceeded (BOUND Instruction) */
 #define TRAP_UD 0x06 /* Invlid Opcode (Invalid instruction) */
@@ -45,23 +46,23 @@
 #define PG_FLG10(pg) (pg & 0x400)
 #define PG_FLG11(pg) (pg & 0x800)
 
-#define PGDIR_PRESENT	(1 << 0x1)
-#define PGDIR_RW 	(1 << 0x2)
-#define PGDIR_USER	(1 << 0x4)
-#define PGDIR_WTWB 	(1 << 0x8)
-#define PGDIR_DCACHE 	(1 << 0x10)
-#define PGDIR_ACCESSED	(1 << 0x20)
+#define PGDIR_PRESENT	(1 << 0x0)
+#define PGDIR_RW 	(1 << 0x1)
+#define PGDIR_USER	(1 << 0x2)
+#define PGDIR_WTWB 	(1 << 0x4)
+#define PGDIR_DCACHE 	(1 << 0x8)
+#define PGDIR_ACCESSED	(1 << 0x10)
 /* Reserved */
-#define PGDIR_SIZE	(1 << 0x80)
-#define PGDIR_GLBL	(1 << 0x100)
+#define PGDIR_SIZE	(1 << 0x40)
+#define PGDIR_GLBL	(1 << 0x80)
 
-#define PGTBL_PRESENT   (1 << 0x1)
-#define PGTBL_RW        (1 << 0x2)
-#define PGTBL_USER      (1 << 0x4)
-#define PGTBL_WTWB      (1 << 0x8)
-#define PGTBL_CACHE_DIS (1 << 0x10)
-#define PGTBL_ACCESSED  (1 << 0x20)
-#define PGTBL_DIRTY     (1 << 0x40)
+#define PGTBL_PRESENT   (1 << 0x0)
+#define PGTBL_RW        (1 << 0x1)
+#define PGTBL_USER      (1 << 0x2)
+#define PGTBL_WTWB      (1 << 0x4)
+#define PGTBL_CACHE_DIS (1 << 0x8)
+#define PGTBL_ACCESSED  (1 << 0x10)
+#define PGTBL_DIRTY     (1 << 0x20)
 /* Reserved */
 
 #define PGSIZE 4096
