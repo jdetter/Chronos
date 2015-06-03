@@ -10,14 +10,14 @@ typedef struct cond cond_t;
 
 struct slock
 {
-	uchar val;
+	uint val;
 };
 typedef struct slock slock_t;
 
 struct tlock
 {
-        uint next_ticket;
-	uint currently_serving;
+        int next_ticket;
+	int currently_serving;
 };
 typedef struct tlock tlock_t;
 
