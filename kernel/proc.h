@@ -4,6 +4,7 @@
 /* The amount of processes in the ptable */
 #define PTABLE_SIZE	50
 #define MAX_PROC_NAME 	0x20
+#define MAX_PATH_LEN	0x60
 
 #define FD_TYPE_NULL 	0x00
 #define FD_TYPE_STDIN 	0x01
@@ -53,6 +54,7 @@ struct proc
 	struct proc* parent; /* The process that spawned this process */
 	struct vsfs_inode* cwd; /* The current working directory */
 	char name[MAX_PROC_NAME];
+	char cwd[MAX_PATH_LEN]; /* Current working directory */
 
 	pgdir* pgdir; /* The page directory for the process */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */

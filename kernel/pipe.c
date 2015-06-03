@@ -1,5 +1,1 @@
-
-
-
-
-int write()
+int write();
