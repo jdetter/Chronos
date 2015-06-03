@@ -9,16 +9,16 @@
 #define PORT_PIT_CHANNEL_2_DATA 0x42
 #define PORT_PIT_COMMAND 	0x43
 
-void pitinit(void)
+void pit_init(void)
 {
 	/* The command we will send */
 	uchar command = 0;
 	/* Set the channel */
-	command |= 6 << 0; /* Channel 0 */
+	command |= 0 << 6; /* Channel 0 */
 	/* Access mode */
-	command |= 4 << 3; /* Lo/Hi mode */
+	command |= 3 << 4; /* Lo/Hi mode */
 	/* Output mode */
-	command |= 1 << 2; /* Rate generator */
+	command |= 2 << 1; /* Rate generator */
 	/* BCD / Binary */
 	command |= 0; /* Input is binary, not BCD */
 
@@ -26,7 +26,7 @@ void pitinit(void)
 	outb(PORT_PIT_COMMAND, command);
 
 	/* How many ticks / second do you want? */
-	uint ticks = 0;
+	uint ticks = 1;
 
 	/* Calculate the correct divisor. */
 	uint divisor = TIMER_FREQ / ticks;

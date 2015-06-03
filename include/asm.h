@@ -17,6 +17,8 @@
 #define SEG_READ 	0x02
 #define SEG_WRITE 	0x02
 
+#define SEG_SZ		0x40
+
 #define SEG_DEFAULT_ACCESS (SEG_PRES | SEG_CONF)
 #define SEG_DEFAULT_FLAGS (0xC0)
 /**

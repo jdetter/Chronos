@@ -1,9 +1,6 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
-typedef uint pgdir;
-typedef uint pgtbl;
-
 #define PGROUNDDOWN(pg)	(pg & ~(PGSIZE - 1))	
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
@@ -21,11 +18,6 @@ typedef uint pgtbl;
         ((SEG_DEFAULT_ACCESS | exe_data | read_write | priv) & 0xFF), \
         (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF),     \
         ((base >> 24) & 0xFF)}
-
-#define KCODE_SEG 0x01
-#define KDATA_SEG 0x02
-#define UCODE_SEG 0x03
-#define UDATA_SEG 0x04
 
 struct vm_segment_descriptor
 {
@@ -92,6 +84,6 @@ void switch_kvm(void);
 /**
  * Switch to a user's page table and restore the context.
  */
-void switch_uvm(pgdir* dir);
+void switch_uvm(struct proc* p);
 
 #endif

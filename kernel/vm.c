@@ -1,6 +1,11 @@
 #include "types.h"
 #include "x86.h"
 #include "asm.h"
+#include "vsfs.h"
+#include "chronos.h"
+#include "tty.h"
+#include "stdlock.h"
+#include "proc.h"
 #include "vm.h"
 #include "stdlib.h"
 #include "panic.h"
@@ -64,7 +69,7 @@ struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
 	MKVMSEG(SEG_USER, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG_NULL /* This will become an active TSS gate*/
+	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, 0x0)
 };
 
 void vm_seg_init(void)
@@ -173,8 +178,24 @@ void switch_kvm(void)
 	__enable_paging__(kernel_pgdir);
 }
 
-void switch_uvm(pgdir* dir)
+void switch_uvm(struct proc* p)
 {
-	__enable_paging__(dir);
+	/* Set the task segment to point to the process's stacks. */
+	uint base = (uint)p->k_stack;
+	uint limit = sizeof(struct task_segment);
+	uint access = SEG_DEFAULT_ACCESS | SEG_WRITE;
+	uint flag = SEG_SZ;
 
+	global_descriptor_table[SEG_TSS].limit_1 = (uint_16) limit;
+	global_descriptor_table[SEG_TSS].base_1 = (uint_16) base;
+	global_descriptor_table[SEG_TSS].base_2 = (uint_8)(base>>16);
+	global_descriptor_table[SEG_TSS].type = access;
+	global_descriptor_table[SEG_TSS].flags_limit_2 = 
+		(uint_8)(limit >> 16) | flag;
+	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
+
+
+
+	ltr(SEG_TSS << 3);
+	__enable_paging__(p->pgdir);
 }

@@ -14,4 +14,7 @@ typedef unsigned short uint_16;
 typedef unsigned int uint_32;
 typedef unsigned long uint_64;
 
+typedef uint pgdir;
+typedef uint pgtbl;
+
 #endif

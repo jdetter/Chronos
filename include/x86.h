@@ -117,6 +117,17 @@ lgdt(uint table_addr, int size)
 	asm volatile("lgdt (%0)" : : "r" (descriptor));
 }
 
+static inline void
+lidt(uint table_addr, int size)
+{
+	volatile ushort descriptor[3];
+        descriptor[0] = size - 1;
+        descriptor[1] = (uint)((uint)table_addr & 0xFFFF);
+        descriptor[2] = (uint)(((uint)table_addr >> 16) & 0xFFFF);
+
+        asm volatile("lidt (%0)" : : "r" (descriptor));
+}
+
 /**
  * Disable interrupts.
  */
@@ -131,6 +142,14 @@ static inline void cli(void)
 static inline void sti(void)
 {
 	asm volatile("sti");
+}
+
+/**
+ * Load the task selector register.
+ */
+static inline void ltr(ushort ts)
+{
+	asm volatile("ltr %0" : : "r" (ts));
 }
 
 /**

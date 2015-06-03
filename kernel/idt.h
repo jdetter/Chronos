@@ -1,6 +1,8 @@
 #ifndef _IDT_H_
 #define _IDT_H_
 
+void trap_init(void);
+
 #define GATE_KERNEL 	(0x3 << 13)
 #define GATE_USER 	(0x00)
 #define GATE_TASK_CONST	(0x8500)

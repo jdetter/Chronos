@@ -4,7 +4,7 @@
 /**
  * Initilize the master and slave PICs and set their offsets.
  */
-void picinit(void);
+void pic_init(void);
 
 /**
  * Disable the master and slave PICs. This is needed in order to use APIC.

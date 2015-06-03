@@ -7,6 +7,6 @@
  * WARNING: This will generate spurious interrupts so make sure interrupts
  * 	are disabled before initilizing pit. 
  */
-void pitinit(void);
+void pit_init(void);
 
 #endif

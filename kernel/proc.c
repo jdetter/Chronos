@@ -2,9 +2,9 @@
 #include "vsfs.h"
 #include "tty.h"
 #include "stdlock.h"
+#include "proc.h"
 #include "vm.h"
 #include "trap.h"
-#include "proc.h"
 #include "panic.h"
 #include "stdlib.h"
 
@@ -65,5 +65,5 @@ void scheduler(void)
     curr_index++;
   } 
   rproc = &ptable[curr_index];	
-  switch_uvm(rproc->pgdir);
+  switch_uvm(rproc);
 }

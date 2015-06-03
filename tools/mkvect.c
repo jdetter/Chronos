@@ -1,21 +1,31 @@
 #include "types.h"
+//#include "proc.h"
 #undef NULL
 
 #include <stdio.h>
-#include "vm.h"
+//#include "vm.h"
 
 int main(int argc, char** argv)
 {
-	puts(".globl trap_handler");
+	puts(".globl mktf");
 	
 	int x;
 	for(x = 0;x < 255;x++)
 	{
 		printf(".globl handle_int_%d\n", x);
 		printf("handle_int_%d:\n", x);
-		printf("\tpush %d\n", x);
-		printf("\tcall trap_handler\n");
+		printf("\tpushl $0\n");
+		printf("\tpushl $%d\n", x);
+		printf("\tjmp mktf\n");
 	}
+
+	printf(".data\n");
+	printf(".globl trap_handlers\n");
+	printf("trap_handlers:\n");
+	
+	/* Create array */
+	for(x = 0;x < 255;x++)
+		printf("\t.long handle_int_%d\n", x);
 
 	return 0;
 }

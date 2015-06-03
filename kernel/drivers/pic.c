@@ -15,7 +15,7 @@
 /* Put the PIC into 8086 mode */
 #define COMMAND_PIC_8086_MODE		0x01
 
-void picinit(void)
+void pic_init(void)
 {
 	/* 
 	 * Because x86 PIC IRQs collide with the x86 hardware interrupts, we 
@@ -99,6 +99,8 @@ void pic_enable(uint interrupt)
 	uchar curr_mask = inb(port);
 	/* Create the new mask */
 	curr_mask &= ~(1 << interrupt);
+	/* Write the new mask. */
+	outb(port, curr_mask);
 }
 
 void pic_eoi(uint interrupt)
