@@ -34,8 +34,8 @@ char kbd_getc(){
 	if(scancode & 0x80){
 		released = 1;
 		scancode &= 127;
-		cprintf("Key released:\n");
-	} else cprintf("Key pressed:\n");
+		//cprintf("Key released:\n");
+	} //else cprintf("Key pressed:\n");
 	
 	if(scancode == lShift || scancode == rShift){// LShift or Rshift pressed and not released
 		if(released){

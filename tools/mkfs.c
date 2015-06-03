@@ -147,10 +147,10 @@ int ata_writesect(uint sect, void* src)
 }
 
 
-int main(int argc, char** argv_old)
+int main(int argc, char** argv)
 {
-	char* argv[] = {"", "-i", "128","-s", "262144", "-r", "fs", "fs.img"};
-	argc = 8;
+	//char* argv[] = {"", "-i", "128","-s", "262144", "-r", "fs", "fs.img"};
+	//argc = 8;
 	memset(zero, 0, SECTSIZE);
 
 	if(argc == 1)

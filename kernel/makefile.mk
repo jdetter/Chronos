@@ -7,7 +7,6 @@ KERNEL_OBJECTS := \
 	vm \
 	kcond \
 	syscall \
-	boot_pic \
 	trap
 
 # Specify driver files. Exclude all file extensions

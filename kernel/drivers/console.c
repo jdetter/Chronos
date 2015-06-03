@@ -6,12 +6,12 @@
 
 #define MAX_NUM 15
 
-uint console_pos = 0;
-void printNextCharacter(char character);
-void printCharacter(uint row, uint col, char character);
-void update_cursor(int pos);
+//uint console_pos = 0;
+//void printNextCharacter(char character);
+//void printCharacter(uint row, uint col, char character);
+//void update_cursor(int pos);
 
-int cprintf(char* fmt, ...)
+/*int cprintf(char* fmt, ...)
 {
 	va_list args;
 	va_start(&args, (void**)&fmt);
@@ -74,36 +74,31 @@ int cprintf(char* fmt, ...)
 	}
 	va_end(args);
 	return 0;
-}
+} */
 
-void printNextCharacter(char character)
+void console_putc(uint position, char character, char color, uchar colored)
 {
-	int col = console_pos % CONSOLE_COLS;
-	int row = (console_pos - col) / CONSOLE_COLS;
-	printCharacter(row, col, character);
-	console_pos++;	
-}
-
-void printCharacter(uint row, uint col, char character){
-	char* vid_addr = CONSOLE_COLOR_BASE 
-		+ (row * CONSOLE_COLS * 2) + (col * 2);
-	*vid_addr = character;
-	*(vid_addr +1) = CONSOLE_DEFAULT_COLOR;
-	update_cursor(console_pos);
-}
-
-void cinit(void)
-{
-	console_pos = 0;
-	int row;
-	int col;
-	for(row=0; row< CONSOLE_ROWS; row++){
-		for(col = 0; col<CONSOLE_COLS; col++){
-			printCharacter(row, col, ' ');
-		}
+	if(colored)
+	{
+		uchar* vid_addr = CONSOLE_COLOR_BASE 
+			+ (position * 2);
+		*(vid_addr)     = character;
+		*(vid_addr + 1) = color;
+	} else {
+		uchar* vid_addr = CONSOLE_MONO_BASE
+                        + (position);
+                *(vid_addr)     = character;
 	}
+}
 
-	console_pos = 0;
+void console_init(void)
+{
+	int pos;
+	for(pos=0; pos < CONSOLE_ROWS * CONSOLE_COLS; pos++)
+	{
+		console_putc(pos, ' ', CONSOLE_DEFAULT_COLOR, 1);
+		console_putc(pos, ' ', 0, 0);
+	}
 }
 
 //The Index Register is mapped to ports 0x3D5 or 0x3B5.
@@ -113,7 +108,7 @@ void cinit(void)
 			  	   0xF - Cursor Location Low
 	By writing an index offset value into the index Register, it indicates what register the Data Register points to
 */
-void update_cursor(int pos)
+void console_update_cursor(int pos)
 {
 	outb(0x3D4, 0xF);
 	outb(0x3D5, (uchar) (pos & 0xFF));

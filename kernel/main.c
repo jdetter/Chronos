@@ -75,8 +75,8 @@ void main_stack(void)
 
 	/* Start display driver */
 	serial_write(str_display, strlen(str_display));
-        cinit();
-        display_boot_pic();
+        //cinit();
+        //display_boot_pic();
 	serial_write(str_ok, strlen(str_ok));
 
 	/* Install interrupt descriptor table */

@@ -12,12 +12,12 @@
 #include "tty.h"
 #include "elf.h"
 #include "stdlib.h"
+#include "syscall.h"
 
 extern slock_t ptable_lock; /* Process table lock */
 extern struct proc* ptable; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
-int sys_close(int fd);
 
 int sys_fork(void)
 { 
@@ -208,7 +208,7 @@ int sys_write(int fd, char* src, uint sz)
   return sz;
 }
 
-int lseek(int fd, int offset, int whence)
+int sys_lseek(int fd, int offset, int whence)
 {
   if(rproc->file_descriptors[fd].type != FD_TYPE_FILE){
     return -1;
@@ -228,7 +228,7 @@ int lseek(int fd, int offset, int whence)
   return seek_pos;
 }
 
-void* mmap(void* hint, uint sz, int protection)
+void* sys_mmap(void* hint, uint sz, int protection)
 {
 	return NULL;
 }

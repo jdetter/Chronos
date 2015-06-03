@@ -1,3 +1,4 @@
+#include "types.h"
 #include "console.h"
 
 static char* boot_picture = 
@@ -29,5 +30,5 @@ static char* boot_picture =
 
 void display_boot_pic()
 {
-	cprintf("%s", boot_picture);
+	//cprintf("%s", boot_picture);
 }

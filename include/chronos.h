@@ -167,6 +167,16 @@ int mv(const char* orig, const char* dst);
  * -1 on failure.
  */
 int fstat(const char* path, struct stat* dst);
+
+/**
+ * Wait on the given condition variable c and release the spin lock.
+ */
+int cond_wait_s(struct cond* c, struct slock* lock);
+
+/**
+ * Wait on the given condition variable c and release the ticket lock.
+ */
+int cond_wait_t(struct cond* c, struct tlock* lock);
 #endif
 
 #endif

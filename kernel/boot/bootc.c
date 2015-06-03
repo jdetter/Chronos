@@ -43,25 +43,25 @@ int main(void)
 	/* Initilize memory allocator. */
 	minit(0x60A00, 0x70000, 0);
 
-	cinit();
-	cprintf(welcome);
+	console_init();
+	//cprintf(welcome);
 
 	/* Lets find the kernel */
 	vsfs_init(64);
 
 	serial_write(kernel_search, strlen(kernel_search));
-	cprintf(kernel_search);
+	//cprintf(kernel_search);
 	serial_write(kernel_path, strlen(kernel_path));
-	cprintf(kernel_path);
+	//cprintf(kernel_path);
 	serial_write("\n", 1);
-	cprintf("\n");
+	//cprintf("\n");
 
 	vsfs_inode chronos_image;
 	int inonum;
 	if((inonum = vsfs_lookup(kernel_path, &chronos_image)) == 0)
 	{
 		serial_write(no_image, strlen(no_image));
-		cprintf(no_image);
+		//cprintf(no_image);
 		panic();
 	}
 
@@ -72,7 +72,7 @@ int main(void)
 	if(memcmp(elf_buffer, elf_buff, 4))
 	{
 		serial_write(invalid, strlen(invalid));
-                cprintf(invalid);
+                //cprintf(invalid);
                 panic();
 	}	
 
@@ -92,7 +92,7 @@ int main(void)
 	uint elf_entry = elf.e_entry;
 	if(elf_entry != (uint)kernel) panic();	
 
-	cprintf(checking_elf);
+	//cprintf(checking_elf);
 	serial_write(checking_elf, strlen(checking_elf));
 
 	int x;
@@ -131,7 +131,7 @@ int main(void)
 		}
 	}
 
-	cprintf(kernel_loaded);
+	//cprintf(kernel_loaded);
 	serial_write(kernel_loaded, strlen(kernel_loaded));
 
 	/* Jump into the kernel */
@@ -144,6 +144,6 @@ int main(void)
 void panic()
 {
         serial_write(panic_str, strlen(panic_str)); 
-        cprintf(panic_str); 
+        //cprintf(panic_str); 
         for(;;);
 }

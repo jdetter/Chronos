@@ -48,7 +48,7 @@ fs.img: tools kernel/chronos.o user
 	mkdir -p fs/bin
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
-	./tools/bin/mkfs -i 128 -s 262144 -r fs fs.img
+	./tools/bin/mkfs -i 256 -s 524288 -r fs fs.img
 
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img

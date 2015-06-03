@@ -3,9 +3,9 @@
 #include "asm.h"
 #include "vsfs.h"
 #include "file.h"
+#include "stdlock.h"
 #include "chronos.h"
 #include "tty.h"
-#include "stdlock.h"
 #include "proc.h"
 #include "vm.h"
 #include "stdlib.h"
@@ -97,7 +97,13 @@ void pfree(uint pg)
 
 void mappages(uint va, uint sz, pgdir* dir, uchar user)
 {
-
+	/* round va + sz up to a page */
+	uint end = (va + sz + PGSIZE - 1) & ~PGSIZE;
+	uint start = PGROUNDDOWN(va);
+	if(end <= start) return;
+	uint x;
+	for(x = start;x != end;x += PGSIZE)
+		findpg(x, 1, dir, user);
 }
 
 void mappage(uint phy, uint virt, pgdir* dir, uchar user)

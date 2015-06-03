@@ -2,6 +2,7 @@
 #include "idt.h"
 #include "trap.h"
 #include "file.h"
+#include "stdlock.h"
 #include "chronos.h"
 #include "x86.h"
 #include "panic.h"

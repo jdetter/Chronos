@@ -1,8 +1,17 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	init \
 	example \
 	otherexample \
-	cat
+	cat \
+	echo \
+	ls \
+	login \
+	mkdir \
+	mv \
+	rm \
+	rmdir \
+	sh 
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
