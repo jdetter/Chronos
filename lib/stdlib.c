@@ -262,32 +262,30 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 	dst_c[sz - 1] = 0;
 }
 
-int snprintf(char* dst, uint sz, char* fmt, ...)
+int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
 {
-	va_list list;
-	va_start(&list, (void**)&fmt);
 	int arg = 0;
-
-	int fmt_index = 0;
-	int dst_index = 0;
-	for(;dst_index < sz;fmt_index++, dst_index++)
-	{
-		if(fmt[fmt_index] == '%')
-		{
-			if(fmt[fmt_index + 1] == '%')
-			{
-				dst[dst_index] = '%';
-			} else if(fmt[fmt_index + 1] == 'd')
-			{
-				char num_buff[64];
-				int val = *((int*)va_arg(list, arg));
-				itoa(val, num_buff, 64, 10);
-				int num_pos;
-				for(num_pos = 0;num_buff[num_pos];num_pos++)
-					dst[dst_index + num_pos] = 
-						num_buff[num_pos];
-				dst_index += num_pos - 1;
-			} else if(fmt[fmt_index + 1] == 'x')
+	
+        int fmt_index = 0;
+        int dst_index = 0;
+        for(;dst_index < sz;fmt_index++, dst_index++)
+        {
+                if(fmt[fmt_index] == '%')
+                {
+                        if(fmt[fmt_index + 1] == '%')
+                        {
+                                dst[dst_index] = '%';
+                        } else if(fmt[fmt_index + 1] == 'd')
+                        {
+                                char num_buff[64];
+                                int val = *((int*)va_arg(list, arg));
+                                itoa(val, num_buff, 64, 10);
+                                int num_pos;
+                                for(num_pos = 0;num_buff[num_pos];num_pos++)
+                                        dst[dst_index + num_pos] =
+                                                num_buff[num_pos];
+                                dst_index += num_pos - 1;
+                        } else if(fmt[fmt_index + 1] == 'x')
                         {
                                 char num_buff[64];
                                 int val = *((int*)va_arg(list, arg));
@@ -298,11 +296,19 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
                                                 num_buff[num_pos];
                                 dst_index += num_pos - 1;
                         }
-			fmt_index++;
-		} else dst[dst_index] = fmt[fmt_index];
-	}
+                        fmt_index++;
+                } else dst[dst_index] = fmt[fmt_index];
+        }
 
-	dst[sz - 1] = 0;
-	va_end(list);
-	return dst_index;
+        dst[sz - 1] = 0;
+        va_end(list);
+        return dst_index;
+}
+
+int snprintf(char* dst, uint sz, char* fmt, ...)
+{
+	va_list list;
+	va_start(&list, (void**)&fmt);
+
+	return va_snprintf(dst, sz, list, fmt);
 }
