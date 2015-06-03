@@ -52,7 +52,7 @@ void tty_disable(tty_t t)
 
 void tty_print_character(tty_t t, char c)
 {
-	printf(c[t->text_cursor_pos]);
+	//printf(c[t->text_cursor_pos]);
 }
 
 void tty_print_string(tty_t t, char* fmt, ...)
