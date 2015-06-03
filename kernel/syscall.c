@@ -9,8 +9,10 @@ extern slock_t ptable_lock; /* Process table lock */
 extern struct proc* ptable; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
+int sys_close(int fd);
+
 int sys_fork(void)
-{
+{ 
 	return 0;
 }
 
@@ -25,13 +27,24 @@ int sys_wait(int pid)
 
 int sys_exec(const char* path, const char** argv)
 {
-	return 0;
+  slock_acquire(&ptable_lock);
+  char* cast_path = (char*) path;
+  vsfs_inode to_exec;
+  int inode_num;
+  inode_num = vsfs_lookup(cast_path, &to_exec);
+  if(inode_num == 0){
+    return -1;
+  }
+  if(to_exec.type != VSFS_FILE){
+    return -1;
+  } 
+  return 0;
 }
 
 void sys_exit(void)
 {
   int i;
-  for(i = 0; i < MAXFILES; i++){
+  for(i = 0; i < MAX_FILES; i++){
     if(rproc->file_descriptors[i].type != 0x00){
       sys_close(i);
     }  
@@ -44,7 +57,7 @@ int sys_open(const char* path)
 {
   int i;
   int fd = -1;
-  for(i = 0; i < MAXFILES; i++){
+  for(i = 0; i < MAX_FILES; i++){
     if(rproc->file_descriptors[i].type == 0x00){
       fd = i;
     }
@@ -53,7 +66,7 @@ int sys_open(const char* path)
     return -1;
   }
   rproc->file_descriptors[fd].type = FD_TYPE_FILE;
-  int inode = vsfs_lookup(path, &rproc->file_descriptors[fd].inode);
+  int inode = vsfs_lookup((char*) path, &rproc->file_descriptors[fd].inode);
   if(inode == 0){
     return -1;
   }
@@ -63,15 +76,14 @@ int sys_open(const char* path)
 
 int sys_close(int fd)
 {
-  if(fd >= MAXFILES){return -1};
-  rproc->file_descriptors[fd]->type = 0x00;
-  rproc->file_descruptors[fd]->inode = NULL;  
+  if(fd >= MAX_FILES){return -1;}
+  rproc->file_descriptors[fd].type = 0x00;  
   return 0;
 }
 
 int sys_read(int fd, char* dst, uint sz)
 {
-  if(rproc->file_descriptors[fd] == 0x00){
+  if(rproc->file_descriptors[fd].type == 0x00){
     return -1;
   }  
   else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
@@ -93,12 +105,12 @@ int sys_read(int fd, char* dst, uint sz)
 
 int sys_write(int fd, char* src, uint sz)
 {
-  if(rproc->file_descriptors[fd] == 0x00){
+  if(rproc->file_descriptors[fd].type == 0x00){
     return -1;
   }  
   else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
     if(vsfs_write(&rproc->file_descriptors[fd].inode,
-      rproc->file_descriptors[fd].inode_pos, sz, dst) == -1){
+      rproc->file_descriptors[fd].inode_pos, sz, src) == -1){
       return -1;
     }
   }
@@ -111,6 +123,20 @@ int sys_write(int fd, char* src, uint sz)
 
 int fseek(int fd, int offset, int whence)
 {
-        
-	return 0;
+  if(rproc->file_descriptors[fd].type != FD_TYPE_FILE){
+    return -1;
+  }
+  int seek_pos;
+  if(whence == FSEEK_CUR){
+    seek_pos = rproc->file_descriptors[fd].inode_pos + offset;
+  }  
+  else if(whence == FSEEK_SET){
+    seek_pos = offset;
+  }
+  else{
+    seek_pos = rproc->file_descriptors[fd].inode.size + offset;
+  }
+  if(seek_pos < 0){ seek_pos = 0;}
+  rproc->file_descriptors[fd].inode_pos = seek_pos;
+  return seek_pos;
 }
