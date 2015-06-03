@@ -57,6 +57,7 @@ int sys_open(const char* path)
   if(inode == 0){
     return -1;
   }
+  rproc->file_descriptors[fd].inode_pos = 0;
   return fd;
 }
 
@@ -73,18 +74,43 @@ int sys_read(int fd, char* dst, uint sz)
   if(rproc->file_descriptors[fd] == 0x00){
     return -1;
   }  
-  if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
-    vsfs_read(rproc->file_descriptors[fd].inode, dst, sz);
+  else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
+    if(vsfs_read(&rproc->file_descriptors[fd].inode,
+      rproc->file_descriptors[fd].inode_pos, sz, dst) == -1){
+      return -1;
+    }
   }
-  return 0;
+  else{
+    int i;
+    for(i = 0;i < sz; i++){
+      char next_char = tty_get_char(rproc->t);
+      dst[i] = next_char;
+    } 
+  }
+  rproc->file_descriptors[fd].inode_pos += sz;
+  return sz;
 }
 
-int sys_write(int fd, char* dst, uint sz)
+int sys_write(int fd, char* src, uint sz)
 {
-	return 0;
+  if(rproc->file_descriptors[fd] == 0x00){
+    return -1;
+  }  
+  else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
+    if(vsfs_write(&rproc->file_descriptors[fd].inode,
+      rproc->file_descriptors[fd].inode_pos, sz, dst) == -1){
+      return -1;
+    }
+  }
+  else{
+    tty_print_string(rproc->t, src);
+  }
+  rproc->file_descriptors[fd].inode_pos += sz;
+  return sz;
 }
 
 int fseek(int fd, int offset, int whence)
 {
+        
 	return 0;
 }
