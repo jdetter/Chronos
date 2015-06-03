@@ -53,6 +53,7 @@ struct proc
 	struct proc* parent; /* The process that spawned this process */
 	struct vsfs_inode* cwd; /* The current working directory */
 	char name[MAX_PROC_NAME];
+	pgdir* pgdir;
 };
 
 /**

@@ -2,6 +2,7 @@
 #include "vsfs.h"
 #include "tty.h"
 #include "stdlock.h"
+#include "vm.h"
 #include "proc.h"
 #include "panic.h"
 #include "stdlib.h"
@@ -46,15 +47,12 @@ void sched(void)
 
 void scheduler(void)
 {
-  int quantum;
-  
-
   slock_acquire(&ptable_lock);
   
   int i;
   int curr_index;
   for(i = 0; i < PTABLE_SIZE; i++){
-    if(ptable[i] == *rproc){
+    if(ptable + i == rproc){
       curr_index = i;
     }
   }  
@@ -66,5 +64,5 @@ void scheduler(void)
     curr_index++;
   } 
   rproc = &ptable[curr_index];	
-  switch_uvm(PAGEDIR);
+  switch_uvm(rproc->pgdir);
 }

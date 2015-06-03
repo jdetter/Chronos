@@ -1,8 +1,11 @@
 #include "types.h"
+#include "x86.h"
+#include "vm.h"
 #include "chronos.h"
 #include "stdlock.h"
 #include "vsfs.h"
 #include "tty.h"
+#include "vm.h"
 #include "proc.h"
 #include "elf.h"
 #include "stdlib.h"
@@ -31,14 +34,14 @@ int sys_exec(const char* path, const char** argv)
 {
   char* args[64];
   memset(args, 0, sizeof(char*) * 64);
-  uchar* ogtos = palloc() + PGSIZE; 
-  tos = ogtos;
-  tos - 4;
+  uchar* ogtos = (uchar*)palloc() + PGSIZE; 
+  uchar* tos = ogtos;
+  tos -= 4;
   int i;
   for(i = 0; argv[i] != NULL; i++){
     tos -= (strlen(argv[i]) + 1);
-    args[i] = tos;
-    memmove(tos, args[i], (strlen(argv[i] + 1));
+    args[i] = (char*)tos;
+    memmove(tos, args[i], (strlen(argv[i] + 1)));
   }
   tos -= (64 * sizeof(char*)); 
   memmove(tos, args, 64 * sizeof(char*)); 
@@ -47,7 +50,7 @@ int sys_exec(const char* path, const char** argv)
   memmove(tos, &retadd, 4);
 
   slock_acquire(&ptable_lock);
-  freepagedir();
+  freepgdir(rproc->pgdir);
   char* cast_path = (char*) path;
 
   vsfs_inode to_exec;
@@ -117,7 +120,7 @@ int sys_exec(const char* path, const char** argv)
       /* By default, this section is rwx. */
     }
   }  
-  mappage(ogtos, KVM_START - PGSIZE, rproc->pgdir, 1); 
+  mappage((uint)ogtos, KVM_START - PGSIZE, rproc->pgdir, 1); 
   scheduler();
   return 0;
 }
