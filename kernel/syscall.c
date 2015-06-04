@@ -11,6 +11,7 @@
 #include "vsfs.h"
 #include "tty.h"
 #include "elf.h"
+#include "stdarg.h"
 #include "stdlib.h"
 #include "syscall.h"
 #include "serial.h"

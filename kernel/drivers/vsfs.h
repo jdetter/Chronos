@@ -56,7 +56,7 @@ int vsfs_init(int start_sector);
  * Find an inode in a file system. If the inode is found, load it into the dst
  * buffer and return the inode number. If not found, return 0.
  */
-int vsfs_lookup(char* path, vsfs_inode* dst);
+int vsfs_lookup(const char* path, vsfs_inode* dst);
 
 /**
  * Remove the file from the directory in which it lives and decrement the link

@@ -1,7 +1,7 @@
 #include "types.h"
 #include "x86.h"
-#include "stdlib.h"
 #include "stdarg.h"
+#include "stdlib.h"
 #include "console.h"
 
 #define MAX_NUM 15

@@ -8,6 +8,7 @@
 #include "panic.h"
 #include "pic.h"
 #include "serial.h"
+#include "stdarg.h"
 #include "stdlib.h"
 #include "syscall.h"
 

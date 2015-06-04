@@ -1,4 +1,5 @@
 #include "types.h"
+#include "stdarg.h"
 #include "stdlib.h"
 
 int printf(char* fmt, ...)

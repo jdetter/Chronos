@@ -1,6 +1,11 @@
 #include "types.h"
 #include "tty.h"
 #include "panic.h"
+#include "serial.h"
+#include "console.h"
+#include "stdarg.h"
+#include "stdmem.h"
+#include "stdlib.h"
 
 #define MAX_TTYS 4
 
@@ -82,14 +87,14 @@ void tty_print_character(tty_t t, char c)
 	}
 	if(t->type==TTY_TYPE_COLOR)
 	{
-		uchar* vid_addr = t->buffer_text
+		char* vid_addr = t->buffer_text
 				+ (t->text_cursor_pos * 2);
 		*(vid_addr)     = c;
 		*(vid_addr + 1) = t->color;
 	}
 	else
 	{
-		uchar* vid_addr = t->buffer_text
+		char* vid_addr = t->buffer_text
 				+ (t->text_cursor_pos);
 		*(vid_addr)     = c;
 	}

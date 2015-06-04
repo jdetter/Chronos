@@ -23,13 +23,14 @@ struct file_descriptor
 #define MAX_FILES 0x20
 
 /* States for processes */
-#define PROC_UNUSED 	0x00
-#define PROC_EMBRYO	0x01
-#define PROC_RUNNABLE 	0x02
-#define PROC_RUNNING 	0x03
-#define PROC_BLOCKED 	0x04
-#define PROC_ZOMBIE 	0x05
-#define PROC_KILLED 	0x06
+#define PROC_UNUSED 	0x00 /* This process is free */
+#define PROC_EMBRYO	0x01 /* Process is getting initilized */
+#define PROC_READY	0x02 /* Process has yet to be run, but is runnable */
+#define PROC_RUNNABLE 	0x03 /* Process has been ran before and is ready */
+#define PROC_RUNNING 	0x04 /* This process is currently on the CPU */
+#define PROC_BLOCKED 	0x05 /* This process is waiting on IO */
+#define PROC_ZOMBIE 	0x06 /* This process is done and has not been killed */
+#define PROC_KILLED 	0x07
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -73,13 +74,25 @@ struct proc
 
 	pgdir* pgdir; /* The page directory for the process */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
+	uchar* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
+	uint entry_point; /* The address of the first instruction */
 };
 
 /**
  * Initilize all of the variables needed for scheduling. (lock not needed)
  */
 void sched_init();
+
+/**
+ * Start a new process with the given tty.
+ */
+struct proc* spawn_tty(tty_t t);
+
+/**
+ * Load the binary in path into the address space of process p.
+ */
+void load_binary(const char* path, struct proc* p);
 
 /**
  * Returns a pointer with the process id pid. If there is no such process,
@@ -97,7 +110,5 @@ void sched(void);
  * this loop. (lock required)
  */
 void scheduler(void);
-
-
 
 #endif

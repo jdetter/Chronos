@@ -32,7 +32,7 @@ void toupper(char* str);
  * Returns the number of bytes that were copied. A null character MUST be the
  * last byte of the string.
  */
-uint strncpy(char* dst, char* src, uint sz);
+uint strncpy(char* dst, const char* src, uint sz);
 
 /**
  * Copy str2 to the end of str1 with a total maximum of sz bytes. This function
@@ -77,6 +77,11 @@ int atoi(char* str, int radix);
  * character. Negative numbers are allowed.
  */
 float atof(char* str);
+
+/**
+ * See printf function. This does the same thing except with a va_args list.
+ */
+int va_snprintf(char* dst, uint sz, va_list list, char* fmt);
 
 /**
  * Print the formatted string fmt into the buffer dst. It will print a

@@ -2,6 +2,7 @@
 
 #ifndef VSFS_MKFS 
 #include "types.h"
+#include "stdarg.h"
 #include "stdlib.h"
 #else
 
@@ -62,7 +63,7 @@ int vsfs_init(int start_sector)
  return 0;
 }
 
-int vsfs_lookup(char* path_orig, vsfs_inode* dst)
+int vsfs_lookup(const char* path_orig, vsfs_inode* dst)
 {
 	char path[strlen(path_orig) + 1];
 	strncpy(path, path_orig, strlen(path_orig) + 1);

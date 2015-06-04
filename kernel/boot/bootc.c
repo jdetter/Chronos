@@ -1,5 +1,6 @@
 #include "types.h"
 #include "elf.h"
+#include "stdarg.h"
 #include "serial.h"
 #include "stdlib.h"
 #include "ata.h"

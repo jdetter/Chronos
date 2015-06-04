@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "stdmem.h"
+#include "stdarg.h"
 #include "stdlib.h"
 
 #define M_AMT 0x5000 /* 5K heap space*/

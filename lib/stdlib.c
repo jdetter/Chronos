@@ -1,7 +1,7 @@
 #include "types.h"
 #include "x86.h"
-#include "stdlib.h"
 #include "stdarg.h"
+#include "stdlib.h"
 
 uint strlen(const char* str)
 {
@@ -34,7 +34,7 @@ void toupper(char* str)
 	}
 }
 
-uint strncpy(char* dst, char* src, uint sz)
+uint strncpy(char* dst, const char* src, uint sz)
 {
 	int x;
 	for(x=0; x<sz; x++) /* iterates through source until reaches max memory size */

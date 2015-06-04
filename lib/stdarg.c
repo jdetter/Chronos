@@ -1,7 +1,7 @@
 #include "types.h"
 #include "x86.h"
-#include "stdlib.h"
 #include "stdarg.h"
+#include "stdlib.h"
 #include "stdmem.h"
 
 void va_start(va_list* list, void** first_arg)

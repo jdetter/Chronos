@@ -11,7 +11,7 @@
  * These are the memory mappings that are used by chronos.
  */
 #define KVM_START 	0x00100000 /* Where the kernel is loaded */
-#define KVM_END		0x1F400000 /* Where the address space ends */
+#define KVM_END		0x00F00000 /* Where the address space ends */
 #define KVM_MALLOC	0x00200000 /* Where the kvm allocator starts */
 #define KVM_MAX		0xFFFFFFFF /* Maximum address */
 
@@ -22,6 +22,10 @@
 #define KVM_COLOR_SZ	4000 /* Size of color memory */
 #define KVM_MONO_START	0x20001000	
 #define KVM_MONO_SZ	4000 /* Size of mono chrome memory */	
+
+/* Keep an empty page at the end of the stack */
+#define KVM_KSTACK_S	0x20003000
+#define KVM_KSTACK_E	0x20010000
 
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
@@ -98,6 +102,11 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user);
  * Free all pages in the page table and free the directory itself.
  */
 void freepgdir(pgdir* dir);
+
+/**
+ * Copy the kernel portion of the page table
+ */
+void vm_copy_kvm(pgdir* dir);
 
 /**
  * Use the kernel's page table

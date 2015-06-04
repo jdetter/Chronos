@@ -1,6 +1,7 @@
 #include "types.h"
 #include "serial.h"
 #include "console.h"
+#include "stdarg.h"
 #include "stdlib.h"
 
 char* panic_str = "Kernel panic: ";

@@ -102,3 +102,16 @@ fake_trap:
 	popl	%ebp
 
 	ret
+
+# run_program(uint eip);
+.globl __start_init__
+__start_init__:
+# initilize segment selectors
+	movw	$(SEG_USER_DATA << 3), %ax
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %fs
+	movw	%ax, %gs
+	movw	%ax, %ss
+	popl	%eax
+	ljmp 	$(SEG_USER_CODE << 3), $0x1000

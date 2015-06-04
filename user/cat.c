@@ -1,4 +1,5 @@
 #include "types.h"
+#include "stdarg.h"
 #include "stdlib.h"
 #include "file.h"
 #include "stdlock.h"

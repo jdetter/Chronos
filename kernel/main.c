@@ -1,6 +1,7 @@
 #include "types.h"
 #include "pic.h"
 #include "pit.h"
+#include "stdarg.h"
 #include "stdlib.h"
 #include "serial.h"
 #include "stdmem.h"
@@ -26,13 +27,10 @@ char* str_pic = "Starting Programmable Interrupt Controller Driver...\t\t\t";
 char* str_pit = "Starting Programmable Interrupt Timer Driver...\t\t\t\t";
 char* str_int = "Enabling Interrupts...\t\t\t\t\t\t\t";
 char* str_paging = "Enabling kernel paging...\t\t\t\t\t\t";
+char* str_tty = "Enabling teletype 0...\t\t\t\t\t\t\t";
 
 char* str_ok = "[ OK ]\n";
 char* str_fail = "[FAIL]\n";
-
-extern struct proc* rproc;
-void fake_trap(void);
-
 
 void __set_stack__(uint addr);
 void main_stack(void);
@@ -50,12 +48,25 @@ int main(void)
 	vm_init();
 	serial_write(str_ok, strlen(str_ok));
 
+	/* Switch to a temporary stack */
+	uint temp_stack = palloc();
+	__set_stack__(temp_stack);
+
+        /* Install global descriptor table */
+        serial_write(str_gdt, strlen(str_gdt));
+        vm_seg_init();
+        serial_write(str_ok, strlen(str_ok));
+
+        /* Enable paging */
+        serial_write(str_paging, strlen(str_paging));
+        switch_kvm();
+        serial_write(str_ok, strlen(str_ok));
+
 	/* Setup proper stack */
 	serial_write(str_stack, strlen(str_stack));
-	uint new_stack = palloc();
-	new_stack += PGSIZE;
-	__set_stack__(new_stack);
+	uint new_stack = KVM_KSTACK_E;
 	k_stack = new_stack;
+	__set_stack__(new_stack);
 
 	main_stack();
 	serial_write(str_fail, strlen(str_fail));
@@ -70,25 +81,29 @@ void main_stack(void)
 	serial_write(str_ok, strlen(str_ok));
 	/* We now have a proper kernel stack */
 
-	/* Install global descriptor table */
-	serial_write(str_gdt, strlen(str_gdt));
-        vm_seg_init();
-	serial_write(str_ok, strlen(str_ok));
-
-	serial_write(str_paging, strlen(str_paging));
-	switch_kvm();
-	serial_write(str_ok, strlen(str_ok));
+	int x;
+	for(x = 0;x < 100;x++) palloc();
 	
 	/* Bring up kmalloc. */
 	serial_write(str_kmalloc, strlen(str_kmalloc));
         minit(KVM_KMALLOC_S, KVM_KMALLOC_E, 0);
 	serial_write(str_ok, strlen(str_ok));
 
+	for(x = 0;x < 100;x++) palloc();
+	
+	/* Enable tty 0 */
+	serial_write(str_tty, strlen(str_tty));
+	tty_t t = tty_find(0);
+	tty_init(t, 0, TTY_TYPE_SERIAL, 0, 0);
+	serial_write(str_ok, strlen(str_ok));
+	
+	for(x = 0;x < 100;x++) palloc();
 	/* Install interrupt descriptor table */
 	serial_write(str_idt, strlen(str_idt));
 	trap_init();
 	serial_write(str_ok, strlen(str_ok));
 
+	for(x = 0;x < 100;x++) palloc();
 	/* Enable PIC */
         serial_write(str_pic, strlen(str_pic));
         pic_init();
@@ -99,19 +114,17 @@ void main_stack(void)
         //pit_init();
         //serial_write(str_ok, strlen(str_ok));
 
+	for(x = 0;x < 100;x++) palloc();
+
+	/* Enable interrupts */
 	serial_write(str_int, strlen(str_int));
 	asm volatile("sti");	
 	serial_write(str_ok, strlen(str_ok));
 
-	/* Setup a fake process */
-	struct proc p;
-	memset(&p, 0, sizeof(struct proc));
-	p.stack_start = k_stack;
-	p.stack_end = k_stack + PGSIZE;
-	rproc = &p;
-
-	fake_trap();
+	for(x = 0;x < 100;x++) palloc();
+	/* Setup an init process */
+	struct proc* p = spawn_tty(t);
+	switch_uvm(p);
 	
-	/* Force an interrupt */
 	for(;;);
 }
