@@ -118,4 +118,6 @@ void switch_kvm(void);
  */
 void switch_uvm(struct proc* p);
 
+void mem_dump(void);
+
 #endif

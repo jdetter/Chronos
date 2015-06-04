@@ -13,6 +13,7 @@
 #include "stdlib.h"
 #include "panic.h"
 #include "console.h"
+#include "serial.h"
 
 #define KDIRFLAGS (PGDIR_PRESENT | PGDIR_RW)
 #define KTBLFLAGS (PGTBL_PRESENT | PGTBL_RW)
@@ -127,7 +128,7 @@ void pfree(uint pg)
 void mappages(uint va, uint sz, pgdir* dir, uchar user)
 {
 	/* round va + sz up to a page */
-	uint end = (va + sz + PGSIZE - 1) & ~(PGSIZE - 1);
+	uint end = PGROUNDDOWN((va + sz + PGSIZE - 1));
 	uint start = PGROUNDDOWN(va);
 	if(end <= start) return;
 	uint x;
@@ -311,4 +312,39 @@ void switch_uvm(struct proc* p)
 	__set_stack__((uint)(p->tf));
 	/* Do the trap return */
 	asm volatile("jmp trap_return");
+}
+
+void mem_dump(void)
+{
+	char str_map[128];
+	uint x;
+	for(x = 0;x < PGSIZE / sizeof(uint); x++)
+	{
+		uint dir_page = PGROUNDDOWN(kernel_pgdir[x]);
+		if(!dir_page) continue;	
+	
+		uint* table = (uint*)dir_page;
+
+		uint y;
+		for(y = 0;y < PGSIZE / sizeof(uint);x++)
+		{
+			uint table_page = PGROUNDDOWN(table[x]);
+			uint virt = (x << 22) | 
+				(y << 12);
+			snprintf(str_map, 128, 
+				"0x%x maps to 0x%x\n", 
+				virt, table_page);
+			serial_write(str_map, strlen(str_map));
+		}
+	}
+
+	char* free_str = "Free list:\n";
+	serial_write(free_str, strlen(free_str));
+	struct vm_free_node* curr = head;
+
+	while(curr)
+	{
+		snprintf(str_map, 128, "0x%x\n", curr);
+		curr = (struct vm_free_node*)curr->next;
+	}
 }

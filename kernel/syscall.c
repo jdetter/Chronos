@@ -335,3 +335,18 @@ void* sys_mmap(void* hint, uint sz, int protection)
 {
 	return NULL;
 }
+
+int sys_wait_s(struct cond* c, struct slock* lock)
+{
+
+}
+
+int sys_wait_t(struct cond* c, struct tlock* lock)
+{
+
+}
+
+int sys_signal(struct cond* c)
+{
+
+}

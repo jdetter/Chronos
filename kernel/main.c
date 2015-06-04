@@ -81,29 +81,22 @@ void main_stack(void)
 	serial_write(str_ok, strlen(str_ok));
 	/* We now have a proper kernel stack */
 
-	int x;
-	for(x = 0;x < 100;x++) palloc();
-	
 	/* Bring up kmalloc. */
 	serial_write(str_kmalloc, strlen(str_kmalloc));
         minit(KVM_KMALLOC_S, KVM_KMALLOC_E, 0);
 	serial_write(str_ok, strlen(str_ok));
 
-	for(x = 0;x < 100;x++) palloc();
-	
 	/* Enable tty 0 */
 	serial_write(str_tty, strlen(str_tty));
 	tty_t t = tty_find(0);
 	tty_init(t, 0, TTY_TYPE_SERIAL, 0, 0);
 	serial_write(str_ok, strlen(str_ok));
 	
-	for(x = 0;x < 100;x++) palloc();
 	/* Install interrupt descriptor table */
 	serial_write(str_idt, strlen(str_idt));
 	trap_init();
 	serial_write(str_ok, strlen(str_ok));
 
-	for(x = 0;x < 100;x++) palloc();
 	/* Enable PIC */
         serial_write(str_pic, strlen(str_pic));
         pic_init();
@@ -114,14 +107,11 @@ void main_stack(void)
         //pit_init();
         //serial_write(str_ok, strlen(str_ok));
 
-	for(x = 0;x < 100;x++) palloc();
-
 	/* Enable interrupts */
 	serial_write(str_int, strlen(str_int));
 	asm volatile("sti");	
 	serial_write(str_ok, strlen(str_ok));
 
-	for(x = 0;x < 100;x++) palloc();
 	/* Setup an init process */
 	struct proc* p = spawn_tty(t);
 	switch_uvm(p);
