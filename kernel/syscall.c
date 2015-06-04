@@ -4,6 +4,8 @@
 #include "vsfs.h"
 #include "tty.h"
 #include "proc.h"
+#include "elf.h"
+#include "stdlib.h"
 
 extern slock_t ptable_lock; /* Process table lock */
 extern struct proc* ptable; /* The process table */
@@ -37,7 +39,59 @@ int sys_exec(const char* path, const char** argv)
   }
   if(to_exec.type != VSFS_FILE){
     return -1;
+  }
+
+  /* Sniff to see if it looks right. */
+  uchar elf_buffer[512];
+  vsfs_read(&to_exec, 0, 512, elf_buffer);
+  char elf_buff[] = ELF_MAGIC;
+  if(memcmp(elf_buffer, elf_buff, 4))
+  {
+    return -1;
   } 
+  /* Load the entire elf header. */
+  struct elf32_header elf;
+  vsfs_read(&to_exec, 0, sizeof(struct elf32_header), &elf);
+  /* Check class */
+  if(elf.exe_class != 1) return -1;	
+  if(elf.version != 1) return -1;
+  if(elf.e_type != ELF_E_TYPE_EXECUTABLE) return -1;	
+  if(elf.e_machine != ELF_E_MACHINE_x86) return -1;	
+  if(elf.e_version != 1) return -1;
+  int x;
+  for(x = 0;x < elf.e_phnum;x++)
+  {
+    int header_loc = elf.e_phoff + (x * elf.e_phentsize);
+    struct elf32_program_header curr_header;
+    vsfs_read(&to_exec, header_loc, 
+      sizeof(struct elf32_program_header), &curr_header);
+    /* Skip null program headers */
+    if(curr_header.type == ELF_PH_TYPE_NULL) continue;
+		
+    /* 
+     * GNU Stack is a recommendation by the compiler
+     * to allow executable stacks. This section doesn't
+     * need to be loaded into memory because it's just
+     * a flag.
+     */
+    if(curr_header.type == ELF_PH_TYPE_GNU_STACK)
+      continue;
+	
+    if(curr_header.type == ELF_PH_TYPE_LOAD)
+    {
+      /* Load this header into memory. */
+      uchar* hd_addr = (uchar*)curr_header.virt_addr;
+      uint offset = curr_header.offset;
+      uint file_sz = curr_header.file_sz;
+      uint mem_sz = curr_header.mem_sz;
+      /* zero this region */
+      memset(hd_addr, 0, mem_sz);
+      /* Load the section */
+      vsfs_read(&to_exec, offset, file_sz, hd_addr);
+      /* By default, this section is rwx. */
+    }
+  }
+  scheduler();
   return 0;
 }
 
