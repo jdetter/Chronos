@@ -85,5 +85,4 @@ struct elf32_program_header
 	uint_32 align; /* The memory alignment requrired by this segment. */
 };
 
-	uint_8 padding_7;
 #endif

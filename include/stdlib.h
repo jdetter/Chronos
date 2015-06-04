@@ -79,6 +79,12 @@ int atoi(char* str, int radix);
 float atof(char* str);
 
 /**
+ * Convert an integer to a string. This function will not modify more than sz
+ * bytes of dst_c and will return a null terminated string.
+ */
+void itoa(int val_signed, char* dst_c, uint sz, uint radix);
+
+/**
  * See printf function. This does the same thing except with a va_args list.
  */
 int va_snprintf(char* dst, uint sz, va_list list, char* fmt);

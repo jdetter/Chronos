@@ -17,4 +17,13 @@ typedef unsigned long uint_64;
 typedef uint pgdir;
 typedef uint pgtbl;
 
+/* Uncomment to enable global debug */
+//#define __GLOBAL_DEBUG__
+
+#ifdef __GLOBAL_DEBUG__
+	static const uchar debug = 1;
+#else
+	static const uchar debug = 0;
+#endif
+
 #endif

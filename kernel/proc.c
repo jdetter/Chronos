@@ -89,6 +89,7 @@ struct proc* spawn_tty(tty_t t)
 	p->tss = p->k_stack - PGSIZE;
 
 	/* Map in a user stack. */
+	switch_uvm(p);
 	mappages(KVM_START - PGSIZE, PGSIZE, p->pgdir, 1);
 
 	/* Load the binary */

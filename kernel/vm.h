@@ -12,6 +12,7 @@
  */
 #define KVM_START 	0x00100000 /* Where the kernel is loaded */
 #define KVM_END		0x00F00000 /* Where the address space ends */
+#define KVM_DEBUG	0x00230000 /* Small pages for debugging  */
 #define KVM_MALLOC	0x00200000 /* Where the kvm allocator starts */
 #define KVM_MAX		0xFFFFFFFF /* Maximum address */
 
@@ -118,6 +119,12 @@ void switch_kvm(void);
  */
 void switch_uvm(struct proc* p);
 
-void mem_dump(void);
+/**
+ * Switch to the user's context.
+ */
+void switch_context(struct proc* p);
 
+/** Memory debugging functions */
+void free_list_check(void); /* Verfy the free list */
+void free_list_dump(void); /* Print the free list */
 #endif

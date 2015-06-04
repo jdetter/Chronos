@@ -13,7 +13,6 @@
 #include "stdlib.h"
 #include "panic.h"
 #include "console.h"
-#include "serial.h"
 
 #define KDIRFLAGS (PGDIR_PRESENT | PGDIR_RW)
 #define KTBLFLAGS (PGTBL_PRESENT | PGTBL_RW)
@@ -21,8 +20,9 @@
 #define UTBLFLAGS (PGTBL_PRESENT | PGTBL_RW | PGTBL_USER)
 #define REGION_COUNT 0x1
 #define MAPPING_COUNT 0x2
+#define KVM_MAGIC 0x55AA55AA
 
-struct vm_free_node{uint next;};
+struct vm_free_node{uint next; uint magic;};
 struct kvm_region {uint start; uint end;};
 struct kvm_region free_regions[] =
 {
@@ -45,8 +45,8 @@ void __set_stack__(uint addr);
 
 uint k_pages; /* How many pages are left? */
 uint k_stack; /* Kernel stack */
-pgdir* kernel_pgdir; /* Kernel page directory */
-struct vm_free_node* head;
+pgdir* k_pgdir; /* Kernel page directory */
+static struct vm_free_node* head;
 
 uint vm_init(void)
 {
@@ -57,8 +57,8 @@ uint vm_init(void)
 		vm_add_pages(free_regions[x].start, free_regions[x].end);
 	
 	/* Initilize the kernel page table */
-	kernel_pgdir = (pgdir*)palloc();
-	setup_kvm(kernel_pgdir);
+	k_pgdir = (pgdir*)palloc();
+	setup_kvm(k_pgdir);
 	
 	return k_pages;
 }
@@ -107,33 +107,44 @@ uint palloc(void)
 	if(head == NULL) panic("No more free pages");
 	k_pages--;
 	uint addr = (uint)head;
+	if(head->magic != (uint)KVM_MAGIC)
+	{
+		panic("KVM is currupt!\n");
+	}
 	head = (struct vm_free_node*)head->next;
 	memset((uchar*)addr, 0, PGSIZE);
 
-	if(addr >= KVM_START || addr < KVM_END)
-		return addr;
-	else panic("Page allocator currupt");
+	if(debug) cprintf("Page allocated: 0x%x\n", addr);
 	return addr;
 }
 
 void pfree(uint pg)
 {
+	if(debug) cprintf("Page freed: 0x%x\n", pg);
 	if(pg == 0) panic("Free null page.\n");
 	k_pages++;
 	struct vm_free_node* new_free = (struct vm_free_node*)pg;
 	new_free->next = (uint)head;
+	new_free->magic = (uint)KVM_MAGIC;
 	head = new_free;
 }
 
 void mappages(uint va, uint sz, pgdir* dir, uchar user)
 {
+	
 	/* round va + sz up to a page */
 	uint end = PGROUNDDOWN((va + sz + PGSIZE - 1));
 	uint start = PGROUNDDOWN(va);
+	if(debug)
+		cprintf("Creating virtual mapping from 0x%x to 0x%x\n", 
+			start, end);
 	if(end <= start) return;
 	uint x;
 	for(x = start;x != end;x += PGSIZE)
-		findpg(x, 1, dir, user);
+	{
+		uint pg = findpg(x, 1, dir, user);
+		if(debug) cprintf("Virtual page 0x%x mapped to 0x%x\n", x, pg);
+	}
 }
 
 void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
@@ -149,15 +160,15 @@ void setup_kvm(pgdir* dir)
 {
 	uint start = PGROUNDDOWN(KVM_START);
 	uint end = (KVM_END + PGSIZE - 1) & ~(PGSIZE - 1);
-	dir_mappages(start, end, kernel_pgdir, 0);
+	dir_mappages(start, end, k_pgdir, 0);
 
         /* make sure kmalloc has been mapped into memory. */
         mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S,
-                        kernel_pgdir, 0);
+                        k_pgdir, 0);
 
         /* make room for the large kernel stack */
         mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S,
-                kernel_pgdir, 0);
+                k_pgdir, 0);
 
 	uint x;
         /* Do hardware mappings */
@@ -165,7 +176,7 @@ void setup_kvm(pgdir* dir)
                 mapping(hardware_mappings[x].phy,
                                 hardware_mappings[x].virt,
                                 hardware_mappings[x].sz,
-                                kernel_pgdir, 0);
+                                k_pgdir, 0);
 }
 
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user)
@@ -241,10 +252,10 @@ void vm_copy_kvm(pgdir* dir)
 	uint x;
 	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
 	{
-		if(kernel_pgdir[x])
+		if(k_pgdir[x])
 		{
 			dir[x] = palloc() |  KDIRFLAGS;
-			uint src_page = PGROUNDDOWN(kernel_pgdir[x]);
+			uint src_page = PGROUNDDOWN(k_pgdir[x]);
 			uint dst_page = PGROUNDDOWN(dir[x]);
 			memmove((uchar*)dst_page, (uchar*)src_page, PGSIZE);
 		}
@@ -276,10 +287,15 @@ void freepgdir(pgdir* dir)
 void switch_kvm(void)
 {
 	//__set_stack__(k_stack);
-	__enable_paging__(kernel_pgdir);
+	__enable_paging__(k_pgdir);
 }
 
 void switch_uvm(struct proc* p)
+{
+	__enable_paging__(p->pgdir);
+}
+
+void switch_context(struct proc* p)
 {
 	/* Set the task segment to point to the process's stacks. */
 	uint base = (uint)p->tss;
@@ -314,37 +330,21 @@ void switch_uvm(struct proc* p)
 	asm volatile("jmp trap_return");
 }
 
-void mem_dump(void)
+void free_list_check(void)
 {
-	char str_map[128];
-	uint x;
-	for(x = 0;x < PGSIZE / sizeof(uint); x++)
-	{
-		uint dir_page = PGROUNDDOWN(kernel_pgdir[x]);
-		if(!dir_page) continue;	
-	
-		uint* table = (uint*)dir_page;
-
-		uint y;
-		for(y = 0;y < PGSIZE / sizeof(uint);x++)
-		{
-			uint table_page = PGROUNDDOWN(table[x]);
-			uint virt = (x << 22) | 
-				(y << 12);
-			snprintf(str_map, 128, 
-				"0x%x maps to 0x%x\n", 
-				virt, table_page);
-			serial_write(str_map, strlen(str_map));
-		}
-	}
-
-	char* free_str = "Free list:\n";
-	serial_write(free_str, strlen(free_str));
+	if(debug) cprintf("Checking free list...\t\t\t\t\t\t\t");
 	struct vm_free_node* curr = head;
-
 	while(curr)
 	{
-		snprintf(str_map, 128, "0x%x\n", curr);
+		if(curr->magic != KVM_MAGIC)
+		{
+			if(debug) cprintf("[FAIL]\n");
+			if(debug) cprintf("[WARNING] KVM "
+				"has become unstable.\n");
+			return;
+		}
 		curr = (struct vm_free_node*)curr->next;
 	}
+
+	if(debug) cprintf("[ OK ]\n");
 }

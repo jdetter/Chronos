@@ -6,7 +6,7 @@
 
 #define M_AMT 0x5000 /* 5K heap space*/
 #define M_MAGIC (void*)(0x43524E53)
-int mem_init = 0;
+static int mem_init = 0;
 
 /* A node in the free list. */
 typedef struct free_node
@@ -22,8 +22,8 @@ typedef struct alloc_node
 	void* magic; /* Make sure this node isn't currupted. */
 } alloc_node;
 
-struct free_node* head; /* The head of the free list */
-struct free_node* curr; /* Pointer to the current location. */
+static struct free_node* head; /* The head of the free list */
+static struct free_node* curr; /* Pointer to the current location. */
 
 void* malloc(uint sz)
 {

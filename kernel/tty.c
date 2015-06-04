@@ -11,6 +11,75 @@
 
 struct tty ttys[MAX_TTYS];
 
+/**
+ * Hacky version of printf that doesn't require va_args. This method
+ * is dangerous if not called properly. This method can be called any time
+ * once the kernel has been loaded.
+ */
+void cprintf(char* fmt, ...)
+{
+	if(ttys[0].type == 0)
+	{
+		tty_init(ttys + 0, 0, TTY_TYPE_SERIAL, 0, 0);
+		tty_enable(ttys);
+	}
+
+	void** argument = (void**)(&fmt + 1);
+
+	uint x;
+	for(x = 0;x < strlen(fmt);x++)
+	{
+		if(fmt[x] == '%' && x + 1 < strlen(fmt))
+		{
+			if(fmt[x + 1] == '%')
+				tty_print_character(&ttys[0], '%');
+			else if(fmt[x + 1] == 'd')
+			{
+				/* Print in decimal */
+				char buffer[32];
+				itoa(*((int*)argument), buffer, 32, 10);
+				uint y;
+				for(y = 0;y < strlen(buffer);y++)
+					tty_print_character(ttys, buffer[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'p' || fmt[x + 1] == 'x')
+			{
+				/* Print in hex */
+				char buffer[32];
+                                itoa(*((int*)argument), buffer, 32, 16);
+                                uint y;
+                                for(y = 0;y < strlen(buffer);y++)
+                                        tty_print_character(ttys, buffer[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'c')
+			{
+				/* Print character */
+				char c = *((char*)argument);
+				tty_print_character(ttys, c);
+				argument++;
+			} else if(fmt[x + 1] == 's')
+			{
+				char* str = *((char**)argument);
+				int y;
+				for(y = 0;y < strlen(str);y++)
+					tty_print_character(ttys, str[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'b')
+			{
+				/* Print in binary */
+				char buffer[128];
+                                itoa(*((int*)argument), buffer, 32, 2);
+                                uint y;
+                                for(y = 0;y < strlen(buffer);y++)
+                                        tty_print_character(ttys, buffer[y]);
+                                argument++;
+			}
+
+			x++;
+		} else tty_print_character(ttys, fmt[x]);
+	}
+}
+
 tty_t tty_find(uint index)
 {
 	if(index >= MAX_TTYS) return NULL;
@@ -48,7 +117,7 @@ uint tty_num(tty_t t)
 void tty_enable(tty_t t)
 {
 	t->active = 1;
-	if(t->type!=TTY_TYPE_SERIAL)
+	if(t->type==TTY_TYPE_SERIAL)
 	{
 		return;
 	}
@@ -72,9 +141,9 @@ void tty_disable(tty_t t)
 
 void tty_print_character(tty_t t, char c)
 {
-	if(t->type==TTY_TYPE_SERIAL&&t->active)
+	if(t->type==TTY_TYPE_SERIAL)
 	{
-		serial_write(&c,1);
+		if(t->active) serial_write(&c,1);
 		return;
 	}
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)

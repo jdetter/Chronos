@@ -66,6 +66,8 @@ struct tty
 
 typedef struct tty* tty_t;
 
+void cprintf(char* fmt, ...);
+
 /**
  * Return a tty object type for the tty at the index. NULL is returned if
  * index is out of bounds.
