@@ -29,11 +29,33 @@ int sys_wait(int pid)
 
 int sys_exec(const char* path, const char** argv)
 {
+  char* args[64];
+  memset(args, 0, sizeof(char*) * 64);
+  uchar* ogtos = palloc() + PGSIZE; 
+  tos = ogtos;
+  tos - 4;
+  int i;
+  for(i = 0; argv[i] != NULL; i++){
+    tos -= (strlen(argv[i]) + 1);
+    args[i] = tos;
+    memmove(tos, args[i], (strlen(argv[i] + 1));
+  }
+  tos -= (64 * sizeof(char*)); 
+  memmove(tos, args, 64 * sizeof(char*)); 
+  tos -= 4;
+  uint retadd = 0xFFFFFFFF;
+  memmove(tos, &retadd, 4);
+
   slock_acquire(&ptable_lock);
+  freepagedir();
   char* cast_path = (char*) path;
+
   vsfs_inode to_exec;
+
   int inode_num;
+
   inode_num = vsfs_lookup(cast_path, &to_exec);
+
   if(inode_num == 0){
     return -1;
   }
@@ -84,13 +106,18 @@ int sys_exec(const char* path, const char** argv)
       uint offset = curr_header.offset;
       uint file_sz = curr_header.file_sz;
       uint mem_sz = curr_header.mem_sz;
+      if((uint) hd_addr + mem_sz >= KVM_START){
+        return -1;
+      } 
+      mappages((uint) hd_addr, mem_sz, rproc->pgdir, 1);
       /* zero this region */
       memset(hd_addr, 0, mem_sz);
       /* Load the section */
       vsfs_read(&to_exec, offset, file_sz, hd_addr);
       /* By default, this section is rwx. */
     }
-  }
+  }  
+  mappage(ogtos, KVM_START - PGSIZE, rproc->pgdir, 1); 
   scheduler();
   return 0;
 }
