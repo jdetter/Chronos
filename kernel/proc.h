@@ -66,6 +66,7 @@ struct proc
 
 	uchar block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */
+	uint b_condition_signal; /* The condition ticket number. */
 	int b_pid; /* The pid we are waiting on. */
 
 	struct proc* parent; /* The process that spawned this process */
