@@ -262,6 +262,21 @@ void vm_copy_kvm(pgdir* dir)
 	}
 }
 
+void vm_copy_vm(pgdir* dst, pgdir* src)
+{
+        uint x;
+        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+        {
+                if(src[x])
+                {
+                        dst[x] = palloc() |  KDIRFLAGS;
+                        uint src_page = PGROUNDDOWN(src[x]);
+                        uint dst_page = PGROUNDDOWN(dst[x]);
+                        memmove((uchar*)dst_page, (uchar*)src_page, PGSIZE);
+                }
+        }
+}
+
 void freepgdir(pgdir* dir)
 {
 	int dir_index;
@@ -321,7 +336,7 @@ void switch_context(struct proc* p)
 	if(p->state == PROC_READY)
 	{
 		/* Switch to the user's stack */
-		__set_stack__((uint)(p->tf->esp));	
+		__set_stack__((uint)(p->tf->esp));
 	}
 
 	/* Switch to the user's k stack */

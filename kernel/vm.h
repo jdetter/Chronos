@@ -110,6 +110,11 @@ void freepgdir(pgdir* dir);
 void vm_copy_kvm(pgdir* dir);
 
 /**
+ * Make an exact copy of a virtual memory space.
+ */
+void vm_copy_vm(pgdir* dst, pgdir* src);
+
+/**
  * Use the kernel's page table
  */
 void switch_kvm(void);
