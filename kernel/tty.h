@@ -50,11 +50,11 @@
 /* tty structure. Contains all of the metadata for a tty. */
 struct tty
 {
-	uint tty_num; /* The number of this tty */
+	uint num; /* The number of this tty */
 	uint active; /* 1: This tty is in the foreground, 0: background*/
 	uchar type; /* The type of this tty. (see above.)*/
-	uchar buffer_text[TTY_BUFFER_SZ]; /* Text bufffer */
-	uchar buffer_graphic[TTY_BUFFER_SZ]; /* Grahical buffer */
+	uchar buffer_text[TTY_BUFFER_SZ]; /* Text buffer */
+	uchar buffer_graphic[TTY_BUFFER_SZ]; /* Graphical buffer */
 	uint text_cursor_pos; /* Text mode position of the cursor. */
 	uint graphic_cursor_pos; /* Graphic mode position of the cursor. */
 	uint text_cursor_enabled; /* Whether or not to show the cursor (text)*/
