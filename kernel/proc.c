@@ -46,5 +46,25 @@ void sched(void)
 
 void scheduler(void)
 {
-	
+  int quantum;
+  
+
+  slock_acquire(&ptable_lock);
+  
+  int i;
+  int curr_index;
+  for(i = 0; i < PTABLE_SIZE; i++){
+    if(ptable[i] == *rproc){
+      curr_index = i;
+    }
+  }  
+  curr_index++;
+  while(ptable[curr_index].state != PROC_RUNNABLE){
+    if(curr_index == PTABLE_SIZE - 1){
+      curr_index = 0;
+    }
+    curr_index++;
+  } 
+  rproc = &ptable[curr_index];	
+  switch_uvm(PAGEDIR);
 }
