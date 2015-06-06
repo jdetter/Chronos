@@ -1,5 +1,6 @@
 #include "types.h"
 #include "stdlock.h"
+#include "x86.h"
 
 
 void slock_init(slock_t* lock)
@@ -9,7 +10,9 @@ void slock_init(slock_t* lock)
 
 void slock_acquire(slock_t* lock)
 {
-	//lock->val = 1;
+	while(xchg(&lock->val, 1)==1){
+		;
+	}
 }
 
 void slock_release(slock_t* lock)
@@ -25,11 +28,12 @@ void tlock_init(tlock_t* lock)
 
 void tlock_acquire(tlock_t* lock)
 {
-	//lock->currently_serving = 1;
-	//lock->next_ticket+=1;
+	while(fetch_and_add(&lock->next_ticket, 1)!=lock->currently_serving){
+		;
+	}
 }
 
 void tlock_release(tlock_t* lock)
 {
-	lock->currently_serving = 0;
+	fetch_and_add(&lock->curretly_serving, 1);
 }
