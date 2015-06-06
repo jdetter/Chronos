@@ -28,7 +28,8 @@ void tlock_init(tlock_t* lock)
 
 void tlock_acquire(tlock_t* lock)
 {
-	while(fetch_and_add(&lock->next_ticket, 1)!=lock->currently_serving){
+	int turn = fetch_and_add(&lock->next_ticket, 1)
+	while(turn!=lock->currently_serving){
 		;
 	}
 }
