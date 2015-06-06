@@ -42,7 +42,11 @@ uint tty_num(tty_t t)
 
 void tty_enable(tty_t t)
 {
-	t->active=1;
+	t->active = 1;
+	if(t->type!=TTY_TYPE_SERIAL)
+	{
+		return;
+	}
 }
 
 void tty_disable(tty_t t)
