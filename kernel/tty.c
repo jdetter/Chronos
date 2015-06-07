@@ -13,7 +13,7 @@ tty_t tty_find(uint index)
 }
 
 void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled, 
-	uint mem_start)
+		uint mem_start)
 {
 	t->num = num;
 	t->active = 0; /* 1: This tty is in the foreground, 0: background*/
@@ -47,8 +47,19 @@ void tty_enable(tty_t t)
 	{
 		return;
 	}
+	if(t->display_mode==TTY_MODE_TEXT)
+	{
+		console_print_buffer(t->buffer_text, t->type==TTY_TYPE_COLOR);
+	}
+	else if(t->display_mode==TTY_MODE_GRAPHIC)
+	{
+		console_print_buffer(t->buffer_graphic, t->type==TTY_TYPE_COLOR);
+	}
+	else
+	{
+		panic("TTY invalid graphics mode");
+	}
 }
-
 void tty_disable(tty_t t)
 {
 	t->active=0;
@@ -56,12 +67,62 @@ void tty_disable(tty_t t)
 
 void tty_print_character(tty_t t, char c)
 {
-	//printf(c[t->text_cursor_pos]);
+	if(t->type==TTY_TYPE_SERIAL&&t->active)
+	{
+		serial_write(&c,1);
+		return;
+	}
+	if(t->display_mode==TTY_MODE_TEXT)
+	{
+		console_putc(t->text_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+	}
+	else
+	{
+		panic("TTY invalid graphics mode");
+	}
+	if(t->type==TTY_TYPE_COLOR)
+	{
+		uchar* vid_addr = t->buffer_text
+				+ (t->text_cursor_pos * 2);
+		*(vid_addr)     = c;
+		*(vid_addr + 1) = t->color;
+	}
+	else
+	{
+		uchar* vid_addr = t->buffer_text
+				+ (t->text_cursor_pos);
+		*(vid_addr)     = c;
+	}
 }
+
 
 void tty_print_string(tty_t t, char* fmt, ...)
 {
-
+	va_list list;
+	va_start(&list, (void**)&fmt);
+	char buffer[4096];
+	va_snprintf(buffer, 4096, list, fmt);
+	if(t->type==TTY_TYPE_SERIAL&&t->active)
+	{
+		serial_write(buffer, strlen(buffer));
+		return;
+	}
+	if(t->display_mode==TTY_MODE_TEXT)
+	{
+		//int i;
+		//for(i=0, i<strlen(buffer), i++)
+		//{
+			//console_putc(t->graphic_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+		//}
+	}
+	else if(t->display_mode==TTY_MODE_GRAPHIC)
+	{
+		//console_putc(t->graphic_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+	}
+	else
+	{
+		panic("TTY invalid graphics mode");
+	}
 }
 
 void tty_print_cell(tty_t t, uint row, uint col, uint character)
