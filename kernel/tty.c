@@ -77,27 +77,31 @@ void tty_print_character(tty_t t, char c)
 		serial_write(&c,1);
 		return;
 	}
-	if(t->display_mode==TTY_MODE_TEXT)
+	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
-		console_putc(t->text_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+		if(t->active)
+		{
+			console_putc(t->text_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+		}
+		if(t->type==TTY_TYPE_COLOR)
+		{
+			char* vid_addr = t->buffer_text
+					+ (t->text_cursor_pos * 2);
+			*(vid_addr)     = c;
+			*(vid_addr + 1) = t->color;
+		}
+		else
+		{
+			char* vid_addr = t->buffer_text
+					+ (t->text_cursor_pos);
+			*(vid_addr)     = c;
+		}
 	}
 	else
 	{
 		panic("TTY invalid graphics mode");
 	}
-	if(t->type==TTY_TYPE_COLOR)
-	{
-		char* vid_addr = t->buffer_text
-				+ (t->text_cursor_pos * 2);
-		*(vid_addr)     = c;
-		*(vid_addr + 1) = t->color;
-	}
-	else
-	{
-		char* vid_addr = t->buffer_text
-				+ (t->text_cursor_pos);
-		*(vid_addr)     = c;
-	}
+
 }
 
 
@@ -107,22 +111,13 @@ void tty_print_string(tty_t t, char* fmt, ...)
 	va_start(&list, (void**)&fmt);
 	char buffer[4096];
 	va_snprintf(buffer, 4096, list, fmt);
-	if(t->type==TTY_TYPE_SERIAL&&t->active)
+	if(t->type==TTY_TYPE_COLOR||t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_SERIAL)
 	{
-		serial_write(buffer, strlen(buffer));
-		return;
-	}
-	if(t->display_mode==TTY_MODE_TEXT)
-	{
-		//int i;
-		//for(i=0, i<strlen(buffer), i++)
-		//{
-			//console_putc(t->graphic_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
-		//}
-	}
-	else if(t->display_mode==TTY_MODE_GRAPHIC)
-	{
-		//console_putc(t->graphic_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
+		int i;
+		for(i=0; i <strlen(buffer); i++)
+		{
+			tty_print_character(t, buffer[i]);
+		}
 	}
 	else
 	{
@@ -132,12 +127,71 @@ void tty_print_string(tty_t t, char* fmt, ...)
 
 void tty_print_cell(tty_t t, uint row, uint col, uint character)
 {
+	if(t->type==TTY_TYPE_SERIAL)
+	{
+		tty_print_character(t, character);
+	}
+	else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
+	{
+		uint pos =(row*CONSOLE_COLS)+col;
+		if(t->type==TTY_TYPE_COLOR)
+		{
+			char* vid_addr = t->buffer_graphic
+					+ (t->graphic_cursor_pos * 2);
+			*(vid_addr)     = character;
+			*(vid_addr + 1) = t->color;
+		}
+		else
+		{
+			char* vid_addr = t->buffer_graphic
+					+ (t->graphic_cursor_pos);
+			*(vid_addr)     = character;
+		}
+		if(t->active)
+		{
+			console_putc(pos, character, t->color,  t->type==TTY_TYPE_COLOR);
+		}
+
+	}
+	else
+	{
+		panic("TTY invalid graphics mode");
+	}
 
 }
 
 void tty_print_screen(tty_t t, uchar* buffer)
 {
+	if(t->type==TTY_TYPE_SERIAL)
+	{
+		return;
+	}
+	else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
+	{
+		char* vid_addr = t->buffer_graphic;
+		//char* graph_addr = NULL;
+		uint sz = 0;
+		if(t->type==TTY_TYPE_COLOR)
+		{
+			//graph_addr = CONSOLE_COLOR_BASE;
+			sz = CONSOLE_ROWS*CONSOLE_COLS*2;
+		}
+		else
+		{
+			//graph_addr = CONSOLE_MONO_BASE;
+			sz = CONSOLE_ROWS*CONSOLE_COLS;
+		}
+		memmove(vid_addr, buffer, sz);
+		if(t->active)
+		{
+			//memmove(graph_addr, buffer, sz);
+		}
 
+	}
+	else
+	{
+		panic("TTY invalid graphics mode");
+	}
 }
 
 void tty_clear_graphic(tty_t t)
