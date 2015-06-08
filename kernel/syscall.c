@@ -338,15 +338,58 @@ void* sys_mmap(void* hint, uint sz, int protection)
 
 int sys_wait_s(struct cond* c, struct slock* lock)
 {
-
+	
+	slock_acquire(&ptable_lock);
+	if(c->next_signal>c->current_signal){
+		c->next_signal = 0;
+		c->current_signal = 0;
+	}
+	rproc->block_type = PROC_BLOCK_COND;
+	rproc->b_condition = c;
+	proc->state = PROC_BLOCKED;
+	proc->b_condition_signal = c->current_signal++;
+	slock_release(lock);
+	slock_release(&ptable_lock);
 }
 
 int sys_wait_t(struct cond* c, struct tlock* lock)
 {
-
+	
+	tlock_acquire(&ptable_lock);
+	if(c->next_signal>c->current_signal){
+		c->next_signal = 0;
+		c->current_signal = 0;
+	}
+	rproc->block_type = PROC_BLOCK_COND;
+	rproc->b_condition = c;
+	proc->state = PROC_BLOCKED;
+	proc->b_condition_signal = c->current_signal++;
+	tlock_release(lock);
+	tlock_release(&ptable_lock);
 }
 
 int sys_signal(struct cond* c)
 {
-
+	slock_acquire(&ptable_lock);
+	int i;
+	for(i = 0; i< PTABLE_SIZE; i++){
+		if(ptable[i].state != PROC_BLOCKED){
+			continue;
+		}
+		if(ptable[i].block_type != PROC_BLOCKED_COND){
+			continue;
+		}
+		if(ptable[i].b_condition != c){
+			continue;
+		}
+		if(c->next_signal!=ptable[i].b_condition_signal){
+			continue;
+		}
+		ptable[i].state = PROC_RUNNABLE;
+		ptable[i].block_type = PROC_BLOCKED_NONE;
+		c->next_signal++;
+		break;
+	}
+	
+	slock_release(&ptable_lock);
 }
