@@ -15,7 +15,9 @@
 #include "stdlib.h"
 #include "syscall.h"
 #include "serial.h"
+#include "trap.h"
 
+extern uint next_pid;
 extern slock_t ptable_lock; /* Process table lock */
 extern struct proc* ptable; /* The process table */
 extern struct proc* rproc; /* The currently running process */
@@ -135,10 +137,10 @@ int sys_fork(void)
   new_proc->stack_start = rproc->stack_start;
   new_proc->stack_end = rproc->stack_end;
   new_proc->state = PROC_RUNNABLE;
-  new_proc->pgdir = palloc();
+  new_proc->pgdir = (uint*) palloc();
   vm_copy_vm(new_proc->pgdir, rproc->pgdir); 
-  new_proc->k_stack = palloc();
-  memmove(new_proc->k_stack, rproc->k_stack);   
+  new_proc->k_stack = (uchar*) palloc();
+  memmove(new_proc->k_stack, rproc->k_stack, PGSIZE);   
   new_proc->tf->eax = 0;
 
   return new_proc->pid;
