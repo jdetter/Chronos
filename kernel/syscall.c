@@ -123,8 +123,25 @@ int syscall_handler(uint* esp)
 }
 
 int sys_fork(void)
-{ 
-	return 0;
+{
+  struct proc* new_proc = alloc_proc();
+  slock_acquire(&ptable_lock);
+  new_proc->pid = next_pid++;
+  new_proc->uid = rproc->uid;
+  new_proc->gid = rproc->gid;
+  new_proc->parent = rproc;
+  new_proc->heap_start = rproc->heap_start;
+  new_proc->heap_end = rproc->heap_end;
+  new_proc->stack_start = rproc->stack_start;
+  new_proc->stack_end = rproc->stack_end;
+  new_proc->state = PROC_RUNNABLE;
+  new_proc->pgdir = palloc();
+  vm_copy_vm(new_proc->pgdir, rproc->pgdir); 
+  new_proc->k_stack = palloc();
+  memmove(new_proc->k_stack, rproc->k_stack);   
+  new_proc->tf->eax = 0;
+
+  return new_proc->pid;
 }
 
 int sys_wait(int pid)
