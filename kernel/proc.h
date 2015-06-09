@@ -81,6 +81,11 @@ struct proc
 };
 
 /**
+ * Allocate a new process
+ */
+struct proc* alloc_proc();
+
+/**
  * Initilize all of the variables needed for scheduling. (lock not needed)
  */
 void sched_init();
