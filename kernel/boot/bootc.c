@@ -148,3 +148,7 @@ void panic()
         //cprintf(panic_str); 
         for(;;);
 }
+
+/* mmap function to get stdlib to compile */
+void* mmap(void* hint, uint sz, int protection)
+{panic();return NULL;}

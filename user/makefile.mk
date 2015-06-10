@@ -30,6 +30,7 @@ USER_CLEAN := \
 
 # Include files
 USER_CFLAGS += -I include
+USER_CFLAGS += -I user/lib
 # Disable Position Independant Code
 USER_CFLAGS += -fno-pic
 # Disable built in functions

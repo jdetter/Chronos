@@ -55,11 +55,11 @@ mktf:
 	pushal
 
 	# Setup kernel segments again
-	movw 	$(SEG_KERNEL_DATA), %ax
+	movw 	$(SEG_KERNEL_DATA << 3), %ax
+	movw 	%ax, %ss
 	movw 	%ax, %ds
 	movw 	%ax, %es
 	# f and g segments are unused right now.
-	movw 	$0, %ax
 	movw 	%ax, %fs
 	movw 	%ax, %gs
 
@@ -78,7 +78,7 @@ trap_return:
 	popl	%ds
 
 	# adjust esp for trap number and error (see struct trap_frame)
-	addl $0x8, %esp
+	addl $0x08, %esp
 
 	# Restore the stack pointer, esp and EFLAGS, finish context switch.
 	iret

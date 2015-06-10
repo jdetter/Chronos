@@ -11,12 +11,17 @@
 #include "stdlib.h"
 #include "syscall.h"
 #include "tty.h"
+#include "vsfs.h"
+#include "proc.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
 
 struct int_gate interrupt_table[TRAP_COUNT];
+extern struct proc* rproc;
 extern uint trap_handlers[];
+
+void trap_return();
 
 void trap_init(void)
 {
@@ -38,6 +43,8 @@ void trap_handler(struct trap_frame* tf)
 	int trap = tf->trap_number;
 
 	char fault_string[64];
+
+	int syscall_ret = -1;
 
 	switch(trap)
 	{
@@ -103,14 +110,25 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_SC:
 			strncpy(fault_string, "System Call", 64);
-			syscall_handler((uint*)tf->espx);
+			syscall_ret = syscall_handler((uint*)tf->espx);
+			rproc->tf->eax = syscall_ret;
 			break;
 		default:
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
-	cprintf("%s: 0x%x", fault_string, tf->error);
+	if(trap != TRAP_SC)
+		cprintf("%s: 0x%x", fault_string, tf->error);
+
+	/* Probably return to scheduler here. */
 
 	//pic_eoi(trap);
-	for(;;);
+	if(trap != TRAP_SC)for(;;);
+
+	/* Force return */
+	asm volatile("movl %ebp, %esp");
+	asm volatile("popl %ebp");
+	/* add return address and arguments */
+	asm volatile("addl $0x08, %esp");
+	asm volatile("jmp trap_return");
 }

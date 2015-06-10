@@ -4,13 +4,13 @@
 #include "chronos.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "stdio.h"
 
 int main(int argc, char** argv)
 {
-	//for(;;);
-	char* message = "Hello, world!\n";
-	write(1, message, strlen(message));
-
+	printf("Number: %d\n", 12);
+	
+	for(;;);
 	exit();
 	return 0;
 }

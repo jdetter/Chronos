@@ -3,6 +3,9 @@
 #include "stdmem.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "file.h"
+#include "stdlock.h"
+#include "chronos.h"
 
 #define M_AMT 0x5000 /* 5K heap space*/
 #define M_MAGIC (void*)(0x43524E53)
@@ -202,6 +205,11 @@ int mfree(void* ptr)
 
 void minit(uint start_addr, uint end_addr, uint mem_map)
 {
+	if(mem_map)
+	{
+		start_addr = (uint)mmap(NULL, M_AMT, PROT_READ | PROT_WRITE);
+		end_addr = start_addr + M_AMT;
+	}
 	/* total_bytes is the amount of bytes we were given */
 	uint total_bytes = end_addr - start_addr;
 	/* Start of the free list were creating */

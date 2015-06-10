@@ -69,6 +69,11 @@ struct proc* spawn_tty(tty_t t)
 	memset(p->file_descriptors, 0, 
 		sizeof(struct file_descriptor) * MAX_FILES);
 
+	/* Setup stdin, stdout and stderr */
+	p->file_descriptors[0].type = FD_TYPE_STDIN;
+	p->file_descriptors[1].type = FD_TYPE_STDOUT;
+	p->file_descriptors[2].type = FD_TYPE_STDERR;
+
 	p->stack_start = KVM_START;
 	p->stack_end = KVM_START - PGSIZE;
 	

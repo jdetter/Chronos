@@ -7,6 +7,7 @@
 	name: \
 		pushl $SYS_##name; \
 		int $TRAP_SC; \
+		addl $0x04, %esp; \
 		ret
 
 SYSCALL(fork)

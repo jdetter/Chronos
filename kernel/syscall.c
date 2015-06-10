@@ -16,6 +16,7 @@
 #include "syscall.h"
 #include "serial.h"
 #include "trap.h"
+#include "panic.h"
 
 extern uint next_pid;
 extern slock_t ptable_lock; /* Process table lock */
@@ -25,16 +26,16 @@ extern struct proc* rproc; /* The currently running process */
 /* Is the given address safe to access? */
 uchar syscall_addr_safe(uchar* address)
 {
-	if(rproc->stack_end <= (uint)address 
-		&& (uint)address < rproc->stack_start
-		&& rproc->heap_end > (uint)address 
-		&& (uint)address >= rproc->heap_start)
+	if((rproc->stack_end >= (uint)address 
+		&& (uint)address < rproc->stack_start) ||
+		   (rproc->heap_end < (uint)address 
+		&& (uint)address >= rproc->heap_start))
 	{
-		/* Invalid memory access */
-		return 1;
+		/* Valid memory access */
+		return 0;
 	}
-	/* Valid memory access */
-	return 0;
+	/* Invalid memory access */
+	return 1;
 }
 
 /**
@@ -56,23 +57,68 @@ int syscall_get_int(int* dst, uint* esp, uint arg_num)
 /**
  * Get a string argument. The arg_num determines the offset to the argument.
  */
-int syscall_get_str(char* dst, uint sz, uint* esp, uint arg_num)
+int syscall_get_buffer(char* dst, uint sz_user, uint sz_kern, 
+		uint* esp, uint arg_num)
+{
+	memset(dst, 0, sz_kern);
+	esp += arg_num; /* This is a pointer to the string we need */
+	uchar* str_addr = (uchar*)esp;
+	if(syscall_addr_safe(str_addr))
+		return 1;
+	uchar* str = *(uchar**)str_addr;
+	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz_user))
+		return 1;
+	
+	uint sz = sz_user;
+	if(sz_kern < sz_user)
+		sz = sz_kern;
+	int x;
+	for(x = 0;x < sz;x++)
+	{
+		if(str[x] == 0)
+		{
+			dst[x] = 0;
+			break;
+		}
+
+		dst[x] = str[x];
+	}
+
+	return 0;
+}
+
+int syscall_get_buffer_ptr(char** ptr, uint sz, uint* esp, uint arg_num)
 {
 	esp += arg_num; /* This is a pointer to the string we need */
-	uchar* str = (uchar*)esp;
-	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz - 1))
-		return 1;
+	uchar* buff_addr = (uchar*)esp;
+	if(syscall_addr_safe(buff_addr))
+                return 1;
+	uchar* buff = *(uchar**)buff_addr;
+        if(syscall_addr_safe(buff) || syscall_addr_safe(buff + sz))
+                return 1;
 
-	memmove(dst, str, sz);
+	*ptr = (char*)buff;
+
 	return 0;
 }
 
 int syscall_handler(uint* esp)
 {
-	esp += 7;
+	esp += 9;
 	/* Get the number of the system call */
 	int syscall_number = -1;
+	int return_value = -1;
 	if(syscall_get_int(&syscall_number, esp, 0)) return 1;
+	esp++;
+	int int_arg1;
+	int int_arg2;
+	int int_arg3;
+
+#define SYSCALL_STRLEN 512
+	char str_arg1[SYSCALL_STRLEN];
+	//char str_arg2[SYSCALL_STRLEN];
+
+	char* buff_ptr1;
 
 	switch(syscall_number)
 	{
@@ -89,12 +135,27 @@ int syscall_handler(uint* esp)
 		case SYS_close:
 			break;
 		case SYS_read:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_int(&int_arg2, esp, 3)) break;
+			if(syscall_get_buffer_ptr(&buff_ptr1, 
+				int_arg2, esp, 2)) break;
+			return_value = sys_read(int_arg1, buff_ptr1, int_arg2);	
 			break;
 		case SYS_write:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_int(&int_arg2, esp, 3)) break;
+			if(syscall_get_buffer((char*)str_arg1, int_arg2, 
+				SYSCALL_STRLEN, esp, 2)) break;
+			return_value = sys_write(int_arg1, str_arg1, int_arg2);
 			break;
 		case SYS_lseek:
 			break;
 		case SYS_mmap:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_int(&int_arg2, esp, 2)) break;
+			if(syscall_get_int(&int_arg3, esp, 3)) break;
+			return_value = (int)sys_mmap((void*)int_arg1,
+				(uint)int_arg2, int_arg3);
 			break;
 		case SYS_chdir:
 			break;
@@ -120,7 +181,7 @@ int syscall_handler(uint* esp)
 			break;
 	}
 	
-	return 0; /* Syscall successfully handled. */
+	return return_value; /* Syscall successfully handled. */
 }
 
 int sys_fork(void)
@@ -294,13 +355,13 @@ int sys_read(int fd, char* dst, uint sz)
   if(rproc->file_descriptors[fd].type == 0x00){
     return -1;
   }  
-  else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
+  
+  if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
     if(vsfs_read(&rproc->file_descriptors[fd].inode,
-      rproc->file_descriptors[fd].inode_pos, sz, dst) == -1){
+      rproc->file_descriptors[fd].inode_pos, sz, dst) == -1) {
       return -1;
     }
-  }
-  else{
+  } else {
     int i;
     for(i = 0;i < sz; i++){
       char next_char = tty_get_char(rproc->t);
@@ -349,6 +410,11 @@ int sys_lseek(int fd, int offset, int whence)
   return seek_pos;
 }
 
+void* mmap(void* hint, uint sz, int protection)
+{
+	panic("mmap called in kernel.");
+	return NULL;
+}
 void* sys_mmap(void* hint, uint sz, int protection)
 {
   uint pagestart=PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);

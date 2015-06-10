@@ -178,8 +178,8 @@ void tty_print_string(tty_t t, char* fmt, ...)
 {
 	va_list list;
 	va_start(&list, (void**)&fmt);
-	char buffer[4096];
-	va_snprintf(buffer, 4096, list, fmt);
+	char buffer[1024];
+	va_snprintf(buffer, 1024, list, fmt);
 	if(t->type==TTY_TYPE_COLOR||t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_SERIAL)
 	{
 		int i;
@@ -275,6 +275,17 @@ void tty_clear_graphic(tty_t t)
 
 char tty_get_char(tty_t t)
 {
+	if(t->type == TTY_TYPE_SERIAL)
+	{
+		char c;
+		serial_read(&c, 1);
+		return c;
+	} else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
+	{
+
+	}
+
+
 	return 0;
 }
 

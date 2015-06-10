@@ -270,6 +270,11 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
         int dst_index = 0;
         for(;dst_index < sz;fmt_index++, dst_index++)
         {
+		if(fmt[fmt_index] == 0)
+		{
+			dst[dst_index] = 0;
+			break;
+		}
                 if(fmt[fmt_index] == '%')
                 {
                         if(fmt[fmt_index + 1] == '%')
@@ -301,7 +306,7 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
         }
 
         dst[sz - 1] = 0;
-        va_end(list);
+        //va_end(list); /* There is some sort of problem freeing here */
         return dst_index;
 }
 
