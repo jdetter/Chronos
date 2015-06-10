@@ -40,8 +40,8 @@ int write_block(vsfs_inode* inode, uint block_index, void* src);
 int allocate_directent(vsfs_inode* parent, char* name, uint inode_num);
 void write_inode(uint inode_num, vsfs_inode* inode);
 void read_inode(uint inode_num, vsfs_inode* inode);
-void file_name(char *path, char* dst);
-void parent_path(char *path, char* dst);
+void file_name(const char *path_orig, char* dst);
+void parent_path(const char *path, char* dst);
 
 
 #define BLOCKSIZE 512
@@ -219,7 +219,7 @@ void free_block(uint block_num)
  * count of the file. If the file now has 0 links to it, free the file and
  * all of the blocks it is holding onto.
  */
-int vsfs_unlink(char* path)
+int vsfs_unlink(const char* path)
 {
   char parent_name[1024];
   parent_path(path, parent_name);
@@ -516,8 +516,11 @@ void read_inode(uint inode_num, vsfs_inode* inode)
   memmove(inode, &inodes[offset], sizeof(vsfs_inode));
 }
 
-void file_name(char *path, char* dst)
+void file_name(const char *path_orig, char* dst)
 {
+  char path_buffer[strlen(path_orig) + 1];
+  memmove(path_buffer, (char*)path_orig, strlen(path_orig) + 1);
+  char* path = path_buffer;
   while(*(path) != 0){
     path++;
   }
@@ -527,12 +530,11 @@ void file_name(char *path, char* dst)
   path++;
 
   memmove(dst, path, strlen(path));
-
 }
 
-void parent_path(char *path, char* dst)
+void parent_path(const char *path, char* dst)
 {
-  memmove(dst, path, strlen(path));
+  memmove(dst, (char*)path, strlen(path));
 
   while(*(dst) != 0){
     dst++;
@@ -599,7 +601,7 @@ int vsfs_link(const char* path, vsfs_inode* new_inode)
  * Create the directory entry new_file that is a hard link to file. Return 0
  * on success, return 1 otherwise.
  */
-int vsfs_hard_link(char* new_file, char* link)
+int vsfs_hard_link(const char* new_file, char* link)
 {
   vsfs_inode link_inode;
   int link_num = vsfs_lookup(link, &link_inode);
@@ -625,7 +627,7 @@ int vsfs_hard_link(char* new_file, char* link)
 /**
  * Create a soft link called new_file that points to link.
  */
-int vsfs_soft_link(char* new_file, char* link)
+int vsfs_soft_link(const char* new_file, char* link)
 {
   // ?
   return 69;
