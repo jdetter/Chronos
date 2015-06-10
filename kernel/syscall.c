@@ -352,7 +352,11 @@ int sys_lseek(int fd, int offset, int whence)
 
 void* sys_mmap(void* hint, uint sz, int protection)
 {
-	return NULL;
+  uint pagestart = PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);
+  mappages(pagestart, sz, rproc->pgdir, 1);
+             
+  uint* returnpage = (uint*) pagestart;
+  return returnpage;
 }
 
 int sys_wait_s(struct cond* c, struct slock* lock)
@@ -413,3 +417,50 @@ int sys_signal(struct cond* c)
 	slock_release(&ptable_lock);
 	return 0;
 }
+
+int sys_chdir(cont char* dir){
+
+  rproc->cwd = dir;
+  return 0;
+}
+
+int sys_cwd(char* dst, uint sz){  
+
+  strncpy(dst, rproc->cwd  , sz);
+  
+  return sz;
+}
+
+int sys_create(const char* file, uint permissions){
+  
+  struct vsfs_inode new_inode;
+  new_inode.perm = permissions; 
+  vsfs_link(file, &new_inode);  
+  return 0;
+}
+
+int mkdir(const char* dir, uint permissions){
+
+  struct vsfs_inode new_folder;
+  new_inode.perm = permissions;
+  vsfs_link(dir, &new_folder);
+  return 0;
+
+}
+
+int rmdir(const char* dir){
+
+  
+
+}
+
+int mv(const char* orig, const char* dst){
+
+}
+
+int fstat(const char* path, struct stat* dst){
+
+}
+
+
+
