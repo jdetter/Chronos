@@ -601,7 +601,7 @@ int vsfs_link(const char* path, vsfs_inode* new_inode)
  * Create the directory entry new_file that is a hard link to file. Return 0
  * on success, return 1 otherwise.
  */
-int vsfs_hard_link(const char* new_file, char* link)
+int vsfs_hard_link(const char* new_file, const char* link)
 {
   vsfs_inode link_inode;
   int link_num = vsfs_lookup(link, &link_inode);
@@ -627,7 +627,7 @@ int vsfs_hard_link(const char* new_file, char* link)
 /**
  * Create a soft link called new_file that points to link.
  */
-int vsfs_soft_link(const char* new_file, char* link)
+int vsfs_soft_link(const char* new_file, const char* link)
 {
   // ?
   return 69;
