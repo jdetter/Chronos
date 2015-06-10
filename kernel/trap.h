@@ -5,6 +5,8 @@
  * A trap frame is what gets pushed onto the stack during an interrupt. This
  * context should be restored when the process wants to get rescheduled.
  */
+
+#define TF_REGISTERS (0x08 << 2)
 struct trap_frame
 {
 	/* 32 bit Registers from pushad */

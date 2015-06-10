@@ -75,7 +75,7 @@ struct proc
 
 	pgdir* pgdir; /* The page directory for the process */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
-	uchar* tss; /* The task segment for this process */
+	struct task_segment* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
 	uint entry_point; /* The address of the first instruction */
 };
@@ -96,9 +96,10 @@ void sched_init();
 struct proc* spawn_tty(tty_t t);
 
 /**
- * Load the binary in path into the address space of process p.
+ * Load the binary in path into the address space of process p. Returns the
+ * size of the binary in memory.
  */
-void load_binary(const char* path, struct proc* p);
+uint load_binary(const char* path, struct proc* p);
 
 /**
  * Returns a pointer with the process id pid. If there is no such process,

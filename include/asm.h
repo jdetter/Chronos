@@ -1,6 +1,7 @@
 #ifndef _ASM_H_
 #define _ASM_H_
 
+#define SEG_PRESENT	(0x01 << 7)
 #define SEG_PRES	((0x01 << 7) | (0x01 << 4))
 #define SEG_EXE 	(0x01 << 3)
 #define SEG_DATA 	0x00
@@ -9,10 +10,10 @@
 #define SEG_USER 	(0x03 << 5)
 
 #define SEG_GRWU	0x00
-#define SEG_GRWD 	(0x01 << 2)
+#define SEG_GRWD 	(0x01 << 1)
 
 #define SEG_CONF 	0x00
-#define SEG_NONC 	0x01
+#define SEG_NONC 	(0x01 << 2)
 
 #define SEG_READ 	0x02
 #define SEG_WRITE 	0x02

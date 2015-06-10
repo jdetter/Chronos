@@ -543,7 +543,7 @@ void parent_path(char *path, char* dst)
   *(dst) = 0;
 }
 
-int vsfs_link(char* path, vsfs_inode* new_inode)
+int vsfs_link(const char* path, vsfs_inode* new_inode)
 {
   /* Create a temporary buffer for our path*/
   char tmp_path[1024];

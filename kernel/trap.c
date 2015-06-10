@@ -7,10 +7,10 @@
 #include "x86.h"
 #include "panic.h"
 #include "pic.h"
-#include "serial.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "syscall.h"
+#include "tty.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -103,13 +103,13 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_SC:
 			strncpy(fault_string, "System Call", 64);
-			syscall_handler((uint*)tf->esp);
+			syscall_handler((uint*)tf->espx);
 			break;
 		default:
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
-	serial_write(fault_string, strlen(fault_string));
+	cprintf("%s: 0x%x", fault_string, tf->error);
 
 	//pic_eoi(trap);
 	for(;;);

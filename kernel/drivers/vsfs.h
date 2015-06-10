@@ -71,7 +71,7 @@ int vsfs_unlink(char* path);
  * available in the file system, or there is any other error return -1.
  * Return the new inode number on success.
  */
-int vsfs_link(char* path, vsfs_inode* new_inode);
+int vsfs_link(const char* path, vsfs_inode* new_inode);
 
 /**
  * Create the directory entry new_file that is a hard link to file. Return 0
@@ -108,4 +108,5 @@ int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src);
  * Clear the given inode structure.
  */
 void vsfs_clear(vsfs_inode* node);
+
 #endif 

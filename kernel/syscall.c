@@ -42,7 +42,6 @@ uchar syscall_addr_safe(uchar* address)
  */
 int syscall_get_int(int* dst, uint* esp, uint arg_num)
 {
-	arg_num++;
 	esp += arg_num;
 	uchar* num_start = (uchar*)esp;
 	uchar* num_end = (uchar*)esp + 3;
@@ -59,7 +58,6 @@ int syscall_get_int(int* dst, uint* esp, uint arg_num)
  */
 int syscall_get_str(char* dst, uint sz, uint* esp, uint arg_num)
 {
-	arg_num++;
 	esp += arg_num; /* This is a pointer to the string we need */
 	uchar* str = (uchar*)esp;
 	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz - 1))
@@ -71,6 +69,7 @@ int syscall_get_str(char* dst, uint sz, uint* esp, uint arg_num)
 
 int syscall_handler(uint* esp)
 {
+	esp += 7;
 	/* Get the number of the system call */
 	int syscall_number = -1;
 	if(syscall_get_int(&syscall_number, esp, 0)) return 1;
@@ -352,7 +351,7 @@ int sys_lseek(int fd, int offset, int whence)
 
 void* sys_mmap(void* hint, uint sz, int protection)
 {
-  uint pagestart = PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);
+  uint pagestart=PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);
   mappages(pagestart, sz, rproc->pgdir, 1);
              
   uint* returnpage = (uint*) pagestart;
@@ -418,16 +417,14 @@ int sys_signal(struct cond* c)
 	return 0;
 }
 
-int sys_chdir(cont char* dir){
-
-  rproc->cwd = dir;
+int sys_chdir(const char* dir){
+  //rproc->cwd = dir;
+  // ^ cwd is not a pointer, use strncpy
   return 0;
 }
 
-int sys_cwd(char* dst, uint sz){  
-
+int sys_cwd(char* dst, uint sz){
   strncpy(dst, rproc->cwd  , sz);
-  
   return sz;
 }
 
@@ -441,26 +438,21 @@ int sys_create(const char* file, uint permissions){
 
 int mkdir(const char* dir, uint permissions){
 
-  struct vsfs_inode new_folder;
+  struct vsfs_inode new_inode;
   new_inode.perm = permissions;
-  vsfs_link(dir, &new_folder);
+  vsfs_link(dir, &new_inode);
   return 0;
 
 }
 
 int rmdir(const char* dir){
-
-  
-
+  return 0;
 }
 
 int mv(const char* orig, const char* dst){
-
+  return 0;
 }
 
 int fstat(const char* path, struct stat* dst){
-
+  return 0;
 }
-
-
-

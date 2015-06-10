@@ -42,6 +42,8 @@ void vm_add_pages(uint start, uint end);
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user);
 void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
+void __start_init__(uint esp);
+void __drop_priv__(void);
 
 uint k_pages; /* How many pages are left? */
 uint k_stack; /* Kernel stack */
@@ -87,14 +89,15 @@ void vm_add_pages(uint start, uint end)
  *
  */
 
-#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 6)
+#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 7)
 struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG_NULL, 
 	MKVMSEG(SEG_KERN, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG(SEG_USER, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
+	MKVMSEG(SEG_USER, SEG_EXE | SEG_NONC, SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, 0x0)
+	MKVMSEG_NULL, /* Wil become TSS*/
+	MKVMSEG_NULL /* Will become CALL */
 };
 
 void vm_seg_init(void)
@@ -315,13 +318,13 @@ void switch_context(struct proc* p)
 	/* Set the task segment to point to the process's stacks. */
 	uint base = (uint)p->tss;
 	uint limit = sizeof(struct task_segment);
-	uint access = SEG_DEFAULT_ACCESS | SEG_WRITE;
-	uint flag = SEG_SZ;
+	uint type = TSS_DEFAULT_FLAGS | TSS_PRESENT;
+	uint flag = TSS_AVAILABILITY;
 
 	global_descriptor_table[SEG_TSS].limit_1 = (uint_16) limit;
 	global_descriptor_table[SEG_TSS].base_1 = (uint_16) base;
 	global_descriptor_table[SEG_TSS].base_2 = (uint_8)(base>>16);
-	global_descriptor_table[SEG_TSS].type = access;
+	global_descriptor_table[SEG_TSS].type = type;
 	global_descriptor_table[SEG_TSS].flags_limit_2 = 
 		(uint_8)(limit >> 16) | flag;
 	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
@@ -329,14 +332,30 @@ void switch_context(struct proc* p)
 	struct task_segment* ts = (struct task_segment*)p->tss;
 	ts->SS0 = SEG_KERNEL_DATA << 3;
 	ts->ESP0 = base + PGSIZE;
+	ts->esp = p->tf->esp;
+	ts->ss = SEG_USER_DATA << 3;
 
-	ltr(SEG_TSS << 3);
 	__enable_paging__(p->pgdir);
+	ltr(SEG_TSS << 3);
 
 	if(p->state == PROC_READY)
 	{
-		/* Switch to the user's stack */
-		__set_stack__((uint)(p->tf->esp));
+		uint call_addr = (uint)__drop_priv__;
+		/* Setup the call gate */
+		global_descriptor_table[SEG_CALL].limit_1 = call_addr;
+		global_descriptor_table[SEG_CALL].base_1 = SEG_KERNEL_CODE << 3;
+		global_descriptor_table[SEG_CALL].base_2 = 0; /* 0 params*/
+		global_descriptor_table[SEG_CALL].type = 
+			CALL_DEFAULT_FLAGS | CALL_USER_FLAG;
+		global_descriptor_table[SEG_CALL].flags_limit_2 = 
+			(uint_8)(call_addr >> 16);
+		global_descriptor_table[SEG_CALL].base_3 = 
+			(uint_8)(call_addr >> 24);
+
+		//ts->esp = p->tf->esp;
+		//ts->ss = SEG_USER_DATA << 3;
+
+		__start_init__(p->tf->esp);
 	}
 
 	/* Switch to the user's k stack */
@@ -355,7 +374,7 @@ void free_list_check(void)
 		{
 			if(debug) cprintf("[FAIL]\n");
 			if(debug) cprintf("[WARNING] KVM "
-				"has become unstable.\n");
+					"has become unstable.\n");
 			return;
 		}
 		curr = (struct vm_free_node*)curr->next;

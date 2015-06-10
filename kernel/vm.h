@@ -37,6 +37,16 @@
         (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF),     \
         ((base >> 24) & 0xFF)}
 
+#define TSS_BUSY		0x02
+#define TSS_PRESENT		0x80
+#define TSS_GRANULARITY		0x80
+#define TSS_AVAILABILITY	0x10
+#define TSS_DEFAULT_FLAGS	0x09
+
+#define CALL_PRESENT_FLAG	(0x80)
+#define CALL_USER_FLAG		(0x3 << 5)
+#define CALL_DEFAULT_FLAGS	((0x3 << 2) | CALL_PRESENT_FLAG)
+
 struct vm_segment_descriptor
 {
 	uint_16 limit_1; /* 0..15 of limit */

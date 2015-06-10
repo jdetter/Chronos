@@ -7,6 +7,7 @@
 
 int main(int argc, char** argv)
 {
+	//for(;;);
 	char* message = "Hello, world!\n";
 	write(1, message, strlen(message));
 

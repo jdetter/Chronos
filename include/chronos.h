@@ -37,6 +37,10 @@
 #define SEG_USER_CODE   0x03
 #define SEG_USER_DATA   0x04
 #define SEG_TSS		0x05
+#define SEG_CALL	0x06
+
+#define DROP_CODE (SEG_USER_CODE << 3) | (0x3)
+#define DROP_DATA (SEG_USER_DATA << 3) | (0x3)
 
 #define PROT_EXE	0x01
 #define PROT_READ	0x02

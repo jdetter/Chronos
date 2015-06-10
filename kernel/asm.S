@@ -103,15 +103,21 @@ fake_trap:
 
 	ret
 
-# run_program(uint eip);
+# __start_init__(uint new_esp);
 .globl __start_init__
 __start_init__:
-# initilize segment selectors
-	movw	$(SEG_USER_DATA << 3), %ax
+	call  $(SEG_CALL << 3), $(SEG_CALL << 3)	
+
+# drop data privileges
+.globl __drop_priv__
+__drop_priv__:
+	movw	$(SEG_KERNEL_DATA << 3), %ax
 	movw	%ax, %ds
 	movw	%ax, %es
 	movw	%ax, %fs
 	movw	%ax, %gs
-	movw	%ax, %ss
-	popl	%eax
-	ljmp 	$(SEG_USER_CODE << 3), $0x1000
+	movl	$0x100000, %esp
+	movl	%esp, %ebp
+#	movw	%ax, %ss
+	ljmp	$(SEG_KERNEL_CODE << 3), $0x1000
+	

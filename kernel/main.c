@@ -14,10 +14,10 @@
 #include "idt.h"
 #include "x86.h"
 
-void __start_init__(uint eip);
 void __set_stack__(uint addr);
 void main_stack(void);
 
+extern struct proc* rproc;
 extern uint k_stack;
 
 /* Entry point for the kernel */
@@ -95,7 +95,9 @@ void main_stack(void)
 
 	/* Setup an init process */
 	struct proc* p = spawn_tty(tty_find(0));
-	__start_init__(p->entry_point);
+	//__start_init__(p->entry_point);
+	rproc = p;
+	switch_context(p);
 	
 	for(;;);
 }

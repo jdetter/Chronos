@@ -5,7 +5,7 @@
 #define SYSCALL(name) \
 	.globl name; \
 	name: \
-		movl $SYS_##name, %eax; \
+		pushl $SYS_##name; \
 		int $TRAP_SC; \
 		ret
 
@@ -17,3 +17,16 @@ SYSCALL(open)
 SYSCALL(close)
 SYSCALL(read)
 SYSCALL(write)
+SYSCALL(lseek)
+SYSCALL(mmap)
+SYSCALL(chdir)
+SYSCALL(cwd)
+SYSCALL(create)
+SYSCALL(mkdir)
+SYSCALL(rmdir)
+SYSCALL(rm)
+SYSCALL(mv)
+SYSCALL(fstat)
+SYSCALL(wait_s)
+SYSCALL(wait_t)
+SYSCALL(signal)

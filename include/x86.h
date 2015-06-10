@@ -255,7 +255,7 @@ struct task_segment
 	uint_16 reserved10;
 	uint_16 ldt;
 	uint_16 reserved11;
-	uint_16 reserved12;
+	uint_16 T;
 	uint_16 io_base_address_map;
 }; /* Size MUST be 104.*/
 

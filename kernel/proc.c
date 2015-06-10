@@ -11,6 +11,8 @@
 #include "stdlib.h"
 #include "x86.h"
 #include "syscall.h"
+#include "file.h"
+#include "chronos.h"
 
 /* The process table lock must be acquired before accessing the ptable. */
 slock_t ptable_lock;
@@ -20,6 +22,8 @@ struct proc ptable[PTABLE_SIZE];
 struct proc* rproc;
 /* The next available pid */
 uint next_pid;
+
+extern uint k_stack;
 
 void proc_init()
 {
@@ -86,14 +90,25 @@ struct proc* spawn_tty(tty_t t)
 	/* Setup a kernel stack */
 	p->k_stack = (uchar*)(palloc() + PGSIZE);
 	p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
-	p->tss = p->k_stack - PGSIZE;
+	p->tss = (struct task_segment*)(p->k_stack - PGSIZE);
 
 	/* Map in a user stack. */
 	switch_uvm(p);
 	mappages(KVM_START - PGSIZE, PGSIZE, p->pgdir, 1);
 
+	/* Basic values for the trap frame */
+	/* Setup the user stack */
+	uchar* ustack = (uchar*)KVM_START;
+	/* Fake eip */
+	ustack -= 4;
+	*((uint*)ustack) = 0xFFFFFFFF;
+	p->tf->esp = (uint)ustack;
+
 	/* Load the binary */
-	load_binary("/bin/init", p);
+	uint end = load_binary("/bin/init", p);
+	if(p->entry_point != 0x1000)
+		panic("init binary wrong entry point.\n");
+	p->heap_start = PGROUNDDOWN(end - 1 + PGSIZE);
 
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);
@@ -101,14 +116,14 @@ struct proc* spawn_tty(tty_t t)
 	return p;
 }
 
-void load_binary(const char* path, struct proc* p)
+uint load_binary(const char* path, struct proc* p)
 {
 	vsfs_inode process_file;
 	int inonum;
         if((inonum = vsfs_lookup(path, &process_file)) == 0)
                 panic("Cannot find process executable.");
 
-	        /* Sniff to see if it looks right. */
+        /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
         vsfs_read(&process_file, 0, 4, elf_buffer);
         char elf_buff[] = ELF_MAGIC;
@@ -125,6 +140,7 @@ void load_binary(const char* path, struct proc* p)
         if(elf.e_machine != ELF_E_MACHINE_x86) panic("Binary wrong ISA");
         if(elf.e_version != 1) panic("Binary wrong machine version");
 
+	uint elf_end = 0;
         uint elf_entry = elf.e_entry;
 
 	int x;
@@ -156,6 +172,8 @@ void load_binary(const char* path, struct proc* p)
                         uint mem_sz = curr_header.mem_sz;
 			/* Paging: allocate user pages */
 			mappages((uint)hd_addr, mem_sz, p->pgdir, 1);
+			if((uint)hd_addr + mem_sz > elf_end)
+				elf_end = (uint)hd_addr + mem_sz;
                         /* zero this region */
                         memset(hd_addr, 0, mem_sz);
                         /* Load the section */
@@ -167,6 +185,8 @@ void load_binary(const char* path, struct proc* p)
 
 	/* Set the entry point of the program */
 	p->entry_point = elf_entry;
+
+	return elf_end;
 }
 
 void sched_init()
