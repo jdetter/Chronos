@@ -14,11 +14,10 @@ int main(int argc, char** argv)
 
 	for(;;);
 	int result = fork();
-	if(result > 0)
+	if(result < 0)
 	{
 		wait(result);
 		printf("Process completed\n");
-		for(;;);
 	} else {
 		char* args[] = {"", "arg1", "arg2"};
 		args[0] = spawn_process;
@@ -26,6 +25,7 @@ int main(int argc, char** argv)
 		exec(spawn_process, (const char**)args);
 	}
 
+	
 	for(;;);
 	exit();
 	return 0;
