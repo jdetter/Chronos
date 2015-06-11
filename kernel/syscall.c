@@ -417,9 +417,9 @@ int sys_signal(struct cond* c)
 	return 0;
 }
 
-int sys_chdir(const char* dir){
-  //rproc->cwd = dir;
-  // ^ cwd is not a pointer, use strncpy
+int sys_chdir(const char* dir, uint sz){
+
+  strncpy(rproc->cwd, dir, sz);
   return 0;
 }
 
@@ -445,14 +445,59 @@ int mkdir(const char* dir, uint permissions){
 
 }
 
+int rm(const char* file){
+
+  vsfs_inode toremove;
+  int inode_num = vsfs_lookup(file, &toremove);
+  if(inode_num == 0){ return -1;}
+  if(toremove.type != VSFS_FILE){
+    return -1;
+  } 
+  vsfs_unlink(file);
+  return 0;
+}
+
 int rmdir(const char* dir){
+
+  vsfs_inode toremove;
+  int inode_num = vsfs_lookup(dir, &toremove);
+  if(inode_num == 0){ return -1;}
+  if(toremove.type != VSFS_DIR){
+    return -1;
+  } 
+  if(toremove.size > (sizeof(directent)*2)){
+    return -1;
+  }
+  vsfs_unlink(dir);
   return 0;
 }
 
 int mv(const char* orig, const char* dst){
+
+  vsfs_inode tomove;
+  int inode_num = vsfs_lookup(orig, &tomove);
+  if(inode_num == 0){ return -1;}
+  if(tomove.type != VSFS_FILE){
+    return -1;
+  }
+  vsfs_link(dst, &tomove);
+  vsfs_unlink(orig);
   return 0;
 }
 
 int fstat(const char* path, struct stat* dst){
+
+  vsfs_inode tostat ;
+  int inode_num = vsfs_lookup(path, &tostat);
+  if(inode_num == 0){ return -1;}
+  if(tostat.type != VSFS_FILE){
+    return -1;
+  }
+  dst->owner_id = tostat.uid; /* Owner of the file */
+  dst->group_id = tostat.gid; /* Group that owns the file */
+  dst->perm = tostat.perm; /* Permissions of the file */
+  dst->sz = tostat.size; /* Size of the file in bytes */
+  dst->links = tostat.links_count; /* The amount of hard links to this file */
+  dst->type = tostat.type; /* See options for file type above*/ 
   return 0;
 }
