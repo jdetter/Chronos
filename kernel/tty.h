@@ -156,4 +156,9 @@ void tty_set_color(tty_t t, uchar color);
  */
 void tty_set_mode(struct tty* t, uchar mode);
 
+/**
+ * Scroll down one line in the console.
+ */
+void tty_scroll(tty_t t);
+
 #endif

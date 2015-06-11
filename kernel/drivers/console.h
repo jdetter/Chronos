@@ -11,24 +11,13 @@
 #define CONSOLE_COLOR_BASE ((uchar*)0x20000000)
 
 /**
- * Print the string to the terminal. This uses the same sort of format
- * parsing that printf uses. Returns the amount of characters printed to
- * the screen.
- */
-/*int cprintf(char* fmt, ...);*/
-
-/**
- * Sets up video memory
- */
-void console_init(void);
-
-/**
  * Print the character at the given row and column. Color specifies the color
  * of the background and foreground. Colored specifies whether or not to
  * print to the colored video memory. If you are printing to mono color, set
  * both color and colored to 0.
  */
-void console_putc(uint position, char character, char color, uchar colored);
+void console_putc(uint position, char character, char color, 
+	uchar colored, uchar* base_addr);
 
 /**
  * Update the cursor position. 

@@ -158,23 +158,50 @@ void tty_print_character(tty_t t, char c)
 	}
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
+		uchar printable = 1;
+		switch(c)
+		{
+			case '\n':
+				/* Move down a line */
+				t->text_cursor_pos += CONSOLE_COLS - 1;
+				t->text_cursor_pos -= t->text_cursor_pos %
+					CONSOLE_COLS;
+				printable = 0;
+				break;
+		}
+		if(t->active && printable)
+		{
+			console_putc(t->text_cursor_pos, c, t->color, 
+					t->type==TTY_TYPE_COLOR, 
+					(uchar*)t->mem_start);
+		}
+		if(printable)
+		{
+			if(t->type==TTY_TYPE_COLOR)
+			{
+				char* vid_addr = t->buffer_text
+					+ (t->text_cursor_pos * 2);
+				*(vid_addr)     = c;
+				*(vid_addr + 1) = t->color;
+			}
+			else
+			{
+				char* vid_addr = t->buffer_text
+					+ (t->text_cursor_pos);
+				*(vid_addr)     = c;
+			}
+			t->text_cursor_pos++;
+		}
+
+		if(t->text_cursor_pos >= CONSOLE_COLS * CONSOLE_ROWS)
+		{
+			tty_scroll(t);
+			t->text_cursor_pos = (CONSOLE_COLS * CONSOLE_ROWS)
+				- CONSOLE_COLS;
+		}
+
 		if(t->active)
-		{
-			console_putc(t->text_cursor_pos, c, t->color, t->type==TTY_TYPE_COLOR);
-		}
-		if(t->type==TTY_TYPE_COLOR)
-		{
-			char* vid_addr = t->buffer_text
-				+ (t->text_cursor_pos * 2);
-			*(vid_addr)     = c;
-			*(vid_addr + 1) = t->color;
-		}
-		else
-		{
-			char* vid_addr = t->buffer_text
-				+ (t->text_cursor_pos);
-			*(vid_addr)     = c;
-		}
+			console_update_cursor(t->text_cursor_pos);
 	}
 	else
 	{
@@ -183,6 +210,24 @@ void tty_print_character(tty_t t, char c)
 
 }
 
+void tty_scroll(tty_t t)
+{
+	if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
+		return;
+	uint bpr = CONSOLE_COLS * 2;
+	uint rows = CONSOLE_ROWS;
+	char* buffer = t->buffer_text;
+
+	int x;
+	for(x = 0;x < rows - 1;x++)
+	{
+		char* dst_row = buffer + x * bpr;
+		char* src_row = dst_row + bpr;
+		memmove(dst_row, src_row, bpr);
+	}
+	memset(buffer + x * bpr, 0, bpr);
+	tty_print_screen(t, (uchar*)t->buffer_text);
+}
 
 void tty_print_string(tty_t t, char* fmt, ...)
 {
@@ -228,7 +273,7 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character)
 		}
 		if(t->active)
 		{
-			console_putc(pos, character, t->color,  t->type==TTY_TYPE_COLOR);
+			console_putc(pos, character, t->color,  t->type==TTY_TYPE_COLOR, (uchar*)t->mem_start);
 		}
 
 	}
@@ -247,7 +292,7 @@ void tty_print_screen(tty_t t, uchar* buffer)
 	}
 	else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
-		char* vid_addr = t->buffer_graphic;
+		char* vid_addr = (char*)t->mem_start;
 		//char* graph_addr = NULL;
 		uint sz = 0;
 		if(t->type==TTY_TYPE_COLOR)

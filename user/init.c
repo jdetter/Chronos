@@ -8,11 +8,17 @@
 
 int main(int argc, char** argv)
 {
+	int x;
+	for(x = 0;;x++)
+	{
+		printf("Line 1\n");
+		printf("Line 2\n");
+		printf("Line 3\n");
+		printf("Line 4\n");
+	}
 	printf("Number: %d\n", 12);
 	printf("Hex: 0x%p\n", 0x12);
 	printf("chars: 0x%c%c\n", '1', '2');
-
-	for(;;)write(1, NULL, 0);
 
 	int pid = fork();
 	if(pid)

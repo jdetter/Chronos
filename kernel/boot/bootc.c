@@ -44,8 +44,6 @@ int main(void)
 	/* Initilize memory allocator. */
 	minit(0x60A00, 0x70000);
 
-	console_init();
-
 	/* Lets find the kernel */
 	vsfs_init(64);
 

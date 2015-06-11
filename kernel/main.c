@@ -98,10 +98,10 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 	
-	cprintf("Spawning tty0...\t\t\t\t\t\t\t\t");
+	//cprintf("Spawning tty0...\t\t\t\t\t\t\t\t");
 	/* Setup an init process */
-	init_proc = spawn_tty(tty_find(0));
-	cprintf("[ OK ]\n");
+	//init_proc = spawn_tty(tty_find(0));
+	//cprintf("[ OK ]\n");
 
 	cprintf("Spawning tty1...\t\t\t\t\t\t\t\t");
 	tty_t x = tty_find(1);
