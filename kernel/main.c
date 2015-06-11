@@ -98,18 +98,17 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 	
-	//cprintf("Spawning tty0...\t\t\t\t\t\t\t\t");
+	cprintf("Spawning tty0...\t\t\t\t\t\t\t");
 	/* Setup an init process */
-	//init_proc = spawn_tty(tty_find(0));
-	//cprintf("[ OK ]\n");
-
-	cprintf("Spawning tty1...\t\t\t\t\t\t\t\t");
-	tty_t x = tty_find(1);
-	tty_init(x, 1, TTY_TYPE_COLOR, 1, KVM_COLOR_START);
-	tty_enable(x);
-	
-	spawn_tty(x);
+	init_proc = spawn_tty(tty_find(0));
 	cprintf("[ OK ]\n");
+
+	//cprintf("Spawning tty1...\t\t\t\t\t\t\t\t");
+	//tty_t x = tty_find(1);
+	//tty_init(x, 1, TTY_TYPE_COLOR, 1, KVM_COLOR_START);
+	//tty_enable(x);
+	//spawn_tty(x);
+	//cprintf("[ OK ]\n");
 	
 	/* Start scheduling loop. */
 	sched();

@@ -21,6 +21,8 @@ void cprintf(char* fmt, ...)
 	if(ttys[0].type == 0)
 	{
 		tty_init(ttys + 0, 0, TTY_TYPE_SERIAL, 0, 0);
+		//tty_init(ttys, 0, TTY_TYPE_COLOR, 1, 
+		//	(uint)CONSOLE_COLOR_BASE_ORIG);
 		tty_enable(ttys);
 	}
 
@@ -125,13 +127,11 @@ void tty_enable(tty_t t)
 	{
 		if(t->display_mode == TTY_MODE_GRAPHIC)
 		{
-			console_print_buffer(t->buffer_graphic, 
-					t->type==TTY_TYPE_COLOR);
+			tty_print_screen(t, (uchar*)t->buffer_graphic);
 			console_update_cursor(t->graphic_cursor_pos);
 		} else if(t->display_mode == TTY_MODE_TEXT)
 		{
-			console_print_buffer(t->buffer_graphic, 
-					t->type==TTY_TYPE_COLOR);
+			tty_print_screen(t, (uchar*)t->buffer_text);
 			console_update_cursor(t->text_cursor_pos);
 		}
 	}
@@ -159,6 +159,8 @@ void tty_print_character(tty_t t, char c)
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
 		uchar printable = 1;
+		uint new_pos = t->text_cursor_pos;
+		int x;
 		switch(c)
 		{
 			case '\n':
@@ -168,6 +170,14 @@ void tty_print_character(tty_t t, char c)
 					CONSOLE_COLS;
 				printable = 0;
 				break;
+			case '\t':
+				/* round cursor position */
+				new_pos += 8;
+				new_pos -= new_pos % 8;
+				for(x = 0;t->text_cursor_pos < new_pos;x++)
+					tty_print_character(t, ' ');	
+				return;
+				
 		}
 		if(t->active && printable)
 		{
