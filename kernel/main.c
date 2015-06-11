@@ -94,11 +94,11 @@ void main_stack(void)
 	asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
-	cprintf("Initilizing Process Scheduler...\t\t\t\t");
+	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");
 	
-	cprintf("Spawning tty0...\t\t\t\t\t\t\t\t\t");
+	cprintf("Spawning tty0...\t\t\t\t\t\t\t\t");
 	/* Setup an init process */
 	init_proc = spawn_tty(tty_find(0));
 	cprintf("[ OK ]\n");

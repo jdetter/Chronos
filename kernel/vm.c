@@ -156,7 +156,7 @@ void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
 	start = PGROUNDDOWN(start);
 	end = PGROUNDDOWN(end);
 	uint x;
-	for(x = start;x != end;x += PGSIZE)
+	for(x = start;x < end;x += PGSIZE)
 		mappage(x, x, dir, user);
 }
 
@@ -241,14 +241,21 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user)
 	uint dir_index = PGDIRINDEX(virt);
 	uint tbl_index = PGTBLINDEX(virt);
 
-	if(create && !dir[dir_index]) 
-		dir[dir_index] = palloc() | dir_flags;
+	if(!dir[dir_index]) 
+	{	
+		if(create) dir[dir_index] = palloc() | dir_flags;
+		else return 0;
+	}
+
 	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
 	uint page;
 	if(!(page = tbl[tbl_index]))
-		page = tbl[tbl_index] = palloc() | tbl_flags;
+	{
+		if(create) page = tbl[tbl_index] = palloc() | tbl_flags;
+		else return 0;
+	}
 
-	return page;
+	return PGROUNDDOWN(page);
 }
 
 void vm_copy_kvm(pgdir* dir)
@@ -266,34 +273,22 @@ void vm_copy_kvm(pgdir* dir)
 	}
 }
 
-void vm_copy_vm(pgdir* dst_dir, pgdir* src_dir)
+void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 {
 	uint x;
-	for(x = 0;x < PGSIZE / sizeof(uint);x++)
+	for(x = 0;x < KVM_START;x += PGSIZE)
 	{
-		if(!src_dir[x]) continue;
+		uint src_page = findpg(x, 0, src_dir, 1);
+		if(!src_page) continue;
 
-		if(!dst_dir[x])
-			dst_dir[x] = palloc() |  KDIRFLAGS;
-		pgtbl* src_tbl = (uint*)PGROUNDDOWN(src_dir[x]);
-		pgtbl* dst_tbl = (uint*)PGROUNDDOWN(dst_dir[x]);
-
-		int y;
-		for(y = 0;y <  PGSIZE / sizeof(uint);y++)
-		{
-			/* Check to see if we hit the KVM */
-			if(dst_tbl[y]) return;
-
-			if(src_tbl[y])
-			{
-				dst_tbl[y] = palloc() | KTBLFLAGS;
-				uint* src_page = 
-					(uint*)PGROUNDDOWN(src_tbl[y]);
-				uint* dst_page = 
-					(uint*)PGROUNDDOWN(dst_tbl[y]);
-				memmove(dst_page, src_page, PGSIZE);
-			}
-		}
+		uint dst_page = findpg(x, 1, dst_dir, 1);
+		memmove((uchar*)dst_page,
+			(uchar*)src_page,
+			PGSIZE);
+		cprintf("Copied page: 0x%x mapped to 0x%x\n", 
+			dst_page, x);
+		break;
+		//pg_cmp((uchar*)src_page, (uchar*)dst_page);
 	}
 }
 
@@ -388,4 +383,40 @@ void free_list_check(void)
 	}
 
 	if(debug) cprintf("[ OK ]\n");
+}
+
+void pg_cmp(uchar* pg1, uchar* pg2)
+{
+	cprintf("INDEX     | PAGE 1 | PAGE 2 \n");
+	int x;
+	for(x = 0;x < PGSIZE;x++)
+		cprintf("0x%x | 0x%x | 0x%x \n", x, pg1[x], pg2[x]);
+}
+
+void pgdir_cmp(pgdir* src, pgdir* dst)
+{
+	cprintf("INDEX      | DIRECTORY 1 | DIRECTORY 2\n");
+	uint x;
+	uchar dot = 1;
+	for(x = 0;x < KVM_START;x += PGSIZE)
+	{
+		uint src_page = findpg(x, 0, src, 0);
+		uint dst_page = findpg(x, 0, dst, 0);
+
+		if(src_page || dst_page)
+		{
+			dot = 1;
+			cprintf("0x%x | ", x);
+			cprintf("0x%x | ", src_page);
+			cprintf("0x%x\n", dst_page);
+		} else {
+			if(dot)
+			{
+				cprintf("0x%x | ", x);
+				cprintf(".......... | ");
+				cprintf("..........\n");
+				dot = 0;
+			}
+		}
+	}
 }

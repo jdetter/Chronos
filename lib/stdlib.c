@@ -90,17 +90,23 @@ int strcmp(const char* str1, const char* str2)
 	else return -1;
 }
 
+
 void memmove(void* dst, void* src, uint sz)
 {
-	uchar* usrc = (uchar*)src; /* able to hold value other than void */
-	uchar* udst = (uchar*)dst; /* able to hold value other than void */
+	/* Check for do nothing */
+	if(dst == src) return;
 
-	uchar c_src[sz]; /* creating source array length sz */
-	int x;
-	for(x = 0;x < sz;x++) /* for x is less than max memory size */
-		c_src[x] = usrc[x]; /* making a copy of source */
-	for(x = 0;x < sz;x++) /* for x is less than max memory size */
-		udst[x] = c_src[x]; /* assigning the udst the value of the copy made from usrc[x] */
+	uint x;
+	uchar* cdst = dst;
+	uchar* csrc = src;
+	/* Check for  <--s-<-->--d--> overlap*/
+	if(src + sz > dst && src + sz < dst + sz)
+	{
+		for(x = sz - 1;x >= 0;x--)
+			cdst[x] = csrc[x];
+	}
+	/* Otherwise we're fine */
+	for(x = 0;x < sz;x++) cdst[x] = csrc[x];
 }
 
 void memset(void* dst, char val, uint sz)

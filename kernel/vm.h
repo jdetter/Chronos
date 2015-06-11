@@ -120,9 +120,9 @@ void freepgdir(pgdir* dir);
 void vm_copy_kvm(pgdir* dir);
 
 /**
- * Make an exact copy of a virtual memory space.
+ * Make an exact copy of the user virtual memory space.
  */
-void vm_copy_vm(pgdir* dst, pgdir* src);
+void vm_copy_uvm(pgdir* dst, pgdir* src);
 
 /**
  * Use the kernel's page table
@@ -142,4 +142,14 @@ void switch_context(struct proc* p);
 /** Memory debugging functions */
 void free_list_check(void); /* Verfy the free list */
 void free_list_dump(void); /* Print the free list */
+
+/**
+ * Compare 2 page tables.
+ */
+void pgdir_cmp(pgdir* src, pgdir* dst);
+
+/**
+ * Compare 2 pages.
+ */
+void pg_cmp(uchar* pg1, uchar* pg2);
 #endif

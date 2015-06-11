@@ -185,10 +185,13 @@ int syscall_handler(uint* esp)
 	return return_value; /* Syscall successfully handled. */
 }
 
+void trap_return(void);
 int sys_fork(void)
 {
   struct proc* new_proc = alloc_proc();
+  if(!new_proc) return -1;
   slock_acquire(&ptable_lock);
+  new_proc->k_stack = (uchar*) palloc() + PGSIZE;
   new_proc->pid = next_pid++;
   new_proc->uid = rproc->uid;
   new_proc->gid = rproc->gid;
@@ -199,10 +202,29 @@ int sys_fork(void)
   new_proc->stack_end = rproc->stack_end;
   new_proc->state = PROC_RUNNABLE;
   new_proc->pgdir = (uint*) palloc();
-  vm_copy_vm(new_proc->pgdir, rproc->pgdir); 
-  new_proc->k_stack = (uchar*) palloc();
-  memmove(new_proc->k_stack, rproc->k_stack, PGSIZE);   
+  vm_copy_kvm(new_proc->pgdir);
+  vm_copy_uvm(new_proc->pgdir, rproc->pgdir); 
+  memmove(new_proc->k_stack - PGSIZE, rproc->k_stack - PGSIZE, PGSIZE);
+  uint tf_dst = (uchar*)rproc->k_stack - (uchar*)rproc->tf;
+  new_proc->tf = (struct trap_frame*)(new_proc->k_stack - tf_dst);
   new_proc->tf->eax = 0;
+  new_proc->t = rproc->t;
+  new_proc->entry_point = rproc->entry_point;
+  new_proc->tss = (struct task_segment*)(new_proc->k_stack - PGSIZE);
+
+  /* Create a context to be restored, trap return should be called. */
+  struct context* new_context = (struct context*)
+	((uchar*)new_proc->tf - sizeof(struct context));
+  memset(new_context, 0, sizeof(struct context));
+  new_context->cr0 = PGROUNDDOWN((uint)new_proc->pgdir);
+  new_context->esp = (uint)new_proc->tf - 4;
+  new_context->ebp = new_context->esp;
+  new_context->eip = (uint)trap_return;
+  new_proc->context = (uint)new_context;
+
+  memmove(&new_proc->cwd, &rproc->cwd, MAX_PATH_LEN);
+  memmove(&new_proc->name, &rproc->name, MAX_PROC_NAME);
+  slock_release(&ptable_lock);
 
   return new_proc->pid;
 }

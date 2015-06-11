@@ -45,4 +45,22 @@ struct trap_frame
 	uint_16 padding6;
 };
 
+struct context
+{
+	uint_32 cr0; /* Saved page table base register */
+
+	uint_32 edi; /* pushal */
+	uint_32 esi;
+	uint_32 ebpx;
+	uint_32 espx;
+	uint_32 ebx;
+	uint_32 edx;
+	uint_32 ecx;
+	uint_32 eax;
+
+	uint_32 ebp;
+	uint_32 esp;
+	uint_32 eip;
+};
+
 #endif
