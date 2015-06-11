@@ -63,7 +63,7 @@ int vsfs_lookup(const char* path, vsfs_inode* dst);
  * count of the file. If the file now has 0 links to it, free the file and
  * all of the blocks it is holding onto.
  */
-int vsfs_unlink(char* path);
+int vsfs_unlink(const char* path);
 
 /**
  * Add the inode new_inode to the file system at path. Make sure to add the
@@ -77,12 +77,12 @@ int vsfs_link(const char* path, vsfs_inode* new_inode);
  * Create the directory entry new_file that is a hard link to file. Return 0
  * on success, return 1 otherwise.
  */
-int vsfs_hard_link(char* new_file, char* link);
+int vsfs_hard_link(const char* new_file, const char* link);
 
 /**
  * Create a soft link called new_file that points to link.
  */
-int vsfs_soft_link(char* new_file, char* link);
+int vsfs_soft_link(const char* new_file, const char* link);
 
 /**
  * Read sz bytes from inode node at the position start (start is the seek in
