@@ -274,7 +274,7 @@ int main(int argc, char** argv)
 	memmove(&context.super, super_block, sizeof(struct vsfs_superblock));
 
 	/* Initilize driver */
-	vsfs_init(0, &context, &disk_driver);
+	vsfs_init(0, 128, 512, &context);
 
 	/* Create root inode. */
 	struct vsfs_inode root_i;

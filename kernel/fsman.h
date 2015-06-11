@@ -53,14 +53,21 @@ struct inode_t
 	uchar file_type; /* Type of file */
         uint inode_num; /* inode number */
 	char name[FILE_MAX_NAME]; /* the name of the file */
-	struct filesystem_entry* fs; /* File system this inode belongs to.*/
+	struct FSDriver* fs; /* File system this inode belongs to.*/
 	void* inode_ptr; /* Pointer to the fs specific inode. */
 	int references; /* How many programs reference this file? */
 };
 typedef struct inode_t* inode;
 
-struct filesystem_driver
+struct FSDriver
 {
+	/**
+	 * Initilize the hardware and context needed for the file system
+	 * to function.
+	 */
+	int (*init)(uint start_sector, uint end_sector, uint block_size,
+		void* context);
+	
 	/**
 	 * Required file system driver function that opens a file
 	 * given a path, some flags and an open mode. The mode and
@@ -130,18 +137,41 @@ struct filesystem_driver
 	 */
 	inode (*mkdir)(const char* path, uint flags, 
 		uint permissions, void* context);
-};
 
-struct filesystem_entry
-{
+	/**
+	 * Read from the inode i into the buffer dst for sz bytes starting
+	 * at position start in the file. Returns the amount of bytes read
+	 * from the file.
+	 */
+	int (*read)(void* i, void* dst, uint sz, uint start, void* context);
+
+        /**
+         * Read from the inode i into the buffer dst for sz bytes starting
+         * at position start in the file. Returns the amount of bytes read
+         * from the file.
+         */ 
+        int (*write)(void* i, void* dst, uint sz, uint start, void* context);
+
+	/**
+	 * Move file from src to dst. This function can also move
+	 * directories.
+	 */
+	int (*rename)(const char* src, const char* dst, void* context);
+
+	/**
+	 * Remove the file or directory given by file. Directories will
+	 * be removed without warning.
+	 */
+	int (*unlink)(const char* file);
+
+	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
-	/* Space for the file system context  */
-	uchar context[FS_CONTEXT_SIZE]; 
-	struct FSHardwareDriver* hdd; /* HDriver for this file system*/
-	struct filesystem_driver* driver; /* Driver for the file system*/
+	struct FSHardwareDriver* driver; /* HDriver for this file system*/
+	//struct filesystem_driver* driver; /* Driver for the file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
-	uchar* cache_space[FS_CACHE_SIZE]; /* Where cached inodes live. */
+
+	uchar context[FS_CONTEXT_SIZE]; /* Space for locals + cache */
 };
 
 /**

@@ -28,10 +28,10 @@ struct inode_t itable[FS_INODE_MAX];
 
 /* File system table */
 tlock_t fstable_lock;
-struct filesystem_entry fstable[FS_TABLE_MAX];
+struct FSDriver fstable[FS_TABLE_MAX];
 
 /* Ata drivers */
-static struct FSHardwareDriver* ata_drivers[];
+static struct FSDriver* ata_drivers[];
 
 /* Generic inode table */
 void fsman_init(void)
@@ -53,7 +53,7 @@ void fsman_init(void)
 	ata_init();
 
 	/* Get a running driver */
-	struct FSHardwareDriver* ata = NULL;
+	struct FSDriver* ata = NULL;
 	for(x = 0;x < ATA_DRIVER_COUNT;x++)
 		if(ata_drivers[x]->valid)
 			ata = ata_drivers[x];
@@ -86,10 +86,10 @@ static int fs_path_resolve(const char* path, char* dst, uint sz)
 	return 0;
 }
 
-static struct filesystem_entry* fs_find_fs(const char* path)
+static struct FSDriver* fs_find_fs(const char* path)
 {
 	uint match_len = 0;
-	struct filesystem_entry* fs = NULL;
+	struct FSDriver* fs = NULL;
 	int x;
 	for(x = 0;x < FS_TABLE_MAX;x++)
 	{
@@ -145,6 +145,16 @@ static int fs_get_name(const char* path, char* dst, uint sz)
 	return 0; 
 }
 
+static void fs_sync_inode(inode i)
+{
+	/* Get a stat structure */
+	struct file_stat s;
+	i->fs->stat(i->inode_ptr, &s, i->fs->context);
+	i->file_sz = s.sz;
+	i->inode_num = s.inode;
+	i->file_type = s.type;
+}
+
 /**
  * BEGIN FSMAN FUNCTIONS
  *
@@ -182,7 +192,7 @@ inode fs_open(const char* path, uint permissions, uint flags)
 		return NULL; /* Invalid path */
 
 	/* Find the file system for this path */
-	struct filesystem_entry* fs = fs_find_fs(path);
+	struct FSDriver* fs = fs_find_fs(path);
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
@@ -191,7 +201,7 @@ inode fs_open(const char* path, uint permissions, uint flags)
 	if(i == NULL)
 		return NULL; /* No more inodes are available */
 
-	i->inode_ptr = fs->driver->open(path, permissions, 
+	i->inode_ptr = fs->open(path, permissions, 
 		flags, fs->context);
 	if(i->inode_ptr == NULL)
 	{
@@ -201,7 +211,7 @@ inode fs_open(const char* path, uint permissions, uint flags)
 
 	/* Lets quickly get the stats on the file */
 	struct file_stat st;
-	fs->driver->stat(i->inode_ptr, &st, fs->context);
+	fs->stat(i->inode_ptr, &st, fs->context);
 
 	i->file_pos = 0;
 	i->file_sz = st.sz;
@@ -216,7 +226,7 @@ inode fs_open(const char* path, uint permissions, uint flags)
 int fs_close(inode i)
 {
 	/* Close the file system file */
-	int result = i->fs->driver->close(i->inode_ptr, i->fs->context);
+	int result = i->fs->close(i->inode_ptr, i->fs->context);
 	i->references--;	
 	if(i->references == 0) 
 		memset(i, 0, sizeof(struct inode_t));
@@ -226,7 +236,7 @@ int fs_close(inode i)
 int fs_stat(inode i, struct file_stat* dst)
 {
 	/* This is completely file system specific. */
-	return i->fs->driver->stat(i->inode_ptr, dst, i->fs->context);
+	return i->fs->stat(i->inode_ptr, dst, i->fs->context);
 }
 
 inode fs_create(const char* path, uint flags, uint permissions)
@@ -237,7 +247,7 @@ inode fs_create(const char* path, uint flags, uint permissions)
 	fs_path_resolve(path, dst_path, FILE_MAX_PATH);
 
 	/* Find the file system this file belongs to */
-	struct filesystem_entry* fs = fs_find_fs(path);
+	struct FSDriver* fs = fs_find_fs(path);
 	if(fs == NULL) return NULL; /* invalid path */	
 
 	/* Find a new inode*/
@@ -245,7 +255,7 @@ inode fs_create(const char* path, uint flags, uint permissions)
 	if(i == NULL) return NULL; /* There are no more free inodes */
 
 	/* Create the file with the driver */
-	i->inode_ptr = fs->driver->create(dst_path, 
+	i->inode_ptr = fs->create(dst_path, 
 		flags, permissions, fs->context);
 	if(i->inode_ptr == NULL)
 	{
@@ -255,7 +265,7 @@ inode fs_create(const char* path, uint flags, uint permissions)
 
 	/* Parse the inode structure */
 	struct file_stat st;
-        fs->driver->stat(i->inode_ptr, &st, fs->context);
+        fs->stat(i->inode_ptr, &st, fs->context);
 
         i->file_pos = 0;
         i->file_sz = st.sz;
@@ -270,13 +280,13 @@ inode fs_create(const char* path, uint flags, uint permissions)
 int fs_chown(inode i, uint uid, uint gid)
 {
 	/* This is completely file system specific */
-	return i->fs->driver->chown(i->inode_ptr, uid, gid, i->fs->context);
+	return i->fs->chown(i->inode_ptr, uid, gid, i->fs->context);
 }
 
 int fs_chmod(inode i, ushort permission)
 {
 	/* This is file system specific */
-	return i->fs->driver->chmod(i->inode_ptr, permission, i->fs->context);
+	return i->fs->chmod(i->inode_ptr, permission, i->fs->context);
 }
 
 int fs_sync(inode i)
@@ -290,7 +300,7 @@ int fs_sync(inode i)
 
 int fs_truncate(inode i, int sz)
 {
-	int result = i->fs->driver->truncate(i->inode_ptr, 
+	int result = i->fs->truncate(i->inode_ptr, 
 		sz, i->fs->context);
 	if(result < 0) return -1;
 	else i->file_sz = result;
@@ -299,14 +309,14 @@ int fs_truncate(inode i, int sz)
 
 int fs_link(inode i, const char* file, const char* link)
 {
-	int result = i->fs->driver->link(i->inode_ptr,
+	int result = i->fs->link(i->inode_ptr,
 		file, link, i->fs->context);
 	return result;
 }
 
 int fs_symlink(inode i, const char* file, const char* link)
 {
-        int result = i->fs->driver->symlink(i->inode_ptr,
+        int result = i->fs->symlink(i->inode_ptr,
                 file, link, i->fs->context);
         return result;
 }
@@ -320,10 +330,10 @@ inode fs_mkdir(const char* path, uint flags, uint permissions)
 		return NULL; /* Bad path */
 	
 	/* Find the file system */
-	struct filesystem_entry* fs = fs_find_fs(dst_path);
+	struct FSDriver* fs = fs_find_fs(dst_path);
 	
 	/* Try to create the directory */
-	void* dir = fs->driver->mkdir(path, flags, permissions, fs->context);
+	void* dir = fs->mkdir(path, flags, permissions, fs->context);
 	if(dir == NULL)
 		return NULL; /* Bad path*/
 
@@ -334,7 +344,7 @@ inode fs_mkdir(const char* path, uint flags, uint permissions)
 
         /* Parse the inode structure */
         struct file_stat st;
-        fs->driver->stat(dir, &st, fs->context);
+        fs->stat(dir, &st, fs->context);
 
         i->file_pos = 0;
         i->file_sz = st.sz;
@@ -346,25 +356,85 @@ inode fs_mkdir(const char* path, uint flags, uint permissions)
 	return i;
 }
 
-/*
-close: close an open file
-create: create a file
-chown: change ownership of file
-chmod: change permissions of file
-stat: get stat on file
-sync: flush file to disk
-truncate: truncate a file to a length
-link: create a hard link
-symlink: make a symbolic link
-mkdir: create a directory
-mknod: make a device node
-read: read from a file
-readdir: read a directory entry
-rename: move a file
-rmdir: remove a directory
-unlink: delete a file reference
-mount: create a new file system instance
-unmount: close file system instance
-*/
+int fs_read(inode i, void* dst, uint sz, uint start)
+{
+	int bytes = i->fs->read(i->inode_ptr,
+		dst, sz, start, i->fs->context);
+	/* Check for read error */
+	if(bytes < 0) return -1;
 
-/* Begin vsfs manager functions */
+	/* Update our file position */
+	i->file_pos += bytes;
+	return bytes;
+}
+
+int fs_write(inode i, void* src, uint sz, uint start)
+{
+        int bytes = i->fs->write(i->inode_ptr,
+                src, sz, start, i->fs->context);
+        /* Check for read error */
+        if(bytes < 0) return -1;
+
+        /* Update our file position */
+        i->file_pos += bytes;
+
+	/* The file properties may have changed */
+	fs_sync_inode(i);
+
+	return bytes;
+}
+
+int fs_rename(const char* src, const char* dst)
+{
+	/**
+	 * This is a simple operation that is usually done without even
+	 * changing the inode information.
+	 */
+
+	/* Resolve both paths before sending them to the driver function. */
+	char src_resolved[FILE_MAX_PATH];
+	char dst_resolved[FILE_MAX_PATH];
+
+	if(fs_path_resolve(src, src_resolved, FILE_MAX_PATH))
+		return -1; /** Bad src path */
+	if(fs_path_resolve(dst, dst_resolved, FILE_MAX_PATH))
+		return -1; /* Bad dst path */
+	
+	struct FSDriver* src_fs = fs_find_fs(src_resolved);
+	struct FSDriver* dst_fs = fs_find_fs(dst_resolved);
+
+	/**
+	 * If the two file systems are not equal, we can't just update
+	 * the pointer. We need to create a new file and move the data.
+	 */
+
+	int result;
+
+	if(src_fs != dst_fs)
+	{
+		result = -1;
+	} else {
+		result = src_fs->rename(src, dst, src_fs->context);
+	}
+
+	return result;
+}
+
+int fs_unlink(const char* file)
+{
+	/* Resolve the file path */
+	char file_resolved[FILE_MAX_PATH];
+	if(fs_path_resolve(file, file_resolved, FILE_MAX_PATH))
+		return -1;
+
+	struct FSDriver* fs = fs_find_fs(file_resolved);
+	int result = fs->unlink(file_resolved);
+
+	return result;
+}
+
+int fs_mount(const char* device, const char* point)
+{
+	return 0;	
+}
+

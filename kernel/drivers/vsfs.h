@@ -69,8 +69,8 @@ struct vsfs_context
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int vsfs_init(int start_sector, struct vsfs_context* context, 
-        struct FSHardwareDriver* driver);
+int vsfs_init(uint start_sector, uint end_sector, uint block_size,
+	struct vsfs_context* context);
 
 /**
  * Find an inode in a file system. If the inode is found, load it into the dst

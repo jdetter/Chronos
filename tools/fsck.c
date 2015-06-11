@@ -142,7 +142,7 @@ int main(int argc, char** argv)
 	driver.valid = 1;
 	driver.read = ata_readsect;
 	driver.write = ata_writesect;
-	vsfs_init(start, &context, &driver);
+	vsfs_init(start, 0, 0, &context);
 
 	char cwd[1024];
 	memset(cwd, 0, 1024);

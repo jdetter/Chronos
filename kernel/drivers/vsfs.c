@@ -48,14 +48,13 @@ void parent_path(const char *path, char* dst);
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int vsfs_init(int start_sector, struct vsfs_context* context, 
-	struct FSHardwareDriver* driver)
+int vsfs_init(uint start_sector, uint end_sector, uint block_size,
+		struct vsfs_context* context)
 {
   memset(context, 0, sizeof(struct vsfs_context));
   context->start = start_sector;
-  context->hdd = driver;
   uchar super_block[512];
-  driver->read(super_block, start_sector, context->hdd);
+  context->hdd->read(super_block, start_sector, context->hdd);
   memmove(&context->super, super_block, sizeof(vsfs_superblock));
   context->imap_off = context->start + 1;
   context->bmap_off = context->imap_off + context->super.imap;
@@ -63,8 +62,8 @@ int vsfs_init(int start_sector, struct vsfs_context* context,
   context->b_off = context->i_off + 
     (context->super.inodes / (512 / sizeof(vsfs_inode)));
 
-  context->read = driver->read;
-  context->write = driver->write;
+  context->read = context->hdd->read;
+  context->write = context->hdd->write;
 
  return 0;
 }
