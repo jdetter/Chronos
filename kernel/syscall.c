@@ -328,7 +328,7 @@ int sys_exec(const char* path, const char** argv)
       /* By default, this section is rwx. */
     }
   }  
-  mappage((uint)ogtos, KVM_START - PGSIZE, rproc->pgdir, 1); 
+  mappage((uint)ogtos, KVM_START - PGSIZE, rproc->pgdir, 1, 0); 
   scheduler();
   return 0;
 }

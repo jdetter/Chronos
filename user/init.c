@@ -12,6 +12,8 @@ int main(int argc, char** argv)
 	printf("Hex: 0x%p\n", 0x12);
 	printf("chars: 0x%c%c\n", '1', '2');
 
+	for(;;)write(1, NULL, 0);
+
 	int pid = fork();
 	if(pid)
 	{

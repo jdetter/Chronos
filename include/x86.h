@@ -49,7 +49,7 @@
 #define PGDIR_PRESENT	(1 << 0x0)
 #define PGDIR_RW 	(1 << 0x1)
 #define PGDIR_USER	(1 << 0x2)
-#define PGDIR_WTWB 	(1 << 0x4)
+#define PGDIR_WTHROUGH 	(1 << 0x4)
 #define PGDIR_DCACHE 	(1 << 0x8)
 #define PGDIR_ACCESSED	(1 << 0x10)
 /* Reserved */

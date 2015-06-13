@@ -99,7 +99,7 @@ void dir_mappages(uint start, uint end, pgdir* dir, uchar user);
  * Map the page at virtual address virt, to the physical address phy into the
  * page directory dir. This will create entries and tables where needed.
  */
-void mappage(uint phy, uint virt, pgdir* dir, uchar user);
+void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags);
 
 /**
  * Find a page in a page directory. If the page is not mapped, and create is 1,

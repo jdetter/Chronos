@@ -121,9 +121,19 @@ void tty_enable(tty_t t)
 	{
 		return;
 	}
-	if(t->display_mode==TTY_MODE_TEXT)
+	if(t->type == TTY_TYPE_MONO || t->type == TTY_TYPE_COLOR)
 	{
-		console_print_buffer(t->buffer_text, t->type==TTY_TYPE_COLOR);
+		if(t->display_mode == TTY_MODE_GRAPHIC)
+		{
+			console_print_buffer(t->buffer_graphic, 
+					t->type==TTY_TYPE_COLOR);
+			console_update_cursor(t->graphic_cursor_pos);
+		} else if(t->display_mode == TTY_MODE_TEXT)
+		{
+			console_print_buffer(t->buffer_graphic, 
+					t->type==TTY_TYPE_COLOR);
+			console_update_cursor(t->text_cursor_pos);
+		}
 	}
 	else if(t->display_mode==TTY_MODE_GRAPHIC)
 	{
@@ -155,14 +165,14 @@ void tty_print_character(tty_t t, char c)
 		if(t->type==TTY_TYPE_COLOR)
 		{
 			char* vid_addr = t->buffer_text
-					+ (t->text_cursor_pos * 2);
+				+ (t->text_cursor_pos * 2);
 			*(vid_addr)     = c;
 			*(vid_addr + 1) = t->color;
 		}
 		else
 		{
 			char* vid_addr = t->buffer_text
-					+ (t->text_cursor_pos);
+				+ (t->text_cursor_pos);
 			*(vid_addr)     = c;
 		}
 	}
@@ -206,14 +216,14 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character)
 		if(t->type==TTY_TYPE_COLOR)
 		{
 			char* vid_addr = t->buffer_graphic
-					+ (t->graphic_cursor_pos * 2);
+				+ (t->graphic_cursor_pos * 2);
 			*(vid_addr)     = character;
 			*(vid_addr + 1) = t->color;
 		}
 		else
 		{
 			char* vid_addr = t->buffer_graphic
-					+ (t->graphic_cursor_pos);
+				+ (t->graphic_cursor_pos);
 			*(vid_addr)     = character;
 		}
 		if(t->active)

@@ -39,7 +39,7 @@ struct kvm_mapping hardware_mappings[] =
 };
 
 void vm_add_pages(uint start, uint end);
-void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user);
+void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags);
 void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
 void __drop_priv__(uint* k_context, uint new_esp);
@@ -157,7 +157,7 @@ void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
 	end = PGROUNDDOWN(end);
 	uint x;
 	for(x = start;x < end;x += PGSIZE)
-		mappage(x, x, dir, user);
+		mappage(x, x, dir, user, 0);
 }
 
 void setup_kvm(pgdir* dir)
@@ -180,10 +180,10 @@ void setup_kvm(pgdir* dir)
                 mapping(hardware_mappings[x].phy,
                                 hardware_mappings[x].virt,
                                 hardware_mappings[x].sz,
-                                k_pgdir, 0);
+                                k_pgdir, 0, PGDIR_WTHROUGH);
 }
 
-void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user)
+void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags)
 {
 	phy = PGROUNDDOWN(phy);
 	virt = PGROUNDDOWN(virt);
@@ -196,10 +196,10 @@ void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user)
 
 	uint x;
 	for(x = 0;x < pages;x++)
-		mappage(phy + x, virt + x, dir, user);
+		mappage(phy + x, virt + x, dir, user, flags);
 }
 
-void mappage(uint phy, uint virt, pgdir* dir, uchar user)
+void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags)
 {
 	uint dir_flags = KDIRFLAGS;
 	uint tbl_flags = KTBLFLAGS;
@@ -220,7 +220,7 @@ void mappage(uint phy, uint virt, pgdir* dir, uchar user)
 	uint tbl_index = PGTBLINDEX(virt);
 	if(!tbl[tbl_index])
 	{
-		tbl[tbl_index] = phy | tbl_flags;
+		tbl[tbl_index] = phy | tbl_flags | flags;
 	} else {
 		panic("remap");
 	}
