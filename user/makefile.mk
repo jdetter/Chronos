@@ -22,11 +22,15 @@ USER_OBJECTS := $(addsuffix .o, $(USER_TARGETS))
 # Source files
 USER_SOURCE := $(addsuffix .c, $(USER_TARGETS))
 
+# Symbol Files
+USER_SYMBOLS := $(addsuffix .sym, $(USER_BINARIES))
+
 # Specify clean targets
 USER_CLEAN := \
 	user/bin \
 	user/syscall.o \
-	$(USER_OBJECTS)
+	$(USER_OBJECTS) \
+	$(USER_SYMBOLS)
 
 # Include files
 USER_CFLAGS += -I include
@@ -55,6 +59,8 @@ user: user-lib libs user-syscall user-bin $(USER_OBJECTS) $(USER_BINARIES)
 user-bin: 
 	mkdir -p user/bin	
 
+user-symbols: $(USER_SYMBOLS)
+
 user-syscall:
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
 
@@ -64,3 +70,7 @@ user/%.o: user/%.c
 # Recipe for binary files
 user/bin/%: user/%.o
 	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o $(USER_LIB_OBJECTS)
+
+# Recipe for symbole files
+user/bin/%.sym: user/bin/%
+	$(OBJCOPY) --only-keep-debug $< $@

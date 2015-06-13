@@ -123,6 +123,7 @@ int syscall_handler(uint* esp)
 	switch(syscall_number)
 	{
 		case SYS_fork:
+			return_value = sys_fork();
 			break;
 		case SYS_wait:
 			break;
@@ -410,11 +411,6 @@ int sys_lseek(int fd, int offset, int whence)
   return seek_pos;
 }
 
-void* mmap(void* hint, uint sz, int protection)
-{
-	panic("mmap called in kernel.");
-	return NULL;
-}
 void* sys_mmap(void* hint, uint sz, int protection)
 {
   uint pagestart=PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);

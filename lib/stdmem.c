@@ -7,7 +7,6 @@
 #include "stdlock.h"
 #include "chronos.h"
 
-#define M_AMT 0x5000 /* 5K heap space*/
 #define M_MAGIC (void*)(0x43524E53)
 static int mem_init = 0;
 
@@ -31,7 +30,7 @@ static struct free_node* curr; /* Pointer to the current location. */
 void* malloc(uint sz)
 {
 	/* As init gotten called yet? */
-	if(!mem_init) minit(0, 0, 1);
+	if(!mem_init) msetup();
 
 	/* Do we have any free space? */
 	if(head == NULL) return NULL;
@@ -116,7 +115,7 @@ void* malloc(uint sz)
 int mfree(void* ptr)
 {
 	if(ptr == NULL) return 0;
-	if(!mem_init) minit(0, 0, 1);
+	if(!mem_init) msetup();;
 
 	/* Security: check magic */
 	alloc_node* allocated = (alloc_node*)
@@ -203,22 +202,17 @@ int mfree(void* ptr)
 	return 0;
 }
 
-void minit(uint start_addr, uint end_addr, uint mem_map)
+void minit(uint start_addr, uint end_addr)
 {
-	if(mem_map)
-	{
-		start_addr = (uint)mmap(NULL, M_AMT, PROT_READ | PROT_WRITE);
-		end_addr = start_addr + M_AMT;
-	}
-	/* total_bytes is the amount of bytes we were given */
-	uint total_bytes = end_addr - start_addr;
-	/* Start of the free list were creating */
-	free_node* start_list = (free_node*)start_addr;
-	start_list->sz = B4_ROUNDDOWN(total_bytes - sizeof(struct free_node));
-	start_list->next = NULL; /* The only element in the list */
+        /* total_bytes is the amount of bytes we were given */
+        uint total_bytes = end_addr - start_addr;
+        /* Start of the free list were creating */
+        free_node* start_list = (free_node*)start_addr;
+        start_list->sz = B4_ROUNDDOWN(total_bytes - sizeof(struct free_node));
+        start_list->next = NULL; /* The only element in the list */
 
-	head = start_list; /* Assign head */
-	curr = start_list; /* Assign current free node */
+        head = start_list; /* Assign head */
+        curr = start_list; /* Assign current free node */
 
-	mem_init = 1; /* We have initilized the free list */
+        mem_init = 1; /* We have initilized the free list */
 }

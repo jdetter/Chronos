@@ -1,6 +1,8 @@
 #ifndef _STDMEM_H_
 #define _STDMEM_H_
 
+#define M_AMT 0x5000 /* 5K heap space*/
+
 /**
  * Allocate sz bytes on the heap. You should return a pointer to the allocated 
  * region. For performance reasons, the allocated block should be 16 byte 
@@ -21,6 +23,12 @@ int mfree(void* ptr);
  * is 0, the start_addr and end_addr will be used as the space for the
  * memory allocator.
  */
-void minit(uint start_addr, uint end_addr, uint mem_map);
+void minit(uint start_addr, uint end_addr);
+
+/**
+ * Application specific memory setup. In user mode this will map pages into
+ * the address space. In kernel mode, this does nothing.
+ */
+void msetup(void);
 
 #endif

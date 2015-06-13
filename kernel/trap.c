@@ -40,10 +40,9 @@ void trap_init(void)
 
 void trap_handler(struct trap_frame* tf)
 {
+	rproc->tf = tf;
 	int trap = tf->trap_number;
-
 	char fault_string[64];
-
 	int syscall_ret = -1;
 
 	switch(trap)
@@ -120,7 +119,9 @@ void trap_handler(struct trap_frame* tf)
 	if(trap != TRAP_SC)
 		cprintf("%s: 0x%x", fault_string, tf->error);
 
-	/* Probably return to scheduler here. */
+	/* Surrender a scheduling round. */
+	yield();
+	
 
 	//pic_eoi(trap);
 	if(trap != TRAP_SC)for(;;);

@@ -103,20 +103,79 @@ fake_trap:
 
 	ret
 
-# __start_init__(uint new_esp);
-.globl __start_init__
-__start_init__:
-	call  $(SEG_CALL << 3), $(SEG_CALL << 3)	
+# save current context, restore old context.
+# void __context_restore__(uint* current, uint old)
+.globl __context_restore__
+__context_restore__:
 
-# drop data privileges
+# First, get current context pointer.
+	movl 0x4(%esp), %eax
+
+# save stack and base pointers.
+	pushl	%esp
+	pushl	%ebp
+
+# get the new context value (not a pointer!)
+	movl 	0x10(%esp), %ebp
+
+# finish context save.
+
+# Save all general registers
+	pushal
+
+# Save pdbr
+	movl	%cr3, %ecx
+	pushl	%ecx
+# update context pointer.
+	movl	%esp, (%eax)
+
+# Old context is safe, lets enter the new context.
+	movl	%ebp, %esp
+
+	popl	%eax
+	movl	%eax, %cr3
+	popal
+	popl	%ebp
+	popl	%esp
+
+# return 0
+	movl	$0x00, %eax
+	ret
+		
+
+# drop privilieges and start init process 
+# void __drop_priv__(uint* k_context, uint new_esp);
 .globl __drop_priv__
 __drop_priv__:
+# Kernel context must be saved here!
+	movl	0x04(%esp), %eax # context pointer
+
+# First, push esp, ebp
+	pushl	%esp
+	pushl	%ebp
+
+# now put stack pointer argument into ebp
+	movl	0x10(%esp), %ebp
+
+# complete context creation, similiar to mktf
+	
+# Push registers
+        pushal
+
+# Push pdbr
+	movl	%cr3, %ecx
+	pushl	%ecx
+# Set context pointer
+	movl	%esp, (%eax)
+
+# now we're ready to start the init process.
 	movw	$(SEG_KERNEL_DATA << 3), %ax
 	movw	%ax, %ds
 	movw	%ax, %es
 	movw	%ax, %fs
 	movw	%ax, %gs
-	movl	$0x100000, %esp
+# The base pointer is holding the new esp.
+	movl	%ebp, %esp
 	movl	%esp, %ebp
 #	movw	%ax, %ss
 	ljmp	$(SEG_KERNEL_CODE << 3), $0x1000

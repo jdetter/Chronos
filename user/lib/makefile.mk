@@ -1,6 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_LIB_TARGETS := \
-	stdio
+	stdio \
+	stdmem-msetup
 
 # User lib binary targets
 USER_LIB_TARGETS := $(addprefix user/lib/, $(USER_LIB_TARGETS))

@@ -18,10 +18,14 @@
 slock_t ptable_lock;
 /* The process table */
 struct proc ptable[PTABLE_SIZE];
+/* A pointer into the ptable for the init process */
+struct proc* init_proc;
 /* A pointer into the ptable of the running process */
 struct proc* rproc;
 /* The next available pid */
 uint next_pid;
+/* The context of the scheduler right before user process gets scheduled. */
+extern uint  k_context;
 
 extern uint k_stack;
 
@@ -108,6 +112,9 @@ struct proc* spawn_tty(tty_t t)
 	ustack -= 4;
 	*((uint*)ustack) = 0xFFFFFFFF;
 	p->tf->esp = (uint)ustack;
+
+	/* For now we changed it so user programs run on their kstack */
+	p->tf->esp = (uint)p->k_stack;
 
 	/* Load the binary */
 	uint end = load_binary("/bin/init", p);
@@ -219,30 +226,55 @@ struct proc* get_proc_pid(int pid)
 	return NULL;
 }
 
+void __context_restore__(uint* current, uint old);
+void yield(void)
+{
+	/* We are about to enter the scheduler again, reacquire lock. */
+	slock_acquire(&ptable_lock);
+
+	/* Set state to runnable. */
+	rproc->state = PROC_RUNNABLE;
+
+	/* Give up cpu for a scheduling round */
+	__context_restore__(&rproc->context, k_context);
+
+	/* When we get back here, we no longer have the ptable lock. */
+}
+
 void sched(void)
 {
+	/* Acquire ptable lock */
 	slock_acquire(&ptable_lock);
-	scheduler();
+	scheduler();	
 }
 
 void scheduler(void)
 {
-  slock_acquire(&ptable_lock);
-  
-  int i;
-  int curr_index;
-  for(i = 0; i < PTABLE_SIZE; i++){
-    if(ptable + i == rproc){
-      curr_index = i;
-    }
-  }  
-  curr_index++;
-  while(ptable[curr_index].state != PROC_RUNNABLE){
-    if(curr_index == PTABLE_SIZE - 1){
-      curr_index = 0;
-    }
-    curr_index++;
-  } 
-  rproc = &ptable[curr_index];	
-  switch_uvm(rproc);
+	/* WARNING: ptable lock must be held here.*/
+
+	while(1)
+	{
+		int x;
+		for(x = 0;x < PTABLE_SIZE;x++)
+		{
+			if(ptable[x].state == PROC_RUNNABLE
+					|| ptable[x].state == PROC_READY)
+			{
+				/* Found a process! */
+				rproc = ptable + x;
+
+				/* release lock */
+				slock_release(&ptable_lock);
+
+				/* Make the context switch */
+				switch_context(rproc);
+
+				// The new process is now scheduled.
+				/* The process is done for now. */
+				rproc = NULL;
+
+				/* The process has reacquired the lock. */
+			}
+		}
+	}
 }

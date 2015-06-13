@@ -78,6 +78,7 @@ struct proc
 	struct task_segment* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
 	uint entry_point; /* The address of the first instruction */
+	uint context; /* The address at the top of the saved stack */
 };
 
 /**
@@ -108,7 +109,12 @@ uint load_binary(const char* path, struct proc* p);
 struct proc* get_proc_pid(int pid);
 
 /**
- * Acquire the ptable lock, then jump into the scheduler. (lock not needed)
+ * Surrender a scheduling round.
+ */
+void yield(void);
+
+/**
+ * Restore scheduling context. (lock not needed)
  */
 void sched(void);
 

@@ -290,7 +290,8 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
                                         dst[dst_index + num_pos] =
                                                 num_buff[num_pos];
                                 dst_index += num_pos - 1;
-                        } else if(fmt[fmt_index + 1] == 'x')
+                        } else if(fmt[fmt_index + 1] == 'x'
+				|| fmt[fmt_index + 1] == 'p')
                         {
                                 char num_buff[64];
                                 int val = *((int*)va_arg(list, arg));
@@ -300,8 +301,19 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
                                         dst[dst_index + num_pos] =
                                                 num_buff[num_pos];
                                 dst_index += num_pos - 1;
+                        } else if(fmt[fmt_index + 1] == 'c')
+			{
+				char c = *((char*)va_arg(list, arg));
+				dst[dst_index] = c;
+			} else {
+				dst[dst_index] = fmt[fmt_index];
+				if(dst_index + 1 == sz) break;
+				dst[dst_index + 1] = fmt[fmt_index + 1];
+				dst_index++;
                         }
-                        fmt_index++;
+
+			arg++;
+			fmt_index++;
                 } else dst[dst_index] = fmt[fmt_index];
         }
 

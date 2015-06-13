@@ -17,6 +17,7 @@
 void __set_stack__(uint addr);
 void main_stack(void);
 
+extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
 
@@ -72,7 +73,7 @@ void main_stack(void)
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
-	minit(KVM_KMALLOC_S, KVM_KMALLOC_E, 0);
+	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);
 	cprintf("[ OK ]\n");
 
 	/* Install interrupt descriptor table */
@@ -93,13 +94,25 @@ void main_stack(void)
 	asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
+	cprintf("Initilizing Process Scheduler...\t\t\t\t");
+	sched_init();
+	cprintf("[ OK ]\n");
+	
+	cprintf("Spawning tty0...\t\t\t\t\t\t\t\t\t");
 	/* Setup an init process */
-	struct proc* p = spawn_tty(tty_find(0));
-	//__start_init__(p->entry_point);
-	rproc = p;
-	switch_context(p);
+	init_proc = spawn_tty(tty_find(0));
+	cprintf("[ OK ]\n");
+	
+	/* Start scheduling loop. */
+	sched();
+
+	//rproc = p;
+	//switch_context(p);
 	
 	for(;;);
 }
 
-
+void msetup()
+{
+	panic("Memory allocator not initilized.");
+}

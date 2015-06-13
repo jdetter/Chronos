@@ -66,7 +66,7 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 qemu: all
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 
-qemu-gdb: all kernel-symbols
+qemu-gdb: all kernel-symbols user-symbols
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 
 qemu-x: all 

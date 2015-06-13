@@ -42,9 +42,10 @@ void vm_add_pages(uint start, uint end);
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user);
 void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
-void __start_init__(uint esp);
-void __drop_priv__(void);
+void __drop_priv__(uint* k_context, uint new_esp);
+void __context_restore__(uint* current, uint old);
 
+uint k_context; /* The kernel context */
 uint k_pages; /* How many pages are left? */
 uint k_stack; /* Kernel stack */
 pgdir* k_pgdir; /* Kernel page directory */
@@ -265,19 +266,35 @@ void vm_copy_kvm(pgdir* dir)
 	}
 }
 
-void vm_copy_vm(pgdir* dst, pgdir* src)
+void vm_copy_vm(pgdir* dst_dir, pgdir* src_dir)
 {
-        uint x;
-        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
-        {
-                if(src[x])
-                {
-                        dst[x] = palloc() |  KDIRFLAGS;
-                        uint src_page = PGROUNDDOWN(src[x]);
-                        uint dst_page = PGROUNDDOWN(dst[x]);
-                        memmove((uchar*)dst_page, (uchar*)src_page, PGSIZE);
-                }
-        }
+	uint x;
+	for(x = 0;x < PGSIZE / sizeof(uint);x++)
+	{
+		if(!src_dir[x]) continue;
+
+		if(!dst_dir[x])
+			dst_dir[x] = palloc() |  KDIRFLAGS;
+		pgtbl* src_tbl = (uint*)PGROUNDDOWN(src_dir[x]);
+		pgtbl* dst_tbl = (uint*)PGROUNDDOWN(dst_dir[x]);
+
+		int y;
+		for(y = 0;y <  PGSIZE / sizeof(uint);y++)
+		{
+			/* Check to see if we hit the KVM */
+			if(dst_tbl[y]) return;
+
+			if(src_tbl[y])
+			{
+				dst_tbl[y] = palloc() | KTBLFLAGS;
+				uint* src_page = 
+					(uint*)PGROUNDDOWN(src_tbl[y]);
+				uint* dst_page = 
+					(uint*)PGROUNDDOWN(dst_tbl[y]);
+				memmove(dst_page, src_page, PGSIZE);
+			}
+		}
+	}
 }
 
 void freepgdir(pgdir* dir)
@@ -304,7 +321,6 @@ void freepgdir(pgdir* dir)
 
 void switch_kvm(void)
 {
-	//__set_stack__(k_stack);
 	__enable_paging__(k_pgdir);
 }
 
@@ -340,28 +356,19 @@ void switch_context(struct proc* p)
 
 	if(p->state == PROC_READY)
 	{
-		uint call_addr = (uint)__drop_priv__;
-		/* Setup the call gate */
-		global_descriptor_table[SEG_CALL].limit_1 = call_addr;
-		global_descriptor_table[SEG_CALL].base_1 = SEG_KERNEL_CODE << 3;
-		global_descriptor_table[SEG_CALL].base_2 = 0; /* 0 params*/
-		global_descriptor_table[SEG_CALL].type = 
-			CALL_DEFAULT_FLAGS | CALL_USER_FLAG;
-		global_descriptor_table[SEG_CALL].flags_limit_2 = 
-			(uint_8)(call_addr >> 16);
-		global_descriptor_table[SEG_CALL].base_3 = 
-			(uint_8)(call_addr >> 24);
+		p->state = PROC_RUNNING;
+		__drop_priv__(&k_context, p->tf->esp);
 
-		//ts->esp = p->tf->esp;
-		//ts->ss = SEG_USER_DATA << 3;
-
-		__start_init__(p->tf->esp);
+		/* When we get back here, the process is done running for now. */
+		return;
 	}
+	if(p->state != PROC_RUNNABLE)
+		panic("Tried to schedule non-runnable process.");
 
-	/* Switch to the user's k stack */
-	__set_stack__((uint)(p->tf));
-	/* Do the trap return */
-	asm volatile("jmp trap_return");
+	p->state = PROC_RUNNING;
+
+	/* Go from kernel context to process context */
+	__context_restore__(&k_context, p->context);
 }
 
 void free_list_check(void)
