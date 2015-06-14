@@ -22,6 +22,11 @@ __enable_paging__:
 	pop	%ebp
 	ret
 
+.globl __get_cr2__
+__get_cr2__:
+	movl	%cr0, %eax
+	ret
+
 .globl __set_stack__
 __set_stack__:
 	push	%ebp

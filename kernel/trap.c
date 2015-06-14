@@ -20,6 +20,7 @@
 struct int_gate interrupt_table[TRAP_COUNT];
 extern struct proc* rproc;
 extern uint trap_handlers[];
+uint __get_cr2__(void);
 
 void trap_return();
 
@@ -90,7 +91,8 @@ void trap_handler(struct trap_frame* tf)
 			strncpy(fault_string, "Protection violation", 64);
 			break;
 		case TRAP_PF:
-			strncpy(fault_string, "Page Fault", 64);
+			snprintf(fault_string, 64, "Page Fault: 0x%x ", 
+				__get_cr2__());
 			break;
 		case TRAP_0F:
 			strncpy(fault_string, "Reserved interrupt", 64);
