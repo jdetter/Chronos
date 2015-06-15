@@ -9,6 +9,7 @@
 
 #define M_MAGIC (void*)(0x43524E53)
 static int mem_init = 0;
+static int starting_mem = 0;
 
 /* A node in the free list. */
 typedef struct free_node
@@ -26,6 +27,7 @@ typedef struct alloc_node
 
 static struct free_node* head; /* The head of the free list */
 static struct free_node* curr; /* Pointer to the current location. */
+static void (*mem_printf)(char*, ...); 
 
 void* malloc(uint sz)
 {
@@ -100,7 +102,8 @@ void* malloc(uint sz)
 	} else {
 		/* Split the left over memory. */
 		curr->sz = remaining_bytes;
-		new_header = (alloc_node*)(((uchar*)curr) + remaining_bytes);
+		new_header = (alloc_node*)(((uchar*)curr) 
+			+ remaining_bytes + sizeof(free_node));
 	}
 
 	/* Assign new header size and magic */
@@ -114,14 +117,23 @@ void* malloc(uint sz)
 
 int mfree(void* ptr)
 {
-	if(ptr == NULL) return 0;
+	if(ptr == NULL) 
+	{
+		if(mem_printf)
+			mem_printf("stdmem: tried to free null pointer\n");
+		return 0;
+	}
 	if(!mem_init) msetup();;
 
 	/* Security: check magic */
 	alloc_node* allocated = (alloc_node*)
 		(((uchar*)ptr) - sizeof(free_node));
 	if(allocated->magic != M_MAGIC)
+	{
+		if(mem_printf)
+			mem_printf("stdmem: Magic number curruption!\n");
 		return 1;
+	}
 
 	uint sz = allocated->sz;
 	free_node* free = (free_node*)allocated;
@@ -131,6 +143,8 @@ int mfree(void* ptr)
 	/* If we didn't have a head, we have one now. */
 	if(head == NULL)
 	{
+		if(mem_printf)
+			mem_printf("stdmem: new head assigned.\n");
 		head = free;
 		return 0;
 	}
@@ -143,8 +157,20 @@ int mfree(void* ptr)
         {
 		free->next = head;
 		head = free;
+
+		/* Can we merge the new head with the old head? */
+		if((char*)free + sizeof(struct free_node) + free->sz 
+				== (char*)free->next)
+		{	
+			if(mem_printf)
+				mem_printf(
+				"stdmem: Trying to merge new head.\n");
+			free->sz += sizeof(struct free_node) 
+				+ free->next->sz;
+			free->next = free->next->next;
+		}
 		return 0;
-        }
+	}
 
 	/* We will assume everything is ok. */
 	free_node* above = NULL; /* The node above us in the address space. */
@@ -157,9 +183,10 @@ int mfree(void* ptr)
 		below = curr_search;
 		uint below_node = (uint)curr_search;
 		uint above_node = (uint)curr_search->next;
-		if(below_node < free_i && above_node > free_i)
+		if((below_node < free_i && above_node > free_i)
+				|| above_node == 0)
 		{
-			below = above->next;
+			above = below->next;
 			break;
 		}
 
@@ -175,6 +202,8 @@ int mfree(void* ptr)
 	uint below_i = (uint)below;
 	if(below_i + sizeof(free_node) + below->sz == (uint)free)
 	{
+		if(mem_printf)
+			mem_printf("stdmem: merged below.\n");
 		/* We can merge with the node below us */
 		below->sz += sizeof(free_node) + free->sz;
 		below->next = free->next;
@@ -188,15 +217,30 @@ int mfree(void* ptr)
 	if(!above) return 0;
 
 	/* Try to merge above with current */
-	if(free_i + sizeof(free_node) + free->sz == (uint)below)
+	if(free_i + sizeof(free_node) + free->sz == (uint)above)
 	{
+		if(mem_printf)
+			mem_printf("stdmem: merged above.\n");
 		/* We can merge with the node above us. */
 		free->next = above->next;
 		free->sz += sizeof(free_node) + above->sz;
-		
+
 		/* Clear above node (Security) */
 		above->next = NULL;
 		above->sz = (uint)-1;
+	}
+
+	if(mem_printf)
+	{
+		uint available = 0;
+		struct free_node* n = head;
+		while(n)
+		{
+			available += n->sz;
+			n = n->next;
+		}
+		mem_printf("stdmem: 0x%x %d bytes available.\n",
+			available, available);
 	}
 
 	return 0;
@@ -204,15 +248,35 @@ int mfree(void* ptr)
 
 void minit(uint start_addr, uint end_addr)
 {
-        /* total_bytes is the amount of bytes we were given */
-        uint total_bytes = end_addr - start_addr;
-        /* Start of the free list were creating */
-        free_node* start_list = (free_node*)start_addr;
-        start_list->sz = B4_ROUNDDOWN(total_bytes - sizeof(struct free_node));
-        start_list->next = NULL; /* The only element in the list */
+	if(mem_printf)mem_printf("stdmem: running minit.\n");
+	if(sizeof(struct free_node) != sizeof(struct alloc_node))
+	{
+		if(mem_printf)
+			mem_printf("stdmem: allocator currupt!\n");
+		for(;;);
+	}
 
-        head = start_list; /* Assign head */
-        curr = start_list; /* Assign current free node */
+	/* total_bytes is the amount of bytes we were given */
+	uint total_bytes = end_addr - start_addr;
+	starting_mem = total_bytes;
+	/* Start of the free list were creating */
+	free_node* start_list = (free_node*)start_addr;
+	start_list->sz = B4_ROUNDDOWN(total_bytes - sizeof(struct free_node));
+	start_list->next = NULL; /* The only element in the list */
 
-        mem_init = 1; /* We have initilized the free list */
+	head = start_list; /* Assign head */
+	curr = start_list; /* Assign current free node */
+
+	mem_init = 1; /* We have initilized the free list */
+}
+
+
+
+
+/* Set debug */
+void mem_debug(void (*f)(char*, ...))
+{
+	mem_printf = f;
+	if(mem_printf)
+		mem_printf("stdmem: memory debugging enabled.\n");
 }

@@ -33,7 +33,7 @@ void trap_init(void)
 		interrupt_table[x].offset_2 = 
 			(trap_handlers[x] >> 16) & 0xFFFF;
 		interrupt_table[x].segment_selector = SEG_KERNEL_CODE << 3;
-		interrupt_table[x].flags = GATE_INT_CONST;
+		interrupt_table[x].flags = GATE_INT_CONST | GATE_USER;
 	}
 
 	lidt((uint)interrupt_table, INTERRUPT_TABLE_SIZE);		
@@ -111,7 +111,7 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_SC:
 			strncpy(fault_string, "System Call", 64);
-			syscall_ret = syscall_handler((uint*)tf->espx);
+			syscall_ret = syscall_handler((uint*)tf->esp);
 			rproc->tf->eax = syscall_ret;
 			break;
 		default:

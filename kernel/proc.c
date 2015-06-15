@@ -113,11 +113,8 @@ struct proc* spawn_tty(tty_t t)
 	*((uint*)ustack) = 0xFFFFFFFF;
 	p->tf->esp = (uint)ustack;
 
-	/* For now we changed it so user programs run on their kstack */
-	p->tf->esp = (uint)p->k_stack;
-
 	/* Load the binary */
-	uint end = load_binary("/bin/init", p);
+	uint end = load_binary("/bin/test", p);
 	if(p->entry_point != 0x1000)
 		panic("init binary wrong entry point.\n");
 	p->heap_start = PGROUNDDOWN(end - 1 + PGSIZE);

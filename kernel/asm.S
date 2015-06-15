@@ -22,9 +22,22 @@ __enable_paging__:
 	pop	%ebp
 	ret
 
+.globl __disable_paging__
+__disable_paging__:
+	pushl	%eax
+	pushl	%ecx
+	movl 	%cr0, %eax
+	movl 	$CR0_PGENABLE, %ecx
+	notl 	%ecx
+	andl 	%ecx, %eax
+	movl 	%eax, %cr0
+	popl	%ecx
+	popl	%eax
+	ret
+
 .globl __get_cr2__
 __get_cr2__:
-	movl	%cr0, %eax
+	movl	%cr2, %eax
 	ret
 
 .globl __set_stack__
@@ -114,39 +127,35 @@ fake_trap:
 __context_restore__:
 
 # First, get current context pointer.
-	movl 0x4(%esp), %eax
-
-# save stack and base pointers.
-	pushl	%esp
-	pushl	%ebp
-
+	movl 	0x4(%esp), %eax
 # get the new context value (not a pointer!)
-	movl 	0x10(%esp), %ebp
-
-# finish context save.
+	movl 	0x8(%esp), %ecx
 
 # Save all general registers
 	pushal
 
 # Save pdbr
-	movl	%cr3, %ecx
-	pushl	%ecx
+	movl	%cr3, %ebx
+	pushl	%ebx
 # update context pointer.
 	movl	%esp, (%eax)
 
 # Old context is safe, lets enter the new context.
-	movl	%ebp, %esp
+	movl	%ecx, %esp
 
 	popl	%eax
 	movl	%eax, %cr3
 	popal
-	popl	%ebp
-	popl	%esp
 
 # return 0
 	movl	$0x00, %eax
 	ret
 		
+
+# definitions for relevant MSRs:
+#define SYSENTER_CS_MSR 	0x174
+#define SYSENTER_ESP_MSR 	0x175
+#define SYSENTER_EIP_MSR 	0x176
 
 # drop privilieges and start init process 
 # void __drop_priv__(uint* k_context, uint new_esp);
@@ -155,12 +164,8 @@ __drop_priv__:
 # Kernel context must be saved here!
 	movl	0x04(%esp), %eax # context pointer
 
-# First, push esp, ebp
-	pushl	%esp
-	pushl	%ebp
-
-# now put stack pointer argument into ebp
-	movl	0x10(%esp), %ebp
+# now put stack pointer argument into ecx
+	movl	0x08(%esp), %ecx
 
 # complete context creation, similiar to mktf
 	
@@ -168,20 +173,32 @@ __drop_priv__:
         pushal
 
 # Push pdbr
-	movl	%cr3, %ecx
-	pushl	%ecx
+	movl	%cr3, %edx
+	pushl	%edx
 # Set context pointer
 	movl	%esp, (%eax)
 
 # now we're ready to start the init process.
-	movw	$(SEG_KERNEL_DATA << 3), %ax
+	movw	$(SEG_USER_DATA << 3), %ax
+	addw	$0x03, %ax
 	movw	%ax, %ds
 	movw	%ax, %es
 	movw	%ax, %fs
 	movw	%ax, %gs
-# The base pointer is holding the new esp.
-	movl	%ebp, %esp
-	movl	%esp, %ebp
-#	movw	%ax, %ss
-	ljmp	$(SEG_KERNEL_CODE << 3), $0x1000
 	
+# put the value of the new stack in %ebx
+	movl	%ecx, %ebx
+
+# value for the new CS
+	movl	$SYS_EXIT_BASE, %eax
+	addl	$0x03, %eax
+	movl	$0x00, %edx
+	movl	$SYSENTER_CS_MSR, %ecx
+	wrmsr
+
+# eip value
+        movl    $0x1000, %edx
+# ebx is holding the new esp, move it to %ecx.
+	movl	%ebx, %ecx
+
+	sysexit

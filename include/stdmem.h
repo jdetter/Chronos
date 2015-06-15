@@ -31,4 +31,9 @@ void minit(uint start_addr, uint end_addr);
  */
 void msetup(void);
 
+/**
+ * Enable memory debugging. This can help you find memory leaks.
+ */
+void mem_debug(void (*f)(char*, ...));
+
 #endif

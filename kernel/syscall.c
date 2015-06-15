@@ -38,6 +38,14 @@ uchar syscall_addr_safe(uchar* address)
 	return 1;
 }
 
+uchar syscall_ptr_safe(uchar* address)
+{
+	if(syscall_addr_safe(address) 
+		|| syscall_addr_safe(address + 3))
+			return 1;
+	return 0;
+}
+
 /**
  * Get an integer argument. The arg_num determines the offset to the argument.
  */
@@ -63,7 +71,7 @@ int syscall_get_buffer(char* dst, uint sz_user, uint sz_kern,
 	memset(dst, 0, sz_kern);
 	esp += arg_num; /* This is a pointer to the string we need */
 	uchar* str_addr = (uchar*)esp;
-	if(syscall_addr_safe(str_addr))
+	if(syscall_ptr_safe(str_addr))
 		return 1;
 	uchar* str = *(uchar**)str_addr;
 	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz_user))
@@ -87,6 +95,7 @@ int syscall_get_buffer(char* dst, uint sz_user, uint sz_kern,
 	return 0;
 }
 
+
 int syscall_get_buffer_ptr(char** ptr, uint sz, uint* esp, uint arg_num)
 {
 	esp += arg_num; /* This is a pointer to the string we need */
@@ -102,9 +111,39 @@ int syscall_get_buffer_ptr(char** ptr, uint sz, uint* esp, uint arg_num)
 	return 0;
 }
 
+int syscall_get_buffer_ptrs(uchar*** ptr, uint* esp, uint arg_num)
+{
+	esp += arg_num;
+	/* Get the address of the buffer */
+	uchar*** buff_buff_addr = (uchar***)esp;
+	/* Is the user stack okay? */
+	if(syscall_ptr_safe((uchar*) buff_buff_addr)) 
+		return 1;
+	uchar** buff_addr = *buff_buff_addr;
+	/* Check until we hit a null. */
+	int x;
+	for(x = 0;x < MAX_ARG;x++)
+	{
+		if(syscall_ptr_safe((uchar*)(buff_addr + x)))
+			return 1;
+		uchar* val = *(buff_addr + x);
+		if(val == 0) break;
+	}
+
+	if(x == MAX_ARG)
+	{
+		/* the list MUST end with a NULL element! */
+		return 1;
+	}
+
+	/* Everything is reasonable. */
+	*ptr = buff_addr;
+	return 0;
+}
+
+
 int syscall_handler(uint* esp)
 {
-	esp += 9;
 	/* Get the number of the system call */
 	int syscall_number = -1;
 	int return_value = -1;
@@ -118,6 +157,8 @@ int syscall_handler(uint* esp)
 	char str_arg1[SYSCALL_STRLEN];
 	//char str_arg2[SYSCALL_STRLEN];
 
+	char** arg_list;
+
 	char* buff_ptr1;
 
 	switch(syscall_number)
@@ -128,6 +169,13 @@ int syscall_handler(uint* esp)
 		case SYS_wait:
 			break;
 		case SYS_exec:
+			return_value = 0;
+			if(syscall_get_buffer_ptr(&buff_ptr1, 
+				int_arg2, esp, 1)) break;
+			if(syscall_get_buffer_ptrs(
+				(uchar***)&arg_list, esp, 2))
+				break;
+			sys_exec(buff_ptr1, (const char**)arg_list);
 			break;
 		case SYS_exit:
 			break;
@@ -205,22 +253,25 @@ int sys_fork(void)
   vm_copy_kvm(new_proc->pgdir);
   vm_copy_uvm(new_proc->pgdir, rproc->pgdir); 
   memmove(new_proc->k_stack - PGSIZE, rproc->k_stack - PGSIZE, PGSIZE);
-  uint tf_dst = (uchar*)rproc->k_stack - (uchar*)rproc->tf;
-  new_proc->tf = (struct trap_frame*)(new_proc->k_stack - tf_dst);
-  new_proc->tf->eax = 0;
+  new_proc->tf = (struct trap_frame*)((char*)new_proc->k_stack - 
+		sizeof(struct trap_frame));
+  new_proc->tf->eax = 0; /* The child should return 0 */
   new_proc->t = rproc->t;
   new_proc->entry_point = rproc->entry_point;
   new_proc->tss = (struct task_segment*)(new_proc->k_stack - PGSIZE);
 
   /* Create a context to be restored, trap return should be called. */
-  struct context* new_context = (struct context*)
-	((uchar*)new_proc->tf - sizeof(struct context));
-  memset(new_context, 0, sizeof(struct context));
+  struct context* new_context = (struct context*)((char*)new_proc->tf - 
+		sizeof(struct context));
   new_context->cr0 = PGROUNDDOWN((uint)new_proc->pgdir);
   new_context->esp = (uint)new_proc->tf - 4;
   new_context->ebp = new_context->esp;
   new_context->eip = (uint)trap_return;
   new_proc->context = (uint)new_context;
+
+  /* Copy all file descriptors */
+  memmove(&new_proc->file_descriptors, &rproc->file_descriptors,
+		sizeof(struct file_descriptor) * MAX_FILES);
 
   memmove(&new_proc->cwd, &rproc->cwd, MAX_PATH_LEN);
   memmove(&new_proc->name, &rproc->name, MAX_PROC_NAME);
@@ -240,96 +291,89 @@ int sys_wait(int pid)
 
 int sys_exec(const char* path, const char** argv)
 {
-  char* args[64];
-  memset(args, 0, sizeof(char*) * 64);
-  uchar* ogtos = (uchar*)palloc() + PGSIZE; 
-  uchar* tos = ogtos;
-  tos -= 4;
-  int i;
-  for(i = 0; argv[i] != NULL; i++){
-    tos -= (strlen(argv[i]) + 1);
-    args[i] = (char*)tos;
-    memmove(tos, args[i], (strlen(argv[i] + 1)));
-  }
-  tos -= (64 * sizeof(char*)); 
-  memmove(tos, args, 64 * sizeof(char*)); 
-  tos -= 4;
-  uint retadd = 0xFFFFFFFF;
-  memmove(tos, &retadd, 4);
-
+  /* acquire ptable lock */
   slock_acquire(&ptable_lock);
-  freepgdir(rproc->pgdir);
-  char* cast_path = (char*) path;
 
-  vsfs_inode to_exec;
+  /* Create argument array */
+  char* args[MAX_ARG];
+  memset(args, 0, MAX_ARG * sizeof(char*));
 
-  int inode_num;
+  /* Create a temporary stack: */
+  uchar* tmp_stack = (uchar*)palloc() + PGSIZE;
+  uint stack_start = (uint)tmp_stack - PGSIZE;
+  uint uvm_stack = KVM_START;
 
-  inode_num = vsfs_lookup(cast_path, &to_exec);
-
-  if(inode_num == 0){
-    return -1;
-  }
-  if(to_exec.type != VSFS_FILE){
-    return -1;
-  }
-
-  /* Sniff to see if it looks right. */
-  uchar elf_buffer[512];
-  vsfs_read(&to_exec, 0, 512, elf_buffer);
-  char elf_buff[] = ELF_MAGIC;
-  if(memcmp(elf_buffer, elf_buff, 4))
-  {
-    return -1;
-  } 
-  /* Load the entire elf header. */
-  struct elf32_header elf;
-  vsfs_read(&to_exec, 0, sizeof(struct elf32_header), &elf);
-  /* Check class */
-  if(elf.exe_class != 1) return -1;	
-  if(elf.version != 1) return -1;
-  if(elf.e_type != ELF_E_TYPE_EXECUTABLE) return -1;	
-  if(elf.e_machine != ELF_E_MACHINE_x86) return -1;	
-  if(elf.e_version != 1) return -1;
+  /* copy arguments */
   int x;
-  for(x = 0;x < elf.e_phnum;x++)
+  for(x = 0;argv[x];x++)
   {
-    int header_loc = elf.e_phoff + (x * elf.e_phentsize);
-    struct elf32_program_header curr_header;
-    vsfs_read(&to_exec, header_loc, 
-      sizeof(struct elf32_program_header), &curr_header);
-    /* Skip null program headers */
-    if(curr_header.type == ELF_PH_TYPE_NULL) continue;
-		
-    /* 
-     * GNU Stack is a recommendation by the compiler
-     * to allow executable stacks. This section doesn't
-     * need to be loaded into memory because it's just
-     * a flag.
-     */
-    if(curr_header.type == ELF_PH_TYPE_GNU_STACK)
-      continue;
-	
-    if(curr_header.type == ELF_PH_TYPE_LOAD)
-    {
-      /* Load this header into memory. */
-      uchar* hd_addr = (uchar*)curr_header.virt_addr;
-      uint offset = curr_header.offset;
-      uint file_sz = curr_header.file_sz;
-      uint mem_sz = curr_header.mem_sz;
-      if((uint) hd_addr + mem_sz >= KVM_START){
-        return -1;
-      } 
-      mappages((uint) hd_addr, mem_sz, rproc->pgdir, 1);
-      /* zero this region */
-      memset(hd_addr, 0, mem_sz);
-      /* Load the section */
-      vsfs_read(&to_exec, offset, file_sz, hd_addr);
-      /* By default, this section is rwx. */
-    }
-  }  
-  mappage((uint)ogtos, KVM_START - PGSIZE, rproc->pgdir, 1, 0); 
-  scheduler();
+    uint str_len = strlen(argv[x]) + 1;
+    tmp_stack -= str_len;
+    uvm_stack -= str_len;
+    memmove(tmp_stack, (char*)argv[x], str_len);
+    args[x] = (char*)uvm_stack;
+  }
+
+  /* Copy argument array */
+  tmp_stack -= MAX_ARG * sizeof(char*);
+  uvm_stack -= MAX_ARG * sizeof(char*);
+  memmove(tmp_stack, args, MAX_ARG * sizeof(char*));
+  uint arg_arr_ptr = uvm_stack;
+  int arg_count = x;
+
+  /* Push argv */
+  tmp_stack -= 4;
+  uvm_stack -= 4;
+  *((uint*)tmp_stack) = arg_arr_ptr;
+
+  /* push argc */
+  tmp_stack -= 4;
+  uvm_stack -= 4;
+  *((uint*)tmp_stack) = (uint)arg_count;
+  
+  /* Add bogus return address */
+  tmp_stack -= 4;
+  uvm_stack -= 4;
+  *((uint*)tmp_stack) = 0xFFFFFFFF;
+  
+  /* load the binary if possible. */
+  uint load_result = load_binary(path, rproc);
+  if(load_result == 0) 
+  {
+    pfree(stack_start);
+    return -1;
+  }
+  
+  /* New stack is complete, free old stack. */
+  uint old_stack = findpg(KVM_START - PGSIZE, 0, rproc->pgdir, 0);
+  unmappage(KVM_START - PGSIZE, rproc->pgdir);
+  pfree(old_stack);
+
+  /* Map the new stack in */
+  mappage(stack_start, KVM_START - PGSIZE, rproc->pgdir, 1, 0);
+
+  /* We now have the esp and ebp. */
+  rproc->tf->esp = uvm_stack;
+  rproc->tf->ebp = rproc->tf->esp;
+
+  /* Set eip to correct entry point */
+  rproc->tf->eip = rproc->entry_point;
+
+  /* Adjust heap start and end */
+  rproc->heap_start = PGROUNDDOWN(load_result + PGSIZE - 1);
+  rproc->heap_end = 0;
+
+  /* Make sure that the heap has room to grow */
+  for(x = rproc->heap_start;x < KVM_START - PGSIZE;x++)
+  {
+    uint page = unmappage(x, rproc->pgdir);
+    if(!page) break;
+    pfree(page);
+  }
+
+  /* Release the ptable lock */
+  slock_release(&ptable_lock);
+
   return 0;
 }
 

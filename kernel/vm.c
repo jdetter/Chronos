@@ -90,15 +90,14 @@ void vm_add_pages(uint start, uint end)
  *
  */
 
-#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * 7)
+#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * SEG_COUNT)
 struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG_NULL, 
-	MKVMSEG(SEG_KERN, SEG_EXE , SEG_READ,  0x0, KVM_MAX),
+	MKVMSEG(SEG_KERN, SEG_EXE, SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG(SEG_USER, SEG_EXE | SEG_NONC, SEG_READ,  0x0, KVM_MAX),
+	MKVMSEG(SEG_USER, SEG_EXE, SEG_READ,  0x0, KVM_MAX),
 	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, KVM_MAX),
-	MKVMSEG_NULL, /* Wil become TSS*/
-	MKVMSEG_NULL /* Will become CALL */
+	MKVMSEG_NULL /* Will become TSS*/
 };
 
 void vm_seg_init(void)
@@ -258,6 +257,25 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user)
 	return PGROUNDDOWN(page);
 }
 
+uint unmappage(uint virt, pgdir* dir)
+{
+	virt = PGROUNDDOWN(virt);
+        uint dir_index = PGDIRINDEX(virt);
+        uint tbl_index = PGTBLINDEX(virt);
+
+        if(!dir[dir_index]) return 0;
+
+        uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+        if(tbl[tbl_index])
+        {
+		uint page = PGROUNDDOWN(tbl[tbl_index]);
+		tbl[tbl_index] = 0;
+		return page;
+        }
+
+	return 0;
+}
+
 void vm_copy_kvm(pgdir* dir)
 {
 	uint x;
@@ -265,7 +283,7 @@ void vm_copy_kvm(pgdir* dir)
 	{
 		if(k_pgdir[x])
 		{
-			dir[x] = palloc() |  KDIRFLAGS;
+			dir[x] = palloc() |  UDIRFLAGS;
 			uint src_page = PGROUNDDOWN(k_pgdir[x]);
 			uint dst_page = PGROUNDDOWN(dir[x]);
 			memmove((uchar*)dst_page, (uchar*)src_page, PGSIZE);
@@ -285,10 +303,6 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 		memmove((uchar*)dst_page,
 			(uchar*)src_page,
 			PGSIZE);
-		cprintf("Copied page: 0x%x mapped to 0x%x\n", 
-			dst_page, x);
-		break;
-		//pg_cmp((uchar*)src_page, (uchar*)dst_page);
 	}
 }
 

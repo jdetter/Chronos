@@ -11,7 +11,8 @@ USER_TARGETS := \
 	mv \
 	rm \
 	rmdir \
-	sh 
+	sh \
+	test 
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

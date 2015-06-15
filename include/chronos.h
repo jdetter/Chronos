@@ -4,27 +4,27 @@
 /* Chronos traps */
 #define TRAP_SC 	0x80 /* System call trap*/
 
-#define SYS_fork 	0x00
-#define SYS_wait 	0x01
-#define SYS_exec 	0x02
-#define SYS_exit 	0x03
-#define SYS_open 	0x04
-#define SYS_close 	0x05
-#define SYS_read 	0x06
-#define SYS_write 	0x07
-#define SYS_lseek	0x08
-#define SYS_mmap 	0x09
-#define SYS_chdir 	0x0A
-#define SYS_cwd 	0x0B
-#define SYS_create 	0x0C
-#define SYS_mkdir 	0x0D
-#define SYS_rmdir 	0x0E
-#define SYS_rm 		0x0F
-#define SYS_mv 		0x10
-#define SYS_fstat 	0x11
-#define SYS_wait_s	0x12
-#define SYS_wait_t	0x13
-#define SYS_signal 	0x14
+#define SYS_fork 	0x01
+#define SYS_wait 	0x02
+#define SYS_exec 	0x03
+#define SYS_exit 	0x04
+#define SYS_open 	0x05
+#define SYS_close 	0x06
+#define SYS_read 	0x07
+#define SYS_write 	0x08
+#define SYS_lseek	0x09
+#define SYS_mmap 	0x0A
+#define SYS_chdir 	0x0B
+#define SYS_cwd 	0x0C
+#define SYS_create 	0x0D
+#define SYS_mkdir 	0x0E
+#define SYS_rmdir 	0x0F
+#define SYS_rm 		0x10
+#define SYS_mv 		0x11
+#define SYS_fstat 	0x12
+#define SYS_wait_s	0x13
+#define SYS_wait_t	0x14
+#define SYS_signal 	0x15
 
 /* From where to seek in lseek */
 #define FSEEK_CUR	0x0
@@ -32,15 +32,16 @@
 #define FSEEK_END	0x2
 
 /* Segment descriptions */
+/* Null segment		0x00 */
 #define SEG_KERNEL_CODE	0x01
 #define SEG_KERNEL_DATA 0x02
-#define SEG_USER_CODE   0x03
+#define SEG_USER_CODE   0x03 /* data must be 1 away from code (sysexit) */
 #define SEG_USER_DATA   0x04
 #define SEG_TSS		0x05
-#define SEG_CALL	0x06
 
-#define DROP_CODE (SEG_USER_CODE << 3) | (0x3)
-#define DROP_DATA (SEG_USER_DATA << 3) | (0x3)
+#define SEG_COUNT 	0x06
+
+#define SYS_EXIT_BASE	((SEG_USER_CODE << 3) - 16)
 
 #define PROT_EXE	0x01
 #define PROT_READ	0x02
@@ -60,6 +61,8 @@
 #define PERM_OREAD	00001
 #define PERM_OWRITE	00002
 #define PERM_OEXEC	00004
+
+#define MAX_ARG		0x20
 
 #ifndef _CHRONOS_ASMONLY_
 /**

@@ -24,9 +24,10 @@
 #define KVM_MONO_START	0x20001000	
 #define KVM_MONO_SZ	4000 /* Size of mono chrome memory */	
 
-/* Keep an empty page at the end of the stack */
+/* Keep an empty page at the start of the stack */
 #define KVM_KSTACK_S	0x20003000
 #define KVM_KSTACK_E	0x20010000
+/* Keep an empty page at the end of the stack */
 
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
@@ -100,6 +101,12 @@ void dir_mappages(uint start, uint end, pgdir* dir, uchar user);
  * page directory dir. This will create entries and tables where needed.
  */
 void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags);
+
+/**
+ * Unmap the page from the page directory. If there isn't a page there then
+ * nothing is done. Returns the page that was unmapped.
+ */
+uint unmappage(uint virt, pgdir* dir);
 
 /**
  * Find a page in a page directory. If the page is not mapped, and create is 1,

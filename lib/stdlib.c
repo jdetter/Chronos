@@ -324,7 +324,6 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
         }
 
         dst[sz - 1] = 0;
-        //va_end(list); /* There is some sort of problem freeing here */
         return dst_index;
 }
 
@@ -332,6 +331,8 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 {
 	va_list list;
 	va_start(&list, (void**)&fmt);
+        int result =  va_snprintf(dst, sz, list, fmt);
+	va_end(list);
 
-	return va_snprintf(dst, sz, list, fmt);
+	return result;
 }
