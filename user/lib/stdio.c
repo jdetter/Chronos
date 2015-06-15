@@ -9,8 +9,9 @@ int printf(char* fmt, ...)
 {
 	va_list list;
 	va_start(&list, (void**)&fmt);
-	char buffer[128];
-	va_snprintf(buffer, 128, list, fmt);
+	char buffer[256];
+	memset(buffer, 0, 256);
+	va_snprintf(buffer, 256, list, fmt);
 	int chars = write(1, buffer, strlen(buffer));
 	va_end(list);
 

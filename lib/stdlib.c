@@ -311,6 +311,11 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
 			{
 				char c = *((char*)va_arg(list, arg));
 				dst[dst_index] = c;
+			} else if(fmt[fmt_index + 1] == 's')
+			{
+				char* s = *((char**)va_arg(list, arg));
+                                int s_len = strncat(dst, s, sz);
+				dst_index = s_len - 1;
 			} else {
 				dst[dst_index] = fmt[fmt_index];
 				if(dst_index + 1 == sz) break;

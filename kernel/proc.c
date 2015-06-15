@@ -114,7 +114,7 @@ struct proc* spawn_tty(tty_t t)
 	p->tf->esp = (uint)ustack;
 
 	/* Load the binary */
-	uint end = load_binary("/bin/test", p);
+	uint end = load_binary("/bin/init", p);
 	if(p->entry_point != 0x1000)
 		panic("init binary wrong entry point.\n");
 	p->heap_start = PGROUNDDOWN(end - 1 + PGSIZE);
