@@ -27,7 +27,7 @@ typedef struct alloc_node
 
 static struct free_node* head; /* The head of the free list */
 static struct free_node* curr; /* Pointer to the current location. */
-static void (*mem_printf)(char*, ...); 
+static void (*mem_printf)(char*); 
 
 void* malloc(uint sz)
 {
@@ -35,7 +35,12 @@ void* malloc(uint sz)
 	if(!mem_init) msetup();
 
 	/* Do we have any free space? */
-	if(head == NULL) return NULL;
+	if(head == NULL) 
+	{
+		if(mem_printf)
+			mem_printf("stdmem: cannot alloc: out of mem\n");
+		return NULL;
+	}
 	/* Has the user requested 0 bytes of space? */
 	if(sz == 0) return NULL;
 
@@ -71,6 +76,8 @@ void* malloc(uint sz)
 
 	if(found == 0)
 	{
+		if(mem_printf)
+			mem_printf("stdmem: cannot alloc: not enough mem\n");
 		/* We don't have a node large enough to service the request. */
 		return NULL;
 	}
@@ -103,7 +110,16 @@ void* malloc(uint sz)
 		/* Split the left over memory. */
 		curr->sz = remaining_bytes;
 		new_header = (alloc_node*)(((uchar*)curr) 
-			+ remaining_bytes + sizeof(free_node));
+				+ remaining_bytes + sizeof(free_node));
+	}
+
+	if(mem_printf)
+	{
+		mem_printf("stdmem: ");
+		char nbuff[64];
+		itoa(sz, nbuff, 64, 16);
+		mem_printf(nbuff);
+		mem_printf("\n");
 	}
 
 	/* Assign new header size and magic */
@@ -149,12 +165,12 @@ int mfree(void* ptr)
 		return 0;
 	}
 
-        /* If ptr is before the head, there is a new head. */
-        uint head_i = (uint)head;
-        uint free_i = (uint)allocated;
+	/* If ptr is before the head, there is a new head. */
+	uint head_i = (uint)head;
+	uint free_i = (uint)allocated;
 
-        if(free_i < head_i)
-        {
+	if(free_i < head_i)
+	{
 		free->next = head;
 		head = free;
 
@@ -164,7 +180,7 @@ int mfree(void* ptr)
 		{	
 			if(mem_printf)
 				mem_printf(
-				"stdmem: Trying to merge new head.\n");
+						"stdmem: Trying to merge new head.\n");
 			free->sz += sizeof(struct free_node) 
 				+ free->next->sz;
 			free->next = free->next->next;
@@ -214,10 +230,8 @@ int mfree(void* ptr)
 		free = below;
 	}
 
-	if(!above) return 0;
-
 	/* Try to merge above with current */
-	if(free_i + sizeof(free_node) + free->sz == (uint)above)
+	if(above && free_i + sizeof(free_node) + free->sz == (uint)above)
 	{
 		if(mem_printf)
 			mem_printf("stdmem: merged above.\n");
@@ -239,8 +253,11 @@ int mfree(void* ptr)
 			available += n->sz;
 			n = n->next;
 		}
-		mem_printf("stdmem: 0x%x %d bytes available.\n",
-			available, available);
+		char nbuff[64];
+		itoa(available, nbuff, 64, 16);
+		mem_printf("stdmem: ");
+		mem_printf(nbuff);
+		mem_printf(" bytes available.\n");
 	}
 
 	return 0;
@@ -274,7 +291,7 @@ void minit(uint start_addr, uint end_addr)
 
 
 /* Set debug */
-void mem_debug(void (*f)(char*, ...))
+void mem_debug(void (*f)(char*))
 {
 	mem_printf = f;
 	if(mem_printf)

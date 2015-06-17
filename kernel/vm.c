@@ -306,6 +306,16 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	}
 }
 
+void vm_free_uvm(pgdir* dir)
+{
+	uint x;
+	for(x = 0;x < KVM_START;x += PGSIZE)
+	{
+		uint page = unmappage(x, dir);
+		if(page) pfree(page);
+	}
+}
+
 void freepgdir(pgdir* dir)
 {
 	int dir_index;

@@ -217,6 +217,23 @@ static inline uint xchg(volatile uint *addr, uint newval)
 #define INT_PIC_ATA1 		0x06  + INT_PIC_MAP_OFF_2
 #define INT_PIC_ATA2 		0x07  + INT_PIC_MAP_OFF_2
 
+#define INT_PIC_TIMER_CODE      0x00
+#define INT_PIC_KEYBOARD_CODE	0x01
+#define INT_PIC_SLAVE_CODE      0x02
+#define INT_PIC_COM2_CODE       0x03
+#define INT_PIC_COM1_CODE       0x04
+#define INT_PIC_LPT2_CODE       0x05
+#define INT_PIC_FLOPPY_CODE     0x06
+#define INT_PIC_LPT1_CODE       0x07
+#define INT_PIC_CMOS_CODE       0x08
+#define INT_PIC_INT09_CODE      0x09
+#define INT_PIC_INT10_CODE      0x0A
+#define INT_PIC_INT11_CODE      0x0B
+#define INT_PIC_MOUSE_CODE      0x0C
+#define INT_PIC_COPROCESSOR_CODE 0x0D
+#define INT_PIC_ATA1_CODE       0x0E
+#define INT_PIC_ATA2_CODE       0x0F
+
 struct task_segment
 {
 	uint_16 previous_task_link; /* Segment selector of prev task*/

@@ -142,6 +142,11 @@ void switch_kvm(void);
 void switch_uvm(struct proc* p);
 
 /**
+ * Free the user portion of a page directory.
+ */
+void vm_free_uvm(pgdir* dir);
+
+/**
  * Switch to the user's context.
  */
 void switch_context(struct proc* p);

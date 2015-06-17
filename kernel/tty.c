@@ -244,7 +244,8 @@ void tty_print_string(tty_t t, char* fmt, ...)
 	va_list list;
 	va_start(&list, (void**)&fmt);
 	char buffer[1024];
-	va_snprintf(buffer, 1024, list, fmt);
+	memset(buffer, 0, 1024);
+	va_snprintf(buffer, 1024, &list, fmt);
 	if(t->type==TTY_TYPE_COLOR||t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_SERIAL)
 	{
 		int i;
@@ -257,6 +258,8 @@ void tty_print_string(tty_t t, char* fmt, ...)
 	{
 		panic("TTY invalid graphics mode");
 	}
+
+	va_end(&list);
 }
 
 void tty_print_cell(tty_t t, uint row, uint col, uint character)

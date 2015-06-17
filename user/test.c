@@ -1,24 +1,14 @@
 #include "types.h"
 #include "stdio.h"
+#include "stdarg.h"
+#include "stdlib.h"
 #include "stdmem.h"
+#include "file.h"
+#include "stdlock.h"
+#include "chronos.h"
 
 int main(int argc, char** argv)
 {
-	mem_debug((void (*)(char*, ...))printf);
-	int* nums[128];
-	int x;
-	for(x = 0;x < 128;x++)
-	{
-		nums[x] = malloc(sizeof(int));
-		*nums[x] = x;
-	}
-	for(x = 0;x < 128;x++)
-		if(mfree(nums[x]))
-		{
-			printf("Free failed.\n");
-		}
-
-	printf("Tester program finished.\n");
-
-	return 0;
+	printf("I am a child!\n");
+	exit();
 }

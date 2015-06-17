@@ -6,17 +6,19 @@
 #include "stdlib.h"
 #include "stdio.h"
 
-char* spawn_process = "/bin/example";
+char* spawn_process = "/bin/test";
+
+void some_recursion(int i);
 
 int main(int argc, char** argv)
 {
-	printf("process init has spawned.\n");
-
+	printf("An init process has spawned on this tty.\n");
 	int result = fork();
 	if(result > 0)
 	{
 		wait(result);
-		printf("Process completed\n");
+		printf("Child exited cleanly.\n");
+		for(;;);
 	} else {
 		char* args[MAX_ARG];
 		memset(args, 0, MAX_ARG); 
@@ -31,7 +33,22 @@ int main(int argc, char** argv)
 	}
 
 	
-	for(;;);
+	for(;;)printf("");
 	exit();
 	return 0;
 }
+
+void some_recursion(int i)
+{
+	int result = i * 2;
+	int x;
+	for(x = 0;x < 100000;x++)
+	{
+		result = result / 2;
+		result = result * 2;
+	}
+	printf("Recursion: 0x%x\n", result);
+	if(i == 50) return;
+	else some_recursion(i + 1);
+}
+

@@ -238,6 +238,18 @@ void yield(void)
 	/* When we get back here, we no longer have the ptable lock. */
 }
 
+void yield_withlock(void)
+{
+	/* We have the lock, just enter the scheduler. */
+	/* We are also not changing the state of the process here. */
+
+        /* Give up cpu for a scheduling round */
+        __context_restore__(&rproc->context, k_context);
+
+        /* When we get back here, we no longer have the ptable lock. */
+}
+
+
 void sched(void)
 {
 	/* Acquire ptable lock */

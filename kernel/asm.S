@@ -63,6 +63,8 @@ __set_stack__:
 # Make a trap frame on the current stack.
 .globl mktf
 mktf:
+	# nested interrupts are currently unsupported.
+	cli
 	# Status information and trap number have already been pushed.
 	# Push segment registers
 	pushl 	%ds
@@ -125,7 +127,6 @@ fake_trap:
 # void __context_restore__(uint* current, uint old)
 .globl __context_restore__
 __context_restore__:
-
 # First, get current context pointer.
 	movl 	0x4(%esp), %eax
 # get the new context value (not a pointer!)

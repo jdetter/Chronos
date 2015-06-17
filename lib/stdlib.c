@@ -268,9 +268,9 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 	dst_c[sz - 1] = 0;
 }
 
-int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
+int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
 {
-	int arg = 0;
+	int arg = 1;
 	
         int fmt_index = 0;
         int dst_index = 0;
@@ -289,7 +289,7 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
                         } else if(fmt[fmt_index + 1] == 'd')
                         {
                                 char num_buff[64];
-                                int val = *((int*)va_arg(list, arg));
+                                int val = (int)va_arg(list, arg);
                                 itoa(val, num_buff, 64, 10);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
@@ -300,7 +300,7 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
 				|| fmt[fmt_index + 1] == 'p')
                         {
                                 char num_buff[64];
-                                int val = *((int*)va_arg(list, arg));
+                                int val = (int)va_arg(list, arg);
                                 itoa(val, num_buff, 64, 16);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
@@ -309,11 +309,11 @@ int va_snprintf(char* dst, uint sz, va_list list, char* fmt)
                                 dst_index += num_pos - 1;
                         } else if(fmt[fmt_index + 1] == 'c')
 			{
-				char c = *((char*)va_arg(list, arg));
+				char c = (int)va_arg(list, arg);
 				dst[dst_index] = c;
 			} else if(fmt[fmt_index + 1] == 's')
 			{
-				char* s = *((char**)va_arg(list, arg));
+				char* s = (char*)va_arg(list, arg);
                                 int s_len = strncat(dst, s, sz);
 				dst_index = s_len - 1;
 			} else {
@@ -336,8 +336,8 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 {
 	va_list list;
 	va_start(&list, (void**)&fmt);
-        int result =  va_snprintf(dst, sz, list, fmt);
-	va_end(list);
+        int result =  va_snprintf(dst, sz, &list, fmt);
+	va_end(&list);
 
 	return result;
 }

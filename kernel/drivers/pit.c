@@ -9,6 +9,9 @@
 #define PORT_PIT_CHANNEL_2_DATA 0x42
 #define PORT_PIT_COMMAND 	0x43
 
+#define TICKS_PER_SECOND 1
+#define TICKS_DIVISOR (TIMER_FREQ / TICKS_PER_SECOND)
+
 void pit_init(void)
 {
 	/* The command we will send */
@@ -25,14 +28,22 @@ void pit_init(void)
 	/* Write the command */
 	outb(PORT_PIT_COMMAND, command);
 
-	/* How many ticks / second do you want? */
-	uint ticks = 1;
-
 	/* Calculate the correct divisor. */
-	uint divisor = TIMER_FREQ / ticks;
+	uint divisor = TICKS_DIVISOR;
 	/* Write the divisor (low) */
 	outb(PORT_PIT_CHANNEL_0_DATA, (uchar)divisor);
 	/* Write the divisor (high) */
 	outb(PORT_PIT_CHANNEL_0_DATA, (uchar)(divisor >> 8));
+	pic_enable(INT_PIC_TIMER);
+}
+
+void pit_reset(void)
+{
+        /* Calculate the correct divisor. */
+        uint divisor = TICKS_DIVISOR;
+        /* Write the divisor (low) */
+        outb(PORT_PIT_CHANNEL_0_DATA, (uchar)divisor);
+        /* Write the divisor (high) */
+        outb(PORT_PIT_CHANNEL_0_DATA, (uchar)(divisor >> 8));
 	pic_enable(INT_PIC_TIMER);
 }

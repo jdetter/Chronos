@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "panic.h"
 #include "pic.h"
+#include "pit.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "syscall.h"
@@ -92,7 +93,7 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_PF:
 			snprintf(fault_string, 64, "Page Fault: 0x%x ", 
-				__get_cr2__());
+					__get_cr2__());
 			break;
 		case TRAP_0F:
 			strncpy(fault_string, "Reserved interrupt", 64);
@@ -113,20 +114,26 @@ void trap_handler(struct trap_frame* tf)
 			strncpy(fault_string, "System Call", 64);
 			syscall_ret = syscall_handler((uint*)tf->esp);
 			rproc->tf->eax = syscall_ret;
+			//yield();
+			break;
+		case INT_PIC_TIMER: /* Time quantum has expired. */
+			//cprintf("Timer interrupt!\n");
+			pic_eoi(INT_PIC_TIMER_CODE);
+			yield();
 			break;
 		default:
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
-	if(trap != TRAP_SC)
-		cprintf("%s: 0x%x", fault_string, tf->error);
+        if(trap != TRAP_SC && trap != INT_PIC_TIMER)
+        {
+                cprintf("%s: 0x%x", fault_string, tf->error);
+                for(;;);
+        }
 
-	/* Surrender a scheduling round. */
-	yield();
-	
 
-	//pic_eoi(trap);
-	if(trap != TRAP_SC)for(;;);
+	/* While were here, clear the timer interrupt */
+	// pic_eoi(INT_PIC_TIMER_CODE);
 
 	/* Force return */
 	asm volatile("movl %ebp, %esp");

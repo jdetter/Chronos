@@ -29,8 +29,8 @@ struct file_descriptor
 #define PROC_RUNNABLE 	0x03 /* Process has been ran before and is ready */
 #define PROC_RUNNING 	0x04 /* This process is currently on the CPU */
 #define PROC_BLOCKED 	0x05 /* This process is waiting on IO */
-#define PROC_ZOMBIE 	0x06 /* This process is done and has not been killed */
-#define PROC_KILLED 	0x07
+#define PROC_ZOMBIE 	0x06 /* Parent process has been killed */
+#define PROC_KILLED 	0x07 /* Process is waiting for parent cleanup. */
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -69,6 +69,7 @@ struct proc
 	uint b_condition_signal; /* The condition ticket number. */
 	int b_pid; /* The pid we are waiting on. */
 
+	uchar zombie; /* Whether or not the parent has been killed. */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME];
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
@@ -112,6 +113,11 @@ struct proc* get_proc_pid(int pid);
  * Surrender a scheduling round.
  */
 void yield(void);
+
+/**
+ * The process table lock is already held, just enter the scheduler.
+ */
+void yield_withlock(void);
 
 /**
  * Restore scheduling context. (lock not needed)

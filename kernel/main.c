@@ -75,6 +75,8 @@ void main_stack(void)
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
 	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);
 	cprintf("[ OK ]\n");
+	/* Enable memory debugging */
+	//mem_debug((void (*)(char*))cprintf);
 
 	/* Install interrupt descriptor table */
 	cprintf("Installing Interrupt Descriptor table...\t\t\t\t");
@@ -87,7 +89,9 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 	
 	/* Enable PIT */
-        //pit_init();
+        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t");
+	pit_init();
+	cprintf("[ OK ]\n");
 
 	/* Enable interrupts */
 	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");

@@ -9,4 +9,9 @@
  */
 void pit_init(void);
 
+/**
+ * Reload the reset value of the timer.
+ */
+void pit_reset(void);
+
 #endif

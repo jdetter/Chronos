@@ -87,7 +87,7 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix);
 /**
  * See printf function. This does the same thing except with a va_args list.
  */
-int va_snprintf(char* dst, uint sz, va_list list, char* fmt);
+int va_snprintf(char* dst, uint sz, va_list* list, char* fmt);
 
 /**
  * Print the formatted string fmt into the buffer dst. It will print a

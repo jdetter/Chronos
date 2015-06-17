@@ -20,7 +20,7 @@
 
 extern uint next_pid;
 extern slock_t ptable_lock; /* Process table lock */
-extern struct proc* ptable; /* The process table */
+extern struct proc ptable[]; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
 /* Is the given address safe to access? */
@@ -167,6 +167,8 @@ int syscall_handler(uint* esp)
 			return_value = sys_fork();
 			break;
 		case SYS_wait:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			return_value = sys_wait(int_arg1);
 			break;
 		case SYS_exec:
 			return_value = 0;
@@ -178,6 +180,7 @@ int syscall_handler(uint* esp)
 			sys_exec(buff_ptr1, (const char**)arg_list);
 			break;
 		case SYS_exit:
+			sys_exit();
 			break;
 		case SYS_open:
 			break;
@@ -283,14 +286,56 @@ int sys_fork(void)
 int sys_wait(int pid)
 {
   slock_acquire(&ptable_lock);
-  rproc->state = PROC_BLOCKED;
-  rproc->b_pid = pid;
-  scheduler();
-  return 0;
+
+  int ret_pid = 0;
+  struct proc* p = NULL;
+  while(1)
+  {
+    int process;
+    for(process = 0;process < PTABLE_SIZE;process++)
+    {
+      if(ptable[process].state == PROC_KILLED
+        && ptable[process].parent == rproc)
+      {
+        if(pid == -1 || ptable[process].pid == pid)
+	{
+          p = ptable + process;
+          break;
+        }
+      }
+    }
+
+    if(p)
+    {
+      /* Harvest the child */
+      ret_pid = p->pid;
+      memset(p, 0, sizeof(struct proc));
+      p->state = PROC_UNUSED;
+      break;
+    } else {
+      /* Lets block ourself */
+      rproc->block_type = PROC_BLOCKED_WAIT;
+      rproc->b_pid = pid;
+      rproc->state = PROC_BLOCKED;
+      /* Wait for a signal. */
+      yield_withlock();
+      /* Reacquire ptable lock */
+      slock_acquire(&ptable_lock);
+    }
+  }
+
+  /* Release the ptable lock */
+  slock_release(&ptable_lock);  
+
+  return ret_pid;
 }
 
 int sys_exec(const char* path, const char** argv)
 {
+  /* Create a copy of the path */
+  char program_path[MAX_PATH_LEN];
+  memset(program_path, 0, MAX_PATH_LEN);
+  strncpy(program_path, path, MAX_PATH_LEN);
   /* acquire ptable lock */
   slock_acquire(&ptable_lock);
 
@@ -336,18 +381,19 @@ int sys_exec(const char* path, const char** argv)
   uvm_stack -= 4;
   *((uint*)tmp_stack) = 0xFFFFFFFF;
   
+  /* Free user memory */
+  vm_free_uvm(rproc->pgdir);
+
+  /* Invalidate the TLB */
+  switch_uvm(rproc);
+
   /* load the binary if possible. */
-  uint load_result = load_binary(path, rproc);
+  uint load_result = load_binary(program_path, rproc);
   if(load_result == 0) 
   {
     pfree(stack_start);
     return -1;
   }
-  
-  /* New stack is complete, free old stack. */
-  uint old_stack = findpg(KVM_START - PGSIZE, 0, rproc->pgdir, 0);
-  unmappage(KVM_START - PGSIZE, rproc->pgdir);
-  pfree(old_stack);
 
   /* Map the new stack in */
   mappage(stack_start, KVM_START - PGSIZE, rproc->pgdir, 1, 0);
@@ -363,14 +409,6 @@ int sys_exec(const char* path, const char** argv)
   rproc->heap_start = PGROUNDDOWN(load_result + PGSIZE - 1);
   rproc->heap_end = 0;
 
-  /* Make sure that the heap has room to grow */
-  for(x = rproc->heap_start;x < KVM_START - PGSIZE;x++)
-  {
-    uint page = unmappage(x, rproc->pgdir);
-    if(!page) break;
-    pfree(page);
-  }
-
   /* Release the ptable lock */
   slock_release(&ptable_lock);
 
@@ -379,14 +417,35 @@ int sys_exec(const char* path, const char** argv)
 
 void sys_exit(void)
 {
+  /* Acquire the ptable lock */
+  slock_acquire(&ptable_lock);
+
+  /* Close all open files */
   int i;
   for(i = 0; i < MAX_FILES; i++){
-    if(rproc->file_descriptors[i].type != 0x00){
-      sys_close(i);
-    }  
+    sys_close(i);
   }
-  rproc->state = PROC_KILLED; 
-  sched();       	
+
+  /* Set state to killed */
+  rproc->state = PROC_KILLED;
+
+  /* Attempt to wakeup our parent */
+  if(rproc->zombie == 0)
+  {
+    if(rproc->parent->block_type == PROC_BLOCKED_WAIT)
+    {
+      if(rproc->parent->b_pid == -1 || rproc->parent->b_pid == rproc->pid)
+      {
+        /* Our parent is waiting on us, release the block. */
+        rproc->parent->block_type = PROC_BLOCKED_NONE;
+        rproc->parent->state = PROC_RUNNABLE;
+        rproc->parent->b_pid = 0;
+      }
+    }
+  }
+
+  /* Release ourself to the scheduler, never to return. */
+  yield_withlock();
 }
 
 int sys_open(const char* path)
@@ -451,7 +510,10 @@ int sys_write(int fd, char* src, uint sz)
     }
   }
   else{
-    tty_print_string(rproc->t, src);
+    int x;
+    int str_len = strlen(src);
+    for(x = 0;x < str_len;x++)
+      tty_print_character(rproc->t, src[x]);
   }
   rproc->file_descriptors[fd].inode_pos += sz;
   return sz;
