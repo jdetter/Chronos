@@ -7,6 +7,8 @@
 #include "types.h"
 #undef NULL
 
+#include "file.h"
+#include "fsman.h"
 #include "vsfs.h"
 
 #include <sys/types.h>
@@ -20,11 +22,6 @@
 
 #define SECTSIZE 512
 
-extern int b_off;
-extern int bmap_off;
-extern int imap_off;
-extern int i_off;
-
 int allocate_directent(vsfs_inode* parent, char* name, uint inode_num);
 void write_inode(uint inode_num, vsfs_inode* inode);
 
@@ -32,7 +29,10 @@ char zero[SECTSIZE];
 int find_free_inode(void);
 int fd;
 
-int ata_readsect(uint sect, void* dst)
+struct FSHardwareDriver driver;
+struct vsfs_context context;
+
+int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
 	if(lseek(fd, SECTSIZE * sect, SEEK_SET) != SECTSIZE * sect)
 	{
@@ -50,7 +50,7 @@ int ata_readsect(uint sect, void* dst)
 	return SECTSIZE;
 }
 
-int ata_writesect(uint sect, void* src)
+int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 {
 	if(lseek(fd, SECTSIZE * sect, SEEK_SET) != SECTSIZE * sect)
 	{
@@ -74,7 +74,7 @@ extern struct vsfs_superblock super;
 void ls(char* directory)
 {
 	vsfs_inode dir;
-	if(vsfs_lookup(directory, &dir) == 0)
+	if(vsfs_lookup(directory, &dir, &context) == 0)
 	{
 		printf("No such directory: %s\n", directory);
 		return;
@@ -87,7 +87,7 @@ void ls(char* directory)
 		vsfs_read(&dir, 
 			x * sizeof(struct directent), 
 			sizeof(struct directent),
-			&entry);
+			&entry, &context);
 		printf("%s\t\t%d\n", entry.name, entry.inode_num);
 	}
 
@@ -98,7 +98,7 @@ void ls(char* directory)
 void cat(char* file)
 {
 	vsfs_inode file_i;
-	if(vsfs_lookup(file, &file_i) == 0)
+	if(vsfs_lookup(file, &file_i, &context) == 0)
         {
                 printf("No such directory: %s\n", file);
                 return;
@@ -111,7 +111,7 @@ void cat(char* file)
 	for(x = 0;x < 9;x++) printf("%d: %d\n", x, file_i.direct[x]);
 
 	char file_buffer[file_i.size];
-	vsfs_read(&file_i, 0, file_i.size, file_buffer);
+	vsfs_read(&file_i, 0, file_i.size, file_buffer, &context);
 
 	printf("%s\n", file_buffer);
 }
@@ -139,21 +139,24 @@ int main(int argc, char** argv)
 	}
 
 	fd = open(file, O_RDWR);
-	vsfs_init(start);
+	driver.valid = 1;
+	driver.read = ata_readsect;
+	driver.write = ata_writesect;
+	vsfs_init(start, &context, &driver);
 
 	char cwd[1024];
 	memset(cwd, 0, 1024);
 	cwd[0] = '/';
 
-	printf("Inodes: %d\n", super.inodes);
-	printf("Inode bitmaps: %d\n", super.imap);
-	printf("Blocks: %d\n", super.dblocks);
-	printf("Block bitmaps: %d\n", super.dmap);
+	printf("Inodes: %d\n", context.super.inodes);
+	printf("Inode bitmaps: %d\n", context.super.imap);
+	printf("Blocks: %d\n", context.super.dblocks);
+	printf("Block bitmaps: %d\n", context.super.dmap);
 
-	printf("imap_off: %d\n", imap_off);
-	printf("bmap_off: %d\n", bmap_off);
-	printf("i_off: %d\n", i_off);
-	printf("b_off: %d\n", b_off);
+	printf("imap_off: %d\n", context.imap_off);
+	printf("bmap_off: %d\n", context.bmap_off);
+	printf("i_off: %d\n", context.i_off);
+	printf("b_off: %d\n", context.b_off);
 
 	char command[512];
 	while(1)

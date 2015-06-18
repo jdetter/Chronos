@@ -318,24 +318,21 @@ void vm_free_uvm(pgdir* dir)
 
 void freepgdir(pgdir* dir)
 {
-	int dir_index;
-	for(dir_index = 0;dir_index < 1024;dir_index++)
-	{
-		if(dir[dir_index])
-		{
-			uint* tbl = (uint*)PGROUNDDOWN(dir[dir_index]);
-			int tbl_index;
-			for(tbl_index = 0;tbl_index < 1024;tbl_index++)
-			{
-				if(tbl[tbl_index])
-				{
-					pfree(tbl[tbl_index]);
-				}
-			}
-
-			pfree(dir[dir_index]);
+	/* Free user pages */
+	vm_free_uvm(dir);
+	/* Free kernel pages */
+	uint x;
+        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+        {
+                if(dir[x])
+                {
+			pfree(PGROUNDDOWN(dir[x]));
+			dir[x] = 0;
 		}
 	}
+
+	/* free directory */
+	pfree((uint)dir);
 }
 
 void switch_kvm(void)

@@ -185,7 +185,7 @@ int mv(const char* orig, const char* dst);
  * Read that stats from file path and read them into dst. Returns 0 on sucess,
  * -1 on failure.
  */
-int fstat(const char* path, struct stat* dst);
+int fstat(const char* path, struct file_stat* dst);
 
 /**
  * Wait on the given condition variable c and release the spin lock.

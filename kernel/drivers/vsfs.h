@@ -2,10 +2,11 @@
 #define _VSFS_H_
 
 /* File Types */
-#define VSFS_FILE 0x0 /* Normal File */
-#define VSFS_DIR  0x1 /* Directory */
-#define VSFS_DEV  0x2 /* Device node */
-#define VSFS_SYM  0x3 /* Symbolic link to another file */
+#define VSFS_UNUSED 0x1 /* File is unused */
+#define VSFS_FILE 0x1 /* Normal File */
+#define VSFS_DIR  0x2 /* Directory */
+#define VSFS_DEV  0x3 /* Device node */
+#define VSFS_SYM  0x4 /* Symbolic link to another file */
 
 #define VSFS_DIRECT 9
 #define VSFS_MAX_NAME 124
@@ -46,24 +47,44 @@ typedef struct vsfs_superblock {
 	uint inodes; /* How many inodes are there? */
 } vsfs_superblock;
 
+struct vsfs_context
+{
+	struct vsfs_superblock super;
+	uint start;
+	uint i_off;
+	uint imap_off;
+	uint b_off;
+	uint bmap_off;
+
+	/* File system hardware drivers */
+	struct FSHardwareDriver* hdd;
+	/* function forwards */
+        int (*read)(void* dst, uint sect,
+                struct FSHardwareDriver* driver);
+        int (*write)(void* src, uint sect,
+                struct FSHardwareDriver* driver);
+};
+
 /**
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int vsfs_init(int start_sector);
+int vsfs_init(int start_sector, struct vsfs_context* context, 
+        struct FSHardwareDriver* driver);
 
 /**
  * Find an inode in a file system. If the inode is found, load it into the dst
  * buffer and return the inode number. If not found, return 0.
  */
-int vsfs_lookup(const char* path, vsfs_inode* dst);
+int vsfs_lookup(const char* path, vsfs_inode* dst,
+	struct vsfs_context* context);
 
 /**
  * Remove the file from the directory in which it lives and decrement the link
  * count of the file. If the file now has 0 links to it, free the file and
  * all of the blocks it is holding onto.
  */
-int vsfs_unlink(const char* path);
+int vsfs_unlink(const char* path, struct vsfs_context* context);
 
 /**
  * Add the inode new_inode to the file system at path. Make sure to add the
@@ -71,18 +92,21 @@ int vsfs_unlink(const char* path);
  * available in the file system, or there is any other error return -1.
  * Return the new inode number on success.
  */
-int vsfs_link(const char* path, vsfs_inode* new_inode);
+int vsfs_link(const char* path, vsfs_inode* new_inode,
+	struct vsfs_context* context);
 
 /**
  * Create the directory entry new_file that is a hard link to file. Return 0
  * on success, return 1 otherwise.
  */
-int vsfs_hard_link(const char* new_file, const char* link);
+int vsfs_hard_link(const char* new_file, const char* link,
+	struct vsfs_context* context);
 
 /**
  * Create a soft link called new_file that points to link.
  */
-int vsfs_soft_link(const char* new_file, const char* link);
+int vsfs_soft_link(const char* new_file, const char* link,
+	struct vsfs_context* context);
 
 /**
  * Read sz bytes from inode node at the position start (start is the seek in
@@ -90,7 +114,8 @@ int vsfs_soft_link(const char* new_file, const char* link);
  * the user has requested a read that is outside of the bounds of the file,
  * don't read any bytes and return 0.
  */
-int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
+int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst,
+	struct vsfs_context* context);
 
 /**
  * Write sz bytes to the inode node starting at position start. No more than
@@ -102,7 +127,8 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst);
  * WARNING: Blocks allocated to files should be zerod if they aren't going to
  * be written to fully.
  */
-int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src);
+int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src,
+	struct vsfs_context* context);
 
 /**
  * Clear the given inode structure.

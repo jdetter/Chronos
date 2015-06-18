@@ -3,6 +3,8 @@
 #include "stdarg.h"
 #include "serial.h"
 #include "stdlib.h"
+#include "file.h"
+#include "fsman.h"
 #include "ata.h"
 #include "stdlib.h"
 #include "stdmem.h"
@@ -17,6 +19,7 @@
  * and then jump into the main method of the kernel.
  */
 
+void cprintf(char* fmt, ...);
 void __kernel_jmp__();
 
 void panic();
@@ -30,44 +33,47 @@ char* kernel_search = "Kernel path: ";
 char* kernel_path = "/boot/chronos.elf";
 char* checking_elf = "Chronos is ready to be loaded.\n";
 char* kernel_loaded = "Chronos has been loaded.\n";
+int serial = 0;
 
 int main(void)
 {
-	int serial = 1;
+	serial = 1;
 	if(serial_init(0))
 	{
 		/* There is no serial port. */
 		serial = 0;
 	}
-	if(serial) serial_write((char*)welcome, strlen(welcome));
+	cprintf("Welcome to Chronos!\n");
 
+	cprintf("Starting memory allocator...\t\t\t");
 	/* Initilize memory allocator. */
 	minit(0x60A00, 0x70000);
+	cprintf("[ OK ]\n");
 
-	/* Lets find the kernel */
-	vsfs_init(64);
+	cprintf("Starting ata driver...\t\t\t\t");
+	ata_init();
+	cprintf("[ OK ]\n");
 
-	serial_write(kernel_search, strlen(kernel_search));
-	serial_write(kernel_path, strlen(kernel_path));
-	serial_write("\n", 1);
+	cprintf(kernel_search);
+	cprintf(kernel_path);
+	cprintf("\n");
 
+	struct vsfs_context context;
 	vsfs_inode chronos_image;
 	int inonum;
-	if((inonum = vsfs_lookup(kernel_path, &chronos_image)) == 0)
+	if((inonum = vsfs_lookup(kernel_path, &chronos_image, &context)) == 0)
 	{
-		serial_write(no_image, strlen(no_image));
-		//cprintf(no_image);
+		cprintf(no_image);
 		panic();
 	}
 
 	/* Sniff to see if it looks right. */
 	uchar elf_buffer[512];
-	vsfs_read(&chronos_image, 0, 512, elf_buffer);
+	vsfs_read(&chronos_image, 0, 512, elf_buffer, &context);
 	char elf_buff[] = ELF_MAGIC;
 	if(memcmp(elf_buffer, elf_buff, 4))
 	{
-		serial_write(invalid, strlen(invalid));
-                //cprintf(invalid);
+		cprintf(invalid);
                 panic();
 	}	
 
@@ -76,7 +82,7 @@ int main(void)
 
 	/* Load the entire elf header. */
 	struct elf32_header elf;
-	vsfs_read(&chronos_image, 0, sizeof(struct elf32_header), &elf);
+	vsfs_read(&chronos_image, 0, sizeof(struct elf32_header), &elf, &context);
 	/* Check class */
 	if(elf.exe_class != 1) panic();	
 	if(elf.version != 1) panic();
@@ -87,7 +93,7 @@ int main(void)
 	uint elf_entry = elf.e_entry;
 	if(elf_entry != (uint)kernel) panic();	
 
-	serial_write(checking_elf, strlen(checking_elf));
+	cprintf(checking_elf);
 
 	int x;
 	for(x = 0;x < elf.e_phnum;x++)
@@ -96,7 +102,8 @@ int main(void)
 		struct elf32_program_header curr_header;
 		vsfs_read(&chronos_image, header_loc, 
 			sizeof(struct elf32_program_header), 
-			&curr_header);
+			&curr_header,
+			&context);
 		/* Skip null program headers */
 		if(curr_header.type == ELF_PH_TYPE_NULL) continue;
 		
@@ -120,18 +127,35 @@ int main(void)
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */
 			vsfs_read(&chronos_image, offset, 
-				file_sz, hd_addr);
+				file_sz, hd_addr,
+				&context);
 			/* By default, this section is rwx. */
 		}
 	}
 
-	serial_write(kernel_loaded, strlen(kernel_loaded));
+	cprintf(kernel_loaded);
 
 	/* Jump into the kernel */
 	__kernel_jmp__();
 
 	panic();
 	return 0;
+}
+
+void cprintf(char* fmt, ...)
+{
+	char buffer[128];
+	va_list list;
+	va_start(&list, (void**)&fmt);
+	va_snprintf(buffer, 128, &list, fmt);
+	if(serial)
+	{
+		serial_write(buffer, strlen(buffer));
+	} else {
+		/* Figure this out later*/
+	}
+
+	va_end(&list);
 }
 
 void panic()

@@ -7,6 +7,8 @@
 #include "types.h"
 #undef NULL
 
+#include "file.h"
+#include "fsman.h"
 #include "vsfs.h"
 
 #include <sys/types.h>
@@ -20,12 +22,17 @@
 
 #define SECTSIZE 512
 
-int allocate_directent(vsfs_inode* parent, char* name, uint inode_num);
-void write_inode(uint inode_num, vsfs_inode* inode);
+int allocate_directent(vsfs_inode* parent, char* name, 
+	uint inode_num, struct vsfs_context*);
+void write_inode(uint inode_num, vsfs_inode* inode, 
+	struct vsfs_context*);
 
 char zero[SECTSIZE];
-int find_free_inode(void);
+int find_free_inode(struct vsfs_context*);
 int fd;
+
+struct FSHardwareDriver disk_driver;
+struct vsfs_context context;
 
 int add_dir(char* directory, char* path)
 {
@@ -70,7 +77,8 @@ int add_dir(char* directory, char* path)
 				new_inode.type = VSFS_DIR;
 				
 				/* Link the directory */
-				vsfs_link(path_buffer, &new_inode);
+				vsfs_link(path_buffer, 
+					&new_inode, &context);
 				printf("Adding directory: %s\n", name);
 				add_dir(name_buffer, path_buffer);
 			} else if(S_ISREG(s.st_mode))
@@ -80,7 +88,7 @@ int add_dir(char* directory, char* path)
 				new_inode.type = VSFS_FILE;
 				/* Link the file */
 				int inode_num = 
-					vsfs_link(path_buffer, &new_inode);
+					vsfs_link(path_buffer, &new_inode, &context);
 				/* Copy data */
 				char contents[s.st_size];
 				int reg_file = open(name_buffer, O_RDWR);
@@ -97,9 +105,9 @@ int add_dir(char* directory, char* path)
 					exit(1);
 				}
 			
-				vsfs_write(&new_inode, 0, s.st_size, contents);
+				vsfs_write(&new_inode, 0, s.st_size, contents, &context);
 				/* Update metadata */
-				write_inode(inode_num, &new_inode);
+				write_inode(inode_num, &new_inode, &context);
 			} else {
 				printf("Unknown file: %s\n", name);
 			}
@@ -109,7 +117,7 @@ int add_dir(char* directory, char* path)
 	return 0;
 }
 
-int ata_readsect(uint sect, void* dst)
+int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
 	if(lseek(fd, SECTSIZE * sect, SEEK_SET) != SECTSIZE * sect)
 	{
@@ -127,7 +135,7 @@ int ata_readsect(uint sect, void* dst)
 	return SECTSIZE;
 }
 
-int ata_writesect(uint sect, void* src)
+int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 {
 	if(lseek(fd, SECTSIZE * sect, SEEK_SET) != SECTSIZE * sect)
 	{
@@ -149,7 +157,7 @@ int ata_writesect(uint sect, void* src)
 
 int main(int argc, char** argv)
 {
-	//char* argv[] = {"", "-i", "128","-s", "262144", "-r", "fs", "fs.img"};
+	//char* argv[] = {"", "-i", "128","-s", "262144", "-r", "../fs", "fs.img"};
 	//argc = 8;
 	memset(zero, 0, SECTSIZE);
 
@@ -203,6 +211,10 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	/* Setup disk driver */
+	disk_driver.valid = 1;
+	disk_driver.read = ata_readsect;
+	disk_driver.write = ata_writesect;
 
 	int inodes_per_block = SECTSIZE / sizeof(vsfs_inode);
 	if(SECTSIZE % sizeof(vsfs_inode) != 0)
@@ -248,7 +260,7 @@ int main(int argc, char** argv)
 	int x;
 	for(x = 0;x < last_block;x++)
 	{
-		ata_writesect(x, zero);
+		disk_driver.write(zero, x, NULL);
 	}
 
 	/* Create super block*/
@@ -258,10 +270,11 @@ int main(int argc, char** argv)
 	super_block->dblocks = blocks;
 	super_block->imap = inode_bitmap;
 	super_block->inodes = inodes;
-	ata_writesect(0, buffer);
+	disk_driver.write(buffer, 0, NULL);
+	memmove(&context.super, super_block, sizeof(struct vsfs_superblock));
 
 	/* Initilize driver */
-	vsfs_init(0);
+	vsfs_init(0, &context, &disk_driver);
 
 	/* Create root inode. */
 	struct vsfs_inode root_i;
@@ -271,15 +284,15 @@ int main(int argc, char** argv)
 	root_i.type = VSFS_DIR;
 
 	int next_free;
-	if((next_free = find_free_inode()) != 1)
+	if((next_free = find_free_inode(&context)) != 1)
 	{
 		printf("Error: file system is not empty. %d\n", next_free);
 		return -1;
 	}
 
-	allocate_directent(&root_i, ".", 1);
-	allocate_directent(&root_i, "..", 1);
-	write_inode(1, &root_i);	
+	allocate_directent(&root_i, ".", 1, &context);
+	allocate_directent(&root_i, "..", 1, &context);
+	write_inode(1, &root_i, &context);	
 	add_dir(root, "/");
 
 	printf("MKFS finished successfully.\n");

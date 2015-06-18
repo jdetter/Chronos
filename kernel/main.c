@@ -6,6 +6,9 @@
 #include "stdmem.h"
 #include "boot_pic.h"
 #include "tty.h"
+#include "file.h"
+#include "fsman.h"
+#include "ata.h"
 #include "vsfs.h"
 #include "stdlock.h"
 #include "proc.h"
@@ -20,6 +23,8 @@ void main_stack(void);
 extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
+
+struct vsfs_context context;
 
 /* Entry point for the kernel */
 int main(void)
@@ -67,8 +72,8 @@ void main_stack(void)
 	/* We now have a proper kernel stack */
 
 	/* Start disk driver */
-	cprintf("Starting disk driver...\t\t\t\t\t\t\t");
-	vsfs_init(64);
+	cprintf("Starting file system manager...\t\t\t\t\t\t");
+	fsman_init();
 	cprintf("[ OK ]\n");
 	
 	/* Bring up kmalloc. */

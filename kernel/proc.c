@@ -14,6 +14,8 @@
 #include "file.h"
 #include "chronos.h"
 
+extern struct vsfs_context context;
+
 /* The process table lock must be acquired before accessing the ptable. */
 slock_t ptable_lock;
 /* The process table */
@@ -129,19 +131,19 @@ uint load_binary(const char* path, struct proc* p)
 {
 	vsfs_inode process_file;
 	int inonum;
-        if((inonum = vsfs_lookup(path, &process_file)) == 0)
+        if((inonum = vsfs_lookup(path, &process_file, &context)) == 0)
                 panic("Cannot find process executable.");
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
-        vsfs_read(&process_file, 0, 4, elf_buffer);
+        vsfs_read(&process_file, 0, 4, elf_buffer, &context);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4))
                 panic("Elf magic is wrong");
 
 	/* Load the entire elf header. */
         struct elf32_header elf;
-        vsfs_read(&process_file, 0, sizeof(struct elf32_header), &elf);
+        vsfs_read(&process_file, 0, sizeof(struct elf32_header), &elf, &context);
         /* Check class */
         if(elf.exe_class != 1) panic("Binary not executable");
         if(elf.version != 1) panic("Binary wrong ELF version");
@@ -159,7 +161,7 @@ uint load_binary(const char* path, struct proc* p)
                 struct elf32_program_header curr_header;
                 vsfs_read(&process_file, header_loc,
                         sizeof(struct elf32_program_header),
-                        &curr_header);
+                        &curr_header, &context);
                 /* Skip null program headers */
                 if(curr_header.type == ELF_PH_TYPE_NULL) continue;
 
@@ -187,7 +189,7 @@ uint load_binary(const char* path, struct proc* p)
                         memset(hd_addr, 0, mem_sz);
                         /* Load the section */
                         vsfs_read(&process_file, offset,
-                                file_sz, hd_addr);
+                                file_sz, hd_addr, &context);
                         /* By default, this section is rwx. */
                 }
         }

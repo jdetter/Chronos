@@ -1,10 +1,22 @@
 #ifndef _ATA_H_
 #define _ATA_H_
 
+/* Amount of possible ata drivers */
+#define ATA_DRIVER_COUNT 4
 /**
- * Polls the hard drive until it is ready for a PIO read/write.
+ * Hardware context. Can be used to represent the 4 types of ata_pio
+ * hard drives.
  */
-void ata_wait();
+struct ATAHardwareContext
+{
+        uchar primary; /* 1 = primary, 0 = secondary */
+        uchar master; /* 1 = master, 0 = slave*/
+};
+
+/**
+ * Initilize the ata hardware drivers.
+ */
+void ata_init(void);
 
 /**
  * Read a hard drive sector into the destination buffer, dst. Returns the
@@ -12,7 +24,7 @@ void ata_wait();
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * dst buffer is expected to be at least 512 bytes.
  */
-int ata_readsect(uint sect, void* dst);
+int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver);
 
 /**
  * Write the bytes in src to a hard drive sector. Returns the amount of bytes
@@ -20,5 +32,5 @@ int ata_readsect(uint sect, void* dst);
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * src buffer is expected to be at least 512 bytes. 
  */
-int ata_writesect(uint sect, void* src);
+int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver);
 #endif

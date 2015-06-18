@@ -97,6 +97,4 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt);
  */
 int snprintf(char* dst, uint sz, char* fmt, ...);
 
-
-
 #endif

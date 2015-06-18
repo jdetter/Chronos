@@ -7,7 +7,8 @@ KERNEL_OBJECTS := \
 	vm \
 	kcond \
 	syscall \
-	trap
+	trap \
+	fsman
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -57,6 +58,8 @@ KERNEL_CLEAN := \
 KERNEL_CFLAGS += -I include
 # Include driver headers
 KERNEL_CFLAGS += -I kernel/drivers
+# Include kernel headers
+KERNEL_CFLAGS += -I kernel/
 # Include library files
 KERNEL_CFLAGS += -I lib
 
@@ -92,7 +95,7 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
 kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
-	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include -c -o kernel/boot/bootc.o kernel/boot/bootc.c
+	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include/ -I kernel/ -c -o kernel/boot/bootc.o kernel/boot/bootc.c
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/boot/bootc_jmp.o kernel/boot/bootc_jmp.S
 	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS) kernel/boot/bootc_jmp.o 
 	$(OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
