@@ -43,6 +43,7 @@ int main(void)
 	uint new_stack = KVM_KSTACK_E;
 	k_stack = new_stack;
 
+	cprintf("Switching over to kernel stack...\t\t\t\t\t");
 	__set_stack__(PGROUNDUP(new_stack), (uint)main_stack);
 
 	panic("main_stack returned.\n");
@@ -53,9 +54,8 @@ int main(void)
 /* Proper 4K stack*/
 void main_stack(void)
 {
-	cprintf("[ OK ]\n");
 	/* We now have a proper kernel stack */
-
+	cprintf("[ OK ]\n");
 	cprintf("Detecting devices...\t\t\t\t\t\t\t");
 	dev_init();
 	cprintf("[ OK ]\n");
@@ -83,7 +83,7 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 	
 	/* Enable PIT */
-        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t");
+        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
 	pit_init();
 	cprintf("[ OK ]\n");
 

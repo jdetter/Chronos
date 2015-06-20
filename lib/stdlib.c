@@ -236,7 +236,7 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 	}
 
 	int neg = 0;
-	if(val_signed < 0)
+	if(val_signed < 0 && radix != 16)
 	{
 		neg = 1;
 		val_signed = -val_signed;

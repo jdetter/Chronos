@@ -55,11 +55,11 @@ int main(void)
 	setup_boot2_pgdir();
 	cprintf("[ OK ]\n");
 
-	cprintf("Initilizing paging...\t\t\t\t\t");
+	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
 	__enable_paging__(k_pgdir);
 	cprintf("[ OK ]\n");
 
-	cprintf("Starting ata driver...\t\t\t\t");
+	cprintf("Starting ata driver...\t\t\t\t\t\t\t");
 	ata_init();
 	cprintf("[ OK ]\n");
 
@@ -68,7 +68,7 @@ int main(void)
 	cprintf("\n");
 
 	struct vsfs_context context;
-	cprintf("Starting VSFS driver...\t\t\t\t");
+	cprintf("Starting VSFS driver...\t\t\t\t\t\t\t");
 	uchar fake_cache[512];
 	context.hdd = ata_drivers[0];
 	if(vsfs_init(64, 0, 512, 512, fake_cache, &context)) panic("[FAIL]\n");

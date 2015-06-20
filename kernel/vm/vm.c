@@ -62,10 +62,10 @@ uint vm_init(void)
 #define GDT_SIZE (sizeof(struct vm_segment_descriptor) * SEG_COUNT)
 struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG_NULL, 
-	MKVMSEG(SEG_KERN, SEG_EXE, SEG_READ,  0x0, UVM_KVM_E),
-	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, UVM_KVM_E),
-	MKVMSEG(SEG_USER, SEG_EXE, SEG_READ,  0x0, UVM_KVM_E),
-	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, UVM_KVM_E),
+	MKVMSEG(SEG_KERN, SEG_EXE, SEG_READ,  0x0, VM_MAX),
+	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, VM_MAX),
+	MKVMSEG(SEG_USER, SEG_EXE, SEG_READ,  0x0, VM_MAX),
+	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, VM_MAX),
 	MKVMSEG_NULL /* Will become TSS*/
 };
 
@@ -102,7 +102,7 @@ void switch_context(struct proc* p)
 
 	struct task_segment* ts = (struct task_segment*)p->tss;
 	ts->SS0 = SEG_KERNEL_DATA << 3;
-	ts->ESP0 = base + PGSIZE;
+	ts->ESP0 = (uint)p->k_stack;
 	ts->esp = p->tf->esp;
 	ts->ss = SEG_USER_DATA << 3;
 

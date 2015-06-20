@@ -38,9 +38,14 @@ __check_paging__:
         roll    $1, %eax
         ret
 
+#define EFLAGS_INT_EN (0x01 << 9)
 .globl __check_interrupt__
 __check_interrupt__:
-	
+        pushf
+        xorl    %eax, %eax
+        popl    %eax
+        andl    $(EFLAGS_INT_EN), %ax
+        rorl	$0x09, %ax
 	ret
 
 .globl __get_cr2__

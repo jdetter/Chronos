@@ -81,8 +81,8 @@ struct proc* spawn_tty(tty_t t)
 	p->file_descriptors[1].type = FD_TYPE_STDOUT;
 	p->file_descriptors[2].type = FD_TYPE_STDERR;
 
-	p->stack_start = UVM_USTACK_TOP;
-	p->stack_end = UVM_USTACK_TOP - PGSIZE;
+	p->stack_start = PGROUNDUP(UVM_USTACK_TOP);
+	p->stack_end = p->stack_start - PGSIZE;
 	
 	p->heap_start = 0;
 	p->heap_end = 0;
@@ -101,17 +101,17 @@ struct proc* spawn_tty(tty_t t)
 
 	/* Map in a kernel stack */
 	mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
-	p->k_stack = (uchar*)UVM_KSTACK_E;
+	p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
 	p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
 	p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
 	/* Map in a user stack. */
-	mappages(UVM_USTACK_TOP - PGSIZE, PGSIZE, p->pgdir, 1);
+	mappages(p->stack_end, PGSIZE, p->pgdir, 1);
 	switch_uvm(p);
 
 	/* Basic values for the trap frame */
 	/* Setup the user stack */
-	uchar* ustack = (uchar*)UVM_USTACK_TOP;
+	uchar* ustack = (uchar*)p->stack_start;
 	/* Fake eip */
 	ustack -= 4;
 	*((uint*)ustack) = 0xFFFFFFFF;

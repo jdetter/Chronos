@@ -125,15 +125,15 @@
  * ...
  * Hardware mappings, kernel code/data, kmalloc space, ...
  * ... 
- * 0xFE000000 Bottom of kernel space
- * 0xFDFFF000 User kernel stack upper guard page
- * 0xFDFFEFFF 
+ * 0xFD000000 Bottom of kernel space
+ * 0xFCFFF000 User kernel stack upper guard page
+ * 0xFCFFEFFF 
  * ...
  * User kernel stack
  * ...
- * 0xFDFFA000 
- * 0xFDFF9000 User kernel stack lower guard page
- * 0xFDFF8000 User application user space stack top
+ * 0xFCFFA000 
+ * 0xFCFF9000 User kernel stack lower guard page
+ * 0xFCFF8FFF User application user space stack top
  *     |
  *     | Stack grows down when the user needs more stack space
  *     |
@@ -157,7 +157,7 @@
 #define UVM_KSTACK_E	0xFCFFEFFF /* End of the user kernel stack */
 #define UVM_KSTACK_S	0xFCFFA000 /* Start of the user kernel stack */
 #define UVM_KSTACK_G2	0xFCFF9000 /* Guard page for user kernel stack */
-#define UVM_USTACK_TOP	0xFCFF8000 /* Top of the user's stack */
+#define UVM_USTACK_TOP	0xFCFF8FFF /* Top of the user's stack */
 #define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
 
 /** Memory mapped file systems
