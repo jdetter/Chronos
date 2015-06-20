@@ -66,7 +66,7 @@ struct FSDriver
 	 * to function.
 	 */
 	int (*init)(uint start_sector, uint end_sector, uint block_size,
-		void* context);
+		void* context, uchar* cache, uint cache_sz);
 	
 	/**
 	 * Required file system driver function that opens a file
@@ -168,10 +168,9 @@ struct FSDriver
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
 	struct FSHardwareDriver* driver; /* HDriver for this file system*/
-	//struct filesystem_driver* driver; /* Driver for the file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
-
-	uchar context[FS_CONTEXT_SIZE]; /* Space for locals + cache */
+	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
+	uchar cache[FS_CACHE_SIZE]; /* Space for caching files */
 };
 
 /**

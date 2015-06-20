@@ -31,20 +31,12 @@ tlock_t fstable_lock;
 struct FSDriver fstable[FS_TABLE_MAX];
 
 /* Ata drivers */
-static struct FSDriver* ata_drivers[];
+static struct FSHardwareDriver* ata_drivers[];
 
 /* Generic inode table */
 void fsman_init(void)
 {
 	int x;
-
-	/* Initilize locks */
-	tlock_init(&itable_lock);
-	tlock_init(&fstable_lock);
-
-	/* Acquire locks */
-	tlock_acquire(&itable_lock);
-	tlock_acquire(&fstable_lock);
 
 	/* Initilize inode table */
 	memset(&itable, 0, sizeof(struct inode_t) * FS_INODE_MAX);
@@ -53,12 +45,13 @@ void fsman_init(void)
 	ata_init();
 
 	/* Get a running driver */
-	struct FSDriver* ata = NULL;
+	struct FSHardwareDriver* ata = NULL;
 	for(x = 0;x < ATA_DRIVER_COUNT;x++)
 		if(ata_drivers[x]->valid)
 			ata = ata_drivers[x];
 	if(ata == NULL) panic("No ata driver available.\n");
 
+	/* Set our vsfs as the root file system. */
 }
 
 /**

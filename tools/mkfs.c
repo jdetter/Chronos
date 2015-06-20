@@ -126,9 +126,9 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 		exit(1);
 	}
 
-	if(read(fd, dst, SECTSIZE) != SECTSIZE)
+	if((read(fd, dst, SECTSIZE)) != SECTSIZE)
 	{
-		printf("Sector Read failure.\n");
+		printf("Sector Read failure: \n");
 		exit(1);
 	}
 
@@ -274,7 +274,8 @@ int main(int argc, char** argv)
 	memmove(&context.super, super_block, sizeof(struct vsfs_superblock));
 
 	/* Initilize driver */
-	vsfs_init(0, 128, 512, &context);
+	context.hdd = &disk_driver;
+	vsfs_init(0, 0, 512, &context);
 
 	/* Create root inode. */
 	struct vsfs_inode root_i;

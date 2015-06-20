@@ -44,14 +44,15 @@ void parent_path(const char *path, char* dst);
 
 
 #define BLOCKSIZE 512
+/** Start standardized vsfs library */
+
 /**
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
 int vsfs_init(uint start_sector, uint end_sector, uint block_size,
-		struct vsfs_context* context)
+		struct vsfs_context* context, uchar* cache, uint cache_sz)
 {
-  memset(context, 0, sizeof(struct vsfs_context));
   context->start = start_sector;
   uchar super_block[512];
   context->hdd->read(super_block, start_sector, context->hdd);
@@ -66,6 +67,19 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
   context->write = context->hdd->write;
 
  return 0;
+}
+
+void* vsfs_open(const char* path, uint flags, uint permissions, 
+		struct vsfs_context* context)
+{
+		
+}
+
+/** End standardized vsfs library */
+
+struct vsfs_inode* vsfs_alloc_inode(void)
+{
+	
 }
 
 int vsfs_lookup(const char* path_orig, vsfs_inode* dst, 
