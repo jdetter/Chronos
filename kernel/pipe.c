@@ -78,7 +78,7 @@ int pipe_read(void *dst, uint sz, pipe_t pipe){
 	slock_acquire(&pipe->guard);
 	int bytesread = 0;
 	while(bytesread!=sz){
-		while(pipe->full == 0 && pipe->write != pipe->read){
+		while(pipe->full == 0 && pipe->write == pipe->read){
 			cond_wait_spin(&(pipe->fill), &(pipe->guard));
 		}
 		int bytes_avail = 0;

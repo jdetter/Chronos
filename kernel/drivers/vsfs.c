@@ -17,8 +17,8 @@ typedef unsigned long ulong;
 #endif
 
 #include "file.h"
-#include "fsman.h"
 #include "stdlock.h"
+#include "fsman.h"
 #include "vsfs.h"
 
 /* Forward declarations */

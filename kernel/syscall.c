@@ -317,6 +317,15 @@ int syscall_handler(uint* esp)
                                 esp, 1)) break;
 			return_value = sys_pipe(ptr_arg1);
 			break;
+		case SYS_dup:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			return_value = sys_dup(int_arg1);
+			break;
+		case SYS_dup2:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_int(&int_arg2, esp, 2)) break;
+			return_value = sys_dup2(int_arg1, int_arg2);
+			break;
 	}
 	
 	return return_value; /* Syscall successfully handled. */
@@ -629,6 +638,11 @@ int sys_read(int fd, char* dst, uint sz)
         dst[i] = next_char;
       }
       break;
+    case FD_TYPE_PIPE:
+      if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
+        pipe_read(dst, sz, rproc->file_descriptors[fd].pipe);
+      else return -1;
+      break;
     default: return -1;
   } 
 
@@ -828,7 +842,7 @@ int sys_pipe(int pipefd[2])
 	if(write >= 0)
 	{
 		rproc->file_descriptors[write].type = FD_TYPE_PIPE;
-		rproc->file_descriptors[write].pipe_type = FD_PIPE_MODE_READ;
+		rproc->file_descriptors[write].pipe_type = FD_PIPE_MODE_WRITE;
 		rproc->file_descriptors[write].pipe = t;
 	}
 
@@ -848,3 +862,40 @@ int sys_pipe(int pipefd[2])
 	return 0;	
 }
 
+int sys_dup(int fd)
+{
+	int new_fd = find_fd();
+	return sys_dup2(new_fd, fd);
+}
+
+int sys_dup2(int new_fd, int old_fd)
+{
+        if(new_fd < 0 || new_fd >= MAX_FILES) return -1;
+	if(old_fd < 0 || old_fd >= MAX_FILES) return -1;
+	/* Make sure new_fd is closed */
+	sys_close(new_fd);
+        memmove(rproc->file_descriptors + new_fd,
+                rproc->file_descriptors + old_fd,
+                sizeof(struct file_descriptor));
+        switch(rproc->file_descriptors[old_fd].type)
+        {
+                default: return -1;
+                case FD_TYPE_STDIN:
+                case FD_TYPE_STDOUT:
+                case FD_TYPE_STDERR:
+                        break;
+                case FD_TYPE_FILE:
+                        rproc->file_descriptors[old_fd].i->references++;
+                        break;
+                case FD_TYPE_DEVICE:break;
+                case FD_TYPE_PIPE:
+                        slock_acquire(&rproc->
+				file_descriptors[old_fd].pipe->guard);
+                        rproc->file_descriptors[old_fd].pipe->references++;
+                        slock_release(&rproc->
+				file_descriptors[old_fd].pipe->guard);
+                        break;
+        }
+
+	return new_fd;
+}

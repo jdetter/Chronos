@@ -27,6 +27,8 @@
 #define SYS_signal 	0x15
 #define SYS_readdir	0x16
 #define SYS_pipe	0x17
+#define SYS_dup		0x18
+#define SYS_dup2	0x19
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -214,6 +216,20 @@ int readdir(int fd, int index, struct directent* dst);
  * for the write end of the pipe into the second position of the array.
  */
 int pipe(int fd[2]);
+
+/**
+ * Duplicates the given file descriptor. Returns the new file descriptor. If
+ * the file descriptor could not be duplicated, returns -1.
+ */
+int dup(int fd);
+
+/**
+ * Assigns an old file descriptor to a new file descriptor number. If the new 
+ * file descriptor number is valid and not closed, it will be close. The old
+ * file descriptor is not closed. If the old file descriptor is not valid, no
+ * operation is performed and -1 is returned. Otherwise, 0 is returned.
+ */
+int dup2(int fd_old, int fd_new);
 
 #endif
 

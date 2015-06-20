@@ -8,8 +8,8 @@
 #undef NULL
 
 #include "file.h"
-#include "fsman.h"
 #include "stdlock.h"
+#include "fsman.h"
 #include "vsfs.h"
 
 #include <sys/types.h>

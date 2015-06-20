@@ -6,8 +6,8 @@
 #include "stdlib.h"
 #include "stdmem.h"
 #include "boot_pic.h"
-#include "fsman.h"
 #include "stdlock.h"
+#include "fsman.h"
 #include "devman.h"
 #include "tty.h"
 #include "pipe.h"
@@ -98,7 +98,7 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 
 	/* Initilize pipes */
-	cprintf("Initilizing pipes...\t\t\t\t\t\t");
+	cprintf("Initilizing pipes...\t\t\t\t\t\t\t");
 	pipe_init();
 	cprintf("[ OK ]\n");
 	

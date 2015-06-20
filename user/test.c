@@ -19,5 +19,13 @@ int main(int argc, char** argv)
 	printf("fd read:  %d\n", fds[0]);
 	printf("fd write: %d\n", fds[1]);
 
+	char buffer[512];
+	char* string = "Pipe contents\n";
+
+	write(fds[1], string, strlen(string));	
+	read(fds[0], buffer, strlen(string));
+
+	printf(buffer);
+
 	exit();
 }
