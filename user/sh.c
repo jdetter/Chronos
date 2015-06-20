@@ -11,38 +11,45 @@
 #define OP_BACK 0x04 /* & */
 #define OP_FILE_IN 0x05 /* < */
 
+#define MAX_CMD 16
+
 void runprog(char* string);
 int main(int argc, char** argv)
 {
 	char in_buff[2048];
 	while(1){
+		memset(in_buff, 0, 2048);
 		printf("# ");
 		fgets(in_buff, 2048, 0);
 		int cur_cmd;
 		int cur_op;
 		cur_op = 0;
 		cur_cmd = 1;
-		char *cmd_buff[16];
-		char op_buff[15];
+		
+		char *cmd_buff[MAX_CMD];
+		memset(cmd_buff, 0, sizeof(char*) * 16);
+		char op_buff[MAX_CMD - 1];
+		memset(op_buff, 0, MAX_CMD - 1);
+		int i;
 		for(i=0;i<strlen(in_buff); i++){
 			switch(in_buff[i])
 			{
 				default: break;
-				case '|': 
+			case '|': 
 				in_buff[i] = 0;
 				op_buff[cur_op] = OP_PIPE;
 				cur_op++;
 				cmd_buff[cur_cmd] = in_buff+i+1;
 				cur_cmd++;
 				break;
-				case '<':
+			case '<':
 				in_buff[i] = 0;
 				op_buff[cur_op] = OP_FILE_IN;
 				cur_op++;
 				cmd_buff[cur_cmd] = in_buff+i+1;
 				cur_cmd++;
 				break;
-				case '>':
+			case '>':
 				in_buff[i] = 0;
 				op_buff[cur_op] = OP_FILE;
 				if(in_buff[i+1] == '>'){
@@ -54,7 +61,7 @@ int main(int argc, char** argv)
 				cmd_buff[cur_cmd] = in_buff+i+1;
 				cur_cmd++;
 				break;
-				case '&':
+			case '&':
 				in_buff[i] = 0;
 				op_buff[cur_op] = OP_BACK;
 				cur_op++;
@@ -64,13 +71,24 @@ int main(int argc, char** argv)
 			}
 			
 		}
-		int fds[15];
-		int fds_write[15];
+
+		int fds[MAX_CMD - 1];
+		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
+		int fds_write[MAX_CMD - 1];
+		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
+		int pids[MAX_CMD];
+		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
 		char error = 0;
-		for(i = 0; i<16 && error == 0; i++){
-			if(cmd_buff[i] == 0 && op_buff[i-1]!=0){
+		if(cmd_buff[0] == 0)
+			continue;
+		for(i = 0; i < MAX_CMD && error == 0; i++){
+			if(i > 0 && cmd_buff[i] == 0 && op_buff[i-1] != 0){
 				printf("sh: invalid op\n");
 				break;
+			}
+			if(cmd_buff[i] == 0 && i == 0)
+			{
+				
 			}
 			if(cmd_buff[i]==0){
 				break;
@@ -79,8 +97,6 @@ int main(int argc, char** argv)
 			int fd_file ;
 			int fd_curr[2]; // 0 read 1 write
 			
-			
-			
 			switch(op_buff[i]){
 				default: 
 				printf("sh: invalid op\n");
@@ -88,22 +104,21 @@ int main(int argc, char** argv)
 				break;
 				case OP_PIPE:
 				pipe(fd_curr);
-				//dup2(1, fd_curr[1]);
 				fds[i] = fd_curr[0];
 				fds_write[i] = fd_curr[1];
 				break;
 				case OP_FILE:
-				fd_file = open(cmd_buff[i+1], O_CREATE|O_WRONLY|O_TRUC, 0x0);
-				//dup2(1, fd_file);
+				fd_file = open(cmd_buff[i+1], 
+					O_CREATE|O_WRONLY|O_TRUC, 0x0);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");
 					error = 1;
 				}
 				break;
 				case OP_APPEND:
-				fd_file = open(cmd_buff[i+1], O_CREATE|O_WRONLY, 0x0);
+				fd_file = open(cmd_buff[i+1], 
+					O_CREATE|O_WRONLY, 0x0);
 				lseek(fd_file, 0, SEEK_END);
-				//dup2(1, fd_file);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");
 					error = 1;
@@ -121,18 +136,17 @@ int main(int argc, char** argv)
 					error = 1;
 					break;
 				}
-				//dup2(0, fd_file);
 				break;	
 				/*Have not dealt with the background op*/
 			}
-			if(i>0){
+			if(i > 0)
+			{
 				switch(op_buff[i-1]){
 					default:
 					printf("sh: invalid op\n");
 					error = 1;
 					break;
 					case OP_PIPE:
-					//dup2(0, fds[i-1]);
 					break;
 				}	
 			}
@@ -140,50 +154,63 @@ int main(int argc, char** argv)
 			if(f==0){//is child
 				switch(op_buff[i]){
 					case OP_PIPE:
-					dup2(1, fd_curr[1]);
-					break;
+						dup2(1, fd_curr[1]);
+						break;
 					case OP_FILE:
-					dup2(1, fd_file);
-					break;
+						dup2(1, fd_file);
+						break;
 					case OP_APPEND:
-					dup2(1, fd_file);
-					break;
+						dup2(1, fd_file);
+						break;
 					case OP_FILE_IN:
-					dup2(0, fd_file);
-					break;	
-					/*Have not dealt with the background op*/
+						dup2(0, fd_file);
+						break;	
+				/*Have not dealt with the background op*/
 				}
-				if(i>0){
+				if(i > 0){
 					switch(op_buff[i-1]){
 						case OP_PIPE:
 						dup2(0, fds[i-1]);
 						break;
 					}	
 				}
-			runprog(cmd1);	
-			
-			}
-			
+				runprog(cmd);	
+			} else pids[i] = f;
 		}
-	
+
+		for(i = 0;i < MAX_CMD;i++)
+		{
+			if(pids[i] <= 0) break;
+			wait(pids[i]);
+		}
+
+		for(i = 0;i < MAX_CMD;i++)
+                {
+                        if(fds_write[i] <= 0) break;
+                        close(fds_write[i]);
+                }
+
+		for(i = 0;i < MAX_CMD;i++)
+                {
+                        if(fds[i] <= 0) break;
+                        close(fds[i]);
+                }	
 	}
 	return 0;
 	
 }
 
-
-
 void runprog(char* string){
 	int i;
 	int arg = 1;
 	char* argv[64];
-	argv[0] = in_buff;
-	for(i = 0; i<strlen(in_buff); i++ ){
-		if(in_buff[i]==' '){
-			in_buff[i] = 0;
-			argv[arg] = in_buff + i + 1;
+	argv[0] = string;
+	for(i = 0; i<strlen(string); i++ ){
+		if(string[i]==' '){
+			string[i] = 0;
+			argv[arg] = string + i + 1;
 			arg++;	
 		}
 	}
-	exec(argv[0], argv);
+	exec(argv[0], (const char**)argv);
 }
