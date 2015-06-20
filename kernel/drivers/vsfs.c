@@ -372,20 +372,15 @@ int vsfs_mknod(const char* path, uint dev, uint dev_type,
 	in.gid = 0x0;
 	in.links_count = 1;
 	in.type = VSFS_DEV;
-	in.size = 0x0;
-	in.blocks = 0;	
-	memset(in.direct, 0, sizeof(uint) * VSFS_DIRECT);
-	in.indirect = 0;	
-	in.double_indirect = 0;
 
 	int ino = vsfs_link(path, &in, context);
 	if(!ino) return -1;
 	char block[BLOCKSIZE];
-	struct vsfs_device* device = (struct vsfs_device*)block;
+	struct devnode* device = (struct devnode*)block;
 	device->dev = dev;
 	device->type = dev_type;
 	vsfs_write(&in, device, 0, 
-		sizeof(struct vsfs_device), context);
+		sizeof(struct devnode), context);
 	write_inode(ino, &in, context);
 	return 0;
 }

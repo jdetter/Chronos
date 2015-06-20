@@ -200,7 +200,7 @@ struct FSDriver
 	 * a common interface to access devices.
 	 */
 	int (*mknod)(const char* path, uint dev, uint dev_type,
-                uint perm, struct vsfs_context* context);
+                uint perm, void* context);
 
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
@@ -325,5 +325,10 @@ void fs_fsstat(void);
  * it to be removed. Returns 0 on success, -1 otherwise.
  */
 int fs_rmdir(const char* path);
+
+/**
+ * Create a device node at the specified path.
+ */
+int fs_mknod(const char* path, int dev, int dev_type, int perm);
 
 #endif

@@ -202,7 +202,7 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 	outb(context->base_port + ATA_COMMAND, 0x30);
 	ata_wait(driver);
 	uint* srcw = (uint*)src;
-	outsl(context->base_port + ATA_DATA, srcw, 512/4);
+	outsl(context->base_port + ATA_DATA, srcw, SECTSIZE/4);
 
 	outb(context->base_port + ATA_COMMAND, 0xE7);
 	ata_wait(driver);
@@ -212,17 +212,16 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 
 /** ATA devices are io devices so they must define IODriver methods. */
 int ata_io_init(struct IODriver* driver);
-int ata_io_read(void* dst, uint start_read, uint sz, void* context);
-int ata_io_write(void* src, uint start_write, uint sz, void* context);
+int ata_io_read(void* dst, uint start_read, uint sz,
+		struct FSHardwareDriver* context);
+int ata_io_write(void* src, uint start_write, uint sz, 
+		 struct FSHardwareDriver* context);
 int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata)
 {
-	/* Copy the FSHardwareDriver into the IODriver context */
-	struct FSHardwareDriver* dst = (struct FSHardwareDriver*)
-		driver->context;
-	memmove(dst, ata, sizeof(struct FSHardwareDriver));
+	driver->context = ata;
 	driver->init = ata_io_init;
-	driver->read = ata_io_read;
-	driver->write = ata_io_write;
+	driver->read = (void*)ata_io_read;
+	driver->write = (void*)ata_io_write;
 	return 0;
 }
 
@@ -231,12 +230,83 @@ int ata_io_init(struct IODriver* driver)
 	return 0;
 }
 
-int ata_io_read(void* dst, uint start_read, uint sz, void* context)
+int ata_io_read(void* dst, uint start_read, uint sz, 
+		struct FSHardwareDriver* context)
 {
+	uint sect_start = start_read / SECTSIZE;
+	uint sect_end = (start_read + sz - 1) / SECTSIZE;
+	uint bytes_read = 0;
+	char sector[SECTSIZE];
+
+	if(sect_start == sect_end)
+	{
+		ata_readsect(sector, sect_start, context);
+		memmove(dst, sector + (start_read % SECTSIZE), sz);
+		return 0;
+	}
+
+	for(bytes_read = 0;bytes_read < sz;)
+	{
+		int sect = (start_read + bytes_read) / SECTSIZE;
+		int bytes = 0;
+		ata_readsect(sector, sect, context);
+		if(sect == sect_start)
+		{
+			bytes = SECTSIZE - (start_read % SECTSIZE);
+			memmove(dst, sector + (start_read % SECTSIZE), bytes);
+		} else if(sect == sect_end)
+		{
+			bytes = sz - bytes_read;
+			memmove(dst + bytes_read, sector,
+                                sz - bytes_read);
+		} else {
+			bytes = SECTSIZE;
+			memmove(dst + bytes_read, sector, SECTSIZE);
+		}
+
+		bytes_read += bytes;
+	}
+
 	return 0;
 }
 
-int ata_io_write(void* src, uint start_write, uint sz, void* context)
+int ata_io_write(void* src, uint start_write, uint sz,
+		struct FSHardwareDriver* context)
 {
-	return 0;
+	uint sect_start = start_write / SECTSIZE;
+        uint sect_end = (start_write + sz - 1) / SECTSIZE;
+        uint bytes_written = 0;
+        char sector[SECTSIZE];
+
+        if(sect_start == sect_end)
+        {
+                ata_readsect(sector, sect_start, context);
+                memmove(sector + (start_write % SECTSIZE), src, sz);
+                ata_writesect(sector, sect_start, context);
+                return 0;
+        } 
+        
+        for(bytes_written = 0;bytes_written < sz;)
+        {
+                int sect = (start_write + bytes_written) / SECTSIZE;
+                int bytes = 0;
+                ata_readsect(sector, sect, context);
+                if(sect == sect_start)
+                {
+                        bytes = SECTSIZE - (start_write % SECTSIZE);
+                        memmove(sector + (start_write % SECTSIZE), src, bytes);
+                } else if(sect == sect_end)
+                {
+                        bytes = sz - bytes_written;
+                        memmove(sector, src + bytes_written, sz-bytes_written);
+                } else {
+                        bytes = SECTSIZE;
+                        memmove(sector, src + bytes_written, SECTSIZE);
+                }
+
+		ata_writesect(sector, sect, context);
+                bytes_written += bytes;
+        }
+
+        return 0;
 }

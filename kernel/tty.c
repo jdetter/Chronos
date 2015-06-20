@@ -24,8 +24,7 @@ int tty_io_setup(struct IODriver* driver, uint tty_num)
 {
 	/* Get the tty */
 	tty_t t = tty_find(tty_num);
-	struct tty** context = (struct tty**)driver->context;
-	*context = t;
+	driver->context = t;
 	driver->init = tty_io_init;
 	driver->read = tty_io_read;
 	driver->write = tty_io_write;
@@ -40,7 +39,7 @@ int tty_io_init(struct IODriver* driver)
 
 int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 {
-	tty_t t = *(struct tty**)context;
+	tty_t t = context;
 	uchar* dst_c = dst;
 	int x;
 	for(x = 0;x < sz;x++, dst_c++)
@@ -50,7 +49,7 @@ int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 
 int tty_io_write(void* src, uint start_write, uint sz, void* context)
 {
-	tty_t t = *(struct tty**)context;
+	tty_t t = context;
         uchar* src_c = src;
         int x;
         for(x = 0;x < sz;x++, src_c++)

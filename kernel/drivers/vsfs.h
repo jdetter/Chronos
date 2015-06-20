@@ -30,12 +30,6 @@ typedef struct vsfs_inode {
 	uint double_indirect;
 } vsfs_inode;
 
-/* For device nodes */
-struct vsfs_device {
-	uint dev;
-	uint type;
-};
-
 /**
  * File system information. The superblock is followed by the inode bitmap which
  * is followed by the block bitmap. The 0th inode should ALWAYS be free. The

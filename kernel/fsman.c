@@ -660,3 +660,27 @@ int fs_rmdir(const char* path)
 		return -1;
 	return 0;
 }
+
+int fs_mknod(const char* path, int dev, int dev_type, int perm)
+{
+	char res_path[FILE_MAX_PATH];
+	if(fs_path_resolve(path, res_path, FILE_MAX_PATH))
+                return -1; /* Bad path */
+
+	/* Get the file system for the path */
+        struct FSDriver* fs = fs_find_fs(res_path);
+        if(!fs) return -1; /* Bad path */
+
+	/* Get the file system path */
+        char path_tmp[FILE_MAX_PATH];
+	if(fs_get_path(fs, res_path, path_tmp, FILE_MAX_PATH))
+		return -1;
+	
+	/* Make sure the path doesn't end with a slash */
+        file_path_file(path_tmp, res_path, FILE_MAX_PATH);
+	
+	/* Create the node if it's supported */
+	if(fs->mknod && fs->mknod(res_path, dev, dev_type, perm, fs->context))
+		return -1;
+	return 0;
+}

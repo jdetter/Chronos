@@ -72,6 +72,9 @@ int dev_init()
 	{
 		video_type = TTY_TYPE_MONO;
 		video_mem = CONSOLE_MONO_BASE_ORIG;
+	} else {
+		video_type = 0x0;
+		video_mem = 0x0;
 	}
 
 	if(video_mem)
@@ -80,8 +83,9 @@ int dev_init()
 
 	/* Find ttys */
 	uint x;
-	for(x = 0;video_mem;x++)
+	for(x = 0;;x++)
 	{
+		if(x > 0 && !video_type) break;
 		tty_t t = tty_find(x);
 		if(t == NULL) break;
 		driver = dev_alloc();
@@ -113,6 +117,8 @@ int dev_init()
 		/* Valid ata driver */
 		driver = dev_alloc();
 		ata_io_setup(driver, ata_drivers[x]);
+		snprintf(driver->node,
+			FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
 	}
 
 	/* Bring up ramfs */
@@ -140,7 +146,28 @@ int dev_init()
 
 void dev_populate(void)
 {
+	int dev_perm = PERM_UAP | PERM_GAP;
+	/* IO Drivers are type 1 */
+	int x;
+	for(x = 0;x < MAX_DEVICES;x++)
+	{
+		if(io_drivers[x].valid)
+		{
+			fs_mknod(io_drivers[x].node, x, 1, dev_perm);
+		}
+	}
+}
 
+struct IODriver* dev_lookup(int dev_type, int dev)
+{
+	switch(dev_type)
+	{
+		default: return NULL;
+		case 0x01:
+			if(dev < MAX_DEVICES && dev > 0)
+				return io_drivers + dev;
+			return NULL;
+	}
 }
 
 int dev_read(struct IODriver* device, void* dst, uint start_read, uint sz)

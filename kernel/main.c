@@ -74,6 +74,11 @@ void main_stack(void)
 	cprintf("Starting file system manager...\t\t\t\t\t\t");
 	fsman_init();
 	cprintf("[ OK ]\n");
+
+	/* Populate the device folder */
+	cprintf("Populating the dev folder...\t\t\t\t\t\t");
+	dev_populate();
+	cprintf("[ OK ]\n");
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");

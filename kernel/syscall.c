@@ -644,6 +644,19 @@ int sys_open(const char* path, int flags, int permissions)
     memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
     return -1;
   }
+
+  struct file_stat st;
+  fs_stat(rproc->file_descriptors[fd].i, &st);
+  
+  if(st.type == FILE_TYPE_DEVICE)
+  {
+    /* Get the driver open */
+    rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
+    struct devnode node;
+    fs_read(rproc->file_descriptors[fd].i, &node, sizeof(struct devnode), 0);
+    rproc->file_descriptors[fd].device = dev_lookup(node.type, node.dev);
+  }
+
   rproc->file_descriptors[fd].seek = 0;
   return fd;
 }
@@ -677,8 +690,12 @@ int sys_read(int fd, char* dst, uint sz)
       }
       break;
     case FD_TYPE_DEVICE:
-      dev_read(rproc->file_descriptors[fd].device, dst,
-		rproc->file_descriptors[fd].seek, sz);
+      if(rproc->file_descriptors[fd].device->read)
+      {
+        rproc->file_descriptors[fd].device->read(dst,
+        rproc->file_descriptors[fd].seek, sz,
+        rproc->file_descriptors[fd].device->context);
+      } else return -1;
       break;
     case FD_TYPE_STDIN:
       for(i = 0;i < sz; i++){
@@ -722,9 +739,11 @@ int sys_write(int fd, char* src, uint sz)
     break;
   case FD_TYPE_DEVICE:
     if(rproc->file_descriptors[fd].device->write)
-      sz = rproc->file_descriptors[fd].device->write(src, 
+    {
+      rproc->file_descriptors[fd].device->write(src, 
            rproc->file_descriptors[fd].seek, sz, 
            rproc->file_descriptors[fd].device->context);
+    }
     else return -1;
     break;
   case FD_TYPE_PIPE:

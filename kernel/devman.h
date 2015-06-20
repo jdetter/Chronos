@@ -18,7 +18,7 @@ struct IODriver
 	int (*init)(struct IODriver* driver);
 	int (*read)(void* dst, uint start_read, uint sz, void* context);
         int (*write)(void* src, uint start_write, uint sz, void* context);
-	uchar context[IO_DRIVER_CONTEXT_SPACE];
+	void* context;
 	char node[FILE_MAX_PATH]; /* where is the node for this driver? */
 };
 
@@ -38,5 +38,15 @@ int dev_read(struct IODriver* device, void* dst, uint start_read, uint sz);
  * Write to an io device. Returns the amount of bytes written.
  */
 int dev_write(struct IODriver* device, void* src, uint start_write, uint sz);
+
+/**
+ * Populates the dev folder with devices.
+ */
+void dev_populate(void);
+
+/**
+ * Lookup the driver for a device.
+ */
+struct IODriver* dev_lookup(int dev_type, int dev);
 
 #endif

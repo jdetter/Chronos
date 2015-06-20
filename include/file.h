@@ -34,21 +34,25 @@
  * For use in functions requiring permissions:
  */
 
+#define PERM_AAP 0777	/* Everyone has all permissions */
 #define PERM_ARD 0444 	/* Everyone can read */
 #define PERM_AWR 0222 	/* Everyone can write*/
 #define PERM_AEX 0111 	/* Everyone can execute */
 
+#define PERM_UAP 0700	/* User has all permissions */
 #define PERM_URD 0400 	/* User can read */
 #define PERM_UWR 0200 	/* User can write */
 #define PERM_UEX 0100 	/* User can execute */
 
-#define PERM_GRD 040 	/* Group can read */
-#define PERM_GWR 020 	/* Group can write */
-#define PERM_GEX 010 	/* Group can execute */
+#define PERM_GAP 0070	/* Group has all permissions */
+#define PERM_GRD 0040 	/* Group can read */
+#define PERM_GWR 0020 	/* Group can write */
+#define PERM_GEX 0010 	/* Group can execute */
 
-#define PERM_ORD 04 	/* Others can read */
-#define PERM_OWR 02 	/* Others can write */
-#define PERM_OEX 01 	/* Others can execute */
+#define PERM_OAP 0007	/* Others have all permissions */
+#define PERM_ORD 0004 	/* Others can read */
+#define PERM_OWR 0002 	/* Others can write */
+#define PERM_OEX 0001 	/* Others can execute */
 
 /**
  * Flag options for use in open:
@@ -85,6 +89,13 @@ struct directent
 	uint inode; /* Inode number of the directory entry */
 	uint type; /* Type of file (see above) */
 	char name[FILE_MAX_NAME]; /* name of the directory entry */
+};
+
+/* Device nodes */
+struct devnode
+{
+        uint dev;
+        uint type;
 };
 
 /**
