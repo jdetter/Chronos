@@ -73,18 +73,18 @@ uint transmit_ready(void)
 	return inb(COM1_LSR) & 0x20;
 }
 
-uint serial_write(void* dst, uint sz)
+uint serial_write(void* src, uint sz)
 {
 	int x = 0;
-	uchar* dst_c = (uchar*)dst;
+	uchar* src_c = (uchar*)src;
 	for(;sz;sz--)
 	{
 		/* Wait for the controller to be ready. */
 		while(!transmit_ready());
 		/* Write a byte. */
-		outb(COM1_DATA, *dst_c);
+		outb(COM1_DATA, *src_c);
 		/* Move the pointer forward. */
-		dst_c++;
+		src_c++;
 		x++;
 	}
 

@@ -32,6 +32,20 @@ char getc(void)
 
 int fgets(char* dst, uint sz, uint fd)
 {
+	uint x;
+	for(x = 0;x < sz;x++)
+	{
+		char c;
+		read(0, &c, 1);
+		dst[x] = c;
+		if(dst[x] == '\n' || dst[x] == 0) 
+		{
+			if(x + 1 < sz) dst[x + 1] = 0;
+			break;
+		}
+	}
+
+	dst[sz - 1] = 0;
 	return 0;
 }
 

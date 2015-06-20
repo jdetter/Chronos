@@ -4,48 +4,52 @@
 #include "file.h"
 #include "stdlock.h"
 #include "chronos.h"
+#include "stdio.h"
 
 int main(int argc, char** argv)
 {
 	if(argc<2)
 	{
-		//printf("Usage: cat [-n] [file]/n");
+		printf("Usage: cat [-n] [file]\n");
 		exit();
 	}
 	char* path= NULL;
-	//int printingNumbers = 0;
-	int lineNum = 0;
-	if(strcmp(argv[1], "-n")==0)
+	int x;
+	for(x = 1;x < argc;x++)
 	{
-		//printingNumbers = 1;
-		path = argv[2];
+		if(strcmp(argv[x], "-n") == 0)
+		{
+		} else {
+			if(path)
+			{
+				printf("Usage: cat [-n] [file]\n");
+				exit();
+			}
+			path = argv[1];
+		}
 	}
-	else
-	{
-		path = argv[1];
-	}
-	int fileDescript = open(path, 0, 0);
+
+	int fileDescript = open(path, O_RDONLY, 0);
 	if(fileDescript==-1)
 	{
-		//printf("File does not exist.");
+		printf("cat: File does not exist.\n");
 		exit();
 	}
-	//int fileLength = lseek(fileDescript, 0, FSEEK_END);
-	char buffer[0x1000];
-	//int i;
-	//for(i=0; i<fileLength; i+=0x1000)
-	{
-		read(fileDescript, buffer, 0x1000);
-		//printf(buffer);
 
-		//for(i=0; i<fileLength; i++)
-		{
-			//if(buffer[i]== '/n')
-			{
-				//printf(lineNum);
-				lineNum++;
-			}
-		}
+	#define BUFF_SIZE 512
+	int fileLength = lseek(fileDescript, 0, SEEK_END);
+	/* reset seek */
+	lseek(fileDescript, 0, SEEK_SET);
+	char buffer[BUFF_SIZE];
+	int i;
+	for(i=0; i<fileLength;)
+	{
+		int left = fileLength - i;
+		if(left > BUFF_SIZE - 1) left = BUFF_SIZE - 1;
+		read(fileDescript, buffer, left - 1);
+		buffer[BUFF_SIZE - 1] = 0;
+		printf(buffer);
+		i += left;
 	}
 
 	exit();

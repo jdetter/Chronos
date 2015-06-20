@@ -9,6 +9,7 @@
 #include "stdarg.h"
 #include "stdmem.h"
 #include "stdlib.h"
+#include "keyboard.h"
 
 #define MAX_TTYS 4
 
@@ -320,16 +321,26 @@ char tty_get_char(tty_t t)
 {
 	if(t->type == TTY_TYPE_SERIAL)
 	{
-		char c;
-		serial_read(&c, 1);
+		char c = 0;
+		while(!c) serial_read(&c, 1);
+
+		switch(c)
+		{
+		case 13: c = '\n';break;
+		}
+
+		/* Echo input to screen */
+		if(t->active) serial_write(&c, 1);
 		return c;
 	} else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
-
+		char c = 0;
+		while(!c) c = kbd_getc();
+		return c;
 	}
 
 
-	return 0;
+	return -1;
 }
 
 uchar tty_get_key(tty_t t)

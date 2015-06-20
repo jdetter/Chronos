@@ -21,6 +21,9 @@ int main(int argc, char** argv)
 		memset(in_buff, 0, 2048);
 		printf("# ");
 		fgets(in_buff, 2048, 0);
+		/* delete new line character */
+		if(strlen(in_buff) == 0) continue;
+		in_buff[strlen(in_buff) - 1] = 0;
 		int cur_cmd;
 		int cur_op;
 		cur_op = 0;
@@ -28,6 +31,7 @@ int main(int argc, char** argv)
 		
 		char *cmd_buff[MAX_CMD];
 		memset(cmd_buff, 0, sizeof(char*) * 16);
+		*cmd_buff = in_buff;
 		char op_buff[MAX_CMD - 1];
 		memset(op_buff, 0, MAX_CMD - 1);
 		int i;
@@ -73,11 +77,11 @@ int main(int argc, char** argv)
 		}
 
 		int fds[MAX_CMD - 1];
-		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
+		memset(fds, 0, sizeof(int) * (MAX_CMD - 1));
 		int fds_write[MAX_CMD - 1];
-		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
+		memset(fds_write, 0, sizeof(int) * (MAX_CMD - 1));
 		int pids[MAX_CMD];
-		memset(fds, 0, sizeof(int) * MAX_CMD - 1);
+		memset(pids, 0, sizeof(int) * (MAX_CMD - 1));
 		char error = 0;
 		if(cmd_buff[0] == 0)
 			continue;
@@ -85,10 +89,6 @@ int main(int argc, char** argv)
 			if(i > 0 && cmd_buff[i] == 0 && op_buff[i-1] != 0){
 				printf("sh: invalid op\n");
 				break;
-			}
-			if(cmd_buff[i] == 0 && i == 0)
-			{
-				
 			}
 			if(cmd_buff[i]==0){
 				break;
@@ -98,7 +98,8 @@ int main(int argc, char** argv)
 			int fd_curr[2]; // 0 read 1 write
 			
 			switch(op_buff[i]){
-				default: 
+				default:
+				if(i == 0 && op_buff[0] == 0) break;
 				printf("sh: invalid op\n");
 				error = 1;
 				break;
@@ -204,6 +205,7 @@ void runprog(char* string){
 	int i;
 	int arg = 1;
 	char* argv[64];
+	memset(argv, 0, 64 * sizeof(char*));
 	argv[0] = string;
 	for(i = 0; i<strlen(string); i++ ){
 		if(string[i]==' '){
