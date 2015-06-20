@@ -14,6 +14,8 @@ USER_TARGETS := \
 	sh \
 	test \
 	stress \
+	touch \
+	pwd \
 	stall
 
 # Binary files

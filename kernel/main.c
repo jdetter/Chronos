@@ -32,15 +32,21 @@ int main(void)
 	setup_kvm();
 	cprintf("Welcome to the Chronos kernel!\n");
 
+	/* Install global descriptor table */
+        cprintf("Loading Global Descriptor table...\t\t\t\t\t");
+        vm_seg_init();
+        cprintf("[ OK ]\n");
+
+	/* Get interrupt descriptor table up in case of a crash. */
+	/* Install interrupt descriptor table */
+        cprintf("Installing Interrupt Descriptor table...\t\t\t\t");
+        trap_init();
+        cprintf("[ OK ]\n");
+	
 	/* WARNING: we don't have a proper stack right now. */
 	/* Get vm up */
 	cprintf("Initilizing Virtual Memory...\t\t\t\t\t\t");
 	vm_init();
-	cprintf("[ OK ]\n");
-
-        /* Install global descriptor table */
-        cprintf("Loading Global Descriptor table...\t\t\t\t\t");
-        vm_seg_init();
 	cprintf("[ OK ]\n");
 
 	/* Setup proper stack */
@@ -75,11 +81,6 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 	/* Enable memory debugging */
 	//mem_debug((void (*)(char*))cprintf);
-
-	/* Install interrupt descriptor table */
-	cprintf("Installing Interrupt Descriptor table...\t\t\t\t");
-	trap_init();
-	cprintf("[ OK ]\n");
 
 	/* Enable PIC */
         cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");

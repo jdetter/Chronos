@@ -9,7 +9,7 @@
 
 int main(int argc, char** argv)
 {
-	int fds[2]
+	int fds[2];
 	if(pipe(fds))
 	{
 		printf("Couldn't create pipe!!\n");

@@ -6,7 +6,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 
-char* spawn_process = "/bin/echo";
+char* spawn_process = "/bin/test";
 
 void some_recursion(int i);
 

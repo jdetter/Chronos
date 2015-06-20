@@ -75,7 +75,7 @@ struct proc* spawn_tty(tty_t t)
 	p->pid = next_pid++;
 	p->uid = 0; /* init is owned by root */
 	p->gid = 0; /* group is also root */
-	memset(p->file_descriptors, 0, 
+	memset(p->file_descriptors, 0,
 		sizeof(struct file_descriptor) * MAX_FILES);
 
 	/* Setup stdin, stdout and stderr */
