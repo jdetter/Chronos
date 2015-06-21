@@ -10,19 +10,24 @@
 
 /* Definitions for drivers */
 
-#define IO_DRIVER_CONTEXT_SPACE 128
 struct IODriver
 {
-	uchar valid; /* Whether or not this driver is in use. */
 	slock_t device_lock;
+	/* Basic io functions */
 	int (*init)(struct IODriver* driver);
 	int (*read)(void* dst, uint start_read, uint sz, void* context);
         int (*write)(void* src, uint start_write, uint sz, void* context);
 	void* context;
-	char node[FILE_MAX_PATH]; /* where is the node for this driver? */
 };
 
-extern struct IODriver io_drivers[];
+struct DeviceDriver
+{
+	struct IODriver io_driver; /* general io driver, see above */
+	int valid; /* Whether or not this driver is in use  */
+	int type; /* The type of device, defined in include/device.h */
+	void* driver; /* Pointer to driver specific structure */
+	char node[FILE_MAX_PATH]; /* where is the node for this driver? */
+};
 
 /**
  * Setup all io drivers for all available devices.
@@ -47,6 +52,6 @@ void dev_populate(void);
 /**
  * Lookup the driver for a device.
  */
-struct IODriver* dev_lookup(int dev_type, int dev);
+struct DeviceDriver* dev_lookup(int dev);
 
 #endif

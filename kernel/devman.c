@@ -14,29 +14,30 @@
 #include "proc.h"
 #include "vm.h"
 #include "console.h"
+#include "keyboard.h"
 #include "pic.h"
 #include "ramfs.h"
 
 extern pgdir* k_pgdir;
 extern uint video_mode;
-slock_t io_driver_table_lock;
-struct IODriver io_drivers[MAX_DEVICES];
+slock_t driver_table_lock;
+static struct DeviceDriver drivers[MAX_DEVICES];
 extern uchar serial_connected;
 uint curr_mapping;
 
-static struct IODriver* dev_alloc(void)
+static struct DeviceDriver* dev_alloc(void)
 {
-	slock_acquire(&io_driver_table_lock);
-	struct IODriver* driver = NULL;
+	slock_acquire(&driver_table_lock);
+	struct DeviceDriver* driver = NULL;
 	int x;
 	for(x = 1;x < MAX_DEVICES;x++)
-		if(io_drivers[x].valid == 0)
+		if(drivers[x].valid == 0)
 		{
-			driver = io_drivers + x;
+			driver = drivers + x;
 			driver->valid = 1;
 			break;
 		}
-	slock_release(&io_driver_table_lock);
+	slock_release(&driver_table_lock);
 	return driver;
 }
 
@@ -57,9 +58,10 @@ void* dev_new_mapping(uint phy, uint sz)
 int dev_init()
 {
 	curr_mapping = KVM_HARDWARE_S;
-	slock_init(&io_driver_table_lock);
-	io_drivers[0].valid = 0;
-	struct IODriver* driver = NULL;
+	slock_init(&driver_table_lock);
+	struct DeviceDriver* driver = NULL;
+
+	memset(&drivers, 0, sizeof(struct DeviceDriver) * MAX_DEVICES);
 
 	/* Setup video memory */
 	uint video_mem = 0x0;
@@ -94,7 +96,7 @@ int dev_init()
 		/* Valid tty */
 		if(x != 0)
 			tty_init(t, x, video_type, 1, video_mem);
-		tty_io_setup(driver, x);
+		tty_io_setup(&driver->io_driver, x);
 		/* Set mount point */
 		snprintf(driver->node, 
 			FILE_MAX_PATH, "/dev/tty%d", x);
@@ -116,7 +118,7 @@ int dev_init()
 		if(ata_drivers[x]->valid != 1) continue;
 		/* Valid ata driver */
 		driver = dev_alloc();
-		ata_io_setup(driver, ata_drivers[x]);
+		ata_io_setup(&driver->io_driver, ata_drivers[x]);
 		snprintf(driver->node,
 			FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
 	}
@@ -129,7 +131,7 @@ int dev_init()
 	if(serial_connected)
 	{
 		driver = dev_alloc();
-		serial_io_setup(driver);
+		serial_io_setup(&driver->io_driver);
 		/* Add serial to mask */
 		pic_enable(INT_PIC_COM1_CODE);
 		/* Set mount point */
@@ -137,47 +139,32 @@ int dev_init()
                         FILE_MAX_PATH, "/dev/sl0", x);
 	}
 
-	/* Do final init on all devices */
+	/* Keyboard */
+	kbd_init();
+
+	/* Do final init on all io devices */
 	for(x = 0;x < MAX_DEVICES;x++)
-		if(io_drivers[x].valid)
-			io_drivers[x].init(io_drivers + x);
+		if(drivers[x].valid)
+			drivers[x].io_driver.init(&drivers[x].io_driver);
 	return 0;
 }
 
 void dev_populate(void)
 {
 	int dev_perm = PERM_UAP | PERM_GAP;
-	/* IO Drivers are type 1 */
 	int x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{
-		if(io_drivers[x].valid)
+		if(drivers[x].valid)
 		{
-			fs_mknod(io_drivers[x].node, x, 1, dev_perm);
+			fs_mknod(drivers[x].node, x, drivers[x].type, dev_perm);
 		}
 	}
 }
 
-struct IODriver* dev_lookup(int dev_type, int dev)
+struct DeviceDriver* dev_lookup(int dev)
 {
-	switch(dev_type)
-	{
-		default: return NULL;
-		case 0x01:
-			if(dev < MAX_DEVICES && dev > 0)
-				return io_drivers + dev;
-			return NULL;
-	}
-}
-
-int dev_read(struct IODriver* device, void* dst, uint start_read, uint sz)
-{
-	if(!device->valid) return -1;
-	return device->read(dst, start_read, sz, device->context);
-}
-
-int dev_write(struct IODriver* device, void* src, uint start_write, uint sz)
-{
-	if(!device->valid) return -1;
-	return device->write(src, start_write, sz, device->context);
+	if(dev > 0 && dev < MAX_DEVICES && drivers[dev].valid)
+		return drivers + dev;
+	else return NULL;
 }

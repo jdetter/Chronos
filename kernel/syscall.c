@@ -350,6 +350,19 @@ int syscall_handler(uint* esp)
 		case SYS_proc_dump:
 			return_value = sys_proc_dump();
 			break;
+		case SYS_tty_mode:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			return_value = sys_tty_mode(int_arg1);
+			break;
+		case SYS_tty_screen:
+			if(syscall_get_buffer_ptr((char**)&ptr_arg1, 
+				4000, esp, 1)) break;
+			return_value = sys_tty_screen(ptr_arg1);
+			break;
+		case SYS_tty_cursor:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			return_value = sys_tty_cursor(int_arg1);
+			break;
 	}
 	
 	return return_value; /* Syscall successfully handled. */
@@ -654,7 +667,7 @@ int sys_open(const char* path, int flags, int permissions)
     rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
     struct devnode node;
     fs_read(rproc->file_descriptors[fd].i, &node, sizeof(struct devnode), 0);
-    rproc->file_descriptors[fd].device = dev_lookup(node.type, node.dev);
+    rproc->file_descriptors[fd].device = &dev_lookup(node.dev)->io_driver;
   }
 
   rproc->file_descriptors[fd].seek = 0;
@@ -1096,5 +1109,25 @@ int sys_proc_dump(void)
 	}
 
 	fs_fsstat();
+	return 0;
+}
+
+int sys_tty_mode(int graphical)
+{
+	if(graphical)
+		tty_set_mode(rproc->t, TTY_MODE_GRAPHIC);
+	else tty_set_mode(rproc->t, TTY_MODE_TEXT);
+	return 0;
+}
+
+int sys_tty_screen(char tty_buffer[4000])
+{
+	tty_print_screen(rproc->t, tty_buffer);
+	return 0;
+}
+
+int sys_tty_cursor(int pos)
+{
+	tty_set_cursor_pos(rproc->t, pos, TTY_MODE_GRAPHIC);
 	return 0;
 }

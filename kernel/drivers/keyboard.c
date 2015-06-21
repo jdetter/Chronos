@@ -1,11 +1,8 @@
 #include "types.h"
 #include "x86.h"
 #include "panic.h"
-#define dataReg 0x60
-#define cntrlReg 0x64
 int lShift = 0x2A;
 int rShift = 0x36;
-#define enableKbd 0xf4
 int set1 = 0xf1;
 int shift = 0;
 int cntrl = 0;
@@ -14,19 +11,54 @@ int caps = 0;
 int cntrlkey = 0x1D;
 int altkey = 0x38;
 int capskey = 0x3B;
+
+/* Keyboard commands */
+#define KBD_ENABLE_SCANNING 0xF4
+
+/* Responses */
+#define KBD_ACK 0xFA
+#define KBD_RESEND 0xFE
+
+/* Statuses */
+#define KBD_OUTPUT_FULL 0x01
+#define KBD_INPUT_FULL 0x02
+
+/* Ports */
+#define KBD_DATA 0x60
+#define KBD_CNTL 0x64
+#define KBD_STAT 0x64
+
 char sctoa(int scancode);
 int kbd_init(){
-	outb(cntrlReg, enableKbd);	
-	outb(cntrlReg, set1);
+	return 0;
+	int x;
+	int status;
+init_1:
+	while(inb(KBD_STAT) & KBD_INPUT_FULL);
+	outb(KBD_DATA, KBD_ENABLE_SCANNING);
+
+	/* Wait for ACK or RESEND */
+	for(x = 0;x < 3;x++) status = inb(KBD_STAT);
+	if(status == KBD_RESEND) goto init_1;
+	else if(status != KBD_ACK) goto init_1;
+	
+	outb(KBD_DATA, 0x01); /* Set scan set to one */
+
+init_2:
+	/* Wait for ACK or RESEND */
+        for(x = 0;x < 3;x++) status = inb(KBD_CNTL);
+        if(status == KBD_RESEND) goto init_2;
+        else if(status != KBD_ACK) goto init_2;
+
 	return 0;
 }
 
 char kbd_getc(){
-	int status = (inb(cntrlReg) & 0x1);
+	int status = (inb(KBD_STAT) & 0x1);
 	if(status == 0){
 		return 0;
 	}
-	int scancode = inb(dataReg);
+	int scancode = inb(KBD_DATA);
 	int released = 0; 
 	if(scancode == 0){
                 return -1;

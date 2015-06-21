@@ -20,7 +20,8 @@ USER_TARGETS := \
 	pwd \
 	stall \
 	stat \
-	crash
+	crash \
+	less
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

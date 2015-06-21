@@ -30,6 +30,10 @@
 #define SYS_dup		0x18
 #define SYS_dup2	0x19
 #define SYS_proc_dump	0x20
+#define SYS_tty_mode	0x21
+#define SYS_tty_screen	0x22
+#define SYS_tty_cursor	0x23
+
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -245,6 +249,23 @@ int dup2(int fd_old, int fd_new);
  */
 int proc_dump(void);
 
+/**
+ * Sets whether or not the tty that is the running process is attached to is
+ * in graphical mode. graphical = 1 puts the tty into graphical mode,
+ * graphical = 0 puts the tty back into text mode. Always returns 0.
+ */
+int tty_mode(int graphical);
+
+/**
+ * Prints the given buffer into the graphical buffer of the tty. The buffer
+ * is expected to be 4000 bytes long. Always returns 0.
+ */
+int tty_screen(char tty_buffer[4000]);
+
+/**
+ * Sets the graphical cursor position.
+ */
+int tty_cursor(int pos);
 #endif
 
 #endif

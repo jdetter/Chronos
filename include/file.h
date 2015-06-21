@@ -10,16 +10,6 @@
 #define FILE_TYPE_LINK 	  0x04
 #define FILE_TYPE_SPECIAL 0x05
 
-/* Device type definitions */
-#define DEV_IO_RDWR	0x0001 /* Basic read/write io device. */
-#define DEV_DISK	0x0002 /* Raw disk */
-#define DEV_DISK_PART	0x0003 /* Disk partition */
-#define DEV_TTY		0x0004 /* Teletype */
-#define DEV_PIPE	0x0005 /* Pipe */
-#define DEV_RAM		0x0006 /* Memory */
-#define DEV_LOOP	0x0007 /* Loop device */
-#define DEV_COM		0x0008 /* Serial port */
-
 /**
  * For use in function fs_seek:
  *  + SEEK_SET Sets the current seek from the start of the file.

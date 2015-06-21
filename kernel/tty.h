@@ -28,7 +28,7 @@
  */
 #define TTY_MODE_NONE		0x0 /* This tty is disabled. */
 #define TTY_MODE_TEXT		0x1 /* Display the data in the text buffer. */
-#define TTY_MODE_GRAPHIC 	0x2 /*Display the data in the graphic buffer.*/
+#define TTY_MODE_GRAPHIC 	0x2 /* Display the data in the graphic buffer.*/
 
 /**
  * All of the available foreground and background colors for the tty. Bitwise
@@ -133,7 +133,7 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character);
 /**
  * Print the entire video memory to the screen (graphic mode only).
  */
-void tty_print_screen(tty_t t, uchar* buffer);
+void tty_print_screen(tty_t t, char* buffer);
 
 /**
  * Clear the graphic display (graphic mode only).

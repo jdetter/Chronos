@@ -29,5 +29,8 @@ int sys_pipe(int fd[2]);
 int sys_dup(int fd);
 int sys_dup2(int old_fd, int new_fd);
 int sys_proc_dump(void);
+int sys_tty_mode(int graphical);
+int sys_tty_screen(char tty_buffer[4000]);
+int sys_tty_cursor(int pos);
 
 #endif

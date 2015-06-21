@@ -33,7 +33,6 @@ int tty_io_setup(struct IODriver* driver, uint tty_num)
 
 int tty_io_init(struct IODriver* driver)
 {
-	driver->valid = 1;
 	return 0;
 }
 
@@ -111,11 +110,11 @@ void tty_enable(tty_t t)
 	{
 		if(t->display_mode == TTY_MODE_GRAPHIC)
 		{
-			tty_print_screen(t, (uchar*)t->buffer_graphic);
+			tty_print_screen(t, t->buffer_graphic);
 			console_update_cursor(t->graphic_cursor_pos);
 		} else if(t->display_mode == TTY_MODE_TEXT)
 		{
-			tty_print_screen(t, (uchar*)t->buffer_text);
+			tty_print_screen(t, t->buffer_text);
 			console_update_cursor(t->text_cursor_pos);
 		}
 	}
@@ -222,7 +221,7 @@ void tty_scroll(tty_t t)
 		memmove(dst_row, src_row, bpr);
 	}
 	memset(buffer + x * bpr, 0, bpr);
-	tty_print_screen(t, (uchar*)t->buffer_text);
+	tty_print_screen(t, t->buffer_text);
 }
 
 void tty_print_string(tty_t t, char* fmt, ...)
@@ -283,7 +282,7 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character)
 
 }
 
-void tty_print_screen(tty_t t, uchar* buffer)
+void tty_print_screen(tty_t t, char* buffer)
 {
 	if(t->type==TTY_TYPE_SERIAL)
 	{
