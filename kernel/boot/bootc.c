@@ -10,6 +10,7 @@
 #include "stdmem.h"
 #include "console.h"
 #include "keyboard.h"
+#include "stdlock.h"
 #include "vsfs.h"
 
 #define KERNEL_LOAD 0x100000
@@ -35,6 +36,8 @@ char* checking_elf = "Chronos is ready to be loaded.\n";
 char* kernel_loaded = "Chronos has been loaded.\n";
 int serial = 0;
 
+extern struct FSHardwareDriver* ata_drivers[];
+
 int main(void)
 {
 	serial = 1;
@@ -59,6 +62,16 @@ int main(void)
 	cprintf("\n");
 
 	struct vsfs_context context;
+	cprintf("Starting VSFS driver...\t\t\t\t");
+	uchar fake_cache[512];
+	context.hdd = ata_drivers[0];
+	if(vsfs_init(64, 0, 512, 512, fake_cache, &context))
+	{
+		cprintf("[FAIL]\n");
+		panic();
+	}
+	cprintf("[ OK ]\n");
+
 	vsfs_inode chronos_image;
 	int inonum;
 	if((inonum = vsfs_lookup(kernel_path, &chronos_image, &context)) == 0)
@@ -69,7 +82,7 @@ int main(void)
 
 	/* Sniff to see if it looks right. */
 	uchar elf_buffer[512];
-	vsfs_read(&chronos_image, 0, 512, elf_buffer, &context);
+	vsfs_read(&chronos_image, elf_buffer, 0, 512, &context);
 	char elf_buff[] = ELF_MAGIC;
 	if(memcmp(elf_buffer, elf_buff, 4))
 	{
@@ -82,7 +95,7 @@ int main(void)
 
 	/* Load the entire elf header. */
 	struct elf32_header elf;
-	vsfs_read(&chronos_image, 0, sizeof(struct elf32_header), &elf, &context);
+	vsfs_read(&chronos_image, &elf, 0, sizeof(struct elf32_header), &context);
 	/* Check class */
 	if(elf.exe_class != 1) panic();	
 	if(elf.version != 1) panic();
@@ -100,9 +113,8 @@ int main(void)
 	{
 		int header_loc = elf.e_phoff + (x * elf.e_phentsize);
 		struct elf32_program_header curr_header;
-		vsfs_read(&chronos_image, header_loc, 
+		vsfs_read(&chronos_image, &curr_header, header_loc, 
 			sizeof(struct elf32_program_header), 
-			&curr_header,
 			&context);
 		/* Skip null program headers */
 		if(curr_header.type == ELF_PH_TYPE_NULL) continue;
@@ -126,9 +138,8 @@ int main(void)
 			/* zero this region */
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */
-			vsfs_read(&chronos_image, offset, 
-				file_sz, hd_addr,
-				&context);
+			vsfs_read(&chronos_image, hd_addr, offset,
+				file_sz, &context);
 			/* By default, this section is rwx. */
 		}
 	}
@@ -141,6 +152,8 @@ int main(void)
 	panic();
 	return 0;
 }
+
+
 
 void cprintf(char* fmt, ...)
 {
@@ -170,3 +183,4 @@ void msetup()
 	serial_write(msetup_err, strlen(msetup_err));
 	panic();
 }
+

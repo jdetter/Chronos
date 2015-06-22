@@ -1,6 +1,7 @@
 #include "types.h"
 #include "file.h"
 #include "fsman.h"
+#include "stdlock.h"
 #include "vsfs.h"
 #include "ata.h"
 #include "panic.h"
@@ -48,10 +49,25 @@ void fsman_init(void)
 	struct FSHardwareDriver* ata = NULL;
 	for(x = 0;x < ATA_DRIVER_COUNT;x++)
 		if(ata_drivers[x]->valid)
+		{
 			ata = ata_drivers[x];
+			break;
+		}
 	if(ata == NULL) panic("No ata driver available.\n");
 
+	/* Assign hardware driver */
+	fstable[0].driver = ata;
+	
 	/* Set our vsfs as the root file system. */
+	vsfs_driver_init(fstable);
+	fstable[0].valid = 1;
+	fstable[0].type = 0;
+	fstable[0].driver = ata;
+	strncpy(fstable[0].mount_point, "/", FILE_MAX_PATH);
+
+	/* Initilize the file system */
+	fstable[0].init(64, 0, 512, FS_CACHE_SIZE, 
+		fstable[0].cache, fstable[0].context);
 }
 
 /**
@@ -86,8 +102,9 @@ static struct FSDriver* fs_find_fs(const char* path)
 	int x;
 	for(x = 0;x < FS_TABLE_MAX;x++)
 	{
+		if(fstable[x].valid == 0) continue;
 		uint mp_strlen = strlen(fstable[x].mount_point);
-		if(memcmp(fstable[x].mount_point, (char*)path, mp_strlen))
+		if(!memcmp(fstable[x].mount_point, (char*)path, mp_strlen))
 		{
 			/* They are equal */
 			if(match_len < mp_strlen)
@@ -133,6 +150,7 @@ static int fs_get_name(const char* path, char* dst, uint sz)
 {
 	uint index = strlen(path);
 	for(;index >= 0 && path[index] != '/';index--);
+	index++;
 	if(index < 0) return 1; /* invalid path */
 	strncpy(dst, path + index, sz);
 	return 0; 
@@ -158,24 +176,6 @@ static void fs_sync_inode(inode i)
  * defined here are in include/file.h.
  */
 
-uint fs_seek(inode i, int pos, uchar whence)
-{
-	switch(whence)
-	{
-		case SEEK_SET:
-			i->file_pos = pos;
-			break;
-		case SEEK_END:
-			i->file_pos = i->file_sz - pos;
-			break;
-		case SEEK_CUR:
-			i->file_pos += pos;
-			break;
-	}
-
-	return i->file_pos;
-}
-
 inode fs_open(const char* path, uint permissions, uint flags)
 {
 	/* We need to use the driver function for this. */
@@ -190,12 +190,12 @@ inode fs_open(const char* path, uint permissions, uint flags)
 		return NULL; /* Invalid path */
 
 	struct inode_t* i = fs_find_inode();
+	i->fs = fs;
 
 	if(i == NULL)
 		return NULL; /* No more inodes are available */
 
-	i->inode_ptr = fs->open(path, permissions, 
-		flags, fs->context);
+	i->inode_ptr = fs->open(path, fs->context);
 	if(i->inode_ptr == NULL)
 	{
 		fs_free_inode(i);
@@ -211,7 +211,7 @@ inode fs_open(const char* path, uint permissions, uint flags)
 	i->file_type = st.type;
 	i->inode_num = st.inode;
 	i->references = 1;
-	fs_get_name(i->name, dst_path, FILE_MAX_NAME);
+	fs_get_name(dst_path, i->name, FILE_MAX_NAME);
 
 	return i;
 }
@@ -232,7 +232,8 @@ int fs_stat(inode i, struct file_stat* dst)
 	return i->fs->stat(i->inode_ptr, dst, i->fs->context);
 }
 
-inode fs_create(const char* path, uint flags, uint permissions)
+inode fs_create(const char* path, uint flags, 
+		uint permissions, uint uid, uint gid)
 {
 	/* fix up the path*/
 	char dst_path[FILE_MAX_PATH];
@@ -248,8 +249,10 @@ inode fs_create(const char* path, uint flags, uint permissions)
 	if(i == NULL) return NULL; /* There are no more free inodes */
 
 	/* Create the file with the driver */
-	i->inode_ptr = fs->create(dst_path, 
-		flags, permissions, fs->context);
+	if(fs->create(dst_path, 
+                permissions, uid, gid, fs->context))
+		return NULL;
+	i->inode_ptr = fs->open(dst_path, fs->context);
 	if(i->inode_ptr == NULL)
 	{
 		fs_free_inode(i);
@@ -300,21 +303,22 @@ int fs_truncate(inode i, int sz)
 	return result;
 }
 
-int fs_link(inode i, const char* file, const char* link)
+int fs_link(const char* file, const char* link)
 {
-	int result = i->fs->link(i->inode_ptr,
-		file, link, i->fs->context);
-	return result;
+	//int result = i->fs->link(i->inode_ptr,
+	//	file, link, i->fs->context);
+	return 0;
 }
 
-int fs_symlink(inode i, const char* file, const char* link)
+int fs_symlink(const char* file, const char* link)
 {
-        int result = i->fs->symlink(i->inode_ptr,
-                file, link, i->fs->context);
-        return result;
+        //int result = i->fs->symlink(i->inode_ptr,
+        //        file, link, i->fs->context);
+        return 0;
 }
 
-inode fs_mkdir(const char* path, uint flags, uint permissions)
+inode fs_mkdir(const char* path, uint flags, 
+		uint permissions, uint uid, uint gid)
 {
 	/* First resolve the path */
 	char dst_path[FILE_MAX_PATH];
@@ -326,7 +330,9 @@ inode fs_mkdir(const char* path, uint flags, uint permissions)
 	struct FSDriver* fs = fs_find_fs(dst_path);
 	
 	/* Try to create the directory */
-	void* dir = fs->mkdir(path, flags, permissions, fs->context);
+	if(fs->mkdir(path, permissions, uid, gid, fs->context))
+		return NULL;
+	void* dir = fs->open(path, fs->context);
 	if(dir == NULL)
 		return NULL; /* Bad path*/
 
@@ -351,8 +357,7 @@ inode fs_mkdir(const char* path, uint flags, uint permissions)
 
 int fs_read(inode i, void* dst, uint sz, uint start)
 {
-	int bytes = i->fs->read(i->inode_ptr,
-		dst, sz, start, i->fs->context);
+	int bytes = i->fs->read(i->inode_ptr, dst, start, sz, i->fs->context);
 	/* Check for read error */
 	if(bytes < 0) return -1;
 

@@ -9,6 +9,7 @@
 
 #include "file.h"
 #include "fsman.h"
+#include "stdlock.h"
 #include "vsfs.h"
 
 #include <sys/types.h>
@@ -84,10 +85,10 @@ void ls(char* directory)
 	for(x = 0;x < dir.size / sizeof(struct directent);x++)
 	{
 		struct directent entry;
-		vsfs_read(&dir, 
+		vsfs_read(&dir, &entry, 
 			x * sizeof(struct directent), 
 			sizeof(struct directent),
-			&entry, &context);
+			&context);
 		printf("%s\t\t%d\n", entry.name, entry.inode_num);
 	}
 
@@ -111,10 +112,15 @@ void cat(char* file)
 	for(x = 0;x < 9;x++) printf("%d: %d\n", x, file_i.direct[x]);
 
 	char file_buffer[file_i.size];
-	vsfs_read(&file_i, 0, file_i.size, file_buffer, &context);
+	vsfs_read(&file_i, file_buffer, 0, file_i.size, &context);
 
 	printf("%s\n", file_buffer);
 }
+
+/* Lock forwards (not used) */
+void slock_init(slock_t* lock){}
+void slock_acquire(slock_t* lock){}
+void slock_release(slock_t* lock){}
 
 int main(int argc, char** argv)
 {
@@ -142,7 +148,8 @@ int main(int argc, char** argv)
 	driver.valid = 1;
 	driver.read = ata_readsect;
 	driver.write = ata_writesect;
-	vsfs_init(start, 0, 0, &context);
+	uchar fake_cache[512];
+	vsfs_init(start, 0, 512, 512, fake_cache, &context);
 
 	char cwd[1024];
 	memset(cwd, 0, 1024);

@@ -9,6 +9,7 @@
 
 #include "file.h"
 #include "fsman.h"
+#include "stdlock.h"
 #include "vsfs.h"
 
 #include <sys/types.h>
@@ -105,7 +106,7 @@ int add_dir(char* directory, char* path)
 					exit(1);
 				}
 			
-				vsfs_write(&new_inode, 0, s.st_size, contents, &context);
+				vsfs_write(&new_inode, contents, 0, s.st_size, &context);
 				/* Update metadata */
 				write_inode(inode_num, &new_inode, &context);
 			} else {
@@ -132,7 +133,7 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 		exit(1);
 	}
 
-	return SECTSIZE;
+	return 0;
 }
 
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
@@ -150,10 +151,15 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 		exit(1);
 	}
 
-	return SECTSIZE;
+	return 0;
 
 }
 
+
+/* Lock forwards (not used) */
+void slock_init(slock_t* lock){}
+void slock_acquire(slock_t* lock){}
+void slock_release(slock_t* lock){}
 
 int main(int argc, char** argv)
 {
@@ -273,9 +279,12 @@ int main(int argc, char** argv)
 	disk_driver.write(buffer, 0, NULL);
 	memmove(&context.super, super_block, sizeof(struct vsfs_superblock));
 
+	/* Create a fake cache */
+	uchar fake_cache[512];
+
 	/* Initilize driver */
 	context.hdd = &disk_driver;
-	vsfs_init(0, 0, 512, &context);
+	vsfs_init(0, 0, 512, 512, fake_cache, &context);
 
 	/* Create root inode. */
 	struct vsfs_inode root_i;

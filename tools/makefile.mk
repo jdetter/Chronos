@@ -17,6 +17,7 @@ tools/bin/mkfs:
 # VSFS must be rebuilt in MKFS mode
 	echo "#define VSFS_MKFS" > tools/bin/vsfs.c
 	cat kernel/drivers/vsfs.c >> tools/bin/vsfs.c
+	cp include/stdlock.h tools/bin
 	cp include/types.h tools/bin
 	cp include/file.h tools/bin
 	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -c -o tools/bin/vsfs.o tools/bin/vsfs.c

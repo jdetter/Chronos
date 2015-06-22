@@ -16,8 +16,8 @@
 struct file_descriptor
 {
 	uchar type;
-	int inode_pos;
-	struct vsfs_inode inode;
+	int seek;
+	inode i;
 };
 
 #define MAX_FILES 0x20

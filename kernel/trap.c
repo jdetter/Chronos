@@ -12,7 +12,7 @@
 #include "stdlib.h"
 #include "syscall.h"
 #include "tty.h"
-#include "vsfs.h"
+#include "fsman.h"
 #include "proc.h"
 
 #define TRAP_COUNT 256

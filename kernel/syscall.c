@@ -1,11 +1,11 @@
 #include "types.h"
 #include "x86.h"
-#include "vsfs.h"
 #include "tty.h"
 #include "stdlock.h"
+#include "file.h"
+#include "fsman.h"
 #include "proc.h"
 #include "vm.h"
-#include "file.h"
 #include "chronos.h"
 #include "stdlock.h"
 #include "vsfs.h"
@@ -17,8 +17,6 @@
 #include "serial.h"
 #include "trap.h"
 #include "panic.h"
-
-extern struct vsfs_context context;
 
 extern uint next_pid;
 extern slock_t ptable_lock; /* Process table lock */
@@ -468,11 +466,12 @@ int sys_open(const char* path)
     return -1;
   }
   rproc->file_descriptors[fd].type = FD_TYPE_FILE;
-  int inode = vsfs_lookup((char*) path, &rproc->file_descriptors[fd].inode, &context);
-  if(inode == 0){
+  rproc->file_descriptors[fd].i = fs_open((char*) path, 0, 0);
+  if(rproc->file_descriptors[fd].i == NULL){
+    memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
     return -1;
   }
-  rproc->file_descriptors[fd].inode_pos = 0;
+  rproc->file_descriptors[fd].seek = 0;
   return fd;
 }
 
@@ -490,8 +489,8 @@ int sys_read(int fd, char* dst, uint sz)
   }  
   
   if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
-    if(vsfs_read(&rproc->file_descriptors[fd].inode,
-      rproc->file_descriptors[fd].inode_pos, sz, dst, &context) == -1) {
+    if(fs_read(rproc->file_descriptors[fd].i, dst, sz, 
+	rproc->file_descriptors[fd].seek) == -1) {
       return -1;
     }
   } else {
@@ -501,7 +500,7 @@ int sys_read(int fd, char* dst, uint sz)
       dst[i] = next_char;
     } 
   }
-  rproc->file_descriptors[fd].inode_pos += sz;
+  rproc->file_descriptors[fd].seek += sz;
   return sz;
 }
 
@@ -511,8 +510,8 @@ int sys_write(int fd, char* src, uint sz)
     return -1;
   }  
   else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
-    if(vsfs_write(&rproc->file_descriptors[fd].inode,
-      rproc->file_descriptors[fd].inode_pos, sz, src, &context) == -1){
+    if(fs_write(rproc->file_descriptors[fd].i, src, sz, 
+	rproc->file_descriptors[fd].seek) != -1){
       return -1;
     }
   }
@@ -522,7 +521,7 @@ int sys_write(int fd, char* src, uint sz)
     for(x = 0;x < str_len;x++)
       tty_print_character(rproc->t, src[x]);
   }
-  rproc->file_descriptors[fd].inode_pos += sz;
+  rproc->file_descriptors[fd].seek += sz;
   return sz;
 }
 
@@ -533,16 +532,18 @@ int sys_lseek(int fd, int offset, int whence)
   }
   int seek_pos;
   if(whence == FSEEK_CUR){
-    seek_pos = rproc->file_descriptors[fd].inode_pos + offset;
+    seek_pos = rproc->file_descriptors[fd].seek + offset;
   }  
   else if(whence == FSEEK_SET){
     seek_pos = offset;
   }
   else{
-    seek_pos = rproc->file_descriptors[fd].inode.size + offset;
+    struct file_stat stat;
+    fs_stat(rproc->file_descriptors[fd].i, &stat);
+    seek_pos = stat.sz + offset;
   }
   if(seek_pos < 0){ seek_pos = 0;}
-  rproc->file_descriptors[fd].inode_pos = seek_pos;
+  rproc->file_descriptors[fd].seek = seek_pos;
   return seek_pos;
 }
 
@@ -625,76 +626,28 @@ int sys_cwd(char* dst, uint sz){
   return sz;
 }
 
-int sys_create(const char* file, uint permissions){
-  
-  struct vsfs_inode new_inode;
-  new_inode.perm = permissions; 
-  vsfs_link(file, &new_inode, &context);  
+int sys_create(const char* file, uint permissions){ 
+  fs_create(file, 0, permissions, rproc->uid, rproc->uid);  
   return 0;
 }
 
 int mkdir(const char* dir, uint permissions){
-
-  struct vsfs_inode new_inode;
-  new_inode.perm = permissions;
-  vsfs_link(dir, &new_inode, &context);
+  fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
   return 0;
-
 }
 
 int rm(const char* file){
-
-  vsfs_inode toremove;
-  int inode_num = vsfs_lookup(file, &toremove, &context);
-  if(inode_num == 0){ return -1;}
-  if(toremove.type != VSFS_FILE){
-    return -1;
-  } 
-  vsfs_unlink(file, &context);
   return 0;
 }
 
 int rmdir(const char* dir){
-
-  vsfs_inode toremove;
-  int inode_num = vsfs_lookup(dir, &toremove, &context);
-  if(inode_num == 0){ return -1;}
-  if(toremove.type != VSFS_DIR){
-    return -1;
-  } 
-  if(toremove.size > (sizeof(directent)*2)){
-    return -1;
-  }
-  vsfs_unlink(dir, &context);
   return 0;
 }
 
 int mv(const char* orig, const char* dst){
-
-  vsfs_inode tomove;
-  int inode_num = vsfs_lookup(orig, &tomove, &context);
-  if(inode_num == 0){ return -1;}
-  if(tomove.type != VSFS_FILE){
-    return -1;
-  }
-  vsfs_link(dst, &tomove, &context);
-  vsfs_unlink(orig, &context);
   return 0;
 }
 
 int fstat(const char* path, struct file_stat* dst){
-
-  vsfs_inode tostat ;
-  int inode_num = vsfs_lookup(path, &tostat, &context);
-  if(inode_num == 0){ return -1;}
-  if(tostat.type != VSFS_FILE){
-    return -1;
-  }
-  dst->owner_id = tostat.uid; /* Owner of the file */
-  dst->group_id = tostat.gid; /* Group that owns the file */
-  dst->perm = tostat.perm; /* Permissions of the file */
-  dst->sz = tostat.size; /* Size of the file in bytes */
-  dst->links = tostat.links_count; /* The amount of hard links to this file */
-  dst->type = tostat.type; /* See options for file type above*/ 
   return 0;
 }

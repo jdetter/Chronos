@@ -66,7 +66,7 @@ struct FSDriver
 	 * to function.
 	 */
 	int (*init)(uint start_sector, uint end_sector, uint block_size,
-		void* context, uchar* cache, uint cache_sz);
+		uint cache_sz, uchar* cache, void* context);
 	
 	/**
 	 * Required file system driver function that opens a file
@@ -75,8 +75,7 @@ struct FSDriver
 	 * file.h. Returns a file system specific pointer to an
 	 * inode.
 	 */
-	void* (*open)(const char* path, uint flags, uint permissions,
-			void* context);
+	void* (*open)(const char* path, void* context);
 
 	/**
  	 * Close the file with the given inode. The inode type
@@ -92,12 +91,11 @@ struct FSDriver
 			void* context);
 
 	/**
- 	 * Create a file in the file system given by path. Flags
-	 * and mode are defined in file.h. Returns a pointer to
-	 * the cached inode. 
+ 	 * Create a file in the file system given by path. Returns 0 on
+	 * success, -1 on failure.
 	 */
-	void* (*create)(const char* path, uint flags, uint permissions,
-			void* context);
+	int (*create)(const char* path, uint permissions, uint uid,
+		uint gid, void* context);
 
 	/**
 	 * Change the ownership of the file. Both the uid and
@@ -121,36 +119,33 @@ struct FSDriver
 	/**
 	 * Create a hard link to a file. Returns 0 on success.
 	 */
-	int (*link)(void* i, const char* file, 
-			const char* link, void* context);
+	int (*link)(const char* file, const char* link, void* context);
 
         /**
          * Create a soft link to a file. Returns 0 on success.
          */
-        int (*symlink)(void* i, const char* file, 
-                        const char* link, void* context);
+        int (*symlink)(const char* file, const char* link, void* context);
 
 	/**
-	 * Make a directory in the file system. Returns an inode that
-	 * points to the newly created directory. The permissions and flags
-	 * are defined in file.h
+	 * Make a directory in the file system. Returns 0 on success, -1 on
+	 * failure.
 	 */
-	inode (*mkdir)(const char* path, uint flags, 
-		uint permissions, void* context);
+	int (*mkdir)(const char* path, uint permissions, uint uid, uint gid, 
+		void* context);
 
 	/**
 	 * Read from the inode i into the buffer dst for sz bytes starting
 	 * at position start in the file. Returns the amount of bytes read
 	 * from the file.
 	 */
-	int (*read)(void* i, void* dst, uint sz, uint start, void* context);
+	int (*read)(void* i, void* dst, uint start, uint sz, void* context);
 
         /**
          * Read from the inode i into the buffer dst for sz bytes starting
          * at position start in the file. Returns the amount of bytes read
          * from the file.
          */ 
-        int (*write)(void* i, void* dst, uint sz, uint start, void* context);
+        int (*write)(void* i, void* dst, uint start, uint sz, void* context);
 
 	/**
 	 * Move file from src to dst. This function can also move
@@ -179,15 +174,84 @@ struct FSDriver
 void fsman_init(void);
 
 /**
- * Seek to a position in a file. The constants for whence are 
- * SEEK_SET, SEEK_END, and SEEK_CUR.
+ * Open the file with the given path and return an inode that describes the
+ * file. The permissions argument is only used if the file doesn't exist and
+ * can be created. The creation flag also must be passed. All flags
+ * are defined in file.h. Returns NULL if the file could not be opened.
  */
-uint fs_seek(inode i, int pos, uchar whence);
+inode fs_open(const char* path, uint permissions, uint flags);
 
 /**
- * Get statistics on a file. The information goes into the
- * destination buffer dst.
+ * Close an open file. Returns 0 on success, -1 otherwise.
  */
-int fs_fstat(inode i, struct file_stat* dst);
+int fs_close(inode i);
+
+/**
+ * Fill a file_stat structure with the stats for the given inode. Returns
+ * 0 on success, returns -1 on failure.
+ */
+int fs_stat(inode i, struct file_stat* dst);
+
+/**
+ * Create a file with the given permissions. The file will also be
+ * opened if it is created. Returns NULL if the file could not be created,
+ * otherwise returns an inode.
+ */
+inode fs_create(const char* path, uint flags, 
+		uint permissions, uint uid, uint gid);
+
+/**
+ * Change the ownership of the file to uid and gid. Returns 0
+ * on success, returns -1 on failure.
+ */
+int fs_chown(inode i, uint uid, uint gid);
+
+/**
+ * Change the permissions of the file. The permissions are
+ * defined in file.h. Returns 0 on success, -1 on failure.
+ */
+int fs_chmod(inode i, ushort permission);
+
+/**
+ * Creates a hard link to another file. Hard links cannot be
+ * created accross file systems. 
+ */
+int fs_link(const char* file, const char* link);
+
+/**
+ * Create a symbolic link in the file system.
+ */
+int fs_symlink(const char* file, const char* link);
+
+/**
+ * Create the directory designated by path. Returns an inode describing the
+ * directory on success, returns NULL on failure.
+ */
+inode fs_mkdir(const char* path, uint flags, 
+		uint permissions, uint uid, uint gid);
+
+/**
+ * Read sz bytes from inode i into the destination buffer dst starting at the
+ * seek position start.
+ */
+int fs_read(inode i, void* dst, uint sz, uint start);
+
+/**
+ * Write sz bytes from inode i from the source buffer src into the file at 
+ * the seek position start.
+ */
+int fs_write(inode i, void* src, uint sz, uint start);
+
+/**
+ * Rename (or move) a file from src to dst. Returns 0 on success, 
+ * returns -1 on failure.
+ */
+int fs_rename(const char* src, const char* dst);
+
+/**
+ * Remove a hard link to a file. If all hard links are unlinked,
+ * the file will be removed permanantly.
+ */
+int fs_unlink(const char* file);
 
 #endif

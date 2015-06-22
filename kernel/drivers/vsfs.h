@@ -2,7 +2,7 @@
 #define _VSFS_H_
 
 /* File Types */
-#define VSFS_UNUSED 0x1 /* File is unused */
+#define VSFS_UNUSED 0x0 /* File is unused */
 #define VSFS_FILE 0x1 /* Normal File */
 #define VSFS_DIR  0x2 /* Directory */
 #define VSFS_DEV  0x3 /* Device node */
@@ -56,6 +56,10 @@ struct vsfs_context
 	uint b_off;
 	uint bmap_off;
 
+	slock_t cache_lock;
+	uint cache_count; /* The amount of inodes fit in the cache */
+	struct vsfs_cache_inode* cache; /* Pointer to the cache */
+
 	/* File system hardware drivers */
 	struct FSHardwareDriver* hdd;
 	/* function forwards */
@@ -66,11 +70,16 @@ struct vsfs_context
 };
 
 /**
+ * Initilize a file system driver with the proper function pointers.
+ */
+int vsfs_driver_init(struct FSDriver* driver);
+
+/**
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int vsfs_init(uint start_sector, uint end_sector, uint block_size,
-	struct vsfs_context* context);
+int vsfs_init(uint start_sector, uint end_sector, uint block_size, 
+        uint cache_sz, uchar* cache, struct vsfs_context* context);
 
 /**
  * Find an inode in a file system. If the inode is found, load it into the dst
@@ -114,7 +123,7 @@ int vsfs_soft_link(const char* new_file, const char* link,
  * the user has requested a read that is outside of the bounds of the file,
  * don't read any bytes and return 0.
  */
-int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst,
+int vsfs_read(vsfs_inode* node, void* dst, uint start, uint sz,
 	struct vsfs_context* context);
 
 /**
@@ -127,7 +136,7 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst,
  * WARNING: Blocks allocated to files should be zerod if they aren't going to
  * be written to fully.
  */
-int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src,
+int vsfs_write(vsfs_inode* node, void* src, uint start, uint sz,
 	struct vsfs_context* context);
 
 /**

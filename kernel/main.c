@@ -9,7 +9,6 @@
 #include "file.h"
 #include "fsman.h"
 #include "ata.h"
-#include "vsfs.h"
 #include "stdlock.h"
 #include "proc.h"
 #include "vm.h"
@@ -23,8 +22,6 @@ void main_stack(void);
 extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
-
-struct vsfs_context context;
 
 /* Entry point for the kernel */
 int main(void)
@@ -100,7 +97,7 @@ void main_stack(void)
 
 	/* Enable interrupts */
 	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");
-	asm volatile("sti");	
+	//asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");

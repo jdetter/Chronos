@@ -21,21 +21,35 @@
 #define SEEK_END 0x02
 #define SEEK_CUR 0x03
 
-#define PERM_ARD 0444 /* Everyone can read */
-#define PERM_AWR 0222 /* Everyone can write*/
-#define PERM_AEX 0111 /* Everyone can execute */
+/**
+ * For use in functions requiring permissions:
+ */
 
-#define PERM_URD 0400 /* User can read */
-#define PERM_UWR 0200 /* User can write */
-#define PERM_UEX 0100 /* User can execute */
+#define PERM_ARD 0444 	/* Everyone can read */
+#define PERM_AWR 0222 	/* Everyone can write*/
+#define PERM_AEX 0111 	/* Everyone can execute */
 
-#define PERM_GRD 040 /* Group can read */
-#define PERM_GWR 020 /* Group can write */
-#define PERM_GEX 010 /* Group can execute */
+#define PERM_URD 0400 	/* User can read */
+#define PERM_UWR 0200 	/* User can write */
+#define PERM_UEX 0100 	/* User can execute */
 
-#define PERM_ORD 04 /* Others can read */
-#define PERM_OWR 02 /* Others can write */
-#define PERM_OEX 01 /* Others can execute */
+#define PERM_GRD 040 	/* Group can read */
+#define PERM_GWR 020 	/* Group can write */
+#define PERM_GEX 010 	/* Group can execute */
+
+#define PERM_ORD 04 	/* Others can read */
+#define PERM_OWR 02 	/* Others can write */
+#define PERM_OEX 01 	/* Others can execute */
+
+/**
+ * Flag options for use in open:
+ */
+#define O_CREATE  0x01	/* If the file has not been created, create it. */
+#define O_APPEND  0x02	/* Start writing to the end of the file. */
+#define O_DIRTORY 0x04	/* Fail to open the file unless it is a directory. */
+#define O_NOATIME 0x08 	/* Do not change access time when file is opened. */
+#define O_TRUC    0x10	/* Once the file is opened, truncate the contents. */
+#define O_SERASE  0x20  /* Securely erase files when deleting or truncating */
 
 /**
  * Structure for getting statistics on a file.

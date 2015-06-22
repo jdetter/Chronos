@@ -18,6 +18,7 @@ typedef unsigned long ulong;
 
 #include "file.h"
 #include "fsman.h"
+#include "stdlock.h"
 #include "vsfs.h"
 
 /* Forward declarations */
@@ -42,20 +43,74 @@ void read_inode(uint inode_num, vsfs_inode* inode,
 void file_name(const char *path_orig, char* dst);
 void parent_path(const char *path, char* dst);
 
+struct vsfs_cache_inode
+{
+	/* Using composition, this can reduce to an inode. */
+	struct vsfs_inode node;
+	char name[VSFS_MAX_NAME];
+	int inode_number;
+	uchar allocated; /* Whether or not this cached inode is in use. */
+};
+
+/* Caching functions */
+struct vsfs_inode* vsfs_alloc_inode(struct vsfs_context* context);
+void vsfs_free_inode(struct vsfs_inode* node, struct vsfs_context* context);
 
 #define BLOCKSIZE 512
 /** Start standardized vsfs library */
+
+int vsfs_init(uint start_sector, uint end_sector, uint block_size,
+        uint cache_sz, uchar* cache, struct vsfs_context* context);
+void* vsfs_open(const char* path, struct vsfs_context* context);
+int vsfs_close(void* i, struct vsfs_context* context);
+int vsfs_stat(void* i, struct file_stat* dst, struct vsfs_context* context);
+int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
+                struct vsfs_context * context);
+int vsfs_chown(void* i, uint uid, uint gid, struct vsfs_context* context);
+int vsfs_chmod(void* i, uint permission, struct vsfs_context* context);
+int vsfs_truncate(void* i, int sz, void* context);
+int _vsfs_link(const char* file, const char* link,
+                struct vsfs_context* context);
+int vsfs_sym_link(const char* file, const char* link,
+                struct vsfs_context* context);
+int vsfs_mkdir(const char* path, uint permissions,
+                uint uid, uint gid, struct vsfs_context* context);
+
+int vsfs_driver_init(struct FSDriver* driver)
+{
+	driver->init = (void*)vsfs_init;
+	driver->open = (void*)vsfs_open;
+	driver->close = (void*)vsfs_close;
+	driver->stat = (void*)vsfs_stat;
+	driver->create = (void*)vsfs_create;
+	driver->chown = (void*)vsfs_chown;
+	driver->chmod = (void*)vsfs_chmod;
+	driver->truncate = (void*)vsfs_truncate;
+	driver->link = (void*)_vsfs_link;
+	driver->symlink = (void*)vsfs_sym_link;
+	driver->mkdir = (void*)vsfs_mkdir;
+	driver->read = (void*)vsfs_read;
+	driver->write = (void*)vsfs_write;
+
+	struct vsfs_context* context = 
+		(struct vsfs_context*)driver->context;
+	context->hdd = driver->driver;
+	return 0;
+}
 
 /**
  * Setup the file system driver with the file system starting at the given
  * sector. The first sector of the disk contains the super block (see above).
  */
-int vsfs_init(uint start_sector, uint end_sector, uint block_size,
-		struct vsfs_context* context, uchar* cache, uint cache_sz)
+int vsfs_init(uint start_sector, uint end_sector, uint block_size, 
+	uint cache_sz, uchar* cache, struct vsfs_context* context)
 {
   context->start = start_sector;
   uchar super_block[512];
-  context->hdd->read(super_block, start_sector, context->hdd);
+  if(context->hdd->read(super_block, start_sector, 
+		context->hdd))
+	return -1;
+
   memmove(&context->super, super_block, sizeof(vsfs_superblock));
   context->imap_off = context->start + 1;
   context->bmap_off = context->imap_off + context->super.imap;
@@ -63,24 +118,167 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
   context->b_off = context->i_off + 
     (context->super.inodes / (512 / sizeof(vsfs_inode)));
 
+  /* Function forwards */
   context->read = context->hdd->read;
   context->write = context->hdd->write;
 
- return 0;
+  /* Setup cache */
+  uint cache_count = cache_sz / sizeof(struct vsfs_cache_inode);
+  if(cache_count < 1) return -1;
+  context->cache_count = cache_count;
+  context->cache = (struct vsfs_cache_inode*)cache;
+  slock_init(&context->cache_lock);
+  int x;
+  for(x = 0;x < context->cache_count;x++)
+    context->cache[x].allocated = 0;
+
+  return 0;
 }
 
-void* vsfs_open(const char* path, uint flags, uint permissions, 
+void* vsfs_open(const char* path, struct vsfs_context* context)
+{
+	struct vsfs_inode i;
+	int ino = vsfs_lookup(path, &i, context);
+	if(ino == 0) return NULL; /* File doesn't exist*/
+	
+	/* Get an inode from the cache */
+	struct vsfs_inode* dst = vsfs_alloc_inode(context);
+	if(dst == NULL) return NULL;
+	memmove(dst, &i, sizeof(struct vsfs_inode));
+	return dst;
+}
+
+int vsfs_close(void* i, struct vsfs_context* context)
+{
+	struct vsfs_cache_inode* in = i;
+	/* Flush the inode to disk */
+	write_inode(in->inode_number, &in->node, context);
+
+	vsfs_free_inode(i, context);
+	return 0;
+}
+
+int vsfs_stat(void* i, struct file_stat* dst, struct vsfs_context* context)
+{
+	struct vsfs_cache_inode* in = i;
+	dst->inode = in->inode_number;
+	dst->owner_id = in->node.uid;
+	dst->group_id = in->node.gid;
+	dst->perm = in->node.perm;
+	dst->sz = in->node.size;
+	dst->links = in->node.links_count;
+	dst->type = in->node.type;
+	
+	return 0;
+}
+
+int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
+		struct vsfs_context * context)
+{
+	struct vsfs_inode in;
+	/* First check if the file exists */
+	int ino = vsfs_lookup(path, &in, context);
+	if(ino != 0) return -1; /* file exists */
+
+	in.type = VSFS_FILE;
+	in.perm = permissions;
+	in.uid = uid;
+	in.gid = gid;
+	
+	/* Link the file */
+	if(vsfs_link(path, &in, context))
+		return -1; /* Couldn't create file */
+	return 0;
+}
+
+int vsfs_chown(void* i, uint uid, uint gid, struct vsfs_context* context)
+{
+	struct vsfs_inode* in = i;
+	in->uid = uid;
+	in->gid = gid;
+	return 0;
+}
+
+int vsfs_chmod(void* i, uint permission, struct vsfs_context* context)
+{
+	struct vsfs_inode* in = i;
+	in->perm = permission;
+	return 0;
+}
+
+int vsfs_truncate(void* i, int sz, void* context)
+{
+	/* Warning: experimental not tested */
+	struct vsfs_inode* in = i;
+	if(sz < in->size) return 0;
+	in->size = sz;
+	return 0;
+}
+
+int _vsfs_link(const char* file, const char* link, 
 		struct vsfs_context* context)
 {
-		
+	return vsfs_hard_link(file, link, context);
 }
+
+int vsfs_sym_link(const char* file, const char* link, 
+		struct vsfs_context* context)
+{
+	return vsfs_soft_link(file, link, context);
+}
+
+int vsfs_mkdir(const char* path, uint permissions, 
+		uint uid, uint gid, struct vsfs_context* context)
+{
+        struct vsfs_inode in;
+        /* First check if the file exists */
+        int ino = vsfs_lookup(path, &in, context);
+        if(ino != 0) return -1; /* file exists */
+
+        in.type = VSFS_DIR;
+        in.perm = permissions;
+        in.uid = uid;
+        in.gid = gid;
+
+        /* Link the file */
+        if(vsfs_link(path, &in, context))
+                return -1; /* Couldn't create file */
+        return 0;
+}
+
 
 /** End standardized vsfs library */
 
-struct vsfs_inode* vsfs_alloc_inode(void)
+/** Start vsfs caching functions */
+
+struct vsfs_inode* vsfs_alloc_inode(struct vsfs_context* context)
 {
-	
+	/* Grab the lock */
+	slock_acquire(&context->cache_lock);
+	struct vsfs_cache_inode* result = NULL;
+	int x;
+	for(x = 0;x < context->cache_count;x++)
+	{
+		if(context->cache[x].allocated == 0)
+		{
+			/* Mark inode as allocated */
+			context->cache[x].allocated = 1;
+			result = context->cache + x;
+			break;
+		}
+	}
+
+	slock_release(&context->cache_lock);
+	return (struct vsfs_inode*)result;
 }
+
+void vsfs_free_inode(struct vsfs_inode* node, struct vsfs_context* context)
+{
+	struct vsfs_cache_inode* in = (struct vsfs_cache_inode*)node;
+	in->allocated = 0;
+}
+
+/** End vsfs caching functions */
 
 int vsfs_lookup(const char* path_orig, vsfs_inode* dst, 
 	struct vsfs_context* context)
@@ -597,8 +795,8 @@ int vsfs_link(const char* path, vsfs_inode* new_inode,
 		struct vsfs_context* context)
 {
   /* Create a temporary buffer for our path*/
-  char tmp_path[1024];
-  strncpy(tmp_path, path, 1024);
+  char tmp_path[FILE_MAX_PATH];
+  strncpy(tmp_path, path, FILE_MAX_PATH);
 
   /* Find the parent directory.*/
   vsfs_inode parent;
@@ -628,6 +826,9 @@ int vsfs_link(const char* path, vsfs_inode* new_inode,
       new_inode->links_count = 1;
       new_inode->size = 0;
       new_inode->blocks = 0;
+      memset(new_inode->direct, 0, VSFS_DIRECT);
+      new_inode->indirect = 0;
+      new_inode->double_indirect = 0;
 
       if(new_inode->type == VSFS_DIR)
       {
@@ -690,7 +891,7 @@ int vsfs_soft_link(const char* new_file, const char* link,
  * the user has requested a read that is outside of the bounds of the file,
  * don't read any bytes and return -1.
  */
-int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst,
+int vsfs_read(vsfs_inode* node, void* dst, uint start, uint sz,
 		struct vsfs_context* context)
 {
   if((start + sz) > node->size){
@@ -738,7 +939,7 @@ int vsfs_read(vsfs_inode* node, uint start, uint sz, void* dst,
  * WARNING: Blocks allocated to files should be zerod if they aren't going to
  * be written to fully.
  */
-int vsfs_write(vsfs_inode* node, uint start, uint sz, void* src,
+int vsfs_write(vsfs_inode* node, void* src, uint start, uint sz,
 		struct vsfs_context* context)
 {
   if((start + sz) > node->size){

@@ -1,8 +1,9 @@
 #include "types.h"
 #include "elf.h"
-#include "vsfs.h"
 #include "tty.h"
 #include "stdlock.h"
+#include "file.h"
+#include "fsman.h"
 #include "proc.h"
 #include "vm.h"
 #include "trap.h"
@@ -129,21 +130,20 @@ struct proc* spawn_tty(tty_t t)
 
 uint load_binary(const char* path, struct proc* p)
 {
-	vsfs_inode process_file;
-	int inonum;
-        if((inonum = vsfs_lookup(path, &process_file, &context)) == 0)
-                panic("Cannot find process executable.");
+	inode process_file = fs_open(path, 0, 0);
+        if(process_file == NULL)
+		panic("Cannot find process executable.");
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
-        vsfs_read(&process_file, 0, 4, elf_buffer, &context);
+        fs_read(process_file, elf_buffer, 4, 0);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4))
                 panic("Elf magic is wrong");
 
 	/* Load the entire elf header. */
         struct elf32_header elf;
-        vsfs_read(&process_file, 0, sizeof(struct elf32_header), &elf, &context);
+        fs_read(process_file, &elf, sizeof(struct elf32_header), 0);
         /* Check class */
         if(elf.exe_class != 1) panic("Binary not executable");
         if(elf.version != 1) panic("Binary wrong ELF version");
@@ -159,9 +159,9 @@ uint load_binary(const char* path, struct proc* p)
         {
                 int header_loc = elf.e_phoff + (x * elf.e_phentsize);
                 struct elf32_program_header curr_header;
-                vsfs_read(&process_file, header_loc,
+                fs_read(process_file, &curr_header,
                         sizeof(struct elf32_program_header),
-                        &curr_header, &context);
+                        header_loc);
                 /* Skip null program headers */
                 if(curr_header.type == ELF_PH_TYPE_NULL) continue;
 
@@ -188,8 +188,7 @@ uint load_binary(const char* path, struct proc* p)
                         /* zero this region */
                         memset(hd_addr, 0, mem_sz);
                         /* Load the section */
-                        vsfs_read(&process_file, offset,
-                                file_sz, hd_addr, &context);
+                        fs_read(process_file, hd_addr, file_sz, offset);
                         /* By default, this section is rwx. */
                 }
         }
