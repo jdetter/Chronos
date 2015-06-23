@@ -10,25 +10,20 @@
 int main(int argc, char** argv)
 {
 	printf("I am a child!\n");
-	int fd = open("/file", O_CREATE | O_RDWR, 0);
+	int fd = open("/", O_RDWR, 0);
 	if(fd < 0)
 	{
 		printf("Couldn't open file.\n");
 	} else printf("File opened!\n");
 
-	/* Write to file */
-	char write_buffer[] = {'h', 'i', 'y', 'a', 0};
-	int wrote = write(fd, write_buffer, 4);
-	printf("Wrote bytes: %d\n", wrote);
-
-	int seek = lseek(fd, 0, SEEK_SET);
-	printf("Seeking: %d\n", seek);
-
-	printf("Reading file...\n");
-	char elf_buffer[4];
-	int bytes = read(fd, elf_buffer, 4);
-	printf("Bytes read: %d\n", bytes);
+	/* read the directory */
 	int x;
-	for(x = 0;x < 4;x++)printf("%d: %c %d\n", x, elf_buffer[x], elf_buffer[x]);
+	for(x = 0;;x++)
+	{
+		struct directent entry;
+		if(readdir(fd, x, &entry) < 0) break;
+		printf("%s  %d  %d\n", entry.name, entry.type, entry.inode);
+	}	
+
 	exit();
 }

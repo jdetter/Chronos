@@ -9,8 +9,6 @@
 #define FILE_TYPE_DEVICE  0x03
 #define FILE_TYPE_SPECIAL 0x04
 
-
-
 /**
  * For use in function fs_seek:
  *  + SEEK_SET Sets the current seek from the start of the file.
@@ -66,6 +64,16 @@ struct file_stat
         uint inode; /* inode number of the file  */
         uint links; /* The amount of hard links to this file */
         uint type; /* See options for file type above*/
+};
+
+/**
+ * Represents a generic directory entry.
+ */
+struct directent
+{
+	uint inode; /* Inode number of the directory entry */
+	uint type; /* Type of file (see above) */
+	char name[FILE_MAX_NAME]; /* name of the directory entry */
 };
 
 #endif

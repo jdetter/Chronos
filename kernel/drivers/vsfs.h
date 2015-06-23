@@ -30,11 +30,6 @@ typedef struct vsfs_inode {
 	uint double_indirect;
 } vsfs_inode;
 
-typedef struct directent {
-	char name[VSFS_MAX_NAME];
-	int inode_num;
-} directent;
-
 /**
  * File system information. The superblock is followed by the inode bitmap which
  * is followed by the block bitmap. The 0th inode should ALWAYS be free. The
@@ -46,6 +41,12 @@ typedef struct vsfs_superblock {
 	uint imap; /* Amount of blocks for inode bitmap. */
 	uint inodes; /* How many inodes are there? */
 } vsfs_superblock;
+
+struct vsfs_directent {
+        char name[VSFS_MAX_NAME];
+        int inode_num;
+};
+typedef struct vsfs_directent vsfs_directent;
 
 struct vsfs_context
 {

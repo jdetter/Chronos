@@ -76,6 +76,9 @@ int vsfs_sym_link(const char* file, const char* link,
 int vsfs_mkdir(const char* path, uint permissions,
                 uint uid, uint gid, struct vsfs_context* context);
 
+int vsfs_readdir(void* dir, int index, struct directent* dst, 
+		struct vsfs_context* context);
+
 int vsfs_driver_init(struct FSDriver* driver)
 {
 	driver->init = (void*)vsfs_init;
@@ -91,6 +94,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->mkdir = (void*)vsfs_mkdir;
 	driver->read = (void*)vsfs_read;
 	driver->write = (void*)vsfs_write;
+	driver->readdir = (void*)vsfs_readdir;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -145,9 +149,14 @@ void* vsfs_open(const char* path, struct vsfs_context* context)
 	if(ino == 0) return NULL; /* File doesn't exist*/
 	
 	/* Get an inode from the cache */
-	struct vsfs_inode* dst = vsfs_alloc_inode(context);
+	struct vsfs_cache_inode* dst = 
+		(struct vsfs_cache_inode*)vsfs_alloc_inode(context);
 	if(dst == NULL) return NULL;
 	memmove(dst, &i, sizeof(struct vsfs_inode));
+
+	/* Setup stats while were here */
+	dst->inode_number = ino;
+
 	return dst;
 }
 
@@ -249,6 +258,33 @@ int vsfs_mkdir(const char* path, uint permissions,
         return 0;
 }
 
+int vsfs_readdir(void* dir, int index, struct directent* dst, 
+                struct vsfs_context* context)
+{
+	/* Directories per block */
+	int dpb = BLOCKSIZE / sizeof(struct vsfs_directent);
+	struct vsfs_inode* i = dir;
+	if(i->size <= index * sizeof(struct vsfs_directent))
+		return -1;
+
+	/* Get the block */
+	int block = index / dpb;
+	int offset = index % dpb;
+	char block_buffer[BLOCKSIZE];
+	read_block(dir, block, block_buffer, context);
+	struct vsfs_directent* entry = 
+		((struct vsfs_directent*)block_buffer) + offset;
+	
+	/* Parse the directory entry */
+	dst->inode = entry->inode_num;
+	memset(dst->name, 0, FILE_MAX_NAME);
+	strncpy(dst->name, entry->name, FILE_MAX_NAME);
+	/* Get the inode */
+	struct vsfs_inode  in;
+	read_inode(dst->inode, &in, context);
+	dst->type = in.type;
+	return 0;	
+}
 
 /** End standardized vsfs library */
 
@@ -298,9 +334,9 @@ int vsfs_lookup(const char* path_orig, vsfs_inode* dst,
 	read_inode(1, &curr_inode, context);
 	int path_pos = 1;
 
-	int entries_per_block = 512 / sizeof(struct directent);
+	int entries_per_block = 512 / sizeof(struct vsfs_directent);
 	char sector[512];
-	struct directent* entries = (struct directent*)sector;
+	struct vsfs_directent* entries = (struct vsfs_directent*)sector;
 	while(path_split[path_pos] && path_pos < max_depth)
 	{
 		/* Enumerate the current inode. */
@@ -454,8 +490,8 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   vsfs_inode child;
   int child_num = vsfs_lookup(path, &child, context);
   
-  directent last_entry;
-  directent entries[4];
+  vsfs_directent last_entry;
+  vsfs_directent entries[4];
   uint last_entry_inum;
 
   read_block(&parent, parent.size / 512, entries, context);
@@ -467,14 +503,14 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
       break;
     }
   }
-  memmove(&last_entry, &entries[last_index], sizeof(directent));
+  memmove(&last_entry, &entries[last_index], sizeof(vsfs_directent));
   
   int blocks;
   int done = 0;
   for(blocks = 0; !done && blocks < ((parent.size+ 511)/512); blocks++){
     read_block(&parent, blocks, entries, context);
     int i;
-    for(i = 0; i < (512/sizeof(directent)); i++){
+    for(i = 0; i < (512/sizeof(vsfs_directent)); i++){
       if(entries[i].inode_num == child_num){
         child.links_count--;
         if(child.links_count == 0){
@@ -487,9 +523,9 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
           done = 1;
           break;
         } 
-        memmove(&entries[i], &last_entry, sizeof(directent));
+        memmove(&entries[i], &last_entry, sizeof(vsfs_directent));
         write_block(&child, blocks, entries, context);
-        parent.size -= sizeof(directent);
+        parent.size -= sizeof(vsfs_directent);
         write_inode(parent_num, &parent, context);
         done = 1;
       }
@@ -708,8 +744,8 @@ int write_block(vsfs_inode* inode, uint block_index, void* src,
 int allocate_directent(vsfs_inode* parent, char* name, uint inode_num,
 		struct vsfs_context* context)
 {
-  directent new_directory;
-  memset(&new_directory, 0, sizeof(directent));
+  vsfs_directent new_directory;
+  memset(&new_directory, 0, sizeof(vsfs_directent));
 
   strncpy((char*)&new_directory.name, name, VSFS_MAX_NAME);
   new_directory.inode_num = inode_num;
@@ -721,17 +757,17 @@ int allocate_directent(vsfs_inode* parent, char* name, uint inode_num,
     add_block_to_inode(parent, block_num, context);  
   }
 
-  directent entries[512 / sizeof(directent)];
+  vsfs_directent entries[512 / sizeof(vsfs_directent)];
   read_block(parent, block , entries, context); 
 
   int i;
-  for(i = 0; i < (512 / sizeof(directent)); i++){
+  for(i = 0; i < (512 / sizeof(vsfs_directent)); i++){
     if(entries[i].inode_num == 0){
       break;
     }
   }
-  memmove(&entries[i], &new_directory, sizeof(directent));
-  parent->size += sizeof(directent);
+  memmove(&entries[i], &new_directory, sizeof(vsfs_directent));
+  parent->size += sizeof(vsfs_directent);
   write_block(parent, block, entries, context);
 
   /* Increment child's link count */

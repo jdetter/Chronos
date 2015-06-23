@@ -101,7 +101,7 @@ void main_stack(void)
 
 	/* Enable interrupts */
 	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");
-	//asm volatile("sti");	
+	asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");

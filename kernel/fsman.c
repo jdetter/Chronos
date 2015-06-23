@@ -231,7 +231,9 @@ int fs_close(inode i)
 int fs_stat(inode i, struct file_stat* dst)
 {
 	/* This is completely file system specific. */
-	return i->fs->stat(i->inode_ptr, dst, i->fs->context);
+	int result = i->fs->stat(i->inode_ptr, dst, i->fs->context);
+	dst->inode = i->inode_num;
+	return result;
 }
 
 inode fs_create(const char* path, uint flags, 
@@ -428,9 +430,14 @@ int fs_unlink(const char* file)
 		return -1;
 
 	struct FSDriver* fs = fs_find_fs(file_resolved);
-	int result = fs->unlink(file_resolved);
+	int result = fs->unlink(file_resolved, fs->context);
 
 	return result;
+}
+
+int fs_readdir(inode i, int index, struct directent* dst)
+{
+	return i->fs->readdir(i->inode_ptr, index, dst, i->fs->context);
 }
 
 int fs_mount(const char* device, const char* point)

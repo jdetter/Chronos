@@ -81,12 +81,12 @@ void ls(char* directory)
 	}
 
 	int x;
-	for(x = 0;x < dir.size / sizeof(struct directent);x++)
+	for(x = 0;x < dir.size / sizeof(struct vsfs_directent);x++)
 	{
-		struct directent entry;
+		struct vsfs_directent entry;
 		vsfs_read(&dir, &entry, 
-			x * sizeof(struct directent), 
-			sizeof(struct directent),
+			x * sizeof(struct vsfs_directent), 
+			sizeof(struct vsfs_directent),
 			&context);
 		printf("%s\t\t%d\n", entry.name, entry.inode_num);
 	}

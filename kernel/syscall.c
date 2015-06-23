@@ -259,12 +259,28 @@ int syscall_handler(uint* esp)
 		case SYS_mv:
 			break;
 		case SYS_fstat:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_buffer(str_arg1, sizeof(struct file_stat), 
+				SYSCALL_STRLEN, esp, 2)) break;
+			if(syscall_get_int(&int_arg2, esp, 2)) break;
+			return_value = sys_fstat(int_arg1, 
+				(struct file_stat*)int_arg2);
 			break;
 		case SYS_wait_s:
 			break;
 		case SYS_wait_t:
 			break;
 		case SYS_signal:
+			break;
+		case SYS_readdir:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			if(syscall_get_int(&int_arg2, esp, 2)) break;
+			if(syscall_get_buffer(str_arg1, 
+				sizeof(struct directent),
+				SYSCALL_STRLEN, esp, 3)) break;
+			if(syscall_get_int(&int_arg3, esp, 3)) break;
+			return_value = sys_readdir(int_arg1, int_arg2,
+				(struct directent*)int_arg3);
 			break;
 	}
 	
@@ -662,9 +678,9 @@ int sys_signal(struct cond* c)
 	return 0;
 }
 
-int sys_chdir(const char* dir, uint sz){
+int sys_chdir(const char* dir){
 
-  strncpy(rproc->cwd, dir, sz);
+  //strncpy(rproc->cwd, dir, sz);
   return 0;
 }
 
@@ -678,23 +694,33 @@ int sys_create(const char* file, uint permissions){
   return 0;
 }
 
-int mkdir(const char* dir, uint permissions){
+int sys_mkdir(const char* dir, uint permissions){
   fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
   return 0;
 }
 
-int rm(const char* file){
+int sys_rm(const char* file){
   return 0;
 }
 
-int rmdir(const char* dir){
+int sys_rmdir(const char* dir){
   return 0;
 }
 
-int mv(const char* orig, const char* dst){
+int sys_mv(const char* orig, const char* dst){
   return 0;
 }
 
-int fstat(const char* path, struct file_stat* dst){
-  return 0;
+int sys_fstat(int fd, struct file_stat* dst)
+{
+  if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
+	return -1;
+  return fs_stat(rproc->file_descriptors[fd].i, dst);
+}
+
+int sys_readdir(int fd, int index, struct directent* dst)
+{
+	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
+		return -1;
+	return fs_readdir(rproc->file_descriptors[fd].i, index, dst);
 }

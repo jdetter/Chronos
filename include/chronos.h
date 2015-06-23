@@ -25,6 +25,7 @@
 #define SYS_wait_s	0x13
 #define SYS_wait_t	0x14
 #define SYS_signal 	0x15
+#define SYS_readdir	0x16
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -180,7 +181,7 @@ int mv(const char* orig, const char* dst);
  * Read that stats from file path and read them into dst. Returns 0 on sucess,
  * -1 on failure.
  */
-int fstat(const char* path, struct file_stat* dst);
+int fstat(int fd, struct file_stat* dst);
 
 /**
  * Wait on the given condition variable c and release the spin lock.
@@ -196,6 +197,13 @@ int wait_t(struct cond* c, struct tlock* lock);
  * Signal (single wakeup) a condition variable.
  */
 int signal(struct cond* c);
+
+/**
+ * Read from the file descriptor directory fd. The directory entry at index
+ * index will be read into dst. If you have reached the end of the
+ * directory, -1 is returned. Otherwise 0 is returned.
+ */
+int readdir(int fd, int index, struct directent* dst);
 
 #endif
 

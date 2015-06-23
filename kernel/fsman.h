@@ -157,7 +157,14 @@ struct FSDriver
 	 * Remove the file or directory given by file. Directories will
 	 * be removed without warning.
 	 */
-	int (*unlink)(const char* file);
+	int (*unlink)(const char* file, void* context);
+
+	/**
+	 * Read the directory entry at index in the directory dir. Returns
+	 * 0 on success, -1 when the end of the directory has been reached.
+	 */
+	int (*readdir)(void* dir, int index, 
+		struct directent* dst, void* context);
 
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
@@ -254,5 +261,10 @@ int fs_rename(const char* src, const char* dst);
  * the file will be removed permanantly.
  */
 int fs_unlink(const char* file);
+
+/**
+ * Read the directory entry at the specified index.
+ */
+int fs_readdir(inode i, int index, struct directent* dst);
 
 #endif
