@@ -8,7 +8,8 @@ KERNEL_OBJECTS := \
 	kcond \
 	syscall \
 	trap \
-	fsman
+	fsman \
+	devman
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \

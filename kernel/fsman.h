@@ -37,8 +37,8 @@ struct FSHardwareDriver
  */
 
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
-#define FS_TABLE_MAX 16 /* Maximum number of mounted file systems */
-#define FS_CACHE_SIZE 1024
+#define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
+#define FS_CACHE_SIZE 4096
 #define FS_CONTEXT_SIZE 128 /* Size in bytes of an fs context */
 
 /** 
@@ -92,7 +92,7 @@ struct FSDriver
 
 	/**
  	 * Create a file in the file system given by path. Returns 0 on
-	 * success, -1 on failure.
+	 * success, -1 on failure. If the file already exists, returns 0.
 	 */
 	int (*create)(const char* path, uint permissions, uint uid,
 		uint gid, void* context);
@@ -179,7 +179,8 @@ void fsman_init(void);
  * can be created. The creation flag also must be passed. All flags
  * are defined in file.h. Returns NULL if the file could not be opened.
  */
-inode fs_open(const char* path, uint permissions, uint flags);
+inode fs_open(const char* path, uint flags, 
+		uint permissions, uint uid, uint gid);
 
 /**
  * Close an open file. Returns 0 on success, -1 otherwise.

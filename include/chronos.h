@@ -26,11 +26,6 @@
 #define SYS_wait_t	0x14
 #define SYS_signal 	0x15
 
-/* From where to seek in lseek */
-#define FSEEK_CUR	0x0
-#define FSEEK_SET	0x1
-#define FSEEK_END	0x2
-
 /* Segment descriptions */
 /* Null segment		0x00 */
 #define SEG_KERNEL_CODE	0x01
@@ -95,7 +90,7 @@ void exit(void) __attribute__ ((noreturn));
  * Open the file designated by the path. The resulting file descriptor will
  * be returned if the file exists and the user is allowed to open the file.
  */
-int open(const char* path);
+int open(const char* path, int flags, int permissions);
 
 /**
  * Close the file descriptor fd. This allows the file descriptor to be reused.

@@ -33,4 +33,12 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver);
  * src buffer is expected to be at least 512 bytes. 
  */
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver);
+
+/**
+ * For setting up generic io driver.
+ */
+int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata);
+
+#define ATA_DRIVER_COUNT 4
+extern struct FSHardwareDriver* ata_drivers[];
 #endif

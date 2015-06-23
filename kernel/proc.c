@@ -1,7 +1,9 @@
 #include "types.h"
+#include "file.h"
 #include "elf.h"
-#include "tty.h"
 #include "stdlock.h"
+#include "devman.h"
+#include "tty.h"
 #include "file.h"
 #include "fsman.h"
 #include "proc.h"
@@ -12,7 +14,6 @@
 #include "stdlib.h"
 #include "x86.h"
 #include "syscall.h"
-#include "file.h"
 #include "chronos.h"
 
 extern struct vsfs_context context;
@@ -130,7 +131,7 @@ struct proc* spawn_tty(tty_t t)
 
 uint load_binary(const char* path, struct proc* p)
 {
-	inode process_file = fs_open(path, 0, 0);
+	inode process_file = fs_open(path, 0, 0, 0, 0);
         if(process_file == NULL)
 		panic("Cannot find process executable.");
 

@@ -19,4 +19,9 @@ uint serial_write(void* dst, uint sz);
  */
 uint serial_read(void* dst, uint sz);
 
+/**
+ * Setup io driver for this serial connection.
+ */
+int serial_io_setup(struct IODriver* driver);
+
 #endif

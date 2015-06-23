@@ -48,7 +48,7 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 		exit(1);
 	}
 
-	return SECTSIZE;
+	return 0;
 }
 
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
@@ -66,8 +66,7 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 		exit(1);
 	}
 
-	return SECTSIZE;
-
+	return 0;
 }
 
 extern struct vsfs_superblock super;
@@ -148,6 +147,7 @@ int main(int argc, char** argv)
 	driver.valid = 1;
 	driver.read = ata_readsect;
 	driver.write = ata_writesect;
+	context.hdd = &driver;
 	uchar fake_cache[512];
 	vsfs_init(start, 0, 512, 512, fake_cache, &context);
 

@@ -16,8 +16,10 @@
 struct file_descriptor
 {
 	uchar type;
+	uint flags;
 	int seek;
 	inode i;
+	struct IODriver* device;
 };
 
 #define MAX_FILES 0x20

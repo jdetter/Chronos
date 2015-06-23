@@ -239,6 +239,7 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 	if(val_signed < 0)
 	{
 		neg = 1;
+		val_signed = -val_signed;
 	}
 
 	if(radix == 16) neg = 0;
@@ -259,7 +260,7 @@ void itoa(int val_signed, char* dst_c, uint sz, uint radix)
 	x = 0;
 	if(neg)
 	{
-		dst_c[0] = 0;
+		dst_c[0] = '-';
 		x = 1;	
 	}
 	int pos = strlen(dst) - 1;

@@ -66,8 +66,6 @@ struct tty
 
 typedef struct tty* tty_t;
 
-void cprintf(char* fmt, ...);
-
 /**
  * Return a tty object type for the tty at the index. NULL is returned if
  * index is out of bounds.
@@ -82,6 +80,11 @@ tty_t tty_find(uint index);
  */
 void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled, 
 	uint mem_start);
+
+/**
+ * Setup an io driver for a specific tty.
+ */
+int tty_io_setup(struct IODriver* driver, uint tty_num);
 
 /**
  * Returns the number of this tty.

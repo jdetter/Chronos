@@ -1,15 +1,15 @@
 #include "types.h"
+#include "file.h"
 #include "pic.h"
 #include "pit.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "stdmem.h"
 #include "boot_pic.h"
-#include "tty.h"
-#include "file.h"
 #include "fsman.h"
-#include "ata.h"
 #include "stdlock.h"
+#include "devman.h"
+#include "tty.h"
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
@@ -67,6 +67,10 @@ void main_stack(void)
 {
 	cprintf("[ OK ]\n");
 	/* We now have a proper kernel stack */
+
+	cprintf("Detecting devices...\t\t\t\t\t\t\t");
+	dev_init();
+	cprintf("[ OK ]\n");
 
 	/* Start disk driver */
 	cprintf("Starting file system manager...\t\t\t\t\t\t");

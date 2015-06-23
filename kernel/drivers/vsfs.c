@@ -105,6 +105,9 @@ int vsfs_driver_init(struct FSDriver* driver)
 int vsfs_init(uint start_sector, uint end_sector, uint block_size, 
 	uint cache_sz, uchar* cache, struct vsfs_context* context)
 {
+  /* check context size */
+  if(sizeof(struct vsfs_context) > FS_CONTEXT_SIZE)
+    return -1;
   context->start = start_sector;
   uchar super_block[512];
   if(context->hdd->read(super_block, start_sector, 
@@ -178,7 +181,7 @@ int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
 	struct vsfs_inode in;
 	/* First check if the file exists */
 	int ino = vsfs_lookup(path, &in, context);
-	if(ino != 0) return -1; /* file exists */
+	if(ino != 0) return 0; /* file exists */
 
 	in.type = VSFS_FILE;
 	in.perm = permissions;
@@ -186,7 +189,7 @@ int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
 	in.gid = gid;
 	
 	/* Link the file */
-	if(vsfs_link(path, &in, context))
+	if(vsfs_link(path, &in, context) < 0)
 		return -1; /* Couldn't create file */
 	return 0;
 }
@@ -826,7 +829,7 @@ int vsfs_link(const char* path, vsfs_inode* new_inode,
       new_inode->links_count = 1;
       new_inode->size = 0;
       new_inode->blocks = 0;
-      memset(new_inode->direct, 0, VSFS_DIRECT);
+      memset(new_inode->direct, 0, VSFS_DIRECT * sizeof(uint));
       new_inode->indirect = 0;
       new_inode->double_indirect = 0;
 

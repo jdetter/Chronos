@@ -19,7 +19,7 @@
  */
 #define SEEK_SET 0x01
 #define SEEK_END 0x02
-#define SEEK_CUR 0x03
+#define SEEK_CUR 0x04
 
 /**
  * For use in functions requiring permissions:
@@ -46,10 +46,13 @@
  */
 #define O_CREATE  0x01	/* If the file has not been created, create it. */
 #define O_APPEND  0x02	/* Start writing to the end of the file. */
-#define O_DIRTORY 0x04	/* Fail to open the file unless it is a directory. */
+#define O_DIR     0x04	/* Fail to open the file unless it is a directory. */
 #define O_NOATIME 0x08 	/* Do not change access time when file is opened. */
 #define O_TRUC    0x10	/* Once the file is opened, truncate the contents. */
 #define O_SERASE  0x20  /* Securely erase files when deleting or truncating */
+#define O_RDONLY  0x40 /* Open for reading */
+#define O_WRONLY  0x80 /* Open for writing */
+#define O_RDWR	  (O_RDONLY | O_WRONLY)
 
 /**
  * Structure for getting statistics on a file.

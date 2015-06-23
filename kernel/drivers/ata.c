@@ -2,11 +2,13 @@
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"
+#include "devman.h"
 #include "ata.h"
 #include "x86.h"
 #include "panic.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "fsman.h"
 
 #define PRIMARY_ATA_BASE 0x1F0 /* Base port for primary controller */
 #define SECONDARY_ATA_BASE 0x170 /* Base port for secondary controller */
@@ -61,7 +63,6 @@ static struct FSHardwareDriver ata_secondary_slave;
 #define ATA_DRIVER_PRIMARY_SLAVE 0x01
 #define ATA_DRIVER_SECONDARY_MASTER 0x02
 #define ATA_DRIVER_SECONDARY_SLAVE 0x03
-#define ATA_DRIVER_COUNT 4
 static struct ATADriverContext contexts[ATA_DRIVER_COUNT];
 struct FSHardwareDriver* ata_drivers[ATA_DRIVER_COUNT] = 
 	{&ata_primary_master, &ata_primary_slave, 
@@ -192,21 +193,50 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 {
 	struct ATADriverContext* context = driver->context;
-	outb(ATA_SECTOR_COUNT, 0x1);
-	outb(ATA_SECTOR_NUMBER, sect);
-	outb(ATA_CYLINDER_LOW, sect >> 8);
-	outb(ATA_CYLINDER_HIGH, sect >> 16);
-	outb(ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
-	outb(ATA_COMMAND, 0x30);
-
+	ata_set_mode(context->master, driver);
+	outb(context->base_port + ATA_SECTOR_COUNT, 0x1);
+	outb(context->base_port + ATA_SECTOR_NUMBER, sect);
+	outb(context->base_port + ATA_CYLINDER_LOW, sect >> 8);
+	outb(context->base_port + ATA_CYLINDER_HIGH, sect >> 16);
+	outb(context->base_port + ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
+	outb(context->base_port + ATA_COMMAND, 0x30);
 	ata_wait(driver);
-
 	uint* srcw = (uint*)src;
-
 	outsl(context->base_port + ATA_DATA, srcw, 512/4);
 
 	outb(context->base_port + ATA_COMMAND, 0xE7);
 	ata_wait(driver);
 
+	return 0;
+}
+
+/** ATA devices are io devices so they must define IODriver methods. */
+int ata_io_init(struct IODriver* driver);
+int ata_io_read(void* dst, uint start_read, uint sz, void* context);
+int ata_io_write(void* src, uint start_write, uint sz, void* context);
+int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata)
+{
+	/* Copy the FSHardwareDriver into the IODriver context */
+	struct FSHardwareDriver* dst = (struct FSHardwareDriver*)
+		driver->context;
+	memmove(dst, ata, sizeof(struct FSHardwareDriver));
+	driver->init = ata_io_init;
+	driver->read = ata_io_read;
+	driver->write = ata_io_write;
+	return 0;
+}
+
+int ata_io_init(struct IODriver* driver)
+{
+	return 0;
+}
+
+int ata_io_read(void* dst, uint start_read, uint sz, void* context)
+{
+	return 0;
+}
+
+int ata_io_write(void* src, uint start_write, uint sz, void* context)
+{
 	return 0;
 }

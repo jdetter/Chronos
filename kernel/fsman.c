@@ -1,5 +1,7 @@
 #include "types.h"
 #include "file.h"
+#include "stdlock.h"
+#include "devman.h"
 #include "fsman.h"
 #include "stdlock.h"
 #include "vsfs.h"
@@ -7,7 +9,6 @@
 #include "panic.h"
 #include "stdarg.h"
 #include "stdlib.h"
-#include "stdlock.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -31,10 +32,6 @@ struct inode_t itable[FS_INODE_MAX];
 tlock_t fstable_lock;
 struct FSDriver fstable[FS_TABLE_MAX];
 
-/* Ata drivers */
-static struct FSHardwareDriver* ata_drivers[];
-
-/* Generic inode table */
 void fsman_init(void)
 {
 	int x;
@@ -43,7 +40,7 @@ void fsman_init(void)
 	memset(&itable, 0, sizeof(struct inode_t) * FS_INODE_MAX);
 
 	/* Bring up ata drivers */
-	ata_init();
+	//ata_init(); this is now done in devman.
 
 	/* Get a running driver */
 	struct FSHardwareDriver* ata = NULL;
@@ -176,7 +173,8 @@ static void fs_sync_inode(inode i)
  * defined here are in include/file.h.
  */
 
-inode fs_open(const char* path, uint permissions, uint flags)
+inode fs_open(const char* path, uint flags, uint permissions,
+	uint uid, uint gid)
 {
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
@@ -189,11 +187,15 @@ inode fs_open(const char* path, uint permissions, uint flags)
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
-	struct inode_t* i = fs_find_inode();
-	i->fs = fs;
+	/* Try creating the file first */
+	if(flags & O_CREATE)
+		if(fs->create(path, permissions, uid, gid, fs->context))
+			return NULL; /* Permission denied */
 
+	struct inode_t* i = fs_find_inode();
 	if(i == NULL)
 		return NULL; /* No more inodes are available */
+	i->fs = fs;
 
 	i->inode_ptr = fs->open(path, fs->context);
 	if(i->inode_ptr == NULL)
@@ -369,7 +371,7 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 int fs_write(inode i, void* src, uint sz, uint start)
 {
         int bytes = i->fs->write(i->inode_ptr,
-                src, sz, start, i->fs->context);
+                src, start, sz, i->fs->context);
         /* Check for read error */
         if(bytes < 0) return -1;
 

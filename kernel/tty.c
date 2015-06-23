@@ -1,4 +1,7 @@
 #include "types.h"
+#include "file.h"
+#include "stdlock.h"
+#include "devman.h"
 #include "tty.h"
 #include "panic.h"
 #include "serial.h"
@@ -11,75 +14,45 @@
 
 struct tty ttys[MAX_TTYS];
 
-/**
- * Hacky version of printf that doesn't require va_args. This method
- * is dangerous if not called properly. This method can be called any time
- * once the kernel has been loaded.
- */
-void cprintf(char* fmt, ...)
+int tty_io_init(struct IODriver* driver);
+int tty_io_read(void* dst, uint start_read, uint sz, void* context);
+int tty_io_write(void* src, uint start_write, uint sz, void* context);
+int tty_io_setup(struct IODriver* driver, uint tty_num)
 {
-	if(ttys[0].type == 0)
-	{
-		tty_init(ttys + 0, 0, TTY_TYPE_SERIAL, 0, 0);
-		//tty_init(ttys, 0, TTY_TYPE_COLOR, 1, 
-		//	(uint)CONSOLE_COLOR_BASE_ORIG);
-		tty_enable(ttys);
-	}
+	/* Get the tty */
+	tty_t t = tty_find(tty_num);
+	struct tty** context = (struct tty**)driver->context;
+	*context = t;
+	driver->init = tty_io_init;
+	driver->read = tty_io_read;
+	driver->write = tty_io_write;
+	return 0;
+}
 
-	void** argument = (void**)(&fmt + 1);
+int tty_io_init(struct IODriver* driver)
+{
+	driver->valid = 1;
+	return 0;
+}
 
-	uint x;
-	for(x = 0;x < strlen(fmt);x++)
-	{
-		if(fmt[x] == '%' && x + 1 < strlen(fmt))
-		{
-			if(fmt[x + 1] == '%')
-				tty_print_character(&ttys[0], '%');
-			else if(fmt[x + 1] == 'd')
-			{
-				/* Print in decimal */
-				char buffer[32];
-				itoa(*((int*)argument), buffer, 32, 10);
-				uint y;
-				for(y = 0;y < strlen(buffer);y++)
-					tty_print_character(ttys, buffer[y]);
-				argument++;
-			} else if(fmt[x + 1] == 'p' || fmt[x + 1] == 'x')
-			{
-				/* Print in hex */
-				char buffer[32];
-                                itoa(*((int*)argument), buffer, 32, 16);
-                                uint y;
-                                for(y = 0;y < strlen(buffer);y++)
-                                        tty_print_character(ttys, buffer[y]);
-				argument++;
-			} else if(fmt[x + 1] == 'c')
-			{
-				/* Print character */
-				char c = *((char*)argument);
-				tty_print_character(ttys, c);
-				argument++;
-			} else if(fmt[x + 1] == 's')
-			{
-				char* str = *((char**)argument);
-				int y;
-				for(y = 0;y < strlen(str);y++)
-					tty_print_character(ttys, str[y]);
-				argument++;
-			} else if(fmt[x + 1] == 'b')
-			{
-				/* Print in binary */
-				char buffer[128];
-                                itoa(*((int*)argument), buffer, 32, 2);
-                                uint y;
-                                for(y = 0;y < strlen(buffer);y++)
-                                        tty_print_character(ttys, buffer[y]);
-                                argument++;
-			}
+int tty_io_read(void* dst, uint start_read, uint sz, void* context)
+{
+	tty_t t = *(struct tty**)context;
+	uchar* dst_c = dst;
+	int x;
+	for(x = 0;x < sz;x++, dst_c++)
+		*dst_c = tty_get_char(t);
+	return sz;
+}
 
-			x++;
-		} else tty_print_character(ttys, fmt[x]);
-	}
+int tty_io_write(void* src, uint start_write, uint sz, void* context)
+{
+	tty_t t = *(struct tty**)context;
+        uchar* src_c = src;
+        int x;
+        for(x = 0;x < sz;x++, src_c++)
+                tty_print_character(t, *src_c);
+        return sz;
 }
 
 tty_t tty_find(uint index)

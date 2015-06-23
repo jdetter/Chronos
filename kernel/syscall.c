@@ -1,9 +1,10 @@
 #include "types.h"
 #include "x86.h"
-#include "tty.h"
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"
+#include "devman.h"
+#include "tty.h"
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
@@ -95,6 +96,28 @@ int syscall_get_buffer(char* dst, uint sz_user, uint sz_kern,
 	return 0;
 }
 
+int syscall_get_str(char* dst, uint sz_kern,
+                uint* esp, uint arg_num)
+{
+        memset(dst, 0, sz_kern);
+        esp += arg_num; /* This is a pointer to the string we need */
+        uchar* str_addr = (uchar*)esp;
+        if(syscall_ptr_safe(str_addr))
+                return 1;
+        uchar* str = *(uchar**)str_addr;
+
+        int x;
+        for(x = 0;x < sz_kern;x++)
+        {
+		if(syscall_ptr_safe(str + x))
+			return 1;
+                dst[x] = str[x];
+                if(str[x] == 0) break;
+        }
+
+        return 0;
+}
+
 
 int syscall_get_buffer_ptr(char** ptr, uint sz, uint* esp, uint arg_num)
 {
@@ -183,8 +206,16 @@ int syscall_handler(uint* esp)
 			sys_exit();
 			break;
 		case SYS_open:
+			if(syscall_get_str((char*)str_arg1,  
+                                SYSCALL_STRLEN, esp, 1)) break;	
+			if(syscall_get_int(&int_arg1, esp, 2)) break;
+                        if(syscall_get_int(&int_arg2, esp, 3)) break;
+			return_value = sys_open(str_arg1, 
+				int_arg1, int_arg2);
 			break;
 		case SYS_close:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+			return_value = sys_close(int_arg1);
 			break;
 		case SYS_read:
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
@@ -201,6 +232,10 @@ int syscall_handler(uint* esp)
 			return_value = sys_write(int_arg1, str_arg1, int_arg2);
 			break;
 		case SYS_lseek:
+                        if(syscall_get_int(&int_arg1, esp, 1)) break;
+                        if(syscall_get_int(&int_arg2, esp, 2)) break;
+                        if(syscall_get_int(&int_arg3, esp, 3)) break;
+			return_value = sys_lseek(int_arg1, int_arg2, int_arg3);
 			break;
 		case SYS_mmap:
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
@@ -453,20 +488,23 @@ void sys_exit(void)
   yield_withlock();
 }
 
-int sys_open(const char* path)
+int sys_open(const char* path, int flags, int permissions)
 {
   int i;
   int fd = -1;
   for(i = 0; i < MAX_FILES; i++){
     if(rproc->file_descriptors[i].type == 0x00){
       fd = i;
+      break;
     }
   } 
   if(fd == -1){
     return -1;
   }
   rproc->file_descriptors[fd].type = FD_TYPE_FILE;
-  rproc->file_descriptors[fd].i = fs_open((char*) path, 0, 0);
+  rproc->file_descriptors[fd].flags = flags;
+  rproc->file_descriptors[fd].i = fs_open((char*) path, flags, 
+		permissions, rproc->uid, rproc->uid);
   if(rproc->file_descriptors[fd].i == NULL){
     memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
     return -1;
@@ -484,22 +522,29 @@ int sys_close(int fd)
 
 int sys_read(int fd, char* dst, uint sz)
 {
-  if(rproc->file_descriptors[fd].type == 0x00){
-    return -1;
-  }  
-  
-  if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
-    if(fs_read(rproc->file_descriptors[fd].i, dst, sz, 
-	rproc->file_descriptors[fd].seek) == -1) {
-      return -1;
-    }
-  } else {
-    int i;
-    for(i = 0;i < sz; i++){
-      char next_char = tty_get_char(rproc->t);
-      dst[i] = next_char;
-    } 
-  }
+  int i;
+  switch(rproc->file_descriptors[fd].type)
+  {
+    case 0x00: return -1;
+    case FD_TYPE_FILE:
+      if(fs_read(rproc->file_descriptors[fd].i, dst, sz,
+        rproc->file_descriptors[fd].seek) < 0) {
+          return -1;
+      }
+      break;
+    case FD_TYPE_DEVICE:
+      dev_read(rproc->file_descriptors[fd].device, dst,
+		rproc->file_descriptors[fd].seek, sz);
+      break;
+    case FD_TYPE_STDIN:
+      for(i = 0;i < sz; i++){
+        char next_char = tty_get_char(rproc->t);
+        dst[i] = next_char;
+      }
+      break;
+    default: return -1;
+  } 
+
   rproc->file_descriptors[fd].seek += sz;
   return sz;
 }
@@ -511,7 +556,7 @@ int sys_write(int fd, char* src, uint sz)
   }  
   else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
     if(fs_write(rproc->file_descriptors[fd].i, src, sz, 
-	rproc->file_descriptors[fd].seek) != -1){
+	rproc->file_descriptors[fd].seek) == -1){
       return -1;
     }
   }
@@ -531,16 +576,18 @@ int sys_lseek(int fd, int offset, int whence)
     return -1;
   }
   int seek_pos;
-  if(whence == FSEEK_CUR){
+  if(whence == SEEK_CUR){
     seek_pos = rproc->file_descriptors[fd].seek + offset;
   }  
-  else if(whence == FSEEK_SET){
+  else if(whence == SEEK_SET){
     seek_pos = offset;
   }
-  else{
+  else if(whence == SEEK_END){
     struct file_stat stat;
     fs_stat(rproc->file_descriptors[fd].i, &stat);
     seek_pos = stat.sz + offset;
+  } else {
+    return -1;
   }
   if(seek_pos < 0){ seek_pos = 0;}
   rproc->file_descriptors[fd].seek = seek_pos;

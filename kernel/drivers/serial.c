@@ -1,4 +1,7 @@
 #include "types.h"
+#include "file.h"
+#include "stdlock.h"
+#include "devman.h"
 #include "serial.h"
 #include "x86.h"
 #include "pic.h"
@@ -14,11 +17,15 @@
 
 #define COM1_IRQ 0x04
 
+uchar serial_started = 0;
+uchar serial_connected = 0;
 uint serial_received(void);
 uint transmit_ready(void);
 
 int serial_init(int pic)
 {
+	if(serial_started) return !serial_connected;
+	serial_started = 1;
 	/* Turn off FIFO */
 	outb(COM1_INT_IDENT, 0);
 
@@ -35,6 +42,7 @@ int serial_init(int pic)
 	/* Is there a serial connection? */
 	if(inb(COM1_LSR) == 0xFF)
 	{
+		serial_connected = 0;
 		return 1;
 	}
 
@@ -45,6 +53,7 @@ int serial_init(int pic)
 	/* Should we enable pic? */
 	if(pic) pic_enable(COM1_IRQ);
 
+	serial_connected = 1;
 	return 0;
 }
 
@@ -100,4 +109,30 @@ uint serial_read(void* dst, uint sz)
 	}
 
 	return x;
+}
+
+int serial_io_init(struct IODriver* driver);
+int serial_io_read(void* dst, uint start_read, uint sz, void* context);
+int serial_io_write(void* src, uint start_write, uint sz, void* context);
+int serial_io_setup(struct IODriver* driver)
+{
+	driver->init = serial_io_init;
+	driver->read = serial_io_read;
+	driver->write = serial_io_write;
+	return 0;
+}
+
+int serial_io_init(struct IODriver* driver)
+{
+	return 0;
+}
+
+int serial_io_read(void* dst, uint start_read, uint sz, void* context)
+{
+	return serial_read(dst, sz);
+}
+
+int serial_io_write(void* src, uint start_write, uint sz, void* context)
+{
+	return serial_write(src, sz);
 }

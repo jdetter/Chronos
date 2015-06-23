@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 	{
 		path = argv[1];
 	}
-	int fileDescript = open(path);
+	int fileDescript = open(path, 0, 0);
 	if(fileDescript==-1)
 	{
 		//printf("File does not exist.");
