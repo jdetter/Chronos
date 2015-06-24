@@ -25,12 +25,6 @@
 
 struct vm_free_node{uint next; uint magic;};
 struct kvm_region {uint start; uint end;};
-struct kvm_region free_regions[] =
-{
-	//{0x00000500, 0x00007BFF},
-	//{0x00007E00, 0x0007FFFF},
-	{KVM_MALLOC, KVM_END} /* 500 MB boundary*/
-};
 
 struct kvm_mapping {uint virt; uint phy; uint sz;};
 struct kvm_mapping hardware_mappings[] = 
@@ -39,8 +33,12 @@ struct kvm_mapping hardware_mappings[] =
 	{KVM_MONO_START, (uint)CONSOLE_MONO_BASE_ORIG, KVM_MONO_SZ},
 };
 
+void vm_add_page(uint pg);
 void vm_add_pages(uint start, uint end);
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags);
+void vm_safe_mapping(uint start, uint end, pgdir* dir);
+pgdir* __get_cr3__(void);
+uchar __check_paging__(void);
 void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
 void __drop_priv__(uint* k_context, uint new_esp);
@@ -52,17 +50,71 @@ uint k_stack; /* Kernel stack */
 pgdir* k_pgdir; /* Kernel page directory */
 static struct vm_free_node* head;
 
+#define E820_UNUSED 	0x01
+#define E820_RESERVED 	0x02
+#define E820_ACPI_REC	0x03
+#define E820_ACPI_NVS	0x04
+#define E820_CURRUPT	0x05
+
+#define E820_MAP_START	0x500
+
+struct vm_no_malloc
+{
+	uint start_addr;
+	uint end_addr;
+};
+
+/**
+ * Page that should NOT be added to the page pool.
+ */
+#define VM_NO_MALLOC_COUNT 0x04
+struct vm_no_malloc vm_no_malloc_table[] = {
+	{KVM_START, KVM_END},
+	{KVM_COLOR_START, KVM_COLOR_START + KVM_COLOR_SZ},
+	{KVM_MONO_START, KVM_MONO_SZ},
+	/* Kernel stack needs to be protected with a page above and below. */
+	{KVM_KSTACK_S - PGSIZE, KVM_KSTACK_E + PGSIZE}
+};
+
+/**
+ * Memory map entries from BIOS call int 15h, eax e820h
+ */
+struct e820_entry
+{
+	uint_32 addr_low;
+	uint_32 addr_high;
+	uint_32 length_low;
+	uint_32 length_high;
+	uint_32 type;
+	uint_32 acpi_attr;
+};
+
 uint vm_init(void)
 {
 	k_pages = 0;
 	head = NULL;
-	int x;
-	for(x = 0;x < REGION_COUNT;x++)
-		vm_add_pages(free_regions[x].start, free_regions[x].end);
-	
+	/* Get the information from the memory map. */
+	int x = E820_MAP_START;
+	for(;;x += sizeof(struct e820_entry))
+	{
+		struct e820_entry* e = (struct e820_entry*)x;
+		/* Is this the end of the list? */
+		if(e->type == 0x00) break;
+		/* look at the type first, make sure it's ok to use. */
+		if(e->type != E820_UNUSED) continue;
+
+		/* The entry is free to use! */
+		uint addr_start = e->addr_low;
+		uint addr_end =	addr_start + e->length_low;
+
+
+		if(addr_start == 0x0) addr_start += PGSIZE;
+		vm_add_pages(addr_start, addr_end);
+	}	
+
 	/* Initilize the kernel page table */
 	k_pgdir = (pgdir*)palloc();
-	setup_kvm(k_pgdir);
+	setup_kvm();
 	
 	return k_pages;
 }
@@ -76,20 +128,24 @@ void vm_add_pages(uint start, uint end)
 	/* There must be at least one page. */
 	if(end - start < PGSIZE) return;
 	int x;
-	for(x = start;x != end;x += PGSIZE) pfree(x);
+	for(x = start;x != end;x += PGSIZE) vm_add_page(x);
 }
 
-/**
- * Here is the memory map for chronos:
- *
- * 0x00100000 -> 0x001FFFFF Kernel binary space
- * 0x00000000 -> 0x000FFFFF User process space (this changes between procs) 
- *
- * See above for paging memory locations.
- *
- * Segment positions are defined in chronos.h (see SEG_KERNEL_* and SEG_USER_*)
- *
- */
+void vm_add_page(uint pg)
+{
+        int x;
+        for(x = 0;x < VM_NO_MALLOC_COUNT;x++)
+        {
+                struct vm_no_malloc* m = vm_no_malloc_table + x;
+                if(pg >= m->start_addr && pg < m->end_addr) 
+		{
+			cprintf("Page avoided: 0x%x\n", pg);
+			return;
+		}
+        }
+
+        pfree(pg);
+}
 
 #define GDT_SIZE (sizeof(struct vm_segment_descriptor) * SEG_COUNT)
 struct vm_segment_descriptor global_descriptor_table[] ={
@@ -109,6 +165,20 @@ void vm_seg_init(void)
 uint palloc(void)
 {
 	if(head == NULL) panic("No more free pages");
+	/* Is paging enabled? */
+	pgdir* old = NULL;
+	if(__check_paging__())
+	{
+		old = __get_cr3__();
+		if(old == k_pgdir)
+			old = NULL;
+		else	
+		{
+			push_cli();
+			__enable_paging__(k_pgdir);
+		}
+	}
+
 	k_pages--;
 	uint addr = (uint)head;
 	if(head->magic != (uint)KVM_MAGIC)
@@ -119,6 +189,12 @@ uint palloc(void)
 	memset((uchar*)addr, 0, PGSIZE);
 
 	if(debug) cprintf("Page allocated: 0x%x\n", addr);
+	if(old)
+	{
+		__enable_paging__(old);
+		pop_cli();
+	}
+
 	return addr;
 }
 
@@ -135,13 +211,13 @@ void pfree(uint pg)
 
 void mappages(uint va, uint sz, pgdir* dir, uchar user)
 {
-	
+
 	/* round va + sz up to a page */
 	uint end = PGROUNDDOWN((va + sz + PGSIZE - 1));
 	uint start = PGROUNDDOWN(va);
 	if(debug)
 		cprintf("Creating virtual mapping from 0x%x to 0x%x\n", 
-			start, end);
+				start, end);
 	if(end <= start) return;
 	uint x;
 	for(x = start;x != end;x += PGSIZE)
@@ -160,27 +236,55 @@ void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
 		mappage(x, x, dir, user, 0);
 }
 
-void setup_kvm(pgdir* dir)
+void setup_kvm(void)
 {
 	uint start = PGROUNDDOWN(KVM_START);
 	uint end = (KVM_END + PGSIZE - 1) & ~(PGSIZE - 1);
 	dir_mappages(start, end, k_pgdir, 0);
 
-        /* make sure kmalloc has been mapped into memory. */
-        mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S,
-                        k_pgdir, 0);
-
-        /* make room for the large kernel stack */
-        mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S,
-                k_pgdir, 0);
+	/* make room for the large kernel stack */
+	mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S,
+			k_pgdir, 0);
 
 	uint x;
-        /* Do hardware mappings */
-        for(x = 0;x < MAPPING_COUNT;x++)
-                mapping(hardware_mappings[x].phy,
-                                hardware_mappings[x].virt,
-                                hardware_mappings[x].sz,
-                                k_pgdir, 0, PGDIR_WTHROUGH);
+	/* Do hardware mappings */
+	for(x = 0;x < MAPPING_COUNT;x++)
+		mapping(hardware_mappings[x].phy,
+				hardware_mappings[x].virt,
+				hardware_mappings[x].sz,
+				k_pgdir, 0, PGDIR_WTHROUGH);
+
+	x = E820_MAP_START;
+	for(;;x += sizeof(struct e820_entry))
+	{
+		struct e820_entry* e = (struct e820_entry*)x;
+		/* Is this the end of the list? */
+		if(e->type == 0x00) break;
+		/* look at the type first, make sure it's ok to use. */
+		if(e->type != E820_UNUSED) continue;
+
+		/* directly map this entry */
+		uint addr_start = e->addr_low;
+		uint addr_end = addr_start + e->length_low;
+
+		if(addr_start == 0x0) addr_start += PGSIZE;
+		vm_safe_mapping(addr_start, addr_end, k_pgdir);
+	}
+}
+
+void vm_safe_mapping(uint start, uint end, pgdir* dir)
+{
+	start = PGROUNDDOWN(start);
+	end = PGROUNDUP(end);
+	uint page;
+	for(page = start;page < end;page += PGSIZE)
+	{
+		/* Security: do not directly map guard pages */
+		if(page == KVM_KSTACK_G1 || page == KVM_KSTACK_G2)
+			continue;
+		if(!findpg(page, 0, k_pgdir, 0))
+			mappage(page, page, k_pgdir, 0, 0);
+	}
 }
 
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags)
@@ -222,7 +326,7 @@ void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags)
 	{
 		tbl[tbl_index] = phy | tbl_flags | flags;
 	} else {
-		panic("remap");
+		panic("kvm remap: 0x%x\n", virt);
 	}
 }
 
@@ -261,34 +365,37 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user)
 uint unmappage(uint virt, pgdir* dir)
 {
 	virt = PGROUNDDOWN(virt);
-        uint dir_index = PGDIRINDEX(virt);
-        uint tbl_index = PGTBLINDEX(virt);
+	uint dir_index = PGDIRINDEX(virt);
+	uint tbl_index = PGTBLINDEX(virt);
 
-        if(!dir[dir_index]) return 0;
+	if(!dir[dir_index]) return 0;
 
-        uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
-        if(tbl[tbl_index])
-        {
+	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+	if(tbl[tbl_index])
+	{
 		uint page = PGROUNDDOWN(tbl[tbl_index]);
 		tbl[tbl_index] = 0;
 		return page;
-        }
+	}
 
 	return 0;
 }
 
 void vm_copy_kvm(pgdir* dir)
 {
-	uint x;
-	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+	uint page;
+	for(page = KVM_CPY_START;page < KVM_CPY_END;page += PGSIZE)
 	{
-		if(k_pgdir[x])
-		{
-			dir[x] = palloc() |  UDIRFLAGS;
-			uint src_page = PGROUNDDOWN(k_pgdir[x]);
-			uint dst_page = PGROUNDDOWN(dir[x]);
-			memmove((uchar*)dst_page, (uchar*)src_page, PGSIZE);
-		}
+		uint dir_index = PGDIRINDEX(page);
+        	uint tbl_index = PGTBLINDEX(page);
+
+		if(!k_pgdir[dir_index]) continue;
+
+		pgtbl* table = (uint*)PGROUNDDOWN(k_pgdir[dir_index]);
+		uint phy = PGROUNDDOWN(table[tbl_index]);
+		uint flags = table[tbl_index] - phy;
+		if(phy) 
+			mappage(phy, page, dir, 0, flags);
 	}
 }
 
@@ -302,8 +409,8 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 
 		uint dst_page = findpg(x, 1, dst_dir, 1);
 		memmove((uchar*)dst_page,
-			(uchar*)src_page,
-			PGSIZE);
+				(uchar*)src_page,
+				PGSIZE);
 	}
 }
 
@@ -323,10 +430,10 @@ void freepgdir(pgdir* dir)
 	vm_free_uvm(dir);
 	/* Free kernel pages */
 	uint x;
-        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
-        {
-                if(dir[x])
-                {
+	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+	{
+		if(dir[x])
+		{
 			pfree(PGROUNDDOWN(dir[x]));
 			dir[x] = 0;
 		}

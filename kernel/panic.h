@@ -7,6 +7,6 @@
  * once the kernel has been loaded.
  */
 void cprintf(char* fmt, ...);
-void panic(char* str);
+void panic(char* fmt, ...);
 
 #endif

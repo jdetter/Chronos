@@ -47,25 +47,88 @@ start:
 	xorl	%esp, %esp
 	movw	$0x7c00, %sp
 
-	#call	KEYBOARD_NONE_16
+# Get the memory map
+	
+	movl $0x500, %edi
+	call do_e820
+	
+	/* Clear the next entry (NULL terminate) */
+	movl $0x00, %es:0x00(%di)	
+	movl $0x00, %es:0x04(%di)	
+	movl $0x00, %es:0x08(%di)	
+	movl $0x00, %es:0x12(%di)	
+
+	jmp A20_STEP1
+
+do_e820:
+	xorl %ebp, %ebp
+	xorw %bp, %bp
+	movl $0x0534D4150, %edx
+	movl $0xe820, %eax
+	movl $1, %es:20(%di)
+	movl $24, %ecx
+	int  $0x15
+	jc   e820_failed
+	movl $0x0534D4150, %edx
+	cmpl %edx, %eax
+	jne  e820_failed
+	test %ebx, %ebx
+	je   e820_failed
+	jmp  e820_jmpin
+
+e820lp:
+	movl $0xe820, %eax
+	movl $1, %es:20(%di)
+	movl $24, %ecx
+	int  $0x15
+	jc   e820f
+	movl $0x0534D4150, %edx  
+
+e820_jmpin:
+	jcxz e820_skipent
+	cmpb  $20, %cl
+	jbe  e820_notext
+	testb $1, %es:20(%di)
+	je   e820_skipent
+
+e820_notext:
+	movl %es:8(%di), %ecx
+	orl  %es:12(%di), %ecx
+	jz   e820_skipent
+	incw %bp
+	addw $24, %di
+
+e820_skipent:
+	test %ebx, %ebx
+	jne  e820lp
+
+e820f:
+	xorl %eax, %eax 			# clear high 16 bits of eax
+	movw %bp, %ax  			# put return value in eax
+	clc            			# clear the carry bit
+	ret            			# return with success
+
+e820_failed:
+	stc            			# set the carry bit
+	ret
 
 A20_STEP1:
-  	inb     $KEYBOARD_COMM, %al
-  	testb   $KEYBOARD_DATA_FILL, %al
-  	jnz     A20_STEP1
+        inb     $KEYBOARD_COMM, %al
+        testb   $KEYBOARD_DATA_FILL, %al
+        jnz     A20_STEP1
 
-  	movb    $KEYBOARD_CONTROL_WRITE, %al
-  	outb    %al, $KEYBOARD_COMM
+        movb    $KEYBOARD_CONTROL_WRITE, %al
+        outb    %al, $KEYBOARD_COMM
 
 A20_STEP2:
-  	inb     $KEYBOARD_COMM, %al
-  	testb   $KEYBOARD_DATA_FILL, %al
-  	jnz     A20_STEP2
+        inb     $KEYBOARD_COMM, %al
+        testb   $KEYBOARD_DATA_FILL, %al
+        jnz     A20_STEP2
 
-  	movb    $0xdf, %al
-  	outb    %al, $KEYBOARD_DATA
+        movb    $0xdf, %al
+        outb    %al, $KEYBOARD_DATA
 
-	jmp	set_A20_DONE
+        jmp     set_A20_DONE
 
 set_A20_DONE:
 # We should have access to the 2^16 address space now.
@@ -77,84 +140,14 @@ set_A20_DONE:
 	movl	%cr0, %eax
 	orl	$PROTECT_EN, %eax
 	movl	%eax, %cr0
-	call	KEYBOARD_ALL_16
 
 # Long jump into 32 bit mode =D
 	ljmp	$(SEG_KERNEL_CODE << 3), $protected_mode	
 
-KEYBOARD_WAIT_16:
-	inb     $KEYBOARD_COMM, %al
-        testb   $KEYBOARD_DATA_FILL, %al
-        jnz     KEYBOARD_WAIT_16
-        ret
-
-KEYBOARD_ALL_16:
-        call    KEYBOARD_WAIT_16
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT_16
-        movb    $0x07, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT_16
-        ret
-
-KEYBOARD_NONE_16:
-        call    KEYBOARD_WAIT_16
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT_16
-        movb    $0x00, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT_16
-        ret
+panic_16:
+	jmp panic_16
 
 .code32			# Generate 32 bit code (Protected mode)
-
-KEYBOARD_WAIT:
-        inb     $KEYBOARD_COMM, %al
-        testb   $KEYBOARD_DATA_FILL, %al
-        jnz     KEYBOARD_WAIT
-        ret
-
-KEYBOARD_SCROLL:
-        call    KEYBOARD_WAIT
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        movb    $0x01, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        ret
-
-KEYBOARD_NUM:
-        call    KEYBOARD_WAIT
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        movb    $0x02, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        ret
-
-KEYBOARD_CAPS:
-        call    KEYBOARD_WAIT
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        movb    $0x04, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        ret
-
-KEYBOARD_RESET:
-        call    KEYBOARD_WAIT
-        movb    $KEYBOARD_LIGHT_COMM, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        movb    $0x00, %al
-        outb    %al, $KEYBOARD_DATA
-        call    KEYBOARD_WAIT
-        ret
 
 protected_mode:
 	# Setup the data selectors with the correct index into the gdt.
@@ -208,7 +201,6 @@ STAGE2_JMP:
 
 PANIC_32:
 	nop
-	call KEYBOARD_NUM
 	jmp PANIC_32
 
 .p2align 2 # All values here are 4 byte-boundary aligned.

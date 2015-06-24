@@ -29,8 +29,8 @@ struct proc* rproc;
 /* The next available pid */
 uint next_pid;
 /* The context of the scheduler right before user process gets scheduled. */
+int cli_count = 0; /* cli stack */
 extern uint  k_context;
-
 extern uint k_stack;
 
 void proc_init()

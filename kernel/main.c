@@ -79,7 +79,7 @@ void main_stack(void)
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
-	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);
+	minit(KVM_MALLOC, KVM_MALLOC_END);
 	cprintf("[ OK ]\n");
 	/* Enable memory debugging */
 	//mem_debug((void (*)(char*))cprintf);
@@ -101,7 +101,7 @@ void main_stack(void)
 
 	/* Enable interrupts */
 	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");
-	asm volatile("sti");	
+	//asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");

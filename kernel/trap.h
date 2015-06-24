@@ -61,4 +61,7 @@ struct context
 	uint_32 eip;
 };
 
+void push_cli(void);
+void pop_cli(void);
+
 #endif

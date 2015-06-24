@@ -35,10 +35,23 @@ __disable_paging__:
 	popl	%eax
 	ret
 
+# check to see if paging is enabled. 
+.globl __check_paging__
+__check_paging__:
+	movl    %cr0, %eax
+	andl	$CR0_PGENABLE, %eax
+	roll	$1, %eax
+	ret
+
 .globl __get_cr2__
 __get_cr2__:
 	movl	%cr2, %eax
 	ret
+
+.globl __get_cr3__
+__get_cr3__:
+        movl    %cr3, %eax
+        ret
 
 .globl __set_stack__
 __set_stack__:

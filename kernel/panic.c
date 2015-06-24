@@ -5,6 +5,7 @@
 #include "tty.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "console.h"
 
 /**
  * Hacky version of printf that doesn't require va_args. This method
@@ -17,8 +18,8 @@ void cprintf(char* fmt, ...)
         if(t0->type == 0)
         {
                 tty_init(t0, 0, TTY_TYPE_SERIAL, 0, 0);
-                //tty_init(ttys, 0, TTY_TYPE_COLOR, 1, 
-                //      (uint)CONSOLE_COLOR_BASE_ORIG);
+                //tty_init(t0, 0, TTY_TYPE_COLOR, 1, 
+                //     (uint)CONSOLE_COLOR_BASE_ORIG);
                 tty_enable(t0);
         }
 
@@ -78,8 +79,9 @@ void cprintf(char* fmt, ...)
 	}
 }
 
-void panic(char* str)
+void panic(char* fmt, ...)
 {
-	cprintf("Kernel panic: %s", str);
+	asm volatile("addl $0x08, %esp");
+	asm volatile("call cprintf");
 	for(;;);
 }

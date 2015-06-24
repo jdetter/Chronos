@@ -1,7 +1,150 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
+/*****************************************
+ *********** CHRONOS MEMORY MAP **********
+ *****************************************/
+
+/** Kernel virtual memory map
+ *
+ * Build last modified: alpha-0.2
+ * Maintainer: John Detter <jdetter@wisc.edu>
+ * 
+ * 
+ * 0xFFFFF000 Virtual memory space top (NO PAE) 
+ * ...
+ * Kernel binary + global data
+ * ...
+ * 0xFF000000
+ * 0xFEFFF000 kernel stack upper guard page 
+ * 0xFEFFEFFF
+ * ...
+ * Kernel stack
+ * ...
+ * 0xFEFFA000
+ * 0xFEFF9000 kernel stack lower guard page
+ * 0xFEFF8FFF 
+ * ...
+ * kmalloc space
+ * ...
+ * 0xFDFF8000
+ *
+ * VV   Top of hardware mapping space  VV
+ *
+ * ...
+ * 0xFDFF7FFF
+ * ...
+ * 
+ * 0xFDFFF000 Monochrome video memory --> 0xB0000
+ * 0xFE000000 Color video memory --> 0xB8000
+ *
+ * ^^ Bottom of hardware mapping space ^^ (for pci, DMA, ect.)
+ *  Note: all pages above will be marked as **write through** 
+ * 
+ *  Note: all pages below here are directly mapped virt = phy, 
+ *          all pages above are virtual
+ * 
+ * VV   Top of the page pool  VV
+ * 
+ * 0xFDFFFFFF
+ * ...
+ * Page pool (if it exists)
+ * ...
+ * 0x01000000 
+ *
+ * 0x00FFFFFF
+ * ...
+ * ISA Memory Hole (may or may not be present on modern i386)
+ * ...
+ * 0x00F00000 
+ * 
+ * 0x00EFFFFF
+ * ... 
+ * Page pool
+ * ...
+ * 0x00100000 
+ *
+ * 0x000FFFFF
+ * ...
+ * video memory / BIOS ROM area (Hole)
+ * ...
+ * 0x000A0000 
+ *
+ * 0x0009FFFF
+ * ...
+ * Page pool
+ * ...
+ * 0x0000FC00
+ * 
+ * 0x0000FBFF
+ * ...
+ * Boot stage 2 %%
+ * ...
+ * 0x00007E00
+ * 
+ * 0x00007DFF
+ * ...
+ * Boot stage 1 boot strap %%
+ * ...
+ * 0x00007C00
+ *
+ * 0x00007BFF
+ * ...
+ * Page pool
+ * ...
+ * 0x00002000 
+ * ^^  Bottom of the page pool ^^
+ *
+ * 0x00001000 Kernel page directory
+ * 0x00000950 Pointer to the first page in the memory pool. 
+ * 0x00000500 Memory map (boot stage 1)
+ * ...
+ * All memory here left untouched (real mode IDT, bios data)
+ * ...
+ * 0x00000000 
+ *
+ * Notes:
+ *   %%: will get reclaimed as part of the memory pool after boot.
+ *
+ */
+
+/** User application memory map
+ * 
+ * 0xFFFFFFFF Top of kernel space
+ * ...
+ * Hardware mappings, kernel code/data, kmalloc space, ...
+ * ... 
+ * 0xFE000000 Bottom of kernel space
+ * 0xFDFFF000 User kernel stack upper guard page
+ * 0xFDFFEFFF 
+ * ...
+ * User kernel stack
+ * ...
+ * 0xFDFFA000 
+ * 0xFDFF9000 User kernel stack lower guard page
+ * 0xFDFF8000 User application user space stack top
+ *     |
+ *     | Stack grows down when the user needs more stack space
+ *     |
+ *     V
+ *     ^
+ *     |
+ *     | Heap grows up when the user needs more heap space
+ *     |
+ * ?????????? Start of heap (page aligned after user binary)
+ * ...
+ * ...
+ * 0x00001000 Start of user binary
+ * 0x00000000 NULL guard page (Security)
+ */
+
+/** Memory mapped file systems
+ *  < Will be updated when implemented >
+ */
+
 #define PGROUNDDOWN(pg)	((pg) & ~(PGSIZE - 1))	
+#define PGROUNDUP(pg)	((pg + PGSIZE - 1) & ~(PGSIZE - 1))	
+
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
 
@@ -11,23 +154,26 @@
  * These are the memory mappings that are used by chronos.
  */
 #define KVM_START 	0x00100000 /* Where the kernel is loaded */
-#define KVM_END		0x00F00000 /* Where the address space ends */
-#define KVM_DEBUG	0x00230000 /* Small pages for debugging  */
-#define KVM_MALLOC	0x00200000 /* Where the kvm allocator starts */
+#define KVM_MALLOC	0x001F0000 /* Where kernel malloc starts*/
+#define KVM_END		0x00200000 /* Where the address space ends */
+#define KVM_MALLOC_END	KVM_END
 #define KVM_MAX		0xFFFFFFFF /* Maximum address */
 
-#define KVM_KMALLOC_S	0x1F500000 /* Start of kmalloc */
-#define KVM_KMALLOC_E	0x1F510000 /* end of kmalloc */
-
-#define KVM_COLOR_START	0x20000000
-#define KVM_COLOR_SZ	4000 /* Size of color memory */
-#define KVM_MONO_START	0x20001000	
-#define KVM_MONO_SZ	4000 /* Size of mono chrome memory */	
-
 /* Keep an empty page at the start of the stack */
-#define KVM_KSTACK_S	0x20003000
-#define KVM_KSTACK_E	0x20010000
+#define KVM_KSTACK_G1   0x00200000 /* First guard page */
+#define KVM_KSTACK_S	0x00201000
+#define KVM_KSTACK_E	0x00209000
+#define KVM_KSTACK_G2	0x0020A000 /* Second guard page */
 /* Keep an empty page at the end of the stack */
+
+#define KVM_COLOR_START 0x0020A000
+#define KVM_COLOR_SZ    4000 /* Size of color memory */
+#define KVM_MONO_START  0x0020E000      
+#define KVM_MONO_SZ     4000 /* Size of mono chrome memory */
+
+/* When a new process is created, what should get transfered? */
+#define KVM_CPY_START 	KVM_START
+#define KVM_CPY_END 	(KVM_MONO_START + KVM_MONO_SZ)
 
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
@@ -43,10 +189,6 @@
 #define TSS_GRANULARITY		0x80
 #define TSS_AVAILABILITY	0x10
 #define TSS_DEFAULT_FLAGS	0x09
-
-#define CALL_PRESENT_FLAG	(0x80)
-#define CALL_USER_FLAG		(0x3 << 5)
-#define CALL_DEFAULT_FLAGS	((0x3 << 2) | CALL_PRESENT_FLAG)
 
 struct vm_segment_descriptor
 {
@@ -83,7 +225,7 @@ void pfree(uint pg);
 /**
  * Setup the kernel portion of the page table.
  */
-void setup_kvm(pgdir* dir);
+void setup_kvm(void);
 
 /**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
