@@ -4,11 +4,9 @@
 #define CONSOLE_DEFAULT_COLOR 0x07
 #define CONSOLE_ROWS 25
 #define CONSOLE_COLS 80
-#define CONSOLE_MONO_BASE_ORIG  ((uchar*)0xB0000)
-#define CONSOLE_COLOR_BASE_ORIG ((uchar*)0xB8000)
-
-#define CONSOLE_MONO_BASE  ((uchar*)0x20001000)
-#define CONSOLE_COLOR_BASE ((uchar*)0x20000000)
+#define CONSOLE_MONO_BASE_ORIG  (0xB0000)
+#define CONSOLE_COLOR_BASE_ORIG (0xB8000)
+#define CONSOLE_MEM_SZ 4000
 
 /**
  * Print the character at the given row and column. Color specifies the color
@@ -27,6 +25,6 @@ void console_update_cursor(int pos);
 /**
  * Copy to buffer to video memory.
  */
-void console_print_buffer(char* buffer, uchar colored);
+void console_print_buffer(char* buffer, uchar colored, uint vid_mem_i);
 
 #endif

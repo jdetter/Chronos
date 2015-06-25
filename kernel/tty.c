@@ -110,7 +110,9 @@ void tty_enable(tty_t t)
 	}
 	else if(t->display_mode==TTY_MODE_GRAPHIC)
 	{
-		console_print_buffer(t->buffer_graphic, t->type==TTY_TYPE_COLOR);
+		console_print_buffer(t->buffer_graphic, 
+			t->type==TTY_TYPE_COLOR,
+			t->mem_start);
 	}
 	else
 	{

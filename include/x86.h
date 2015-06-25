@@ -67,6 +67,12 @@
 
 #define PGSIZE 4096
 
+#define PGROUNDDOWN(pg) ((pg) & ~(PGSIZE - 1))  
+#define PGROUNDUP(pg)   ((pg + PGSIZE - 1) & ~(PGSIZE - 1))
+
+#define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
+#define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
+
 /* Inline assembly functions */
 static inline uchar
 inb(ushort port)

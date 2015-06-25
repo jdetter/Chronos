@@ -2,6 +2,7 @@ TOOLS := boot-sign \
 	mkfs \
 	disk-part \
 	fsck \
+	boot2-verify \
 	mkvect
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
@@ -26,6 +27,8 @@ tools/bin/mkfs:
 tools/bin/fsck: tools/bin/mkfs
 	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o
 
+tools/bin/boot2-verify:
+	$(CC) $(CFLAGS) -o tools/bin/boot2-verify tools/boot2-verify.c
 tools/bin/boot-sign:
 	$(CC) $(CFLAGS) -o tools/bin/boot-sign tools/boot-sign.c
 tools/bin/disk-part:

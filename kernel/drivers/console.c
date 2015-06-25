@@ -21,11 +21,9 @@ void console_putc(uint position, char character, char color, uchar colored, ucha
 	}
 }
 
-void console_print_buffer(char* buffer, uchar colored)
+void console_print_buffer(char* buffer, uchar colored, uint vid_mem_i)
 {
-	uchar* vid_mem = CONSOLE_COLOR_BASE;
-	if(!colored)
-		vid_mem = CONSOLE_MONO_BASE;
+	uchar* vid_mem = (uchar*)vid_mem_i;
 	uint sz = CONSOLE_ROWS * CONSOLE_COLS;
 	if(colored) sz *= 2;
 	memmove(vid_mem, buffer, sz);

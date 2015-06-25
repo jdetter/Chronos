@@ -143,21 +143,3 @@ void trap_handler(struct trap_frame* tf)
 	asm volatile("addl $0x08, %esp");
 	asm volatile("jmp trap_return");
 }
-
-extern int cli_count;
-void push_cli(void)
-{
-	if(cli_count < 0) cli_count = 0;
-	cli_count++;
-	asm volatile("cli");
-}
-
-void pop_cli(void)
-{
-	cli_count--;
-	if(cli_count < 1)
-	{
-		cli_count = 0;	
-		asm volatile("sti");
-	}
-}

@@ -16,7 +16,7 @@
 #include "idt.h"
 #include "x86.h"
 
-void __set_stack__(uint addr);
+void __set_stack__(uint stack, uint function);
 void main_stack(void);
 
 extern struct proc* init_proc;
@@ -34,28 +34,16 @@ int main(void)
 	vm_init();
 	cprintf("[ OK ]\n");
 
-	cprintf("Creating temporary stack...\t\t\t\t\t\t");
-	/* Switch to a temporary stack */
-	uint temp_stack = palloc();
-	__set_stack__(temp_stack);
-	cprintf("[ OK ]\n");
-
         /* Install global descriptor table */
         cprintf("Loading Global Descriptor table...\t\t\t\t\t");
         vm_seg_init();
 	cprintf("[ OK ]\n");
 
-        /* Enable paging */
-        cprintf("Creating kernel stack...\t\t\t\t\t\t");
-	switch_kvm();
-
 	/* Setup proper stack */
 	uint new_stack = KVM_KSTACK_E;
 	k_stack = new_stack;
 
-	__set_stack__(new_stack);
-	/* Stability: Do not add any instructions here! (unstable stack)*/
-	main_stack();
+	__set_stack__(PGROUNDUP(new_stack), (uint)main_stack);
 
 	panic("main_stack returned.\n");
 	for(;;);
@@ -79,7 +67,7 @@ void main_stack(void)
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
-	minit(KVM_MALLOC, KVM_MALLOC_END);
+	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);
 	cprintf("[ OK ]\n");
 	/* Enable memory debugging */
 	//mem_debug((void (*)(char*))cprintf);

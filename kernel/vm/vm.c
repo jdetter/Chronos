@@ -1,0 +1,163 @@
+#include "types.h"
+#include "x86.h"
+#include "asm.h"
+#include "file.h"
+#include "stdlock.h"
+#include "chronos.h"
+#include "trap.h"
+#include "fsman.h"
+#include "devman.h"
+#include "tty.h"
+#include "proc.h"
+#include "vm.h"
+#include "stdarg.h"
+#include "stdlib.h"
+#include "panic.h"
+#include "console.h"
+
+pgdir* __get_cr3__(void);
+void __enable_paging__(uint* pgdir);
+void __set_stack__(uint addr);
+void __drop_priv__(uint* k_context, uint new_esp);
+void __context_restore__(uint* current, uint old);
+
+uint k_context; /* The kernel context */
+uint k_stack; /* Kernel stack */
+extern pgdir* k_pgdir; /* Kernel page directory */
+extern slock_t global_mem_lock;
+
+uint vm_init(void)
+{
+	slock_init(&global_mem_lock);
+
+	/** 
+	 * The boot loader has handled all of the messy work for us.
+	 * All we need to do is pick up the free map head and kernel
+	 * page directory.
+	 */
+	setup_kvm();
+	
+	/* The boot strap directly mapped in the null guard page */
+	unmappage(0x0, k_pgdir);
+
+	/* Map pages in for our kernel stack */
+	mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0);
+
+	/* Map pages in for kmalloc */
+	mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0);
+
+	/* Add bootstrap code to the memory pool */
+	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
+	int boot2_e = PGROUNDUP(KVM_BOOT2_E);
+
+	int x;
+	for(x = boot2_s;x < boot2_e;x += PGSIZE)
+		pfree(x);	
+	/* Clear the TLB */
+	switch_kvm();
+
+	return 0;
+}
+
+#define GDT_SIZE (sizeof(struct vm_segment_descriptor) * SEG_COUNT)
+struct vm_segment_descriptor global_descriptor_table[] ={
+	MKVMSEG_NULL, 
+	MKVMSEG(SEG_KERN, SEG_EXE, SEG_READ,  0x0, UVM_KVM_E),
+	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, UVM_KVM_E),
+	MKVMSEG(SEG_USER, SEG_EXE, SEG_READ,  0x0, UVM_KVM_E),
+	MKVMSEG(SEG_USER, SEG_DATA, SEG_WRITE, 0x0, UVM_KVM_E),
+	MKVMSEG_NULL /* Will become TSS*/
+};
+
+void vm_seg_init(void)
+{
+	lgdt((uint)global_descriptor_table, GDT_SIZE);
+}
+
+void switch_kvm(void)
+{
+	__enable_paging__(k_pgdir);
+}
+
+void switch_uvm(struct proc* p)
+{
+	__enable_paging__(p->pgdir);
+}
+
+void switch_context(struct proc* p)
+{
+	/* Set the task segment to point to the process's stacks. */
+	uint base = (uint)p->tss;
+	uint limit = sizeof(struct task_segment);
+	uint type = TSS_DEFAULT_FLAGS | TSS_PRESENT;
+	uint flag = TSS_AVAILABILITY;
+
+	global_descriptor_table[SEG_TSS].limit_1 = (uint_16) limit;
+	global_descriptor_table[SEG_TSS].base_1 = (uint_16) base;
+	global_descriptor_table[SEG_TSS].base_2 = (uint_8)(base>>16);
+	global_descriptor_table[SEG_TSS].type = type;
+	global_descriptor_table[SEG_TSS].flags_limit_2 = 
+		(uint_8)(limit >> 16) | flag;
+	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
+
+	struct task_segment* ts = (struct task_segment*)p->tss;
+	ts->SS0 = SEG_KERNEL_DATA << 3;
+	ts->ESP0 = base + PGSIZE;
+	ts->esp = p->tf->esp;
+	ts->ss = SEG_USER_DATA << 3;
+
+	__enable_paging__(p->pgdir);
+	ltr(SEG_TSS << 3);
+
+	if(p->state == PROC_READY)
+	{
+		p->state = PROC_RUNNING;
+		__drop_priv__(&k_context, p->tf->esp);
+
+		/* When we get back here, the process is done running for now. */
+		return;
+	}
+	if(p->state != PROC_RUNNABLE)
+		panic("Tried to schedule non-runnable process.");
+
+	p->state = PROC_RUNNING;
+
+	/* Go from kernel context to process context */
+	__context_restore__(&k_context, p->context);
+}
+
+void pg_cmp(uchar* pg1, uchar* pg2)
+{
+	cprintf("INDEX     | PAGE 1 | PAGE 2 \n");
+	int x;
+	for(x = 0;x < PGSIZE;x++)
+		cprintf("0x%x | 0x%x | 0x%x \n", x, pg1[x], pg2[x]);
+}
+
+void pgdir_cmp(pgdir* src, pgdir* dst)
+{
+	cprintf("INDEX      | DIRECTORY 1 | DIRECTORY 2\n");
+	uint x;
+	uchar dot = 1;
+	for(x = 0;x < 0xFFFFF000;x += PGSIZE)
+	{
+		uint src_page = findpg(x, 0, src, 0);
+		uint dst_page = findpg(x, 0, dst, 0);
+
+		if(src_page || dst_page)
+		{
+			dot = 1;
+			cprintf("0x%x | ", x);
+			cprintf("0x%x | ", src_page);
+			cprintf("0x%x\n", dst_page);
+		} else {
+			if(dot)
+			{
+				cprintf("0x%x | ", x);
+				cprintf(".......... | ");
+				cprintf("..........\n");
+				dot = 0;
+			}
+		}
+	}
+}

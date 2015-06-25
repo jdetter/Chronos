@@ -29,7 +29,6 @@ struct proc* rproc;
 /* The next available pid */
 uint next_pid;
 /* The context of the scheduler right before user process gets scheduled. */
-int cli_count = 0; /* cli stack */
 extern uint  k_context;
 extern uint k_stack;
 
@@ -82,8 +81,8 @@ struct proc* spawn_tty(tty_t t)
 	p->file_descriptors[1].type = FD_TYPE_STDOUT;
 	p->file_descriptors[2].type = FD_TYPE_STDERR;
 
-	p->stack_start = KVM_START;
-	p->stack_end = KVM_START - PGSIZE;
+	p->stack_start = UVM_USTACK_TOP;
+	p->stack_end = UVM_USTACK_TOP - PGSIZE;
 	
 	p->heap_start = 0;
 	p->heap_end = 0;
@@ -100,18 +99,19 @@ struct proc* spawn_tty(tty_t t)
 	p->pgdir = (pgdir*)palloc();
 	vm_copy_kvm(p->pgdir);
 
-	/* Setup a kernel stack */
-	p->k_stack = (uchar*)(palloc() + PGSIZE);
+	/* Map in a kernel stack */
+	mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
+	p->k_stack = (uchar*)UVM_KSTACK_E;
 	p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
-	p->tss = (struct task_segment*)(p->k_stack - PGSIZE);
+	p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
 	/* Map in a user stack. */
+	mappages(UVM_USTACK_TOP - PGSIZE, PGSIZE, p->pgdir, 1);
 	switch_uvm(p);
-	mappages(KVM_START - PGSIZE, PGSIZE, p->pgdir, 1);
 
 	/* Basic values for the trap frame */
 	/* Setup the user stack */
-	uchar* ustack = (uchar*)KVM_START;
+	uchar* ustack = (uchar*)UVM_USTACK_TOP;
 	/* Fake eip */
 	ustack -= 4;
 	*((uint*)ustack) = 0xFFFFFFFF;
@@ -121,7 +121,7 @@ struct proc* spawn_tty(tty_t t)
 	uint end = load_binary("/bin/init", p);
 	if(p->entry_point != 0x1000)
 		panic("init binary wrong entry point.\n");
-	p->heap_start = PGROUNDDOWN(end - 1 + PGSIZE);
+	p->heap_start = PGROUNDUP(end);
 
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);

@@ -12,10 +12,14 @@
 #include "panic.h"
 #include "proc.h"
 #include "vm.h"
+#include "console.h"
 
+extern pgdir* k_pgdir;
+extern uint video_mode;
 slock_t io_driver_table_lock;
 struct IODriver io_drivers[MAX_DEVICES];
 extern uchar serial_connected;
+uint curr_mapping;
 
 static struct IODriver* dev_alloc(void)
 {
@@ -33,15 +37,47 @@ static struct IODriver* dev_alloc(void)
 	return driver;
 }
 
+void* dev_new_mapping(uint phy, uint sz)
+{
+	uint v_start = curr_mapping;
+	uint v_end = PGROUNDUP(v_start + sz);
+	if(v_end > KVM_HARDWARE_E)
+		panic("devman: Out of hardware memory.\n");
+	uint x;
+	for(x = v_start;x < v_end;x += PGSIZE)
+		mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
+
+	curr_mapping = v_end;
+	return (void*)v_start;
+}
+
 int dev_init()
 {
+	curr_mapping = KVM_HARDWARE_S;
 	slock_init(&io_driver_table_lock);
 	io_drivers[0].valid = 0;
 	struct IODriver* driver = NULL;
 
+	/* Setup video memory */
+	uint video_mem = 0x0;
+	uchar video_type = 0;
+	if(video_mode == VIDEO_MODE_COLOR)
+	{
+		video_type = TTY_TYPE_COLOR;
+		video_mem = CONSOLE_COLOR_BASE_ORIG;
+	}else if(video_mode == VIDEO_MODE_MONO)
+	{
+		video_type = TTY_TYPE_MONO;
+		video_mem = CONSOLE_MONO_BASE_ORIG;
+	}
+
+	if(video_mem)
+		video_mem = (uint)dev_new_mapping(video_mem, 
+				CONSOLE_MEM_SZ);
+
 	/* Find ttys */
 	uint x;
-	for(x = 0;;x++)
+	for(x = 0;video_mem;x++)
 	{
 		tty_t t = tty_find(x);
 		if(t == NULL) break;
@@ -50,12 +86,20 @@ int dev_init()
 			panic("Out of free device drivers.\n");
 		/* Valid tty */
 		if(x != 0)
-		tty_init(t, x, TTY_TYPE_COLOR, 1, KVM_COLOR_START);
+			tty_init(t, x, video_type, 1, video_mem);
 		tty_io_setup(driver, x);
 		/* Set mount point */
 		snprintf(driver->node, 
 			FILE_MAX_PATH, "/dev/tty%d", x);
 	}
+
+	/* Fix tty0 */
+	tty_t t0 = tty_find(0);
+	if(t0->type == TTY_TYPE_COLOR || t0->type == TTY_TYPE_MONO)
+		t0->mem_start = video_mem;
+	/* Boot strap has directly mapped the video memory */
+	unmappage(CONSOLE_MONO_BASE_ORIG, k_pgdir);
+	unmappage(CONSOLE_COLOR_BASE_ORIG, k_pgdir);
 
 	/* Find ata devices */
 	ata_init();

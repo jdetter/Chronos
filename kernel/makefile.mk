@@ -4,12 +4,22 @@ KERNEL_OBJECTS := \
 	proc \
 	tty \
 	panic \
-	vm \
+	vm/vm \
+	vm/pgdir \
+	vm/vm_alloc \
 	kcond \
 	syscall \
 	trap \
+	cpu \
 	fsman \
 	devman
+
+# assembly files
+KERNEL_ASSEMBLY := \
+	vm/asm \
+	asm \
+	idt \
+	boot/bootc_jmp
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -25,6 +35,10 @@ KERNEL_DRIVERS := \
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
 KERNEL_OBJECTS := $(addsuffix .o, $(KERNEL_OBJECTS))
 
+# assembly objects need to end in .o and start with kernel/
+KERNEL_ASSEMBLY_OBJECTS := $(addprefix kernel/, $(KERNEL_ASSEMBLY))
+KERNEL_ASSEMBLY_OBJECTS := $(addsuffix .o, $(KERNEL_ASSEMBLY_OBJECTS))
+
 # put drivers into the form kernel/drivers/file.o
 KERNEL_DRIVERS := $(addprefix kernel/drivers/, $(KERNEL_DRIVERS))
 KERNEL_DRIVERS := $(addsuffix .o, $(KERNEL_DRIVERS))
@@ -33,6 +47,7 @@ KERNEL_DRIVERS := $(addsuffix .o, $(KERNEL_DRIVERS))
 KERNEL_CLEAN := \
         $(KERNEL_OBJECTS) \
         $(KERNEL_DRIVERS) \
+	$(KERNEL_ASSEMBLY_OBJECTS) \
         kernel/chronos.img \
         kernel/chronos.o \
         kernel/boot/bootasm.o \
@@ -47,9 +62,7 @@ KERNEL_CLEAN := \
 	kernel/boot/boot-stage2.rodata \
 	kernel/boot/boot-stage2.text \
 	kernel/boot/boot-stage2.bss \
-	kernel/asm.o \
 	kernel/idt.S \
-	kernel/idt.o \
 	ata-read.sym \
 	boot-stage1.sym \
 	boot-stage2.sym \
@@ -69,7 +82,7 @@ KERNEL_LDFLAGS := -nostdlib
 # Set the entry point
 KERNEL_LDFLAGS += --entry=main
 # Set the memory location where the kernel will be placed
-KERNEL_LDFLAGS += --section-start=.text=0x0100000
+KERNEL_LDFLAGS += --section-start=.text=0xFF000000
 # KERNEL_LDFLAGS += --omagic
 
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
@@ -87,22 +100,22 @@ kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
 	$(OBJCOPY) --only-keep-debug kernel/boot/ata-read.o ata-read.sym
 
 
-kernel/chronos.o: kernel/idt.o libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) kernel/asm.o
-	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS) kernel/asm.o kernel/idt.o
+kernel/chronos.o: kernel/idt.o libs $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(KERNEL_ASSEMBLY_OBJECTS) kernel/idt.S $(KERNEL_ASSEMBLY_OBJECTS)
+	$(LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o kernel/chronos.o $(KERNEL_OBJECTS) $(KERNEL_DRIVERS) $(LIBS) $(KERNEL_ASSEMBLY_OBJECTS)
 
 kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/boot/bootasm.o kernel/boot/bootasm.S
 	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
-kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS)
+kernel/boot/boot-stage2.img: libs $(KERNEL_DRIVERS) tools kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/vm/pgdir.o kernel/cpu.o kernel/boot/bootc_jmp.o
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include/ -I kernel/ -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -c -o kernel/boot/bootc_jmp.o kernel/boot/bootc_jmp.S
-	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o $(LIBS) $(KERNEL_DRIVERS) kernel/boot/bootc_jmp.o 
+	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o lib/stdarg.o kernel/drivers/vsfs.o lib/stdlib.o kernel/drivers/serial.o kernel/drivers/ata.o lib/stdlock.o kernel/drivers/pic.o
 	$(OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	
 	$(OBJCOPY) -O binary -j .bss kernel/boot/boot-stage2.o kernel/boot/boot-stage2.bss
+	./tools/bin/boot2-verify
 	dd if=kernel/boot/boot-stage2.text of=kernel/boot/boot-stage2.img bs=512 count=58 seek=0
 	dd if=kernel/boot/boot-stage2.data of=kernel/boot/boot-stage2.img bs=512 count=2 seek=58
 	dd if=kernel/boot/boot-stage2.rodata of=kernel/boot/boot-stage2.img bs=512 count=2 seek=60
@@ -113,10 +126,8 @@ kernel/boot/ata-read.o:
 
 kernel/idt.S: tools
 	tools/bin/mkvect > kernel/idt.S
-kernel/idt.o: kernel/idt.S
-	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/idt.o kernel/idt.S
-kernel/asm.o:
-	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c -o kernel/asm.o kernel/asm.S
+kernel/%.o: kernel/%.S
+	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -I kernel/ -c -o $@ $<
 
 kernel/%.o: kernel/%.c
 	$(CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<

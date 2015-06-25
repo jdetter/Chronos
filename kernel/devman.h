@@ -3,6 +3,11 @@
 
 #define MAX_DEVICES 128
 
+/* Video modes */
+#define VIDEO_MODE_NONE 0x00
+#define VIDEO_MODE_COLOR 0x20
+#define VIDEO_MODE_MONO 0x30
+
 /* Definitions for drivers */
 
 #define IO_DRIVER_CONTEXT_SPACE 128

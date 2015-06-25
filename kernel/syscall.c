@@ -402,7 +402,7 @@ int sys_exec(const char* path, const char** argv)
   /* Create a temporary stack: */
   uchar* tmp_stack = (uchar*)palloc() + PGSIZE;
   uint stack_start = (uint)tmp_stack - PGSIZE;
-  uint uvm_stack = KVM_START;
+  uint uvm_stack = KVM_KERN_S;
 
   /* copy arguments */
   int x;
@@ -438,7 +438,7 @@ int sys_exec(const char* path, const char** argv)
   *((uint*)tmp_stack) = 0xFFFFFFFF;
   
   /* Free user memory */
-  vm_free_uvm(rproc->pgdir);
+  //vm_free_uvm(rproc->pgdir);
 
   /* Invalidate the TLB */
   switch_uvm(rproc);
@@ -452,7 +452,7 @@ int sys_exec(const char* path, const char** argv)
   }
 
   /* Map the new stack in */
-  mappage(stack_start, KVM_START - PGSIZE, rproc->pgdir, 1, 0);
+  mappage(stack_start, KVM_KERN_S - PGSIZE, rproc->pgdir, 1, 0);
 
   /* We now have the esp and ebp. */
   rproc->tf->esp = uvm_stack;

@@ -29,38 +29,19 @@
  * ...
  * 0xFDFF8000
  *
- * VV   Top of hardware mapping space  VV
- *
- * ...
  * 0xFDFF7FFF
  * ...
- * 
- * 0xFDFFF000 Monochrome video memory --> 0xB0000
- * 0xFE000000 Color video memory --> 0xB8000
- *
- * ^^ Bottom of hardware mapping space ^^ (for pci, DMA, ect.)
- *  Note: all pages above will be marked as **write through** 
- * 
+ * Hardware mapping space
+ * ...
+ * 0xFD000000
+ *  Note: all pages in hardware mapping space are marked as *write through*
  *  Note: all pages below here are directly mapped virt = phy, 
- *          all pages above are virtual
- * 
+ *
  * VV   Top of the page pool  VV
  * 
- * 0xFDFFFFFF
+ * 0xFEFFFFFF
  * ...
  * Page pool (if it exists)
- * ...
- * 0x01000000 
- *
- * 0x00FFFFFF
- * ...
- * ISA Memory Hole (may or may not be present on modern i386)
- * ...
- * 0x00F00000 
- * 
- * 0x00EFFFFF
- * ... 
- * Page pool
  * ...
  * 0x00100000 
  *
@@ -76,7 +57,7 @@
  * ...
  * 0x0000FC00
  * 
- * 0x0000FBFF
+ * 0x0000FDFF
  * ...
  * Boot stage 2 %%
  * ...
@@ -96,7 +77,9 @@
  * ^^  Bottom of the page pool ^^
  *
  * 0x00001000 Kernel page directory
- * 0x00000950 Pointer to the first page in the memory pool. 
+ * 0x00000958 Current video mode 
+ * 0x00000954 Available pages in the memory pool
+ * 0x00000950 Pointer to the first page in the memory pool
  * 0x00000500 Memory map (boot stage 1)
  * ...
  * All memory here left untouched (real mode IDT, bios data)
@@ -107,6 +90,34 @@
  *   %%: will get reclaimed as part of the memory pool after boot.
  *
  */
+
+/** Definitions for the above memory map **/
+
+#define VM_MAX		0xFFFFFFFF /* Maximum possible address */
+
+#define KVM_KERN_E      0xFFFFF000 /* Kernel binary ends */
+#define KVM_KERN_S      0xFF000000 /* Kernel binary starts*/
+
+#define KVM_KSTACK_G1   0xFEFFF000 /* Kernel stack upper guard page */
+
+#define KVM_KSTACK_E    0xFEFFEFFF /* Top of the kernel stack */
+#define KVM_KSTACK_S    0xFEFFA000 /* Bottom of the kernel stack*/
+
+#define KVM_KSTACK_G2   0xFEFF9000 /* Kernel stack lower guard page */
+
+#define KVM_KMALLOC_E   0xFEFF8FFF /* Where kmalloc ends */
+#define KVM_KMALLOC_S   0xFDFF8000 /* Where kmalloc starts */
+
+#define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */
+#define KVM_HARDWARE_S  0xFD000000 /* Start of hardware mappings */
+
+#define KVM_BOOT2_E	0x0000FDFF /* Start of the second boot stage binary */
+#define KVM_BOOT2_S	0x00007E00 /* Start of the second boot stage binary */
+
+#define KVM_KPGDIR      0x00001000 /* The kernel page directory */
+#define KVM_VMODE    	0x00000958 /* The current video mode */
+#define KVM_PAGE_CT    	0x00000954 /* Amount of pages in the page pool */
+#define KVM_POOL_PTR    0x00000950 /* Pointer to the first page in mem pool*/
 
 /** User application memory map
  * 
@@ -138,42 +149,20 @@
  * 0x00000000 NULL guard page (Security)
  */
 
+/** Definitions for the above memory map **/
+#define UVM_KVM_E	0xFFFFFFFF /* End of the kernel space*/
+#define UVM_KVM_S	0xFD000000 /* Start of the kernel space */
+
+#define UVM_KSTACK_G1	0xFCFFF000 /* Guard page for user kernel stack */
+#define UVM_KSTACK_E	0xFCFFEFFF /* End of the user kernel stack */
+#define UVM_KSTACK_S	0xFCFFA000 /* Start of the user kernel stack */
+#define UVM_KSTACK_G2	0xFCFF9000 /* Guard page for user kernel stack */
+#define UVM_USTACK_TOP	0xFCFF8000 /* Top of the user's stack */
+#define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
+
 /** Memory mapped file systems
  *  < Will be updated when implemented >
  */
-
-#define PGROUNDDOWN(pg)	((pg) & ~(PGSIZE - 1))	
-#define PGROUNDUP(pg)	((pg + PGSIZE - 1) & ~(PGSIZE - 1))	
-
-#define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
-#define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
-
-/**
- * MEMORY MAPPINGS
- *
- * These are the memory mappings that are used by chronos.
- */
-#define KVM_START 	0x00100000 /* Where the kernel is loaded */
-#define KVM_MALLOC	0x001F0000 /* Where kernel malloc starts*/
-#define KVM_END		0x00200000 /* Where the address space ends */
-#define KVM_MALLOC_END	KVM_END
-#define KVM_MAX		0xFFFFFFFF /* Maximum address */
-
-/* Keep an empty page at the start of the stack */
-#define KVM_KSTACK_G1   0x00200000 /* First guard page */
-#define KVM_KSTACK_S	0x00201000
-#define KVM_KSTACK_E	0x00209000
-#define KVM_KSTACK_G2	0x0020A000 /* Second guard page */
-/* Keep an empty page at the end of the stack */
-
-#define KVM_COLOR_START 0x0020A000
-#define KVM_COLOR_SZ    4000 /* Size of color memory */
-#define KVM_MONO_START  0x0020E000      
-#define KVM_MONO_SZ     4000 /* Size of mono chrome memory */
-
-/* When a new process is created, what should get transfered? */
-#define KVM_CPY_START 	KVM_START
-#define KVM_CPY_END 	(KVM_MONO_START + KVM_MONO_SZ)
 
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
@@ -189,6 +178,8 @@
 #define TSS_GRANULARITY		0x80
 #define TSS_AVAILABILITY	0x10
 #define TSS_DEFAULT_FLAGS	0x09
+
+#ifndef __VM_ASM_ONLY__
 
 struct vm_segment_descriptor
 {
@@ -210,6 +201,16 @@ uint vm_init(void);
  */
 void vm_seg_init(void);
 
+/**
+ * Save the current page directory and disable interrupts on this cpu.
+ */
+pgdir* vm_push_pgdir(void);
+
+/**
+ * Restore the previous page directory and pop_cli.
+ */
+void vm_pop_pgdir(pgdir* dir);
+
 /**    
  * Allocate a page. Return NULL if there are no more free pages. The address
  * returned should be page aligned.
@@ -223,9 +224,27 @@ uint palloc(void);
 void pfree(uint pg);
 
 /**
+ * Add pages to the page pool. This will not add pages to the page pool
+ * that are going to be direct mapped.
+ */
+void vm_add_pages(uint start, uint end, pgdir* dir);
+
+/**
+ * Setup the page pool. This is done during the second boot stage.
+ */
+void vm_init_page_pool(void);
+
+/**
  * Setup the kernel portion of the page table.
  */
 void setup_kvm(void);
+
+/**
+ * Called when the bootstrap has finished setting up memory. The
+ * information saved by this function call is read by the kernel
+ * when it starts executing.
+ */
+void save_vm(void);
 
 /**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
@@ -274,6 +293,11 @@ void vm_copy_kvm(pgdir* dir);
 void vm_copy_uvm(pgdir* dst, pgdir* src);
 
 /**
+ * Free the user portion of a page directory.
+ */
+void vm_free_uvm(pgdir* dir);
+
+/**
  * Use the kernel's page table
  */
 void switch_kvm(void);
@@ -283,10 +307,6 @@ void switch_kvm(void);
  */
 void switch_uvm(struct proc* p);
 
-/**
- * Free the user portion of a page directory.
- */
-void vm_free_uvm(pgdir* dir);
 
 /**
  * Switch to the user's context.
@@ -306,5 +326,7 @@ void pgdir_cmp(pgdir* src, pgdir* dst);
  * Compare 2 pages.
  */
 void pg_cmp(uchar* pg1, uchar* pg2);
+
+#endif 
 
 #endif
