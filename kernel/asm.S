@@ -1,5 +1,7 @@
-#define _CHRONOS_ASMONLY_
+#define __CHRONOS_ASM_ONLY__
 #include "chronos.h"
+#define __VM_ASM_ONLY__
+#include "vm.h"
 
 .globl trap_handler
 
@@ -94,8 +96,7 @@ __context_restore__:
 # return 0
 	movl	$0x00, %eax
 	ret
-		
-
+	
 # definitions for relevant MSRs:
 #define SYSENTER_CS_MSR 	0x174
 #define SYSENTER_ESP_MSR 	0x175

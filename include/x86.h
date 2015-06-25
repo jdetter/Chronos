@@ -73,6 +73,7 @@
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
 
+#ifndef __X86_ASM_ONLY__
 /* Inline assembly functions */
 static inline uchar
 inb(ushort port)
@@ -195,6 +196,7 @@ static inline uint xchg(volatile uint *addr, uint newval)
 			"cc");
 	return result;
 }
+#endif
 
 /**
  * We are remapping the original PIC definitions. The new defs are here.
@@ -240,6 +242,7 @@ static inline uint xchg(volatile uint *addr, uint newval)
 #define INT_PIC_ATA1_CODE       0x0E
 #define INT_PIC_ATA2_CODE       0x0F
 
+#ifndef __X86_ASM_ONLY__
 struct task_segment
 {
 	uint_16 previous_task_link; /* Segment selector of prev task*/
@@ -281,5 +284,6 @@ struct task_segment
 	uint_16 T;
 	uint_16 io_base_address_map;
 }; /* Size MUST be 104.*/
+#endif
 
 #endif

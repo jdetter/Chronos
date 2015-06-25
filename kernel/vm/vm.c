@@ -100,13 +100,13 @@ void switch_context(struct proc* p)
 		(uint_8)(limit >> 16) | flag;
 	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
 
+	/* Switch to the user's page directory (stack access) */
+	__enable_paging__(p->pgdir);
 	struct task_segment* ts = (struct task_segment*)p->tss;
 	ts->SS0 = SEG_KERNEL_DATA << 3;
 	ts->ESP0 = (uint)p->k_stack;
 	ts->esp = p->tf->esp;
 	ts->ss = SEG_USER_DATA << 3;
-
-	__enable_paging__(p->pgdir);
 	ltr(SEG_TSS << 3);
 
 	if(p->state == PROC_READY)

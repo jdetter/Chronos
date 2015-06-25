@@ -1,4 +1,4 @@
-#define  _CHRONOS_ASMONLY_
+#define  __CHRONOS_ASM_ONLY__
 #include "chronos.h"
 
 /* Create the system call code for each system call */

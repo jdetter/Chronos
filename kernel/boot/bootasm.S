@@ -1,6 +1,6 @@
 #include "asm.h"
 
-#define _CHRONOS_ASMONLY_
+#define __CHRONOS_ASM_ONLY__
 #include "chronos.h"
 
 # Load the kernel and jump into it.

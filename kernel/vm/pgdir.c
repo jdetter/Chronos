@@ -17,6 +17,8 @@
 #define UDIRFLAGS (PGDIR_PRESENT | PGDIR_RW | PGDIR_USER)
 #define UTBLFLAGS (PGTBL_PRESENT | PGTBL_RW | PGTBL_USER)
 
+uchar __kvm_stack_check__(void);
+void __kvm_swap__(pgdir* kvm);
 uchar __check_paging__(void);
 void __enable_paging__(pgdir* dir);
 pgdir* __get_cr3__(void);
@@ -25,6 +27,8 @@ extern pgdir* k_pgdir;
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags);
 void vm_safe_mapping(uint start, uint end, pgdir* dir);
 
+void vm_clear_uvm_kstack(pgdir* dir);
+void vm_set_uvm_kstack(pgdir* dir, pgdir* swap);
 pgdir* vm_push_pgdir(void)
 {
 	/* Is paging even enabled? */
@@ -32,7 +36,10 @@ pgdir* vm_push_pgdir(void)
 	pgdir* dir = __get_cr3__();
 	if(dir == k_pgdir) return NULL;
 	push_cli();
-	__enable_paging__(k_pgdir);
+	/* Are we on the kernel stack? */
+	if(!__kvm_stack_check__())
+		__kvm_swap__(k_pgdir);
+	else __enable_paging__(k_pgdir);
 	return dir;	
 }
 
@@ -41,6 +48,7 @@ void vm_pop_pgdir(pgdir* dir)
 	if(dir == NULL) return;
 	if(!__check_paging__()) return;
         if(dir == k_pgdir) return;
+	//vm_clear_uvm_kstack(k_pgdir);
 	__enable_paging__(dir);
 	pop_cli();
 }
@@ -233,38 +241,84 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	for(x = 0;x < UVM_KVM_S;x += PGSIZE)
 	{
 		uint src_page = findpg(x, 0, src_dir, 1);
-		if(!src_page) 
-		{
-			vm_pop_pgdir(save);
-			continue;
-		}
+		if(!src_page) continue;
 
 		uint dst_page = findpg(x, 1, dst_dir, 1);
 		memmove((uchar*)dst_page,
 				(uchar*)src_page,
 				PGSIZE);
 	}
+
+	/* Create new kstack */
+	for(x = PGROUNDDOWN(UVM_KSTACK_S);
+		x < PGROUNDUP(UVM_KSTACK_E);
+		x += PGSIZE)
+	{
+		/* Remove old mapping */
+		unmappage(x, dst_dir);
+		uint src_page = findpg(x, 0, src_dir, 0);
+                if(!src_page) continue;
+
+		/* Create and map new page */
+                uint dst_page = findpg(x, 1, dst_dir, 0);
+		/* Copy the page contents */
+                memmove((uchar*)dst_page,
+                                (uchar*)src_page,
+                                PGSIZE);
+	}
+	vm_pop_pgdir(save);
+}
+
+void vm_set_swap_stack(pgdir* dir, pgdir* swap)
+{
+	pgdir* save = vm_push_pgdir();
+	/* Make sure the swap stack is clear */
+	vm_clear_swap_stack(dir);
+
+	/* Map the new pages in */
+	uint start = PGROUNDDOWN(SVM_KSTACK_S);
+        uint end = PGROUNDUP(SVM_KSTACK_E);
+        uint pg;
+        for(pg = start;pg < end;pg += PGSIZE)
+	{
+                uint src = findpg(pg + SVM_DISTANCE, 0, swap, 0);
+		mappage(src, pg, dir, 0, 0);
+	}
+
+	vm_pop_pgdir(save);	
+}
+
+void vm_clear_swap_stack(pgdir* dir)
+{
+	pgdir* save = vm_push_pgdir();
+
+	uint start = PGROUNDDOWN(SVM_KSTACK_S);
+	uint end = PGROUNDUP(SVM_KSTACK_E);
+	uint pg;
+	for(pg = start;pg < end;pg += PGSIZE)
+		unmappage(pg, dir);
+
 	vm_pop_pgdir(save);
 }
 
 void vm_free_uvm(pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();
-        uint x;
-        for(x = 0;x < PGROUNDDOWN(UVM_KVM_S); x+= PGSIZE)
-        {
-        	uint pg = unmappage(x, dir);
+	uint x;
+	for(x = 0;x < PGROUNDUP(UVM_KVM_S); x+= PGSIZE)
+	{
+		uint pg = unmappage(x, dir);
 		if(pg) pfree(pg);
-        }
+	}
 
-        vm_pop_pgdir(save);
+	vm_pop_pgdir(save);
 }
 
 void freepgdir(pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();
 	/* Free user pages */
-	//vm_free_uvm(dir);
+	vm_free_uvm(dir);
 	/* Free kernel pages */
 	uint x;
 	for(x = 0;x < (PGSIZE / sizeof(uint));x++)

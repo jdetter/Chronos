@@ -1,3 +1,8 @@
+#define __VM_ASM_ONLY__
+#define __X86_ASM_ONLY__
+#include "vm.h"
+#include "x86.h"
+
 /* __enable_paging__(uint* pgdir)*/
 #define CR0_PGENABLE (1<<31)
 .globl __enable_paging__
@@ -44,8 +49,8 @@ __check_interrupt__:
         pushf
         xorl    %eax, %eax
         popl    %eax
-        andl    $(EFLAGS_INT_EN), %ax
-        rorl	$0x09, %ax
+        andl    $(EFLAGS_INT_EN), %eax
+        rorl	$0x09, %eax
 	ret
 
 .globl __get_cr2__
@@ -77,4 +82,103 @@ __set_stack__:
         /* Return to calling function. */
         ret
 
+# uchar __kvm_stack_check__(void)
+.globl __kvm_stack_check__
+__kvm_stack_check__:
+	cmp	$(KVM_KSTACK_S), %esp
+	jl	__kvm_stack_check__fail
+	cmp	$(PGROUNDUP(KVM_KSTACK_E)), %esp
+	jge	__kvm_stack_check__fail
+	movl	$0x01, %eax
+	ret
+__kvm_stack_check__fail:
+	movl	$0x0, %eax
+	ret
+
+#define PGDIR_DIR_MASK	0xFFC00000
+#define PGDIR_TBL_MASK 	0x003ff000
+#define PGDIR_MASK	0xFFFFF000
+# void __kvm_swap__(pgdir* kvm)
+.globl __kvm_swap__
+__kvm_swap__:
+# move kernel page directory into ecx
+        movl    0x04(%esp), %ecx
+        pushl   %ebp
+        movl    %esp, %ebp
+        pushl   %edx
+        pushl   %ebx
+        pushl   %edi
+        pushl   %esi
+# WARNING: UNUSABLE STACK
+
+	/* move old page directory into edi */
+        movl    %cr3, %edi
+	/* move kvm pgdir into cr3 */
+        movl    %ecx, %cr3
+	/* ecx is now free */
+
+	/* move start virtual address into esi */
+        movl    $(UVM_KSTACK_S), %esi
+
+__kvm_swap__1:
+
+	/* see if we are done */
+        cmp    $(UVM_KSTACK_E), %esi
+        jge     __kvm_swap__done
+
+	/* put directory index into eax */
+	movl	%esi, %eax
+	andl	$(PGDIR_DIR_MASK), %eax
+	shrl	$22, %eax
+
+	/* Put src table address into ecx */
+	movl	0x0(%edi, %eax, 0x04), %ecx
+	andl	$(PGDIR_MASK), %ecx
+
+	/* Put table index into eax */
+	movl	%esi, %eax
+	andl	$(PGDIR_TBL_MASK), %eax
+	shrl	$12, %eax
+
+	/* Put src into edx */
+	movl	0x0(%ecx, %eax, 0x04), %edx
+	/* eax, ebx, ecx are free : edx holds src page */
+
+	/* Put directory index into eax */
+	movl    %esi, %eax
+        andl    $(PGDIR_DIR_MASK), %eax
+        shrl    $22, %eax
+
+	/* Put kernel table address into ecx */
+	movl	%cr3, %ebx
+	movl	0x0(%ebx, %eax, 0x04), %ecx
+	andl	$(PGDIR_MASK), %ecx
+
+	/* Put kernel table index into eax */
+	movl	%esi, %eax
+	andl	$(PGDIR_TBL_MASK), %eax
+	shrl	$12, %eax
+
+	/* Finally, install src into the table */
+	movl	%edx, 0x0(%ecx, %eax, 0x04)
+
+	/* Add page size to esi */
+        addl    $(PGSIZE), %esi
+
+	/* Start over. */
+	jmp	__kvm_swap__1
+
+__kvm_swap__done:
+	/* Inner peace. */
+
+	/* flush TLB */
+	movl	%cr3, %eax
+	movl	%eax, %cr3
+
+        popl    %esi
+        popl    %edi
+        popl    %ebx
+        popl    %edx
+        popl    %ebp
+        ret
 

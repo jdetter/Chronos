@@ -1,5 +1,6 @@
 #include "types.h"
 #include "cpu.h"
+#include "panic.h"
 
 uchar __check_interrupt__(void);
 
@@ -24,4 +25,9 @@ void pop_cli(void)
                 cli_count = 0;
                 asm volatile("sti");
         }
+}
+
+void reset_cli(void)
+{
+	cli_count = 0;
 }

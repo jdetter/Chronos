@@ -60,7 +60,7 @@
 
 #define MAX_ARG		0x20
 
-#ifndef _CHRONOS_ASMONLY_
+#ifndef __CHRONOS_ASM_ONLY__
 /**
  * Fork the currently running process. The address space will be copied
  * as well as all open files and other resources. The child process will

@@ -84,9 +84,6 @@ struct proc* spawn_tty(tty_t t)
 	p->stack_start = PGROUNDUP(UVM_USTACK_TOP);
 	p->stack_end = p->stack_start - PGSIZE;
 	
-	p->heap_start = 0;
-	p->heap_end = 0;
-
 	p->block_type = PROC_BLOCKED_NONE;
 	p->b_condition = NULL;
 	p->b_pid = 0;
@@ -99,14 +96,16 @@ struct proc* spawn_tty(tty_t t)
 	p->pgdir = (pgdir*)palloc();
 	vm_copy_kvm(p->pgdir);
 
-	/* Map in a kernel stack */
-	mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
-	p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
-	p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
-	p->tss = (struct task_segment*)(UVM_KSTACK_S);
+	/* Map in a new kernel stack */
+        mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
+        p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
+        p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
+        p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
 	/* Map in a user stack. */
 	mappages(p->stack_end, PGSIZE, p->pgdir, 1);
+
+	/* Switch to user page table */
 	switch_uvm(p);
 
 	/* Basic values for the trap frame */
@@ -122,6 +121,7 @@ struct proc* spawn_tty(tty_t t)
 	if(p->entry_point != 0x1000)
 		panic("init binary wrong entry point.\n");
 	p->heap_start = PGROUNDUP(end);
+	p->heap_end = p->heap_start;
 
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);

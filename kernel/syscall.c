@@ -293,7 +293,7 @@ int sys_fork(void)
   struct proc* new_proc = alloc_proc();
   if(!new_proc) return -1;
   slock_acquire(&ptable_lock);
-  new_proc->k_stack = (uchar*) palloc() + PGSIZE;
+  new_proc->k_stack = rproc->k_stack;
   new_proc->pid = next_pid++;
   new_proc->uid = rproc->uid;
   new_proc->gid = rproc->gid;
@@ -305,30 +305,49 @@ int sys_fork(void)
   new_proc->state = PROC_RUNNABLE;
   new_proc->pgdir = (uint*) palloc();
   vm_copy_kvm(new_proc->pgdir);
-  vm_copy_uvm(new_proc->pgdir, rproc->pgdir); 
-  memmove(new_proc->k_stack - PGSIZE, rproc->k_stack - PGSIZE, PGSIZE);
-  new_proc->tf = (struct trap_frame*)((char*)new_proc->k_stack - 
-		sizeof(struct trap_frame));
-  new_proc->tf->eax = 0; /* The child should return 0 */
+  vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+  new_proc->tf = rproc->tf;
   new_proc->t = rproc->t;
   new_proc->entry_point = rproc->entry_point;
-  new_proc->tss = (struct task_segment*)(new_proc->k_stack - PGSIZE);
-
-  /* Create a context to be restored, trap return should be called. */
-  struct context* new_context = (struct context*)((char*)new_proc->tf - 
-		sizeof(struct context));
-  new_context->cr0 = PGROUNDDOWN((uint)new_proc->pgdir);
-  new_context->esp = (uint)new_proc->tf - 4;
-  new_context->ebp = new_context->esp;
-  new_context->eip = (uint)trap_return;
-  new_proc->context = (uint)new_context;
+  new_proc->tss = rproc->tss;
+  new_proc->context = rproc->context;
+  memmove(&new_proc->cwd, &rproc->cwd, MAX_PATH_LEN);
+  memmove(&new_proc->name, &rproc->name, MAX_PROC_NAME);
 
   /* Copy all file descriptors */
   memmove(&new_proc->file_descriptors, &rproc->file_descriptors,
-		sizeof(struct file_descriptor) * MAX_FILES);
+                sizeof(struct file_descriptor) * MAX_FILES);
 
-  memmove(&new_proc->cwd, &rproc->cwd, MAX_PATH_LEN);
-  memmove(&new_proc->name, &rproc->name, MAX_PROC_NAME);
+  /** 
+   * A quick note on the swap stack:
+   *
+   * The swap stack is an area in memory located just below the kernel
+   * stack for the running program. This are is used to map in another
+   * stack from another program. This is useful when you want to work
+   * on 2 stacks at the same time without changing page directories.
+   * Here we are using the swap stack to map in the stack of our new
+   * process and modifying the contents without changing page directories.
+   */
+
+  /* Map the new process's stack into our swap space */
+  vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
+
+  struct trap_frame* tf = (struct trap_frame*)
+		((uchar*)new_proc->tf - SVM_DISTANCE);
+  tf->eax = 0; /* The child should return 0 */
+  
+  /* new proc needs a context */
+  struct context* c = (struct context*)
+		((uchar*)tf - sizeof(struct context));
+  c->eip = (uint)trap_return;
+  c->esp = (uint)tf - 4 + SVM_DISTANCE;
+  c->cr0 = (uint)new_proc->pgdir;
+  new_proc->context = (uint)c + SVM_DISTANCE;
+
+  /* Clear the swap stack now */
+  vm_clear_swap_stack(rproc->pgdir);
+
+  /* release ptable lock */
   slock_release(&ptable_lock);
 
   return new_proc->pid;
@@ -399,10 +418,14 @@ int sys_exec(const char* path, const char** argv)
   char* args[MAX_ARG];
   memset(args, 0, MAX_ARG * sizeof(char*));
 
-  /* Create a temporary stack: */
-  uchar* tmp_stack = (uchar*)palloc() + PGSIZE;
-  uint stack_start = (uint)tmp_stack - PGSIZE;
-  uint uvm_stack = KVM_KERN_S;
+  /* Make sure the swap stack is empty */
+  vm_clear_swap_stack(rproc->pgdir);
+
+  /* Create a temporary stack and map it to our swap stack */
+  uint stack_start = palloc();
+  mappage(stack_start, SVM_KSTACK_S, rproc->pgdir, 1, 0);
+  uchar* tmp_stack = (uchar*)SVM_KSTACK_S + PGSIZE;
+  uint uvm_stack = PGROUNDUP(UVM_USTACK_TOP);
 
   /* copy arguments */
   int x;
@@ -438,7 +461,7 @@ int sys_exec(const char* path, const char** argv)
   *((uint*)tmp_stack) = 0xFFFFFFFF;
   
   /* Free user memory */
-  //vm_free_uvm(rproc->pgdir);
+  vm_free_uvm(rproc->pgdir);
 
   /* Invalidate the TLB */
   switch_uvm(rproc);
@@ -452,7 +475,10 @@ int sys_exec(const char* path, const char** argv)
   }
 
   /* Map the new stack in */
-  mappage(stack_start, KVM_KERN_S - PGSIZE, rproc->pgdir, 1, 0);
+  mappage(stack_start, PGROUNDUP(UVM_USTACK_TOP) - PGSIZE, 
+		rproc->pgdir, 1, 0);
+  /* Unmap the swap stack */
+  vm_clear_swap_stack(rproc->pgdir);
 
   /* We now have the esp and ebp. */
   rproc->tf->esp = uvm_stack;
@@ -462,8 +488,8 @@ int sys_exec(const char* path, const char** argv)
   rproc->tf->eip = rproc->entry_point;
 
   /* Adjust heap start and end */
-  rproc->heap_start = PGROUNDDOWN(load_result + PGSIZE - 1);
-  rproc->heap_end = 0;
+  rproc->heap_start = PGROUNDUP(load_result);
+  rproc->heap_end = rproc->heap_start;
 
   /* Release the ptable lock */
   slock_release(&ptable_lock);
@@ -612,11 +638,10 @@ int sys_lseek(int fd, int offset, int whence)
 
 void* sys_mmap(void* hint, uint sz, int protection)
 {
-  uint pagestart=PGROUNDDOWN(rproc->heap_start + rproc->heap_end + PGSIZE - 1);
+  uint pagestart = PGROUNDUP(rproc->heap_end);
   mappages(pagestart, sz, rproc->pgdir, 1);
-             
-  uint* returnpage = (uint*) pagestart;
-  return returnpage;
+  rproc->heap_end += sz;
+  return (void*)pagestart;
 }
 
 int sys_wait_s(struct cond* c, struct slock* lock)

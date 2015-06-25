@@ -22,8 +22,20 @@
  * Kernel stack
  * ...
  * 0xFEFFA000
- * 0xFEFF9000 kernel stack lower guard page
- * 0xFEFF8FFF 
+ * 0xFEFF9000 kernel stack lower guard page / user kstack upper guard page
+ * 0xFEFF8FFF
+ * ...
+ * User kstack
+ * ...
+ * 0xFEFF4000
+ * 0xFEFF3000 user kstack lower guard page
+ * 0xFEFF2FFF
+ * ...
+ * Swap stack (stacks of other processes get mapped here)
+ * ...
+ * 0xFEFEE000
+ * 0xFEFED000 extra stack lower guard page
+ * 0xFEFFCFFF
  * ...
  * kmalloc space
  * ...
@@ -105,7 +117,17 @@
 
 #define KVM_KSTACK_G2   0xFEFF9000 /* Kernel stack lower guard page */
 
-#define KVM_KMALLOC_E   0xFEFF8FFF /* Where kmalloc ends */
+#define UVM_KSTACK_G1	KVM_KSTACK_G2 /* User kstack upper guard page */
+#define UVM_KSTACK_E	0xFEFF8FFF /* End (top) of the user process stack */
+#define UVM_KSTACK_S	0xFEFF4000 /* Start of the user process stack */
+#define UVM_KSTACK_G2	0xFEFF3000
+
+#define SVM_KSTACK_G1	0xFEFF3000 /* swap stack top guard page */
+#define SVM_KSTACK_E	0xFEFF2FFF /* swap stack end */
+#define SVM_KSTACK_S	0xFEFEE000 /* swap stack start */
+#define SVM_KSTACK_G2	0xFEFED000 /* swap stack bottom guard page */
+
+#define KVM_KMALLOC_E   0xFEFFCFFF /* Where kmalloc ends */
 #define KVM_KMALLOC_S   0xFDFF8000 /* Where kmalloc starts */
 
 #define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */
@@ -119,21 +141,29 @@
 #define KVM_PAGE_CT    	0x00000954 /* Amount of pages in the page pool */
 #define KVM_POOL_PTR    0x00000950 /* Pointer to the first page in mem pool*/
 
+/* Quickly calculate the difference between the normal and swap stacks. */
+#define SVM_DISTANCE (UVM_KSTACK_S - SVM_KSTACK_S)
+
 /** User application memory map
  * 
  * 0xFFFFFFFF Top of kernel space
  * ...
- * Hardware mappings, kernel code/data, kmalloc space, ...
+ * Kernel binary space (code + global data)
+ * ...
+ * 0xFEFFA000
+ * 0xFEFF9000 Stack guard page top 
+ * 0xFEFF8FFF
+ * ...
+ * User kernel stack (see definition above)
+ * ...
+ * 0xFEFF4000
+ * 0xFEFF3000 Stack guard page bottom
+ * 0xFEFF2FFF
+ * ...
+ * Hardware mappings, kmalloc space, ...
  * ... 
  * 0xFD000000 Bottom of kernel space
- * 0xFCFFF000 User kernel stack upper guard page
- * 0xFCFFEFFF 
- * ...
- * User kernel stack
- * ...
- * 0xFCFFA000 
- * 0xFCFF9000 User kernel stack lower guard page
- * 0xFCFF8FFF User application user space stack top
+ * 0xFCFFFFFF User application user space stack top
  *     |
  *     | Stack grows down when the user needs more stack space
  *     |
@@ -153,11 +183,7 @@
 #define UVM_KVM_E	0xFFFFFFFF /* End of the kernel space*/
 #define UVM_KVM_S	0xFD000000 /* Start of the kernel space */
 
-#define UVM_KSTACK_G1	0xFCFFF000 /* Guard page for user kernel stack */
-#define UVM_KSTACK_E	0xFCFFEFFF /* End of the user kernel stack */
-#define UVM_KSTACK_S	0xFCFFA000 /* Start of the user kernel stack */
-#define UVM_KSTACK_G2	0xFCFF9000 /* Guard page for user kernel stack */
-#define UVM_USTACK_TOP	0xFCFF8FFF /* Top of the user's stack */
+#define UVM_USTACK_TOP	0xFCFFFFFF /* Top of the user's stack */
 #define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
 
 /** Memory mapped file systems
@@ -307,6 +333,15 @@ void switch_kvm(void);
  */
 void switch_uvm(struct proc* p);
 
+/**
+ * Map another process's stack into a process's stack swap space.
+ */
+void vm_set_swap_stack(pgdir* dir, pgdir* swap);
+
+/**
+ * Clear this directory's stack swap space.
+ */
+void vm_clear_swap_stack(pgdir* dir);
 
 /**
  * Switch to the user's context.

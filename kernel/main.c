@@ -15,6 +15,7 @@
 #include "panic.h"
 #include "idt.h"
 #include "x86.h"
+#include "cpu.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -87,9 +88,14 @@ void main_stack(void)
 	pit_init();
 	cprintf("[ OK ]\n");
 
+	/* Initilize cli stack */
+	cprintf("Initilizing cli stack...\t\t\t\t\t\t");
+	reset_cli();
+	cprintf("[ OK ]\n");
+	
 	/* Enable interrupts */
 	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");
-	//asm volatile("sti");	
+	asm volatile("sti");	
 	cprintf("[ OK ]\n");
 
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
@@ -101,13 +107,6 @@ void main_stack(void)
 	init_proc = spawn_tty(tty_find(0));
 	cprintf("[ OK ]\n");
 
-	//cprintf("Spawning tty1...\t\t\t\t\t\t\t\t");
-	//tty_t x = tty_find(1);
-	//tty_init(x, 1, TTY_TYPE_COLOR, 1, KVM_COLOR_START);
-	//tty_enable(x);
-	//spawn_tty(x);
-	//cprintf("[ OK ]\n");
-	
 	/* Start scheduling loop. */
 	sched();
 	panic("Scheduler returned!");
