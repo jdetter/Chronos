@@ -11,6 +11,7 @@ KERNEL_OBJECTS := \
 	syscall \
 	trap \
 	cpu \
+	pipe \
 	fsman \
 	devman
 

@@ -1,12 +1,12 @@
 #include "types.h"
-#include "pipe.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "stdlock.h"
+#include "pipe.h"
 
 
 int pipe_write(void *src, uint sz, pipe_t pipe ){
-	slock_acquire(&pipe->gaurd);
+	slock_acquire(&pipe->guard);
 	int byteswritten = 0;
 	while(byteswritten!=sz){
 		while(pipe->full == 1){
@@ -14,7 +14,7 @@ int pipe_write(void *src, uint sz, pipe_t pipe ){
 		}
 		int bytes_avail = 0;
 		int bytes_left = sz - byteswritten; 
-		if(pipe->write => pipe->read){
+		if(pipe->write >= pipe->read){
 			bytes_avail = PIPE_DATA - pipe->write;
 		}
 		else{
@@ -27,18 +27,18 @@ int pipe_write(void *src, uint sz, pipe_t pipe ){
 		pipe->write = (pipe->write + bytes_avail) % PIPE_DATA; 
 		if(pipe->write == pipe->read){
 			pipe->full = 1;
-			cond_signal(&fill);
+			cond_signal(&pipe->fill);
 			
 		}
 		byteswritten += bytes_avail;
 	}
-	slock_release(&pipe->gaurd);
+	slock_release(&pipe->guard);
 	return sz;
 	
 }
 
 int pipe_read(void *dst, uint sz, pipe_t pipe){
-	slock_acquire(&pipe->gaurd);
+	slock_acquire(&pipe->guard);
 	int bytesread = 0;
 	while(bytesread!=sz){
 		while(pipe->full == 0 && pipe->write != pipe->read){
@@ -46,7 +46,7 @@ int pipe_read(void *dst, uint sz, pipe_t pipe){
 		}
 		int bytes_avail = 0;
 		int bytes_left = sz - bytesread; 
-		if(pipe->write => pipe->read){
+		if(pipe->write >= pipe->read){
 			bytes_avail = PIPE_DATA - pipe->write;
 		}
 		else{
@@ -59,11 +59,11 @@ int pipe_read(void *dst, uint sz, pipe_t pipe){
 		pipe->read = (pipe->read + bytes_avail) % PIPE_DATA; 
 		pipe->full = 0;
 		if(pipe->write == pipe->read){
-			cond_signal(&empty);
+			cond_signal(&pipe->empty);
 			
 		}
 		bytesread+= bytes_avail;
 	}
-	slock_release(&pipe->gaurd);
+	slock_release(&pipe->guard);
 	return sz;
 }
