@@ -48,6 +48,7 @@ struct proc* alloc_proc()
 	{
 		if(ptable[x].state == PROC_UNUSED)
 		{
+			memset(ptable + x, 0, sizeof(struct proc));
 			ptable[x].state = PROC_EMBRYO;
 			break;
 		}
@@ -196,6 +197,7 @@ uint load_binary(const char* path, struct proc* p)
 
 	/* Set the entry point of the program */
 	p->entry_point = elf_entry;
+	fs_close(process_file);
 
 	return elf_end;
 }
@@ -277,8 +279,11 @@ void scheduler(void)
 				/* release lock */
 				slock_release(&ptable_lock);
 
+				//int p = ptable[x].pid;
+				//cprintf("Process %d has been selected!\n", p);
 				/* Make the context switch */
 				switch_context(rproc);
+				//cprintf("Process is done for now.\n");
 
 				// The new process is now scheduled.
 				/* The process is done for now. */

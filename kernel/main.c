@@ -27,6 +27,8 @@ extern uint k_stack;
 /* Entry point for the kernel */
 int main(void)
 {
+	/* Lets make sure that tty0 gets configured properly. */
+	setup_kvm();
 	cprintf("Welcome to the Chronos kernel!\n");
 
 	/* WARNING: we don't have a proper stack right now. */

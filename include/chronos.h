@@ -26,6 +26,7 @@
 #define SYS_wait_t	0x14
 #define SYS_signal 	0x15
 #define SYS_readdir	0x16
+#define SYS_pipe	0x17
 
 /* Segment descriptions */
 /* Null segment		0x00 */

@@ -319,16 +319,21 @@ void freepgdir(pgdir* dir)
 	pgdir* save = vm_push_pgdir();
 	/* Free user pages */
 	vm_free_uvm(dir);
-	/* Free kernel pages */
+
+	/* Unmap kernel stack */
+	uint pg;
+	for(pg = PGROUNDDOWN(UVM_KSTACK_S);
+		pg < PGROUNDUP(UVM_KSTACK_E);
+		pg += PGSIZE)
+	{
+		uint freed = unmappage(pg, dir);
+		if(freed) pfree(freed);
+	}
+
+	/* Free directory pages */
 	uint x;
 	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
-	{
-		if(dir[x])
-		{
-			pfree(PGROUNDDOWN(dir[x]));
-			dir[x] = 0;
-		}
-	}
+		if(dir[x]) pfree(dir[x]);
 
 	/* free directory */
 	pfree((uint)dir);

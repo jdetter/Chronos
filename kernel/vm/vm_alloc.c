@@ -101,11 +101,7 @@ void vm_add_page(uint pg, pgdir* dir)
         for(x = 0;x < VM_IGNORE_TABLE_COUNT;x++)
         {
                 struct kvm_region* m = vm_ignore_table + x;
-                if(pg >= m->start_addr && pg < m->end_addr)
-                {
-                        cprintf("Page avoided: 0x%x\n", pg);
-                        return;
-                }
+                if(pg >= m->start_addr && pg < m->end_addr) return;
         }
 
         pfree(pg);
@@ -142,6 +138,8 @@ void pfree(uint pg)
         if(debug) cprintf("Page freed: 0x%x\n", pg);
         if(pg == 0) panic("Free null page.\n");
         k_pages++;
+	/* Make sure that the page doesn't have any flags: */
+	pg = PGROUNDDOWN(pg);
         struct vm_free_node* new_free = (struct vm_free_node*)pg;
         new_free->next = (uint)head;
         new_free->magic = (uint)KVM_MAGIC;

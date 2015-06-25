@@ -43,6 +43,7 @@ void trap_init(void)
 
 void trap_handler(struct trap_frame* tf)
 {
+	//cprintf("Process %d has entered trap handler.\n", rproc->pid);
 	rproc->tf = tf;
 	int trap = tf->trap_number;
 	char fault_string[64];
@@ -112,9 +113,11 @@ void trap_handler(struct trap_frame* tf)
 			strncpy(fault_string, "SIMD Exception", 64);
 			break;
 		case TRAP_SC:
+			//cprintf("System call started\n");
 			strncpy(fault_string, "System Call", 64);
 			syscall_ret = syscall_handler((uint*)tf->esp);
 			rproc->tf->eax = syscall_ret;
+			//cprintf("System call done.\n");
 			//yield();
 			break;
 		case INT_PIC_TIMER: /* Time quantum has expired. */
@@ -132,6 +135,8 @@ void trap_handler(struct trap_frame* tf)
                 for(;;);
         }
 
+
+	//cprintf("Process %d is leaving trap handler.\n", rproc->pid);
 
 	/* While were here, clear the timer interrupt */
 	// pic_eoi(INT_PIC_TIMER_CODE);

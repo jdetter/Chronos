@@ -44,7 +44,7 @@ void* dev_new_mapping(uint phy, uint sz)
 	if(v_end > KVM_HARDWARE_E)
 		panic("devman: Out of hardware memory.\n");
 	uint x;
-	for(x = v_start;x < v_end;x += PGSIZE)
+	for(x = 0;x < sz;x += PGSIZE)
 		mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
 
 	curr_mapping = v_end;

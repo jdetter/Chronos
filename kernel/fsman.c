@@ -176,6 +176,8 @@ static void fs_sync_inode(inode i)
 inode fs_open(const char* path, uint flags, uint permissions,
 	uint uid, uint gid)
 {
+	/* TODO: Check if the file is already open by another process */	
+
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
 	memset(dst_path, 0, FILE_MAX_PATH);

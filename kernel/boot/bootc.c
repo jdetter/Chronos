@@ -51,7 +51,7 @@ int main(void)
 	}
 	cprintf("Welcome to Chronos!\n");
 
-	cprintf("Initilizing virtual memory...\t\t\t\t");
+	cprintf("Initilizing virtual memory...\t\t\t\t\t\t");
 	setup_boot2_pgdir();
 	cprintf("[ OK ]\n");
 
@@ -163,7 +163,7 @@ void cprintf(char* fmt, ...)
 	{
 		serial_write(buffer, strlen(buffer));
 	} else {
-		/* Figure this out later*/
+		/* Not going to bother with this */
 	}
 
 	va_end(&list);

@@ -15,6 +15,7 @@ void push_cli(void)
         if(cli_count < 0) cli_count = 0;
         cli_count++;
         asm volatile("cli");
+	//if(cli_count == 1) cprintf("Interrupts disabled.\n");
 }
 
 void pop_cli(void)
@@ -22,6 +23,7 @@ void pop_cli(void)
         cli_count--;
         if(cli_count < 1)
         {
+		//cprintf("Interrupts enabled.\n");
                 cli_count = 0;
                 asm volatile("sti");
         }

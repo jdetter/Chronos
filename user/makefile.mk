@@ -12,7 +12,9 @@ USER_TARGETS := \
 	rm \
 	rmdir \
 	sh \
-	test 
+	test \
+	stress \
+	stall
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

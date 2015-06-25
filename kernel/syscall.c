@@ -171,6 +171,7 @@ int syscall_handler(uint* esp)
 	int syscall_number = -1;
 	int return_value = -1;
 	if(syscall_get_int(&syscall_number, esp, 0)) return 1;
+	//cprintf("Syscall number: %d\n", syscall_number);
 	esp++;
 	int int_arg1;
 	int int_arg2;
@@ -282,6 +283,9 @@ int syscall_handler(uint* esp)
 			return_value = sys_readdir(int_arg1, int_arg2,
 				(struct directent*)int_arg3);
 			break;
+		case SYS_pipe:
+			
+			break;
 	}
 	
 	return return_value; /* Syscall successfully handled. */
@@ -381,9 +385,16 @@ int sys_wait(int pid)
       ret_pid = p->pid;
       /* Free used memory */
       freepgdir(p->pgdir);
-      /* Free kernel stack */
-      pfree((uint)p->k_stack);
-      
+    
+      /* change rproc to the child process so that we can close its files. */
+      struct proc* current = rproc;
+      rproc = p; 
+      /* Close open files */
+      int file;
+      for(file = 0;file < MAX_FILES;file++)
+        sys_close(file);
+      rproc = current;
+
       memset(p, 0, sizeof(struct proc));
       p->state = PROC_UNUSED;
       break;
@@ -502,12 +513,6 @@ void sys_exit(void)
   /* Acquire the ptable lock */
   slock_acquire(&ptable_lock);
 
-  /* Close all open files */
-  int i;
-  for(i = 0; i < MAX_FILES; i++){
-    sys_close(i);
-  }
-
   /* Set state to killed */
   rproc->state = PROC_KILLED;
 
@@ -557,7 +562,9 @@ int sys_open(const char* path, int flags, int permissions)
 
 int sys_close(int fd)
 {
-  if(fd >= MAX_FILES){return -1;}
+  if(fd >= MAX_FILES || fd < 0){return -1;}
+  if(rproc->file_descriptors[fd].type == FD_TYPE_FILE)
+    fs_close(rproc->file_descriptors[fd].i);
   rproc->file_descriptors[fd].type = 0x00;  
   return 0;
 }

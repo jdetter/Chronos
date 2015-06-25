@@ -43,9 +43,7 @@ start:
 	movw	%ax, %ss # Stack Segment
 	movw	%ax, %es # Extra Segment
 	movw	%ax, %ds # Data Segment
-
-	xorl	%esp, %esp
-	movw	$0x7c00, %sp
+	movl	$0x7c00, %esp
 
 # Get the memory map
 	
@@ -57,7 +55,7 @@ start:
 	movl $0x00, %es:0x04(%di)	
 	movl $0x00, %es:0x08(%di)	
 	movl $0x00, %es:0x12(%di)	
-
+	
 	jmp A20_STEP1
 
 do_e820:

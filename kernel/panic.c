@@ -7,6 +7,8 @@
 #include "stdlib.h"
 #include "console.h"
 
+extern uint video_mode;
+
 /**
  * Hacky version of printf that doesn't require va_args. This method
  * is dangerous if not called properly. This method can be called any time
@@ -17,9 +19,22 @@ void cprintf(char* fmt, ...)
 	tty_t t0 = tty_find(0);
         if(t0->type == 0)
         {
-                tty_init(t0, 0, TTY_TYPE_SERIAL, 0, 0);
-                //tty_init(t0, 0, TTY_TYPE_COLOR, 1, 
-                //     (uint)CONSOLE_COLOR_BASE_ORIG);
+		video_mode = 0;
+		switch(video_mode)
+		{
+			case VIDEO_MODE_NONE: 
+			default:
+				tty_init(t0, 0, TTY_TYPE_SERIAL, 0, 0);
+				break;
+			case VIDEO_MODE_COLOR:
+				tty_init(t0, 0, TTY_TYPE_COLOR, 1, 
+                			(uint)CONSOLE_COLOR_BASE_ORIG);
+				break;
+			case VIDEO_MODE_MONO:
+				tty_init(t0, 0, TTY_TYPE_MONO, 1,  
+                                        (uint)CONSOLE_MONO_BASE_ORIG);
+				break;
+		}
                 tty_enable(t0);
         }
 
