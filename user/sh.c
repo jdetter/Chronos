@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 			int arg = 1;
 			char* argv[64];
 			argv[0] = in_buff;
-			for(i = 0; i<strlen(in_buff) i++ ){
+			for(i = 0; i<strlen(in_buff); i++ ){
 				if(in_buff[i]==' '){
 					in_buff[i] = 0;
 					argv[arg] = in_buff + i + 1;
@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 				}
 			}
 			argv[arg] = NULL;
-			exec(argv[0], argv);
+			exec(argv[0], (const char**)argv);
 		}
 	}
 	
