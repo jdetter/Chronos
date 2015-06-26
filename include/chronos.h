@@ -206,6 +206,15 @@ int signal(struct cond* c);
  */
 int readdir(int fd, int index, struct directent* dst);
 
+/**
+ * Creates a new pipe. A pipe is a buffer that can be read from and written
+ * to. Pipes exist across fork calls which allows processes to communicate
+ * with eachother. Pipe puts the file descriptor for the read end of the
+ * pipe into the first position of the array and then puts the file descriptor
+ * for the write end of the pipe into the second position of the array.
+ */
+int pipe(int fd[2]);
+
 #endif
 
 #endif
