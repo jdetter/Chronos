@@ -7,10 +7,11 @@
 
 int main(int argc, char* argv[])
 {
-	int i;
-
-	for(i=1; i<argc; i++)
-		printf("%s ", argv[i]);
-	printf("\n");
+	char buffer[256];
+	if(cwd(buffer, 256))
+	{
+		exit();
+	}
+	printf("%s \n", buffer);
 	exit();
 }
