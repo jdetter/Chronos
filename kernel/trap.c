@@ -14,6 +14,7 @@
 #include "syscall.h"
 #include "tty.h"
 #include "fsman.h"
+#include "pipe.h"
 #include "proc.h"
 
 #define TRAP_COUNT 256

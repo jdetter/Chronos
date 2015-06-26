@@ -10,6 +10,7 @@
 #include "ata.h"
 #include "serial.h"
 #include "panic.h"
+#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
 #include "console.h"

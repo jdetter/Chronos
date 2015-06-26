@@ -15,6 +15,7 @@
 #include "keyboard.h"
 #include "vsfs.h"
 #include "tty.h"
+#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"

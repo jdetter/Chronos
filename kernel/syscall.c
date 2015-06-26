@@ -5,6 +5,7 @@
 #include "fsman.h"
 #include "devman.h"
 #include "tty.h"
+#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
@@ -75,7 +76,7 @@ int syscall_get_buffer(char* dst, uint sz_user, uint sz_kern,
 	if(syscall_ptr_safe(str_addr))
 		return 1;
 	uchar* str = *(uchar**)str_addr;
-	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz_user))
+	if(syscall_addr_safe(str) || syscall_addr_safe(str + sz_user - 1))
 		return 1;
 	
 	uint sz = sz_user;
@@ -126,7 +127,7 @@ int syscall_get_buffer_ptr(char** ptr, uint sz, uint* esp, uint arg_num)
 	if(syscall_addr_safe(buff_addr))
                 return 1;
 	uchar* buff = *(uchar**)buff_addr;
-        if(syscall_addr_safe(buff) || syscall_addr_safe(buff + sz))
+        if(syscall_addr_safe(buff) || syscall_addr_safe(buff + sz - 1))
                 return 1;
 
 	*ptr = (char*)buff;
@@ -164,6 +165,17 @@ int syscall_get_buffer_ptrs(uchar*** ptr, uint* esp, uint arg_num)
 	return 0;
 }
 
+/**
+ * Find an open file descripor.
+ */
+static int find_fd(void)
+{
+	int x;
+	for(x = 0;x < MAX_FILES;x++)
+		if(rproc->file_descriptors[x].type == 0x0)
+			return x;
+	return -1;
+}
 
 int syscall_handler(uint* esp)
 {
@@ -180,6 +192,9 @@ int syscall_handler(uint* esp)
 #define SYSCALL_STRLEN 512
 	char str_arg1[SYSCALL_STRLEN];
 	//char str_arg2[SYSCALL_STRLEN];
+
+	void* ptr_arg1;
+	void* ptr_arg2;
 
 	char** arg_list;
 
@@ -268,10 +283,23 @@ int syscall_handler(uint* esp)
 				(struct file_stat*)int_arg2);
 			break;
 		case SYS_wait_s:
+			if(syscall_get_buffer_ptr((char**)&ptr_arg1, 
+				sizeof(struct cond), esp, 1)) break;
+			if(syscall_get_buffer_ptr((char**)&ptr_arg2, 
+				sizeof(struct slock), esp, 2)) break;
+			return_value = sys_wait_s(ptr_arg1, ptr_arg2);
 			break;
 		case SYS_wait_t:
+                        if(syscall_get_buffer_ptr((char**)&ptr_arg1, 
+                                sizeof(struct cond), esp, 1)) break;
+                        if(syscall_get_buffer_ptr((char**)&ptr_arg2,
+                                sizeof(struct slock), esp, 2)) break;
+                        return_value = sys_wait_t(ptr_arg1, ptr_arg2);
 			break;
 		case SYS_signal:
+                        if(syscall_get_buffer_ptr((char**)&ptr_arg1, 
+                                sizeof(struct cond), esp, 1)) break;
+                        return_value = sys_signal(ptr_arg1);
 			break;
 		case SYS_readdir:
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
@@ -284,7 +312,8 @@ int syscall_handler(uint* esp)
 				(struct directent*)int_arg3);
 			break;
 		case SYS_pipe:
-			
+			if(syscall_get_buffer(str_arg1, 2,
+                                2, esp, 1)) break;	
 			break;
 	}
 	
@@ -565,6 +594,13 @@ int sys_close(int fd)
   if(fd >= MAX_FILES || fd < 0){return -1;}
   if(rproc->file_descriptors[fd].type == FD_TYPE_FILE)
     fs_close(rproc->file_descriptors[fd].i);
+  else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
+  {
+    /* Do we need to free the pipe? */
+    rproc->file_descriptors[fd].pipe->references--;
+    if(!rproc->file_descriptors[fd].pipe->references)
+      free_pipe(rproc->file_descriptors[fd].pipe);
+  }
   rproc->file_descriptors[fd].type = 0x00;  
   return 0;
 }
@@ -600,21 +636,39 @@ int sys_read(int fd, char* dst, uint sz)
 
 int sys_write(int fd, char* src, uint sz)
 {
-  if(rproc->file_descriptors[fd].type == 0x00){
-    return -1;
-  }  
-  else if(rproc->file_descriptors[fd].type == FD_TYPE_FILE){
+  int x;
+  int str_len;
+  switch(rproc->file_descriptors[fd].type)
+  {
+  default: return -1;
+  case FD_TYPE_FILE:
     if(fs_write(rproc->file_descriptors[fd].i, src, sz, 
-	rproc->file_descriptors[fd].seek) == -1){
+	rproc->file_descriptors[fd].seek) == -1)
       return -1;
-    }
-  }
-  else{
-    int x;
-    int str_len = strlen(src);
+    break;
+  case FD_TYPE_STDOUT:
+    str_len = strlen(src);
     for(x = 0;x < str_len;x++)
       tty_print_character(rproc->t, src[x]);
+    break;
+  case FD_TYPE_STDERR:
+    str_len = strlen(src);
+    for(x = 0;x < str_len;x++)
+      tty_print_character(rproc->t, src[x]);
+    break;
+  case FD_TYPE_DEVICE:
+    if(rproc->file_descriptors[fd].device->write)
+      sz = rproc->file_descriptors[fd].device->write(src, 
+           rproc->file_descriptors[fd].seek, sz, 
+           rproc->file_descriptors[fd].device->context);
+    else return -1;
+    break;
+  case FD_TYPE_PIPE:
+    if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
+      pipe_write(src, sz, rproc->file_descriptors[fd].pipe);
+    else return -1;
   }
+
   rproc->file_descriptors[fd].seek += sz;
   return sz;
 }
@@ -654,10 +708,11 @@ void* sys_mmap(void* hint, uint sz, int protection)
 int sys_wait_s(struct cond* c, struct slock* lock)
 {	
 	slock_acquire(&ptable_lock);
-	if(c->next_signal>c->current_signal){
+	if(c->next_signal > c->current_signal){
 		c->next_signal = 0;
 		c->current_signal = 0;
 	}
+
 	rproc->block_type = PROC_BLOCKED_COND;
 	rproc->b_condition = c;
 	rproc->state = PROC_BLOCKED;
@@ -688,20 +743,14 @@ int sys_signal(struct cond* c)
 	slock_acquire(&ptable_lock);
 	int i;
 	for(i = 0; i< PTABLE_SIZE; i++){
-		if(ptable[i].state != PROC_BLOCKED){
-			continue;
-		}
-		if(ptable[i].block_type != PROC_BLOCKED_COND){
-			continue;
-		}
-		if(ptable[i].b_condition != c){
-			continue;
-		}
-		if(c->next_signal!=ptable[i].b_condition_signal){
-			continue;
-		}
+		if(ptable[i].state != PROC_BLOCKED) continue;
+		if(ptable[i].block_type != PROC_BLOCKED_COND) continue;
+		if(ptable[i].b_condition != c) continue;
+		if(c->next_signal != ptable[i].b_condition_signal) continue;
+
 		ptable[i].state = PROC_RUNNABLE;
 		ptable[i].block_type = PROC_BLOCKED_NONE;
+		ptable[i].b_condition_signal = 0;
 		c->next_signal++;
 		break;
 	}
@@ -756,3 +805,42 @@ int sys_readdir(int fd, int index, struct directent* dst)
 		return -1;
 	return fs_readdir(rproc->file_descriptors[fd].i, index, dst);
 }
+
+int sys_pipe(int pipefd[2])
+{
+	/* Try to get a pipe */
+	pipe_t t = alloc_pipe();
+	if(!t) return -1;
+
+	/* Get a read fd */
+	int read = find_fd();
+	if(read >= 0)
+	{
+		rproc->file_descriptors[read].type = FD_TYPE_PIPE;
+		rproc->file_descriptors[read].pipe_type = FD_PIPE_MODE_READ;
+		rproc->file_descriptors[read].pipe = t;
+	}	
+
+	/* Get a write fd */
+	int write = find_fd();
+	if(write >= 0)
+	{
+		rproc->file_descriptors[write].type = FD_TYPE_PIPE;
+		rproc->file_descriptors[write].pipe_type = FD_PIPE_MODE_READ;
+		rproc->file_descriptors[write].pipe = t;
+	}
+
+	if(read < 0 || write < 0)
+	{
+		if(read >= 0)
+			rproc->file_descriptors[read].type = 0x0;
+		if(write >= 0)
+			rproc->file_descriptors[write].type = 0x0;
+		free_pipe(t);
+		return -1;
+	}
+	t->references = 2;
+
+	return 0;	
+}
+

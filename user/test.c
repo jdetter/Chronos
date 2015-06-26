@@ -9,21 +9,15 @@
 
 int main(int argc, char** argv)
 {
-	printf("I am a child!\n");
-	int fd = open("/", O_RDWR, 0);
-	if(fd < 0)
+	int fds[2]
+	if(pipe(fds))
 	{
-		printf("Couldn't open file.\n");
-	} else printf("File opened!\n");
+		printf("Couldn't create pipe!!\n");
+		exit();
+	}
 
-	/* read the directory */
-	int x;
-	for(x = 0;;x++)
-	{
-		struct directent entry;
-		if(readdir(fd, x, &entry) < 0) break;
-		printf("%s  %d  %d\n", entry.name, entry.type, entry.inode);
-	}	
+	printf("fd read:  %d\n", fds[0]);
+	printf("fd write: %d\n", fds[1]);
 
 	exit();
 }

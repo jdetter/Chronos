@@ -25,5 +25,6 @@ int sys_wait_s(struct cond* c, struct slock* lock);
 int sys_wait_t(struct cond* c, struct tlock* lock);
 int sys_signal(struct cond* c);
 int sys_readdir(int fd, int index, struct directent* dst);
+int sys_pipe(int fd[2]);
 
 #endif

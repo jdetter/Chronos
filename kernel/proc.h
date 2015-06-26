@@ -12,6 +12,11 @@
 #define FD_TYPE_STDERR 	0x03
 #define FD_TYPE_FILE 	0x04
 #define FD_TYPE_DEVICE 	0x05
+#define FD_TYPE_PIPE	0x06
+
+#define FD_PIPE_MODE_NULL  0x00
+#define FD_PIPE_MODE_WRITE 0x01
+#define FD_PIPE_MODE_READ  0x02
 
 struct file_descriptor
 {
@@ -20,6 +25,8 @@ struct file_descriptor
 	int seek;
 	inode i;
 	struct IODriver* device;
+	pipe_t pipe;
+	uchar pipe_type;
 };
 
 #define MAX_FILES 0x20
@@ -37,7 +44,7 @@ struct file_descriptor
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
 #define PROC_BLOCKED_WAIT 0x01 /* The process is waiting on a child */
-#define PROC_BLOCKED_COND 0x02 /* The process is waiting on a condition */
+#define PROC_BLOCKED_COND 0x02 /* The thread is waiting on a condition */
 
 struct proc
 {

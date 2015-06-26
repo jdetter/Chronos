@@ -10,6 +10,7 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "tty.h"
+#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"

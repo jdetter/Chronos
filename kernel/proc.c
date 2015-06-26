@@ -6,6 +6,7 @@
 #include "tty.h"
 #include "file.h"
 #include "fsman.h"
+#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
 #include "trap.h"
