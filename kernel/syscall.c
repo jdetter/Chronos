@@ -312,8 +312,10 @@ int syscall_handler(uint* esp)
 				(struct directent*)int_arg3);
 			break;
 		case SYS_pipe:
-			if(syscall_get_buffer(str_arg1, 2,
-                                2, esp, 1)) break;	
+			if(syscall_get_buffer_ptr((char**)&ptr_arg1, 
+				2 * sizeof(int),
+                                esp, 1)) break;
+			return_value = sys_pipe(ptr_arg1);
 			break;
 	}
 	
@@ -599,7 +601,7 @@ int sys_close(int fd)
     /* Do we need to free the pipe? */
     rproc->file_descriptors[fd].pipe->references--;
     if(!rproc->file_descriptors[fd].pipe->references)
-      free_pipe(rproc->file_descriptors[fd].pipe);
+      pipe_free(rproc->file_descriptors[fd].pipe);
   }
   rproc->file_descriptors[fd].type = 0x00;  
   return 0;
@@ -809,7 +811,7 @@ int sys_readdir(int fd, int index, struct directent* dst)
 int sys_pipe(int pipefd[2])
 {
 	/* Try to get a pipe */
-	pipe_t t = alloc_pipe();
+	pipe_t t = pipe_alloc();
 	if(!t) return -1;
 
 	/* Get a read fd */
@@ -836,10 +838,12 @@ int sys_pipe(int pipefd[2])
 			rproc->file_descriptors[read].type = 0x0;
 		if(write >= 0)
 			rproc->file_descriptors[write].type = 0x0;
-		free_pipe(t);
+		pipe_free(t);
 		return -1;
 	}
 	t->references = 2;
+	pipefd[0] = read;
+	pipefd[1] = write;
 
 	return 0;	
 }

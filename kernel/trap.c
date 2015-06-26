@@ -136,6 +136,8 @@ void trap_handler(struct trap_frame* tf)
                 for(;;);
         }
 
+	/* Make sure that the interrupt flags is set */
+	tf->eflags |= EFLAGS_IF;
 
 	//cprintf("Process %d is leaving trap handler.\n", rproc->pid);
 

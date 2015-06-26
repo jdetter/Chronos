@@ -96,12 +96,12 @@ void main_stack(void)
 	cprintf("Initilizing cli stack...\t\t\t\t\t\t");
 	reset_cli();
 	cprintf("[ OK ]\n");
-	
-	/* Enable interrupts */
-	cprintf("Enabling Interrupts...\t\t\t\t\t\t\t");
-	asm volatile("sti");	
-	cprintf("[ OK ]\n");
 
+	/* Initilize pipes */
+	cprintf("Initilizing pipes...\t\t\t\t\t\t");
+	pipe_init();
+	cprintf("[ OK ]\n");
+	
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");

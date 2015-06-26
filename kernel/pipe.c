@@ -10,59 +10,13 @@
 struct pipe pipe_table[MAX_PIPES];
 slock_t pipe_table_lock;
 
-/**
- * Context for pipe io driver.
- */
-struct io_pipe_context
-{
-	pipe_t pipe;
-};
-
-/**
- * Pipe write driver
- */
-static int io_pipe_write(void* src, uint seek, uint sz,
-		struct io_pipe_context* context)
-{
-	return pipe_write(src, sz, context->pipe);
-}
-
-/**
- * Pipe read driver
- */
-static int io_pipe_read(void* dst, uint seek, uint sz,
-                struct io_pipe_context* context)
-{
-	return pipe_read(dst, sz, context->pipe);
-}
-
-static int io_pipe_nop(void){return -1;}
-
-void io_pipe_create_read(pipe_t pipe, struct IODriver* driver)
-{
-	struct io_pipe_context* context = 
-		(struct io_pipe_context*)driver->context;
-	context->pipe = pipe;
-	driver->read = (void*)io_pipe_read;
-	driver->write = (void*)io_pipe_nop;
-}
-
-void io_pipe_create_write(pipe_t pipe, struct IODriver* driver)
-{
-        struct io_pipe_context* context = 
-                (struct io_pipe_context*)driver->context;
-        context->pipe = pipe;
-        driver->read = (void*)io_pipe_nop;
-        driver->write = (void*)io_pipe_write;
-}
-
 void pipe_init(void)
 {
 	slock_init(&pipe_table_lock);
 	memset(pipe_table, 0, sizeof(struct pipe) * MAX_PIPES);
 }
 
-pipe_t alloc_pipe(void)
+pipe_t pipe_alloc(void)
 {
 	slock_acquire(&pipe_table_lock);
 	pipe_t p = NULL;
@@ -81,7 +35,7 @@ pipe_t alloc_pipe(void)
 	return p;
 }
 
-void free_pipe(pipe_t p)
+void pipe_free(pipe_t p)
 {
 	slock_acquire(&pipe_table_lock);
 	p->allocated = 0;

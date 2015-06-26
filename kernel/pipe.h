@@ -23,12 +23,12 @@ void pipe_init(void);
 /**
  * Allocate a new pipe from the pipe table.
  */
-pipe_t alloc_pipe(void);
+pipe_t pipe_alloc(void);
 
 /**
  * Free a pipe that is no longer in use.
  */
-void free_pipe(pipe_t p);
+void pipe_free(pipe_t p);
 
 /**
  * Write to a pipe.

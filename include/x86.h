@@ -73,6 +73,19 @@
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
 
+/* EFLAGS definitions */
+#define EFLAGS_CF	(0x01 << 0)
+#define EFLAGS_PF	(0x01 << 2)
+#define EFLAGS_AF	(0x01 << 4)
+#define EFLAGS_ZF	(0x01 << 6)
+#define EFLAGS_SF	(0x01 << 7)
+#define EFLAGS_TF	(0x01 << 8)
+#define EFLAGS_IF	(0x01 << 9)
+#define EFLAGS_DF	(0x01 << 10)
+#define EFLAGS_OF	(0x01 << 11)
+#define EFLAGS_IOPL	(0x03 << 12)
+#define EFLAGS_NT	(0x01 << 14)
+
 #ifndef __X86_ASM_ONLY__
 /* Inline assembly functions */
 static inline uchar
