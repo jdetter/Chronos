@@ -3,7 +3,8 @@ LIBS_TARGET = \
 	stdmem \
 	stdarg \
 	stdlib \
-	stdlock
+	stdlock \
+	file
 
 LIBS := $(addprefix lib/, $(LIBS_TARGET))
 LIBS := $(addsuffix .o, $(LIBS))

@@ -7,7 +7,8 @@
 #define FILE_TYPE_FILE    0x01
 #define FILE_TYPE_DIR     0x02
 #define FILE_TYPE_DEVICE  0x03
-#define FILE_TYPE_SPECIAL 0x04
+#define FILE_TYPE_LINK 	  0x04
+#define FILE_TYPE_SPECIAL 0x05
 
 /**
  * For use in function fs_seek:
@@ -75,5 +76,17 @@ struct directent
 	uint type; /* Type of file (see above) */
 	char name[FILE_MAX_NAME]; /* name of the directory entry */
 };
+
+/**
+ * Make sure the path ends with a slash. This guarentees that the path
+ * represents a directory. Returns -1 on failure.
+ */
+int file_path_dir(const char* src, char* dst, uint sz);
+
+/**
+ * Makes sure that the path doesn't end with a slash unless src is the root
+ * directory. Returns 0 on success.
+ */
+int file_path_file(const char* src, char* dst, uint sz);
 
 #endif

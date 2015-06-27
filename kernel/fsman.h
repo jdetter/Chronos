@@ -268,4 +268,11 @@ int fs_unlink(const char* file);
  */
 int fs_readdir(inode i, int index, struct directent* dst);
 
+/**
+ * Simplify the given path so that it doesn't contain any . or ..s
+ * also check to make sure that the path is valid. Returns 1 if the
+ * path has grammar errors. Returns 0 on success.
+ */
+int fs_path_resolve(const char* path, char* dst, uint sz);
+
 #endif

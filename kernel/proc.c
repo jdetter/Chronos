@@ -131,6 +131,30 @@ struct proc* spawn_tty(tty_t t)
 	return p;
 }
 
+uchar check_binary(const char* path)
+{
+        inode process_file = fs_open(path, 0, 0, 0, 0);
+        if(process_file == NULL) return 1;
+
+        /* Sniff to see if it looks right. */
+        uchar elf_buffer[4];
+        fs_read(process_file, elf_buffer, 4, 0);
+        char elf_buff[] = ELF_MAGIC;
+        if(memcmp(elf_buffer, elf_buff, 4)) return 1;
+
+        /* Load the entire elf header. */
+        struct elf32_header elf;
+        fs_read(process_file, &elf, sizeof(struct elf32_header), 0);
+        /* Check class */
+        if(elf.exe_class != 1) return 1;
+        if(elf.version != 1) return 1;
+        if(elf.e_type != ELF_E_TYPE_EXECUTABLE) return 1;
+        if(elf.e_machine != ELF_E_MACHINE_x86) return 1;
+        if(elf.e_version != 1) return 1;
+
+	return 0;
+}
+
 uint load_binary(const char* path, struct proc* p)
 {
 	inode process_file = fs_open(path, 0, 0, 0, 0);

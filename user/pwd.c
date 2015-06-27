@@ -8,7 +8,7 @@
 int main(int argc, char* argv[])
 {
 	char buffer[256];
-	if(cwd(buffer, 256))
+	if(cwd(buffer, 256) == -1)
 	{
 		exit();
 	}

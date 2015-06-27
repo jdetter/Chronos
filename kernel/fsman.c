@@ -9,6 +9,9 @@
 #include "panic.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "pipe.h"
+#include "tty.h"
+#include "proc.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -23,6 +26,9 @@
  *   2) itable_lock
  *
  */
+
+/* currently running process (from proc.c) */
+extern struct proc* rproc;
 
 /* Global inode table */
 tlock_t itable_lock;
@@ -72,12 +78,17 @@ void fsman_init(void)
  * also check to make sure that the path is valid. Returns 1 if the
  * path has grammar errors. Returns 0 on success.
  */
-static int fs_path_resolve(const char* path, char* dst, uint sz)
+int fs_path_resolve(const char* path, char* dst, uint sz)
 {
+	if(strlen(path) == 0) return -1;
 	int path_pos;
-	int dst_pos;
+	int dst_pos = 0;
 	memset(dst, 0, sz);
-	for(path_pos = 0, dst_pos = 0; 
+	if(path[0] != '/')
+		dst_pos = strncpy(dst, rproc->cwd, sz);
+	int dots = 0;
+	int slashes = 0;
+	for(path_pos = 0; 
 			path_pos < strlen(path)
 			&& dst_pos < sz;
 			path_pos++, dst_pos++)
@@ -85,8 +96,62 @@ static int fs_path_resolve(const char* path, char* dst, uint sz)
 		switch(path[path_pos])
 		{
 			/* Implement later */
+			case '.':
+				dst[dst_pos] = '.';
+				dots++;
+				slashes = 0;
+				break;
+			case '/':
+				if(slashes >= 1)
+				{
+					dst_pos--;
+				} else if(dots == 0 && slashes == 0)
+				{
+					dst[dst_pos] = '/';
+					slashes++;
+				} else if(dots == 1)
+				{
+					/* delete previous dot */
+					dst[dst_pos - 1] = 0;
+					dst_pos -= 2;
+					if(dst[dst_pos] != '/')
+						return -1; /* bad syntax*/
+				} else if(dots == 2)
+				{
+					/* delete both dots */
+					dst[dst_pos - 1] = 0;
+					dst[dst_pos - 2] = 0;
+					dst_pos -= 3;
+					if(dst[dst_pos] != '/')
+						return -1; /* bad syntax*/
+					if(dst_pos > 0)
+					{
+						dst[dst_pos] = 0;
+						dst_pos --;
+					}
+
+					/* 
+					 * Delete until you hit a slash or
+					 * dst_pos == 1
+					 */
+					for(;dst_pos > 0 && 
+						dst[dst_pos] != '/';
+						dst_pos--)
+						dst[dst_pos] = 0;
+				} else {
+					/* syntax error! */
+					return -1;
+				}
+
+				slashes++;
+				dots = 0;
+				
+				break;
 			default:
+				dots = 0;
+				slashes = 0;
 				dst[dst_pos] = path[path_pos];
+				break;
 		}
 	}
 	return 0;
@@ -105,13 +170,24 @@ static struct FSDriver* fs_find_fs(const char* path)
 		{
 			/* They are equal */
 			if(match_len < mp_strlen)
-			{
+                        {
 				match_len = mp_strlen;
 				fs = fstable + x;
 			}
 		}
 	}
 	return fs;
+}
+
+static int fs_get_path(struct FSDriver* fs, const char* path, 
+		char* dst, uint sz)
+{
+	char* mount = fs->mount_point;
+	int pos = strlen(mount);
+	if(pos > strlen(path)) return -1;
+	/* We want to keep the trailing slash. */
+	strncpy(dst, path + pos - 1, sz);
+	return 0;
 }
 
 /**
@@ -180,18 +256,26 @@ inode fs_open(const char* path, uint flags, uint permissions,
 
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
+	char tmp_path[FILE_MAX_PATH];
 	memset(dst_path, 0, FILE_MAX_PATH);
-	if(fs_path_resolve(path, dst_path, FILE_MAX_PATH))
+	memset(tmp_path, 0, FILE_MAX_PATH);
+	if(fs_path_resolve(path, tmp_path, FILE_MAX_PATH))
 		return NULL; /* Invalid path */
+	if(file_path_file(tmp_path, dst_path, FILE_MAX_PATH))
+		return NULL;
 
 	/* Find the file system for this path */
-	struct FSDriver* fs = fs_find_fs(path);
+	struct FSDriver* fs = fs_find_fs(dst_path);
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
+	char fs_path[FILE_MAX_PATH];
+	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
+		return NULL; /* Impossible case */
+
 	/* Try creating the file first */
 	if(flags & O_CREATE)
-		if(fs->create(path, permissions, uid, gid, fs->context))
+		if(fs->create(fs_path, permissions, uid, gid, fs->context))
 			return NULL; /* Permission denied */
 
 	struct inode_t* i = fs_find_inode();
@@ -199,7 +283,7 @@ inode fs_open(const char* path, uint flags, uint permissions,
 		return NULL; /* No more inodes are available */
 	i->fs = fs;
 
-	i->inode_ptr = fs->open(path, fs->context);
+	i->inode_ptr = fs->open(fs_path, fs->context);
 	if(i->inode_ptr == NULL)
 	{
 		fs_free_inode(i);
@@ -243,22 +327,31 @@ inode fs_create(const char* path, uint flags,
 {
 	/* fix up the path*/
 	char dst_path[FILE_MAX_PATH];
+	char tmp_path[FILE_MAX_PATH];
 	memset(dst_path, 0, FILE_MAX_PATH);
-	fs_path_resolve(path, dst_path, FILE_MAX_PATH);
+	memset(tmp_path, 0, FILE_MAX_PATH);
+	if(fs_path_resolve(path, tmp_path, FILE_MAX_PATH))
+		return NULL; /* bad path */
+	if(file_path_file(tmp_path, dst_path, FILE_MAX_PATH))
+		return NULL;
 
 	/* Find the file system this file belongs to */
-	struct FSDriver* fs = fs_find_fs(path);
+	struct FSDriver* fs = fs_find_fs(dst_path);
 	if(fs == NULL) return NULL; /* invalid path */	
+
+	char fs_path[FILE_MAX_PATH];
+	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
+		return NULL;
 
 	/* Find a new inode*/
 	struct inode_t* i = fs_find_inode();
 	if(i == NULL) return NULL; /* There are no more free inodes */
 
 	/* Create the file with the driver */
-	if(fs->create(dst_path, 
+	if(fs->create(fs_path, 
                 permissions, uid, gid, fs->context))
 		return NULL;
-	i->inode_ptr = fs->open(dst_path, fs->context);
+	i->inode_ptr = fs->open(fs_path, fs->context);
 	if(i->inode_ptr == NULL)
 	{
 		fs_free_inode(i);
@@ -335,10 +428,14 @@ inode fs_mkdir(const char* path, uint flags,
 	/* Find the file system */
 	struct FSDriver* fs = fs_find_fs(dst_path);
 	
-	/* Try to create the directory */
-	if(fs->mkdir(path, permissions, uid, gid, fs->context))
+	char fs_path[FILE_MAX_PATH];
+	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
 		return NULL;
-	void* dir = fs->open(path, fs->context);
+
+	/* Try to create the directory */
+	if(fs->mkdir(fs_path, permissions, uid, gid, fs->context))
+		return NULL;
+	void* dir = fs->open(fs_path, fs->context);
 	if(dir == NULL)
 		return NULL; /* Bad path*/
 
@@ -356,7 +453,7 @@ inode fs_mkdir(const char* path, uint flags,
         i->file_type = st.type;
         i->inode_num = st.inode;
         i->references = 1;
-        fs_get_name(i->name, dst_path, FILE_MAX_NAME);
+        fs_get_name(i->name, fs_path, FILE_MAX_NAME);
 
 	return i;
 }
@@ -407,6 +504,13 @@ int fs_rename(const char* src, const char* dst)
 	struct FSDriver* src_fs = fs_find_fs(src_resolved);
 	struct FSDriver* dst_fs = fs_find_fs(dst_resolved);
 
+	char fs_src[FILE_MAX_PATH];
+	char fs_dst[FILE_MAX_PATH];
+	if(fs_get_path(src_fs, src_resolved, fs_src, FILE_MAX_PATH))
+		return -1; /* bad fs mount point path */
+	if(fs_get_path(dst_fs, dst_resolved, fs_dst, FILE_MAX_PATH))
+		return -1; /* bad fs mount point path */
+
 	/**
 	 * If the two file systems are not equal, we can't just update
 	 * the pointer. We need to create a new file and move the data.
@@ -418,7 +522,7 @@ int fs_rename(const char* src, const char* dst)
 	{
 		result = -1;
 	} else {
-		result = src_fs->rename(src, dst, src_fs->context);
+		result = src_fs->rename(fs_src, fs_dst, src_fs->context);
 	}
 
 	return result;

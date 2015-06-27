@@ -107,6 +107,11 @@ void sched_init();
 struct proc* spawn_tty(tty_t t);
 
 /**
+ * Check to see if the file looks like it is executable.
+ */
+uchar check_binary(const char* path);
+
+/**
  * Load the binary in path into the address space of process p. Returns the
  * size of the binary in memory.
  */

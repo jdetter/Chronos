@@ -40,7 +40,6 @@ fs.img: tools kernel/chronos.o user
 	mkdir -p fs
 	mkdir -p fs/boot
 	mkdir -p fs/bin
-	echo "File contents" > fs/file.txt
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
 	./tools/bin/mkfs -i 256 -s 1048576 -r fs fs.img

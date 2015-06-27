@@ -24,6 +24,14 @@ int main(int argc, char** argv)
 		/* delete new line character */
 		if(strlen(in_buff) == 0) continue;
 		in_buff[strlen(in_buff) - 1] = 0;
+
+		/* check for cd */
+		if(!memcmp(in_buff, "cd ", 3))
+		{
+			/* do cd and reset */
+			runprog(in_buff);
+			continue;
+		}
 		int cur_cmd;
 		int cur_op;
 		cur_op = 0;
@@ -175,7 +183,8 @@ int main(int argc, char** argv)
 						break;
 					}	
 				}
-				runprog(cmd);	
+				runprog(cmd);
+				exit();
 			} else pids[i] = f;
 		}
 
@@ -201,18 +210,60 @@ int main(int argc, char** argv)
 	
 }
 
+void trim(char* str)
+{
+	int x;
+	for(x = 0;x < strlen(str);x++)
+		if(str[x] != ' ')break;
+	strncpy(str, str + x, strlen(str) + 1);
+	for(x = strlen(str) - 1;x >= 0;x--)
+		if(str[x] != ' ') break;
+	str[x + 1] = 0;
+}
+
 void runprog(char* string){
 	int i;
+	int length = strlen(string);
 	int arg = 1;
 	char* argv[64];
 	memset(argv, 0, 64 * sizeof(char*));
 	argv[0] = string;
-	for(i = 0; i<strlen(string); i++ ){
-		if(string[i]==' '){
+	int spaces = 0;
+	for(i = 0; i<length; i++ ){
+		if(string[i]==' ' && !spaces){
+			spaces ++;
 			string[i] = 0;
 			argv[arg] = string + i + 1;
 			arg++;	
-		}
+		} else spaces = 0;
 	}
-	exec(argv[0], (const char**)argv);
+	argv[63] = 0;
+
+	/* Trim all */
+	for(i = 0;i < 63;i++)
+	{
+		if(!argv[i]) break;
+		else trim(argv[i]);
+	}
+	if(!argv[0]) return;
+
+	/* Check for builtin */
+	if(!strcmp(argv[0], "cd"))
+	{
+		if(!argv[1]) return;
+		/* Change directory */
+		if(chdir(argv[1]))
+		{
+			printf("sh: %s: permission denied.\n", argv[1]);
+			return;
+		}
+
+		char cwd_buff[128];
+		cwd(cwd_buff, 128);
+	} else {
+		exec(argv[0], (const char**)argv);
+		printf("sh: binary not found: %s\n", argv[0]);
+	}
+
+	return;
 }

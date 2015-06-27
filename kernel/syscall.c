@@ -261,10 +261,21 @@ int syscall_handler(uint* esp)
 				(uint)int_arg2, int_arg3);
 			break;
 		case SYS_chdir:
+			if(syscall_get_str((char*)str_arg1,
+                                SYSCALL_STRLEN, esp, 1)) break;
+			return_value = sys_chdir(str_arg1);
 			break;
 		case SYS_cwd:
+			if(syscall_get_int(&int_arg1, esp, 2)) break;
+			if(syscall_get_buffer_ptr((char**)&ptr_arg1,
+                                int_arg1, esp, 1)) break;
+			return_value = sys_cwd(ptr_arg1, int_arg1);
 			break;
 		case SYS_create:
+			if(syscall_get_str((char*)str_arg1,
+                                SYSCALL_STRLEN, esp, 1)) break;
+                        if(syscall_get_int(&int_arg1, esp, 2)) break;
+			return_value = sys_create(str_arg1, int_arg1);
 			break;
 		case SYS_mkdir:
 			break;
@@ -458,6 +469,21 @@ int sys_wait(int pid)
 
 int sys_exec(const char* path, const char** argv)
 {
+  char cwd_tmp[MAX_PATH_LEN];
+  memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
+  /* Does the binary look ok? */
+  if(check_binary(path))
+  {
+    /* see if it is available in /bin */
+    strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
+    if(check_binary(path))
+    {
+      /* It really doesn't exist. */
+      memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+      return -1;
+    }
+  }
+
   /* Create a copy of the path */
   char program_path[MAX_PATH_LEN];
   memset(program_path, 0, MAX_PATH_LEN);
@@ -522,6 +548,8 @@ int sys_exec(const char* path, const char** argv)
   if(load_result == 0) 
   {
     pfree(stack_start);
+    memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+    slock_release(&ptable_lock);
     return -1;
   }
 
@@ -541,6 +569,9 @@ int sys_exec(const char* path, const char** argv)
   /* Adjust heap start and end */
   rproc->heap_start = PGROUNDUP(load_result);
   rproc->heap_end = rproc->heap_start;
+
+  /* restore cwd */
+  memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 
   /* Release the ptable lock */
   slock_release(&ptable_lock);
@@ -776,13 +807,40 @@ int sys_signal(struct cond* c)
 }
 
 int sys_chdir(const char* dir){
+  if(strlen(dir) < 1) return -1;
+  char dir_path[MAX_PATH_LEN];
+  char tmp_path[MAX_PATH_LEN];
+  memset(dir_path, 0, MAX_PATH_LEN);
+  memset(tmp_path, 0, MAX_PATH_LEN);
+  if(file_path_dir(dir, dir_path, MAX_PATH_LEN))
+    return -1;
+  if(fs_path_resolve(dir_path, tmp_path, MAX_PATH_LEN))
+    return -1;
+  if(strlen(tmp_path) < 1) return -1;
+  if(file_path_dir(tmp_path, dir_path, MAX_PATH_LEN))
+    return -1;
 
-  //strncpy(rproc->cwd, dir, sz);
+  /* See if it exists */
+  inode i = fs_open(dir_path, O_RDONLY, 0x0, 0x0, 0x0);
+  if(i == NULL) return -1;
+
+  /* is it a directory? */
+  struct file_stat st;
+  fs_stat(i, &st);
+  if(st.type != FILE_TYPE_DIR)
+  {
+    fs_close(i);
+    return -1;
+  }
+
+  fs_close(i);
+  /* Everything is ok. */
+  memmove(rproc->cwd, dir_path, MAX_PATH_LEN);
   return 0;
 }
 
 int sys_cwd(char* dst, uint sz){
-  strncpy(dst, rproc->cwd  , sz);
+  strncpy(dst, rproc->cwd, sz);
   return sz;
 }
 
