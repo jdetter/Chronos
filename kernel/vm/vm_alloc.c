@@ -58,6 +58,27 @@ pgdir* __get_cr3__(void);
 void vm_add_page(uint pg, pgdir* dir);
 slock_t global_mem_lock;
 
+void vm_stable_page_pool(void)
+{
+	struct e820_entry* entry = (void*)0x500;
+	entry->addr_low =    0x00000000;
+	entry->addr_high =   0x00000000;
+	entry->length_low =  0x9fc00;
+	entry->length_high = 0x00000000;
+	entry->type = 1;
+	entry->acpi_attr = 1;
+	entry++;
+	entry->addr_low =    0x100000;
+	entry->addr_high =   0x00000000;
+	entry->length_low =  0x10000000;
+	//entry->length_low =  0x1fffe000;
+	entry->length_high = 0x00000000;
+	entry->type = 1;
+	entry->acpi_attr = 1;
+	entry++;
+	memset(entry, 0, sizeof(struct e820_entry));
+}
+
 void vm_init_page_pool(void)
 {
 	slock_init(&global_mem_lock);
@@ -79,6 +100,7 @@ void vm_init_page_pool(void)
                 uint addr_start = e->addr_low;
                 uint addr_end = addr_start + e->length_low;
 
+		if(addr_start == 0x0) addr_start += 0x1000;
                 vm_add_pages(addr_start, addr_end, k_pgdir);
         }
 	

@@ -1,19 +1,19 @@
 #include "types.h"
 #include "x86.h"
-#include "console.h"
+#include "panic.h"
 #define dataReg 0x60
 #define cntrlReg 0x64
-int lShift = 0x12;
-int rShift = 0x59;
+int lShift = 0x2A;
+int rShift = 0x36;
 #define enableKbd 0xf4
 int set1 = 0xf1;
 int shift = 0;
 int cntrl = 0;
 int alt = 0;
 int caps = 0;
-int cntrlkey = 0x14;
-int altkey = 0x11;
-int capskey = 0x58;
+int cntrlkey = 0x1D;
+int altkey = 0x38;
+int capskey = 0x3B;
 char sctoa(int scancode);
 int kbd_init(){
 	outb(cntrlReg, enableKbd);	

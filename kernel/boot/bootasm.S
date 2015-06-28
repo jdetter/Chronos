@@ -46,10 +46,11 @@ start:
 	movl	$0x7c00, %esp
 
 # Get the memory map
+	jmp A20_STEP1
 	
 	movl $0x500, %edi
 	call do_e820
-	
+
 	/* Clear the next entry (NULL terminate) */
 	movl $0x00, %es:0x00(%di)	
 	movl $0x00, %es:0x04(%di)	
@@ -127,7 +128,6 @@ A20_STEP2:
         outb    %al, $KEYBOARD_DATA
 
         jmp     set_A20_DONE
-
 set_A20_DONE:
 # We should have access to the 2^16 address space now.
 

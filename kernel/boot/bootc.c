@@ -183,11 +183,13 @@ void msetup()
 	panic("msetup called.\n");
 }
 
+void vm_stable_page_pool(void);
 void setup_boot2_pgdir(void)
 {
 	k_pgdir = (pgdir*)KVM_KPGDIR;
 	memset(k_pgdir, 0, PGSIZE);
 	/* Do page pool */
+	vm_stable_page_pool();
 	vm_init_page_pool();
 	
 	/* Start by directly mapping the boot stage 2 pages */

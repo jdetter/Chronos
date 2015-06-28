@@ -336,6 +336,8 @@ char tty_get_char(tty_t t)
 	{
 		char c = 0;
 		while(!c) c = kbd_getc();
+		/* echo input to screen */
+		tty_print_character(t, c);
 		return c;
 	}
 
