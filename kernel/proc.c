@@ -152,6 +152,8 @@ uchar check_binary(const char* path)
         if(elf.e_machine != ELF_E_MACHINE_x86) return 1;
         if(elf.e_version != 1) return 1;
 
+	fs_close(process_file);
+
 	return 0;
 }
 

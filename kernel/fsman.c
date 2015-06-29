@@ -532,10 +532,15 @@ int fs_unlink(const char* file)
 {
 	/* Resolve the file path */
 	char file_resolved[FILE_MAX_PATH];
+	char file_tmp[FILE_MAX_PATH];
 	if(fs_path_resolve(file, file_resolved, FILE_MAX_PATH))
 		return -1;
+	if(file_path_file(file_resolved, file_tmp, FILE_MAX_PATH))
+		return -1;
 
-	struct FSDriver* fs = fs_find_fs(file_resolved);
+	struct FSDriver* fs = fs_find_fs(file_tmp);
+	if(file_path_file(file_tmp, file_resolved, FILE_MAX_PATH))
+                return -1;
 	int result = fs->unlink(file_resolved, fs->context);
 
 	return result;
@@ -551,3 +556,20 @@ int fs_mount(const char* device, const char* point)
 	return 0;	
 }
 
+
+void fs_fsstat(void)
+{
+	struct fs_stat fss;
+	int x;
+	for(x = 0;x < FS_TABLE_MAX;x++)
+	{
+		struct FSDriver* fs = fstable + x;
+		if(!fs->valid) continue;
+	
+		fs->fsstat(&fss, &fs->context);
+		tty_print_string(rproc->t, 
+			"Free inodes: %d\n", fss.cache_free);
+		tty_print_string(rproc->t, 
+			"Allocated inodes: %d\n", fss.cache_allocated);
+	}
+}

@@ -26,6 +26,7 @@ USER_LIB_CFLAGS += -fno-strict-aliasing
 USER_LIB_CFLAGS += -fno-stack-protector
 
 user-lib: $(USER_LIB_OBJECTS)
+USER_LIB_BUILD := $(USER_LIB_OBJECTS)
 
 # Recipe for object files
 user/lib/%.o: user/lib/%.c

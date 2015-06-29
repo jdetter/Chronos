@@ -60,6 +60,16 @@ struct inode_t
 };
 typedef struct inode_t* inode;
 
+struct fs_stat
+{
+	int inodes_available;
+	int inodes_allocated;
+	int blocks_available;
+	int blocks_allocated;
+	int cache_allocated;
+	int cache_free;
+};
+
 struct FSDriver
 {
 	/**
@@ -166,6 +176,11 @@ struct FSDriver
 	 */
 	int (*readdir)(void* dir, int index, 
 		struct directent* dst, void* context);
+
+	/**
+	 * Parse statistics into the stat structure.
+	 */
+	int (*fsstat)(struct fs_stat* dst, void* context);
 
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
@@ -274,5 +289,10 @@ int fs_readdir(inode i, int index, struct directent* dst);
  * path has grammar errors. Returns 0 on success.
  */
 int fs_path_resolve(const char* path, char* dst, uint sz);
+
+/**
+ * Prints out file system statistics to the tty of the running process.
+ */
+void fs_fsstat(void);
 
 #endif

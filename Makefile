@@ -22,7 +22,13 @@ BUILD_CFLAGS += -fno-stack-protector
 BUILD_ASFLAGS += $(BUILD_CFLAGS)
 
 .PHONY: all
-all: tools chronos.img libs user
+all: chronos.img
+
+include tools/makefile.mk
+include lib/makefile.mk
+include kernel/makefile.mk
+include user/makefile.mk
+include user/lib/makefile.mk
 
 chronos.img: kernel/boot/boot-stage1.img \
 		kernel/boot/boot-stage2.img \
@@ -36,7 +42,7 @@ chronos.img: kernel/boot/boot-stage1.img \
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
 
-fs.img: tools kernel/chronos.o user
+fs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	mkdir -p fs
 	mkdir -p fs/boot
 	mkdir -p fs/bin
@@ -57,6 +63,8 @@ QEMU_MAX_RAM := -m 512M
 
 QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
+.PHONY: qemu qemu-gdb qemu-x qemu-x-gdb
+
 qemu: all
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 
@@ -69,14 +77,11 @@ qemu-x: all
 qemu-x-gdb: all kernel-symbols user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
-include kernel/makefile.mk
-include user/makefile.mk
-include tools/makefile.mk
-include lib/makefile.mk
-include user/lib/makefile.mk
+run:
+	$(QEMU) -nographic $(QEMU_OPTIONS)
+run-x:
+	$(QEMU) $(QEMU_OPTIONS)
 
 .PHONY: clean
 clean: 
 	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi
-
-.DEFAULT: all

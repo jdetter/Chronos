@@ -9,23 +9,10 @@
 
 int main(int argc, char** argv)
 {
-	int fds[2];
-	if(pipe(fds))
-	{
-		printf("Couldn't create pipe!!\n");
-		exit();
-	}
-
-	printf("fd read:  %d\n", fds[0]);
-	printf("fd write: %d\n", fds[1]);
-
-	char buffer[512];
-	char* string = "Pipe contents\n";
-
-	write(fds[1], string, strlen(string));	
-	read(fds[0], buffer, strlen(string));
-
-	printf(buffer);
+	proc_dump();
+	int result = rm("/boot/chronos.elf");
+	printf("result: %d\n", result);
+	proc_dump();
 
 	exit();
 }

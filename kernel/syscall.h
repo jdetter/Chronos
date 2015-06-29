@@ -28,5 +28,6 @@ int sys_readdir(int fd, int index, struct directent* dst);
 int sys_pipe(int fd[2]);
 int sys_dup(int fd);
 int sys_dup2(int old_fd, int new_fd);
+int sys_proc_dump(void);
 
 #endif

@@ -1,3 +1,5 @@
+include user/lib/makefile.mk
+
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
 	init \
@@ -16,7 +18,8 @@ USER_TARGETS := \
 	stress \
 	touch \
 	pwd \
-	stall
+	stall \
+	stat
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
@@ -57,16 +60,14 @@ USER_LDFLAGS += --entry=main
 USER_LDFLAGS += --section-start=.text=0x1000
 # USER_LDFLAGS += --omagic
 
-.PHONY: user
-user: user-lib libs user-syscall user-bin $(USER_OBJECTS) $(USER_BINARIES) 
+USER_BUILD :=  $(USER_LIB_OBJECTS) $(LIBS) user/syscall.o user/bin $(USER_OBJECTS) $(USER_BINARIES) 
 	
-.PHONY: user-bin
-user-bin: 
+user/bin: 
 	mkdir -p user/bin	
 
 user-symbols: $(USER_SYMBOLS)
 
-user-syscall:
+user/syscall.o:
 	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
 
 # Recipe for object files

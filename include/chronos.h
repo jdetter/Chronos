@@ -29,6 +29,7 @@
 #define SYS_pipe	0x17
 #define SYS_dup		0x18
 #define SYS_dup2	0x19
+#define SYS_proc_dump	0x20
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -230,6 +231,11 @@ int dup(int fd);
  * operation is performed and -1 is returned. Otherwise, 0 is returned.
  */
 int dup2(int fd_old, int fd_new);
+
+/**
+ * Prints out process information to the screen.
+ */
+int proc_dump(void);
 
 #endif
 

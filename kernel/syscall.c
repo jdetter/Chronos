@@ -282,6 +282,9 @@ int syscall_handler(uint* esp)
 		case SYS_rmdir:
 			break;
 		case SYS_rm:
+			if(syscall_get_str((char*)str_arg1,
+				SYSCALL_STRLEN, esp, 1)) break;
+			return_value = sys_rm(str_arg1);
 			break;
 		case SYS_mv:
 			break;
@@ -336,6 +339,9 @@ int syscall_handler(uint* esp)
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
 			if(syscall_get_int(&int_arg2, esp, 2)) break;
 			return_value = sys_dup2(int_arg1, int_arg2);
+			break;
+		case SYS_proc_dump:
+			return_value = sys_proc_dump();
 			break;
 	}
 	
@@ -552,6 +558,9 @@ int sys_exec(const char* path, const char** argv)
     slock_release(&ptable_lock);
     return -1;
   }
+
+  /* Change name */
+  strncpy(rproc->name, program_path, FILE_MAX_PATH);
 
   /* Map the new stack in */
   mappage(stack_start, PGROUNDUP(UVM_USTACK_TOP) - PGSIZE, 
@@ -854,8 +863,9 @@ int sys_mkdir(const char* dir, uint permissions){
   return 0;
 }
 
-int sys_rm(const char* file){
-  return 0;
+int sys_rm(const char* file)
+{
+  return fs_unlink(file);
 }
 
 int sys_rmdir(const char* dir){
@@ -956,4 +966,108 @@ int sys_dup2(int new_fd, int old_fd)
         }
 
 	return new_fd;
+}
+
+int sys_proc_dump(void)
+{
+	tty_print_string(rproc->t, "Running processes:\n");
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		struct proc* p = ptable + x;
+		if(p->state == PROC_UNUSED) continue;
+		tty_print_string(rproc->t, "++++++++++++++++++++\n");
+		tty_print_string(rproc->t, "Name: %s\n", p->name);
+		tty_print_string(rproc->t, "DIR: %s\n", p->cwd);
+		tty_print_string(rproc->t, "PID: %d\n", p->pid);
+		tty_print_string(rproc->t, "UID: %d\n", p->uid);
+		tty_print_string(rproc->t, "GID: %d\n", p->gid);
+		
+		tty_print_string(rproc->t, "state: ");
+		switch(p->state)
+		{
+		case PROC_EMBRYO:	
+			tty_print_string(rproc->t, "EMBRYO");
+			break;
+		case PROC_READY:	
+			tty_print_string(rproc->t, "READY TO RUN");
+			break;
+		case PROC_RUNNABLE:	
+			tty_print_string(rproc->t, "RUNNABLE");
+			break;
+		case PROC_RUNNING:	
+			tty_print_string(rproc->t, "RUNNING - "
+				"CURRENT PROCESS");
+			break;
+		case PROC_BLOCKED:	
+			tty_print_string(rproc->t, "BLOCKED\n");
+			tty_print_string(rproc->t, "Reason: ");
+			if(p->block_type == PROC_BLOCKED_WAIT)
+			{
+				tty_print_string(rproc->t, "CHILD WAIT");
+			} else if(p->block_type == PROC_BLOCKED_COND)
+			{
+				tty_print_string(rproc->t, "CONDITION");
+			} else {
+
+				tty_print_string(rproc->t, "INDEFINITLY\n");
+			}
+			break;
+		case PROC_ZOMBIE:	
+			tty_print_string(rproc->t, "ZOMBIE");
+			break;
+		case PROC_KILLED:	
+			tty_print_string(rproc->t, "KILLED");
+			break;
+		default: 
+			tty_print_string(rproc->t, "CURRUPT!");
+		}
+		tty_print_string(rproc->t, "\n");
+		
+		tty_print_string(rproc->t, "Open Files:\n");
+		int file;
+		for(file = 0;file < MAX_FILES;file++)
+		{
+			struct file_descriptor* fd = 
+				p->file_descriptors + file;
+			if(fd->type == 0x0) continue;
+			tty_print_string(rproc->t, "%d: ", file);
+			switch(fd->type)
+			{
+				case FD_TYPE_STDIN:
+					tty_print_string(rproc->t, "STDIN");
+					break;
+				case FD_TYPE_STDOUT:
+					tty_print_string(rproc->t, "STDOUT");
+					break;
+				case FD_TYPE_STDERR:
+					tty_print_string(rproc->t, "STDERR");
+					break;
+				case FD_TYPE_FILE:
+					tty_print_string(rproc->t, "FILE");
+					break;
+				case FD_TYPE_DEVICE:
+					tty_print_string(rproc->t, "DEVICE");
+					break;
+				case FD_TYPE_PIPE:
+					tty_print_string(rproc->t, "PIPE");
+					break;
+				default:
+					tty_print_string(rproc->t, 							"CURRUPT");
+			}
+			tty_print_string(rproc->t, "\n");
+
+		}
+		tty_print_string(rproc->t, "\n");
+
+		tty_print_string(rproc->t, "Virtual Memory: ");
+		uint stack = p->stack_start - p->stack_end;
+		uint heap = p->heap_end - p->heap_start;
+		uint code = p->heap_start - 0x1000;
+		uint total = (stack + heap + code) / 1024;
+		tty_print_string(rproc->t, "%dK\n", total);	
+	}
+
+	fs_fsstat();
+	return 0;
 }

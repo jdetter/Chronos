@@ -6,15 +6,17 @@ TOOLS := boot-sign \
 	mkvect
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
-
 TOOLS_CLEAN := tools/bin/
 
-tools: tools-dir $(TOOLS_BINARIES)
+TOOLS_BUILD := tools/bin $(TOOLS_BINARIES)
 
-tools-dir:
+.PHONY: tools
+tools: $(TOOLS_BUILD)
+
+tools/bin:
 	mkdir -p tools/bin/
 
-tools/bin/mkfs:
+tools/bin/mkfs: tools/bin
 # VSFS must be rebuilt in MKFS mode
 	echo "#define VSFS_MKFS" > tools/bin/vsfs.c
 	cat kernel/drivers/vsfs.c >> tools/bin/vsfs.c
@@ -27,11 +29,11 @@ tools/bin/mkfs:
 tools/bin/fsck: tools/bin/mkfs
 	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o
 
-tools/bin/boot2-verify:
+tools/bin/boot2-verify: tools/bin
 	$(CC) $(CFLAGS) -o tools/bin/boot2-verify tools/boot2-verify.c
-tools/bin/boot-sign:
+tools/bin/boot-sign: tools/bin
 	$(CC) $(CFLAGS) -o tools/bin/boot-sign tools/boot-sign.c
-tools/bin/disk-part:
+tools/bin/disk-part: tools/bin
 	$(CC) $(CFLAGS) -o tools/bin/disk-part tools/disk-part.c
-tools/bin/mkvect:
+tools/bin/mkvect: tools/bin
 	$(CC) $(CFLAGS) -o tools/bin/mkvect tools/mkvect.c -I kernel -I tools/bin

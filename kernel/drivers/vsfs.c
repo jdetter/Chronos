@@ -78,6 +78,7 @@ int vsfs_mkdir(const char* path, uint permissions,
 
 int vsfs_readdir(void* dir, int index, struct directent* dst, 
 		struct vsfs_context* context);
+void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
 
 int vsfs_driver_init(struct FSDriver* driver)
 {
@@ -95,6 +96,8 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->read = (void*)vsfs_read;
 	driver->write = (void*)vsfs_write;
 	driver->readdir = (void*)vsfs_readdir;
+	driver->unlink = (void*)vsfs_unlink;
+	driver->fsstat = (void*)vsfs_fsstat;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -317,6 +320,24 @@ void vsfs_free_inode(struct vsfs_inode* node, struct vsfs_context* context)
 	in->allocated = 0;
 }
 
+
+void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context)
+{
+	int free = 0;
+	int allocated = 0;
+	int i = 0;
+	for(i = 0;i < context->cache_count;i++)
+	{
+		struct vsfs_cache_inode* in = context->cache + i;
+		if(in->allocated)
+			allocated++;
+		else free++;
+	}
+
+	dst->cache_free = free;
+	dst->cache_allocated = allocated;
+}
+
 /** End vsfs caching functions */
 
 int vsfs_lookup(const char* path_orig, vsfs_inode* dst, 
@@ -461,8 +482,7 @@ void free_inode(uint inode_num, struct vsfs_context* context)
 
 void free_block(uint block_num, struct vsfs_context* context)
 {
-  block_num -= context->start + 1 + 
-	context->super.imap + context->super.dmap;
+  if(block_num == 0) return;
   uchar free[512];
   context->read(free, context->start + 1 
 	+ context->super.imap + block_num/4096, context->hdd);
@@ -486,9 +506,11 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   parent_path(path, parent_name);
   vsfs_inode parent;
   int parent_num = vsfs_lookup(parent_name, &parent, context);
+  if(parent_num == 0) return -1;
 
   vsfs_inode child;
   int child_num = vsfs_lookup(path, &child, context);
+  if(child_num == 0) return -1;
   
   vsfs_directent last_entry;
   vsfs_directent entries[4];
@@ -498,36 +520,36 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   int last_index = 0;
   for(last_index = 0; last_index < 4; last_index++){
     if(entries[last_index].inode_num == 0){
-      last_index--;
-      last_entry_inum = entries[last_index].inode_num;
       break;
     }
+    last_entry_inum = entries[last_index].inode_num;
   }
+  last_index--;
   memmove(&last_entry, &entries[last_index], sizeof(vsfs_directent));
   
   int blocks;
   int done = 0;
-  for(blocks = 0; !done && blocks < ((parent.size+ 511)/512); blocks++){
+  for(blocks = 0; !done && blocks < parent.blocks; blocks++){
     read_block(&parent, blocks, entries, context);
     int i;
-    for(i = 0; i < (512/sizeof(vsfs_directent)); i++){
+    for(i = 0; i < (BLOCKSIZE/sizeof(vsfs_directent)); i++){
       if(entries[i].inode_num == child_num){
         child.links_count--;
         if(child.links_count == 0){
           free_inode(child_num, context);
-        }
-        else{
+        } else {
           write_inode(child_num, &child, context);
         }
         if(last_entry_inum == child_num){
-          done = 1;
-          break;
+          memset(&last_entry, 0, sizeof(vsfs_directent));
         } 
+
         memmove(&entries[i], &last_entry, sizeof(vsfs_directent));
-        write_block(&child, blocks, entries, context);
+        write_block(&parent, blocks, entries, context);
         parent.size -= sizeof(vsfs_directent);
         write_inode(parent_num, &parent, context);
         done = 1;
+	break;
       }
     }
   } 
