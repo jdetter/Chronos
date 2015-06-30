@@ -1,5 +1,6 @@
 #include "chronos.h"
 #include "stdio.h"
+#include "stdlib.h"
 
 int rec_rmdir(char* dir){
 
@@ -13,8 +14,8 @@ int rec_rmdir(char* dir){
 	struct directent dir_stuff;	
 	int ind;
 	for(ind = 0; readdir(dirfile, ind, &dir_stuff) != -1; ind++){
-		if((dir_stuff.type == FILE_TYPE_FILE) || (dir_stuff == FILE_TYPE_SPECIAL)
-			|| (dir_stuff == FILE_TYPE_LINK)){
+		if((dir_stuff.type == FILE_TYPE_FILE) || (dir_stuff.type == FILE_TYPE_SPECIAL)
+			|| (dir_stuff.type == FILE_TYPE_LINK)){
 			char file_path[FILE_MAX_PATH];
 			strncpy(file_path, res_path, FILE_MAX_PATH);
 			strncat(file_path, dir_stuff.name, FILE_MAX_PATH);
@@ -59,7 +60,6 @@ int main(int argc, char** argv)
 	}	
 	int direct_rm = 0;
 	int user_input = 1;
-	int interactive = 1;
 	int recursive = 0;
 	int print = 0;
 
@@ -69,18 +69,15 @@ int main(int argc, char** argv)
 		if(*argv[i] == '-'){
 			int k = 1;
 			char* flags = argv[i];
-			for(;flags[k] != NULL; k++){			
+			for(;flags[k] != 0x0; k++){			
 
-				switch(options[i]){
+				switch(flags[k]){
 			
 					case 'd':
 						direct_rm = 1;
 						break;
 					case 'f':
 						user_input = 0;
-						break;
-					case 'i':
-						interactive = 1;
 						break;
 					case 'v':
 						print = 1;
@@ -98,7 +95,6 @@ int main(int argc, char** argv)
 	}
 
 	int j = 1;
-	int response;
 	for(; argv[j] != NULL; j++){
 		if(*argv[j] != '-'){
 			int fd = open(argv[j], O_RDWR, 0);
