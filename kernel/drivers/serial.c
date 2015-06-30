@@ -50,16 +50,12 @@ int serial_init(int pic)
 	inb(COM1_INT_IDENT);
 	inb(COM1_DATA);
 
-	/* Should we enable pic? */
-	if(pic) pic_enable(COM1_IRQ);
+	/* Don't enable pic here anymore */
 
 	serial_connected = 1;
 	return 0;
 }
 
-/**
- * Is there something waiting to be read?
- */
 uint serial_received(void)
 {
 	return inb(COM1_LSR) & 0x1;
@@ -109,6 +105,14 @@ uint serial_read(void* dst, uint sz)
 	}
 
 	return x;
+}
+
+char serial_read_noblock(void)
+{
+	if(serial_received())
+		return inb(COM1_DATA);
+
+	return 0;
 }
 
 int serial_io_init(struct IODriver* driver);

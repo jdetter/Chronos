@@ -45,6 +45,11 @@ struct file_descriptor
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
 #define PROC_BLOCKED_WAIT 0x01 /* The process is waiting on a child */
 #define PROC_BLOCKED_COND 0x02 /* The thread is waiting on a condition */
+#define PROC_BLOCKED_IO   0x03 /* The process is waiting on io to finish */
+
+/* Reasons for io block */
+#define PROC_IO_NONE     0x00 /* Not waiting on IO */
+#define PROC_IO_KEYBOARD 0x01 /* Waiting for characters from the keyboard */
 
 struct proc
 {
@@ -77,10 +82,14 @@ struct proc
 	cond_t* b_condition; /* The condition we might be waiting on */
 	uint b_condition_signal; /* The condition ticket number. */
 	int b_pid; /* The pid we are waiting on. */
+	int io_type; /* The type of io thats being waited on */
+	uchar* io_dst; /* Where the destination bytes will be placed. */
+	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
+	int io_recieved; /* The actual amount of bytes recieved. */
 
 	uchar zombie; /* Whether or not the parent has been killed. */
 	struct proc* parent; /* The process that spawned this process */
-	char name[MAX_PROC_NAME];
+	char name[MAX_PROC_NAME]; /* The name of the process */
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
 
 	pgdir* pgdir; /* The page directory for the process */

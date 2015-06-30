@@ -14,6 +14,7 @@
 #include "proc.h"
 #include "vm.h"
 #include "console.h"
+#include "pic.h"
 
 extern pgdir* k_pgdir;
 extern uint video_mode;
@@ -114,12 +115,14 @@ int dev_init()
 	}
 
 
-	serial_init(INT_PIC_TIMER_CODE);
+	serial_init(0);
 	/* Find serial port */
 	if(serial_connected)
 	{
 		driver = dev_alloc();
 		serial_io_setup(driver);
+		/* Add serial to mask */
+		pic_enable(INT_PIC_COM1_CODE);
 		/* Set mount point */
                 snprintf(driver->node,
                         FILE_MAX_PATH, "/dev/sl0", x);

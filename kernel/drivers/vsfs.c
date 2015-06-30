@@ -40,8 +40,6 @@ void write_inode(uint inode_num, vsfs_inode* inode,
 		struct vsfs_context* context);
 void read_inode(uint inode_num, vsfs_inode* inode, 
 		struct vsfs_context* context);
-void file_name(const char *path_orig, char* dst);
-void parent_path(const char *path, char* dst);
 
 struct vsfs_cache_inode
 {
@@ -530,11 +528,18 @@ void free_block(uint block_num, struct vsfs_context* context)
  */
 int vsfs_unlink(const char* path, struct vsfs_context* context)
 {
-  char parent_name[1024];
-  parent_path(path, parent_name);
+  char parent_name[FILE_MAX_PATH];
   vsfs_inode parent;
-  int parent_num = vsfs_lookup(parent_name, &parent, context);
-  if(parent_num == 0) return -1;
+  int parent_num;
+  if(file_path_parent(path, parent_name, FILE_MAX_PATH))
+  {
+    /* Parent is just root */
+    read_inode(1, &parent, context);
+    parent_num = 1;
+  } else {
+    parent_num = vsfs_lookup(parent_name, &parent, context);
+    if(parent_num == 0) return -1;
+  }
 
   vsfs_inode child;
   int child_num = vsfs_lookup(path, &child, context);
@@ -544,7 +549,8 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   vsfs_directent entries[4];
   uint last_entry_inum;
 
-  read_block(&parent, parent.size / 512, entries, context);
+  read_block(&parent, (parent.size - sizeof(vsfs_directent)) / BLOCKSIZE, 
+		entries, context);
   int last_index = 0;
   for(last_index = 0; last_index < 4; last_index++){
     if(entries[last_index].inode_num == 0){
@@ -555,6 +561,19 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   last_index--;
   memmove(&last_entry, &entries[last_index], sizeof(vsfs_directent));
   
+  /* Remove the last entry on disk */
+  memset(&entries[last_index], 0, sizeof(vsfs_directent));
+  write_block(&parent, (parent.size - sizeof(vsfs_directent)) / BLOCKSIZE, 
+		entries, context);
+
+  /* Is the one we are removing the last entry? */
+  if(last_entry_inum == child_num)
+  {
+    parent.size -= sizeof(vsfs_directent);
+    write_inode(parent_num, &parent, context);
+    return 0;
+  }
+
   int blocks;
   int done = 0;
   for(blocks = 0; !done && blocks < parent.blocks; blocks++){
@@ -851,35 +870,6 @@ void read_inode(uint inode_num, vsfs_inode* inode,
   memmove(inode, &inodes[offset], sizeof(vsfs_inode));
 }
 
-void file_name(const char *path_orig, char* dst)
-{
-  char path_buffer[strlen(path_orig) + 1];
-  memmove(path_buffer, (char*)path_orig, strlen(path_orig) + 1);
-  char* path = path_buffer;
-  while(*(path) != 0){
-    path++;
-  }
-  while(*(path) != '/'){
-    path--;
-  }
-  path++;
-
-  memmove(dst, path, strlen(path));
-}
-
-void parent_path(const char *path, char* dst)
-{
-  memmove(dst, (char*)path, strlen(path));
-
-  while(*(dst) != 0){
-    dst++;
-  }
-  while(*(dst) != '/'){
-    dst--;
-  }
-  *(dst) = 0;
-}
-
 int vsfs_link(const char* path, vsfs_inode* new_inode,
 		struct vsfs_context* context)
 {
@@ -946,15 +936,15 @@ int vsfs_hard_link(const char* new_file, const char* link,
   vsfs_inode link_inode;
   int link_num = vsfs_lookup(link, &link_inode, context);
   if(link_num == 0) { return 1;}
-  char parent[1024];
-  parent_path(new_file, parent);
+  char parent[FILE_MAX_PATH];
+  file_path_parent(new_file, parent, FILE_MAX_PATH);
 
   vsfs_inode parent_inode;
 
   int parent_num = vsfs_lookup(parent, &parent_inode, context);
   if(parent_num == 0) { return 1;}
   char child[124];
-  file_name(new_file, child);
+  file_path_name(new_file, child, 124);
   
   allocate_directent(&parent_inode, child, link_num, context);
 

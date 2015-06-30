@@ -20,8 +20,18 @@ uint serial_write(void* dst, uint sz);
 uint serial_read(void* dst, uint sz);
 
 /**
+ * Read from the serial port without blocking execution.
+ */
+char serial_read_noblock(void);
+
+/**
  * Setup io driver for this serial connection.
  */
 int serial_io_setup(struct IODriver* driver);
+
+/**
+ * Is there something waiting to be read?
+ */
+uint serial_received(void);
 
 #endif

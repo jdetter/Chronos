@@ -90,9 +90,17 @@ int file_path_dir(const char* src, char* dst, uint sz);
 int file_path_file(const char* src, char* dst, uint sz);
 
 /**
- * Returns the parent of src into dst. Does NOT work on relative paths.
+ * Returns the parent of src into dst. A maximum of sz bytes will be copied
+ * into the destination buffer dst. Does NOT work on relative paths.
  * Returns 0 on success, returns 1 if src has no parent.
  */
-int file_path_parent(const char* src, char* dst);
+int file_path_parent(const char* src, char* dst, uint sz);
+
+/**
+ * Find the file's name that this path represents. This also accounts for
+ * paths that end in slashes. May not work on relative paths. A maximum
+ * of sz bytes are copied into the dst buffer. Always returns 0.
+ */
+int file_path_name(const char* src, char* dst, uint sz);
 
 #endif

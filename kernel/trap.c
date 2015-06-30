@@ -49,9 +49,16 @@ void trap_handler(struct trap_frame* tf)
 	int trap = tf->trap_number;
 	char fault_string[64];
 	int syscall_ret = -1;
+	int handled = 0;
 
 	switch(trap)
 	{
+		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
+			cprintf("Serial interrupt.\n");
+			/* Keyboard interrupt */
+			tty_handle_keyboard_interrupt();	
+			handled = 1;
+			break;
 		case TRAP_DE:
 			strncpy(fault_string, "Divide by 0", 64);
 			break;
@@ -122,17 +129,19 @@ void trap_handler(struct trap_frame* tf)
 			rproc->tf->eax = syscall_ret;
 			//cprintf("System call done.\n");
 			//yield();
+			handled = 1;
 			break;
 		case INT_PIC_TIMER: /* Time quantum has expired. */
 			//cprintf("Timer interrupt!\n");
 			pic_eoi(INT_PIC_TIMER_CODE);
 			yield();
+			handled = 1;
 			break;
 		default:
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
-        if(trap != TRAP_SC && trap != INT_PIC_TIMER)
+        if(!handled)
         {
                 cprintf("%s: 0x%x", fault_string, tf->error);
                 for(;;);

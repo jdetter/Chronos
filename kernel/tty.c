@@ -10,10 +10,12 @@
 #include "stdmem.h"
 #include "stdlib.h"
 #include "keyboard.h"
+#include "iosched.h"
 
 #define MAX_TTYS 4
 
 struct tty ttys[MAX_TTYS];
+static struct tty* active = NULL;
 
 int tty_io_init(struct IODriver* driver);
 int tty_io_read(void* dst, uint start_read, uint sz, void* context);
@@ -83,6 +85,13 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	t->graphical_cursor_enabled=cursor_enabled; /* Whether or not to show the cursor*/
 	t->display_mode = TTY_MODE_TEXT; /* Whether we are in text or graphical mode */
 	t->mem_start = mem_start; /* The start of video memory. (color, mono only)*/
+
+	/* Zero keyboard status */
+	memset(t->keyboard, 0, TTY_KEYBUFFER_SZ);
+	t->key_write = 0;
+	t->key_read = 0;
+	t->key_full = 0;	
+	t->key_nls = 0;
 }
 
 uint tty_num(tty_t t)
@@ -93,6 +102,7 @@ uint tty_num(tty_t t)
 void tty_enable(tty_t t)
 {
 	t->active = 1;
+	active = t;
 	if(t->type==TTY_TYPE_SERIAL)
 	{
 		return;
@@ -319,30 +329,10 @@ void tty_clear_graphic(tty_t t)
 
 char tty_get_char(tty_t t)
 {
-	if(t->type == TTY_TYPE_SERIAL)
-	{
-		char c = 0;
-		while(!c) serial_read(&c, 1);
-
-		switch(c)
-		{
-		case 13: c = '\n';break;
-		}
-
-		/* Echo input to screen */
-		if(t->active) serial_write(&c, 1);
-		return c;
-	} else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
-	{
-		char c = 0;
-		while(!c) c = kbd_getc();
-		/* echo input to screen */
-		tty_print_character(t, c);
-		return c;
-	}
-
-
-	return -1;
+	char c;
+	if(block_keyboard_io(&c, 1) != 1)
+		panic("tty: get char failed.\n");
+	return c;
 }
 
 uchar tty_get_key(tty_t t)
@@ -384,4 +374,133 @@ void tty_set_color(tty_t t, uchar color)
 void tty_set_mode(struct tty* t, uchar mode)
 {
 	t->display_mode = mode;
+}
+
+void tty_delete_char(tty_t t)
+{
+	char serial_back[] = {0x08, ' ', 0x08};
+	switch(t->type)
+	{
+		default: case TTY_TYPE_NONE: break;
+		case TTY_TYPE_COLOR: case TTY_TYPE_MONO:
+			switch(t->display_mode)
+			{
+				case TTY_MODE_NONE: 
+				case TTY_MODE_GRAPHIC:
+				default:
+					return;
+				case TTY_MODE_TEXT:
+					if(t->text_cursor_pos == 0) break;
+					t->text_cursor_pos--;
+					tty_print_character(t, ' ');
+					t->text_cursor_pos--;
+					break;
+			}
+			/* update the cursor position */
+			if(t->active) 
+				console_update_cursor(t->text_cursor_pos--);
+			break;
+		case TTY_TYPE_SERIAL:
+			/* Send backspace, space, backspace */
+			serial_write(serial_back, 3);
+			break;
+	}
+}	
+
+extern slock_t ptable_lock;
+void tty_handle_keyboard_interrupt(void)
+{
+	if(!active) 
+	{
+		cprintf("tty: there is no active tty.\n");
+		return;
+	}
+
+	slock_acquire(&ptable_lock);
+	slock_acquire(&active->key_lock);
+	char c = 0;
+	do
+	{
+		/* If the buffer is full, break */
+		if(active->key_full) 
+		{
+			cprintf("tty: keyboard buffer is full!\n");
+			break;
+		}
+		switch(active->type)
+		{
+			default:
+				cprintf("tty: active tty is invalid.\n");
+				break;
+			case TTY_TYPE_COLOR:
+			case TTY_TYPE_MONO:
+				c = kbd_getc();
+				break;
+			case TTY_TYPE_SERIAL:
+				c = serial_read_noblock();
+				break;
+		}
+		if(!c) break; /* no more characters */
+		/* Got character. */
+
+		switch(c)
+		{
+			/* replace line feed with nl */
+			case 13: c = '\n';
+				 active->key_nls++;
+				 break;
+
+				 /* Delete is special */
+				 /* Delete is not a character */
+			case 0x7F:
+				 /* see if the buffer is empty */
+				 if(active->key_read == 
+						 active->key_write &&
+						 !active->key_full) 
+					 continue;
+
+				 int tmp_write = 
+					 active->key_write - 1;
+				 if(tmp_write < 0)
+					 tmp_write = 
+						 TTY_KEYBUFFER_SZ - 1;
+				 /* Can't delete a nl */
+				 if(active->keyboard[tmp_write]
+						 == '\n') continue;
+
+				 /* Delete the character */
+				 active->keyboard[tmp_write]= 0;
+				 tty_delete_char(active);
+				 active->key_write = tmp_write;
+				 continue;
+		}
+		/* Echo to tty */
+		switch(active->type)
+                {
+                        default: break;
+                        case TTY_TYPE_COLOR:
+                        case TTY_TYPE_MONO:
+                                tty_print_character(active, c);
+                                break;
+                        case TTY_TYPE_SERIAL:
+                                serial_write(&c, 1);
+                                break;
+                }
+
+		/* put c into the buffer */
+		/* wrap if needed */
+		if(active->key_write >= TTY_KEYBUFFER_SZ)
+			active->key_write = 0;
+		active->keyboard[active->key_write] = c;
+		active->key_write++;
+		/* update full */
+		if(active->key_write == active->key_read)
+			active->key_full = 1;
+		/* If that was a nl, we want to signal */
+		if(c == '\n')
+			signal_keyboard_io(active);
+	} while(1);
+
+	slock_release(&ptable_lock);
+	slock_release(&active->key_lock);
 }

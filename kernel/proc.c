@@ -16,6 +16,7 @@
 #include "x86.h"
 #include "syscall.h"
 #include "chronos.h"
+#include "iosched.h"
 
 extern struct vsfs_context context;
 
@@ -319,5 +320,12 @@ void scheduler(void)
 				/* The process has reacquired the lock. */
 			}
 		}
+
+		/* We still have the process table lock */
+		slock_release(&ptable_lock);
+		/* run io scheduler */
+		iosched_check();
+		/* Reacquire the lock */
+		slock_acquire(&ptable_lock);
 	}
 }

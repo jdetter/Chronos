@@ -16,7 +16,7 @@ tools: $(TOOLS_BUILD)
 tools/bin:
 	mkdir -p tools/bin/
 
-tools/bin/mkfs: tools/bin
+tools/bin/mkfs: tools/bin lib/file.o
 # VSFS must be rebuilt in MKFS mode
 	echo "#define VSFS_MKFS" > tools/bin/vsfs.c
 	cat kernel/drivers/vsfs.c >> tools/bin/vsfs.c
@@ -24,10 +24,10 @@ tools/bin/mkfs: tools/bin
 	cp include/types.h tools/bin
 	cp include/file.h tools/bin
 	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -c -o tools/bin/vsfs.o tools/bin/vsfs.c
-	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o
+	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o lib/file.o
 	
-tools/bin/fsck: tools/bin/mkfs
-	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o
+tools/bin/fsck: tools/bin/mkfs lib/file.o
+	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o lib/file.o
 
 tools/bin/boot2-verify: tools/bin
 	$(CC) $(CFLAGS) -o tools/bin/boot2-verify tools/boot2-verify.c

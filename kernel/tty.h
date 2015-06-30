@@ -9,6 +9,11 @@
 #define TTY_BUFFER_SZ 4000
 
 /**
+ * The amount of characters the keyboard buffer can hold.
+ */
+#define TTY_KEYBUFFER_SZ 0x100
+
+/**
  * The types of ttys. The type of the tty determines how it communicates
  * to the hardware. Color and mono ttys will write to video memory, serial ttys
  * will read and write from the serial port.
@@ -62,6 +67,13 @@ struct tty
 	uchar display_mode; /* Whether we are in text or graphical mode */
 	uint mem_start; /* The start of video memory. (color, mono only)*/
 	uchar color; /* The current printing color of the terminal. */
+
+	char keyboard[TTY_KEYBUFFER_SZ]; /* Keyboard input buffer */
+	slock_t key_lock; /* The lock needed in order to read from keybaord */
+	uint key_write; /* Write position in the buffer */
+	uint key_read; /* Read position in the buffer */
+	uint key_full; /* Is the buffer full? */
+	uint key_nls; /* How many new lines are in the buffer? */
 };
 
 typedef struct tty* tty_t;
@@ -163,5 +175,10 @@ void tty_set_mode(struct tty* t, uchar mode);
  * Scroll down one line in the console.
  */
 void tty_scroll(tty_t t);
+
+/**
+ * Handles the keyboard interrupt with the active tty.
+ */
+void tty_handle_keyboard_interrupt(void);
 
 #endif

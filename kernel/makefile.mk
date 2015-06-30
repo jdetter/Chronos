@@ -13,7 +13,8 @@ KERNEL_OBJECTS := \
 	cpu \
 	pipe \
 	fsman \
-	devman
+	devman \
+	iosched
 
 # assembly files
 KERNEL_ASSEMBLY := \
@@ -110,9 +111,9 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
-kernel/boot/boot-stage2.img: $(LIBS) $(KERNEL_DRIVERS) $(TOOLS_BUILD) kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/vm/pgdir.o kernel/cpu.o kernel/boot/bootc_jmp.o
+kernel/boot/boot-stage2.img: $(LIBS) $(KERNEL_DRIVERS) $(TOOLS_BUILD) kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/vm/pgdir.o kernel/cpu.o kernel/boot/bootc_jmp.o lib/file.o
 	$(CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -I include/ -I kernel/ -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o lib/stdarg.o kernel/drivers/vsfs.o lib/stdlib.o kernel/drivers/serial.o kernel/drivers/ata.o lib/stdlock.o kernel/drivers/pic.o
+	$(LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o lib/stdarg.o kernel/drivers/vsfs.o lib/stdlib.o kernel/drivers/serial.o kernel/drivers/ata.o lib/stdlock.o kernel/drivers/pic.o lib/file.o
 	$(OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	
