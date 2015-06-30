@@ -101,7 +101,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->unlink = (void*)vsfs_unlink;
 	driver->fsstat = (void*)vsfs_fsstat;
 	driver->opened = (void*)vsfs_opened;
-	//driver->rmdir = (void*)vsfs_rmdir;
+	driver->rmdir = (void*)vsfs_rmdir;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -309,6 +309,12 @@ void* vsfs_opened(const char* path, struct vsfs_context* context)
 		}
 	}
 	return 0;
+}
+
+int vsfs_rmdir(const char* path, struct vsfs_context* context)
+{
+	/* Just unlink */
+	return vsfs_unlink(path, context);
 }
 
 /** End standardized vsfs library */

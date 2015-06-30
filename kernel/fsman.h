@@ -313,6 +313,10 @@ int fs_path_resolve(const char* path, char* dst, uint sz);
  */
 void fs_fsstat(void);
 
+/**
+ * Remove a directory. The directory must be empty in order for
+ * it to be removed. Returns 0 on success, -1 otherwise.
+ */
 int fs_rmdir(const char* path);
 
 #endif
