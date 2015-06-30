@@ -613,6 +613,7 @@ int fs_rmdir(const char* path)
 	file_path_file(res_path, path_tmp, FILE_MAX_PATH);
 
 	/* remove the directory */
-	fs->rmdir(path_tmp, fs->context);
+	if(fs->rmdir(path_tmp, fs->context))
+		return -1;
 	return 0;
 }
