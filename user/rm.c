@@ -32,6 +32,7 @@ int rec_rmdir(char* dir){
 	if(rmres == -1){
 		return -1;
 	}
+	close(dirfile);
 	return 0;
 }
 
@@ -140,6 +141,7 @@ int main(int argc, char** argv)
 					exit();
 				}
 			}
+		close(fd);
 		}
 	}
 	exit();
