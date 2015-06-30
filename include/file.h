@@ -89,4 +89,10 @@ int file_path_dir(const char* src, char* dst, uint sz);
  */
 int file_path_file(const char* src, char* dst, uint sz);
 
+/**
+ * Returns the parent of src into dst. Does NOT work on relative paths.
+ * Returns 0 on success, returns 1 if src has no parent.
+ */
+int file_path_parent(const char* src, char* dst);
+
 #endif

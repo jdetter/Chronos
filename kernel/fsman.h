@@ -189,6 +189,12 @@ struct FSDriver
 	 */
 	void* (*opened)(const char* path, void* context);
 
+	/**
+	 * Removes a directory from the file system. The directory must
+	 * be empty. Return 0 on success, -1 otherwise.
+	 */
+	int (*rmdir)(const char* path, void* context);
+
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */

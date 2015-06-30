@@ -23,3 +23,28 @@ int file_path_file(const char* src, char* dst, uint sz)
                 dst[strlen - 1] = 0;
         return 0;
 }
+
+int file_path_parent(const char* src, char* dst)
+{
+	memmove(dst, (char*)src, strlen(src) + 1);
+
+	/* Delete until we hit a non-slash */
+	int x;
+	for(x = strlen(src) - 1;x >=0; x--)
+	{
+		if(src[x] != '/') break;
+		dst[x] = 0;
+	}
+
+	/* Delete until we hit a slash */
+	for(x = strlen(dst) - 1;x >=0; x--)
+        {
+                if(src[x] == '/') break;
+                dst[x] = 0;
+        }
+
+	/* Check to see if the path is root */
+	if(strlen(dst) == 0) return -1;
+
+	return 0;
+}

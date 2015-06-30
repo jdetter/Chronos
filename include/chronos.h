@@ -65,6 +65,13 @@
 #define MAX_ARG		0x20
 
 #ifndef __CHRONOS_ASM_ONLY__
+
+/* Dependant headers */
+#include "types.h"
+#include "stdarg.h"
+#include "file.h"
+#include "stdlock.h"
+
 /**
  * Fork the currently running process. The address space will be copied
  * as well as all open files and other resources. The child process will

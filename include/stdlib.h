@@ -2,12 +2,12 @@
 #define _STDLIB_H_
 
 /* Standard macro functions */
-
-#define PG_ROUNDUP(addr) 	(((uint)addr + PGSIZE - 1) & ~(PGSIZE - 1))
-#define PG_ROUNDDOWN(addr)	((uint)addr & ~(PGSIZE - 1))
-
 #define B4_ROUNDUP(addr)	((uint)addr + 3) & ~(3)
 #define B4_ROUNDDOWN(addr)	((uint)addr) & ~(3)
+
+/* Dependant headers */
+#include "types.h"
+#include "stdarg.h"
 
 /**
  * Returns the length of the string. The null character doesn't count towards
