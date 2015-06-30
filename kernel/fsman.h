@@ -313,4 +313,6 @@ int fs_path_resolve(const char* path, char* dst, uint sz);
  */
 void fs_fsstat(void);
 
+int fs_rmdir(const char* path);
+
 #endif

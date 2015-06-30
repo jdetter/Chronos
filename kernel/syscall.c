@@ -885,7 +885,7 @@ int sys_rm(const char* file)
 
 int sys_rmdir(const char* dir)
 {
-  return fs_rmdir(file);
+  return fs_rmdir(dir);
 }
 
 int sys_mv(const char* orig, const char* dst){
