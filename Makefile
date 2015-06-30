@@ -81,6 +81,8 @@ run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
+run-gdb: kernel-symbols user-symbols
+	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 
 .PHONY: clean
 clean: 

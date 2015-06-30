@@ -79,6 +79,7 @@ int vsfs_mkdir(const char* path, uint permissions,
 int vsfs_readdir(void* dir, int index, struct directent* dst, 
 		struct vsfs_context* context);
 void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
+void* vsfs_opened(const char* path, struct vsfs_context* context);
 
 int vsfs_driver_init(struct FSDriver* driver)
 {
@@ -98,6 +99,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->readdir = (void*)vsfs_readdir;
 	driver->unlink = (void*)vsfs_unlink;
 	driver->fsstat = (void*)vsfs_fsstat;
+	driver->opened = (void*)vsfs_opened;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -287,6 +289,24 @@ int vsfs_readdir(void* dir, int index, struct directent* dst,
 	read_inode(dst->inode, &in, context);
 	dst->type = in.type;
 	return 0;	
+}
+
+void* vsfs_opened(const char* path, struct vsfs_context* context)
+{
+	struct vsfs_inode i;
+	int inum = vsfs_lookup(path, &i, context);
+	if(inum <= 0) return 0;
+
+	int x;
+	for(x = 0;x < context->cache_count;x++)
+	{
+		if(context->cache[x].allocated &&
+			context->cache[x].inode_number == inum)
+		{
+			return context->cache + x;
+		}
+	}
+	return 0;
 }
 
 /** End standardized vsfs library */

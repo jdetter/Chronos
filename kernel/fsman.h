@@ -182,6 +182,13 @@ struct FSDriver
 	 */
 	int (*fsstat)(struct fs_stat* dst, void* context);
 
+	/**
+	 * See if the file is already opened. If it is, returns
+	 * a pointer to that inode in the cache. If it isn't in
+	 * the cache, NULL is returned.
+	 */
+	void* (*opened)(const char* path, void* context);
+
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
@@ -195,6 +202,11 @@ struct FSDriver
  * Detect all disks and file systems.
  */
 void fsman_init(void);
+
+/**
+ * Add a reference to an inode.
+ */
+int fs_add_inode_reference(struct inode_t* i);
 
 /**
  * Open the file with the given path and return an inode that describes the

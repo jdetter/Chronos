@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 	if(result > 0)
 	{
 		wait(result);
-		printf("Child exited cleanly.\n");
+		printf("Warning: sh has exited.\n");
 		for(;;);
 	} else {
 		char* args[MAX_ARG];

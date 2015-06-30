@@ -379,6 +379,14 @@ int sys_fork(void)
   memmove(&new_proc->file_descriptors, &rproc->file_descriptors,
                 sizeof(struct file_descriptor) * MAX_FILES);
 
+  /* Increment file references for all inodes */
+  int i;
+  for(i = 0;i < MAX_FILES;i++)
+    if(new_proc->file_descriptors[i].type == FD_TYPE_FILE)
+    {
+      fs_add_inode_reference(new_proc->file_descriptors[i].i);
+    }
+
   /** 
    * A quick note on the swap stack:
    *

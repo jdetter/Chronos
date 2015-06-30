@@ -73,6 +73,12 @@ void fsman_init(void)
 		fstable[0].cache, fstable[0].context);
 }
 
+int fs_add_inode_reference(struct inode_t* i)
+{
+	i->references++;
+	return 0;
+}
+
 /**
  * Simplify the given path so that it doesn't contain any . or ..s
  * also check to make sure that the path is valid. Returns 1 if the
@@ -252,8 +258,6 @@ static void fs_sync_inode(inode i)
 inode fs_open(const char* path, uint flags, uint permissions,
 	uint uid, uint gid)
 {
-	/* TODO: Check if the file is already open by another process */	
-
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
 	char tmp_path[FILE_MAX_PATH];
@@ -269,9 +273,28 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
-	char fs_path[FILE_MAX_PATH];
-	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
-		return NULL; /* Impossible case */
+        char fs_path[FILE_MAX_PATH];
+        if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
+                return NULL; /* Impossible case */
+
+	/* See if this file is already opened. */
+	void* inp = NULL;
+
+	if((inp = fs->opened(fs_path, fs->context)))
+	{
+		/* Find the file in our cache. */
+		int x;
+		for(x = 0;x < FS_INODE_MAX;x++)
+		{
+			if(itable[x].valid && itable[x].fs == fs
+				&& itable[x].inode_ptr == inp)
+			{
+				/* its already opened. */
+				fs_add_inode_reference(itable + x);
+				return itable + x;
+			}
+		}
+	}
 
 	/* Try creating the file first */
 	if(flags & O_CREATE)

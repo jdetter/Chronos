@@ -22,8 +22,9 @@ int main(int argc, char** argv)
 		printf("# ");
 		fgets(in_buff, 2048, 0);
 		/* delete new line character */
-		if(strlen(in_buff) == 0) continue;
 		in_buff[strlen(in_buff) - 1] = 0;
+		trim(in_buff);
+		if(strlen(in_buff) == 0) continue;
 
 		/* check for cd */
 		if(!memcmp(in_buff, "cd ", 3))
@@ -31,6 +32,12 @@ int main(int argc, char** argv)
 			/* do cd and reset */
 			runprog(in_buff);
 			continue;
+		}
+		/* Check for exit */
+		if(!memcmp(in_buff, "exit", 4) &&
+			strlen(in_buff) == 4)
+		{
+			exit();
 		}
 		int cur_cmd;
 		int cur_op;
@@ -84,6 +91,11 @@ int main(int argc, char** argv)
 			
 		}
 
+		for(i = 0;i < MAX_CMD;i++)
+		{
+			if(cmd_buff[i]) trim(cmd_buff[i]);
+		}
+
 		int fds[MAX_CMD - 1];
 		memset(fds, 0, sizeof(int) * (MAX_CMD - 1));
 		int fds_write[MAX_CMD - 1];
@@ -103,11 +115,12 @@ int main(int argc, char** argv)
 			}
 			char* cmd = cmd_buff[i];
 			int fd_file ;
+			int execable = 1;
 			int fd_curr[2]; // 0 read 1 write
 			
 			switch(op_buff[i]){
+				case 0x0: break;
 				default:
-				if(i == 0 && op_buff[0] == 0) break;
 				printf("sh: invalid op\n");
 				error = 1;
 				break;
@@ -118,7 +131,8 @@ int main(int argc, char** argv)
 				break;
 				case OP_FILE:
 				fd_file = open(cmd_buff[i+1], 
-					O_CREATE|O_WRONLY|O_TRUC, 0x0);
+					O_CREATE|O_WRONLY|O_TRUC,
+					PERM_ARD | PERM_GWR | PERM_UWR);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");
 					error = 1;
@@ -126,7 +140,8 @@ int main(int argc, char** argv)
 				break;
 				case OP_APPEND:
 				fd_file = open(cmd_buff[i+1], 
-					O_CREATE|O_WRONLY, 0x0);
+					O_CREATE|O_WRONLY, 
+					PERM_ARD | PERM_GWR | PERM_UWR);
 				lseek(fd_file, 0, SEEK_END);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");
@@ -157,8 +172,16 @@ int main(int argc, char** argv)
 					break;
 					case OP_PIPE:
 					break;
+					case OP_APPEND:
+					execable = 0;
+					break;
+					case OP_FILE:
+					execable = 0;
+					break;
 				}	
 			}
+
+			if(!execable) break;
 			int f = fork();
 			if(f==0){//is child
 				switch(op_buff[i]){
@@ -210,18 +233,8 @@ int main(int argc, char** argv)
 	
 }
 
-void trim(char* str)
-{
-	int x;
-	for(x = 0;x < strlen(str);x++)
-		if(str[x] != ' ')break;
-	strncpy(str, str + x, strlen(str) + 1);
-	for(x = strlen(str) - 1;x >= 0;x--)
-		if(str[x] != ' ') break;
-	str[x + 1] = 0;
-}
-
 void runprog(char* string){
+	trim(string);
 	int i;
 	int length = strlen(string);
 	int arg = 1;

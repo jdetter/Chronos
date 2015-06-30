@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 	{
 		int left = fileLength - i;
 		if(left > BUFF_SIZE - 1) left = BUFF_SIZE - 1;
-		read(fileDescript, buffer, left - 1);
+		read(fileDescript, buffer, left);
 		buffer[BUFF_SIZE - 1] = 0;
 		printf(buffer);
 		i += left;

@@ -95,8 +95,10 @@ void trap_handler(struct trap_frame* tf)
 			strncpy(fault_string, "Protection violation", 64);
 			break;
 		case TRAP_PF:
-			snprintf(fault_string, 64, "Page Fault: 0x%x ", 
-					__get_cr2__());
+			tty_print_string(rproc->t, "%s: Seg Fault: 0x%x\n",
+				rproc->name, 
+				__get_cr2__());
+			sys_exit();
 			break;
 		case TRAP_0F:
 			strncpy(fault_string, "Reserved interrupt", 64);

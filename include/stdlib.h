@@ -97,4 +97,10 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt);
  */
 int snprintf(char* dst, uint sz, char* fmt, ...);
 
+/**
+ * Trim white space from the beginning and end of the string. Returns the
+ * resulting length of the string.
+ */
+int trim(char* str);
+
 #endif

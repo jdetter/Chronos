@@ -342,3 +342,15 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 
 	return result;
 }
+
+int trim(char* str)
+{
+        int x;
+        for(x = 0;x < strlen(str);x++)
+                if(str[x] != ' ')break;
+        strncpy(str, str + x, strlen(str) + 1);
+        for(x = strlen(str) - 1;x >= 0;x--)
+                if(str[x] != ' ') break;
+        str[x + 1] = 0;
+	return strlen(str);
+}
