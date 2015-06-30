@@ -278,8 +278,15 @@ int syscall_handler(uint* esp)
 			return_value = sys_create(str_arg1, int_arg1);
 			break;
 		case SYS_mkdir:
+			if(syscall_get_str((char*)str_arg1,
+                                SYSCALL_STRLEN, esp, 1)) break;
+			if(syscall_get_int(&int_arg1, esp, 2)) break;
+			return_value = sys_mkdir(str_arg1, int_arg1);
 			break;
 		case SYS_rmdir:
+			if(syscall_get_str((char*)str_arg1,
+				SYSCALL_STRLEN, esp, 1)) break;
+			return_value = sys_rmdir(str_arg1);
 			break;
 		case SYS_rm:
 			if(syscall_get_str((char*)str_arg1,
@@ -876,8 +883,9 @@ int sys_rm(const char* file)
   return fs_unlink(file);
 }
 
-int sys_rmdir(const char* dir){
-  return 0;
+int sys_rmdir(const char* dir)
+{
+  return fs_rmdir(file);
 }
 
 int sys_mv(const char* orig, const char* dst){

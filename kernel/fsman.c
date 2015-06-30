@@ -596,3 +596,22 @@ void fs_fsstat(void)
 			"Allocated inodes: %d\n", fss.cache_allocated);
 	}
 }
+
+int fs_rmdir(const char* path)
+{
+	/* Resolve the path */
+	char res_path[FILE_MAX_PATH];
+	if(fs_path_resolve(path, res_path, FILE_MAX_PATH))
+		return -1; /* Bad path */
+
+	/* Get the file system for the path */
+	struct FSDriver* fs = fs_find_fs(res_path);
+	if(!fs) return -1; /* Bad path */
+
+	/* Make sure the path doesn't end with a slash */
+	char path_tmp[FILE_MAX_PATH];
+	file_path_file(res_path, path_tmp, FILE_MAX_PATH);
+
+	/* remove the directory */
+	fs->rmdir(path_tmp);
+}

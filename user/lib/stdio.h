@@ -1,6 +1,9 @@
 #ifndef _STDIO_H_
 #define _STDIO_H_
 
+/* Dependant headers */
+#include "types.h"
+
 #define STDIN 		0x00
 #define STDOUT 		0x01
 #define STDERR 		0x02

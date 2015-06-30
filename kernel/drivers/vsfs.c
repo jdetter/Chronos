@@ -80,6 +80,7 @@ int vsfs_readdir(void* dir, int index, struct directent* dst,
 		struct vsfs_context* context);
 void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
 void* vsfs_opened(const char* path, struct vsfs_context* context);
+int vsfs_rmdir(const char* path, struct vsfs_context* context);
 
 int vsfs_driver_init(struct FSDriver* driver)
 {
@@ -100,6 +101,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->unlink = (void*)vsfs_unlink;
 	driver->fsstat = (void*)vsfs_fsstat;
 	driver->opened = (void*)vsfs_opened;
+	driver->rmdir = (void*)vsfs_rmdir;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
