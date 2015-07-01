@@ -12,6 +12,7 @@
 #include "pipe.h"
 #include "tty.h"
 #include "proc.h"
+#include "ramfs.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -31,12 +32,15 @@
 extern struct proc* rproc;
 
 /* Global inode table */
-tlock_t itable_lock;
+slock_t itable_lock;
 struct inode_t itable[FS_INODE_MAX];
 
 /* File system table */
-tlock_t fstable_lock;
+slock_t fstable_lock;
 struct FSDriver fstable[FS_TABLE_MAX];
+
+static struct FSDriver* fs_alloc(void);
+void fs_free(struct FSDriver* driver); /** Make this static when it is ready*/
 
 void fsman_init(void)
 {
@@ -59,18 +63,62 @@ void fsman_init(void)
 	if(ata == NULL) panic("No ata driver available.\n");
 
 	/* Assign hardware driver */
-	fstable[0].driver = ata;
+	struct FSDriver* vsfs = fs_alloc();
+	vsfs->driver = ata;
 	
 	/* Set our vsfs as the root file system. */
-	vsfs_driver_init(fstable);
-	fstable[0].valid = 1;
-	fstable[0].type = 0;
-	fstable[0].driver = ata;
-	strncpy(fstable[0].mount_point, "/", FILE_MAX_PATH);
+	vsfs_driver_init(vsfs);
+	vsfs->valid = 1;
+	vsfs->type = 0;
+	vsfs->driver = ata;
+	strncpy(vsfs->mount_point, "/", FILE_MAX_PATH);
 
 	/* Initilize the file system */
-	fstable[0].init(64, 0, 512, FS_CACHE_SIZE, 
-		fstable[0].cache, fstable[0].context);
+	vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
+		vsfs->cache, vsfs->context);
+
+	/* make sure there is a dev folder */
+	vsfs->mkdir("/dev", 
+		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR, 
+		0x0, 0x0, vsfs->context);
+
+	/* Create a ramfs instance */
+	struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(512, 1024);
+	struct FSDriver* ramfs = fs_alloc();
+	ramfs->driver = ramfs_driver;
+	vsfs_driver_init(ramfs);
+	
+	/* Create a vsfs instance ontop of the ramfs */
+	vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
+		ramfs_driver->write, ramfs);
+	ramfs->type = 0;
+	strncpy(ramfs->mount_point, "/dev/", FILE_MAX_PATH);
+}
+
+static struct FSDriver* fs_alloc(void)
+{
+	slock_acquire(&fstable_lock);
+	struct FSDriver* driver = NULL;
+	int x;
+	for(x = 0;x < FS_TABLE_MAX;x++)
+	{
+		if(!fstable[x].valid)
+		{
+			driver = fstable + x;
+			driver->valid = 1;
+			break;
+		}
+	}
+
+	slock_release(&fstable_lock);
+	return driver;
+}
+
+void fs_free(struct FSDriver* driver)
+{
+	slock_acquire(&fstable_lock);
+	driver->valid = 0;
+	slock_release(&fstable_lock);
 }
 
 int fs_add_inode_reference(struct inode_t* i)

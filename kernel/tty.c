@@ -92,6 +92,7 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	t->key_read = 0;
 	t->key_full = 0;	
 	t->key_nls = 0;
+	slock_init(&t->key_lock);
 }
 
 uint tty_num(tty_t t)
@@ -252,8 +253,8 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character)
 {
 	if(t->type==TTY_TYPE_SERIAL)
 	{
-		tty_print_character(t, character);
-	}
+			tty_print_character(t, character);
+		}
 	else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
 		uint pos =(row*CONSOLE_COLS)+col;
@@ -398,7 +399,7 @@ void tty_delete_char(tty_t t)
 			}
 			/* update the cursor position */
 			if(t->active) 
-				console_update_cursor(t->text_cursor_pos--);
+				console_update_cursor(t->text_cursor_pos);
 			break;
 		case TTY_TYPE_SERIAL:
 			/* Send backspace, space, backspace */
@@ -446,46 +447,47 @@ void tty_handle_keyboard_interrupt(void)
 		switch(c)
 		{
 			/* replace line feed with nl */
-			case 13: c = '\n';
-				 active->key_nls++;
-				 break;
+			case '\n': case 13: 
+				c = '\n';
+				active->key_nls++;
+				break;
 
-				 /* Delete is special */
-				 /* Delete is not a character */
-			case 0x7F:
-				 /* see if the buffer is empty */
-				 if(active->key_read == 
-						 active->key_write &&
-						 !active->key_full) 
-					 continue;
+				/* Delete is special */
+				/* Delete is not a character */
+			case 0x7F: case 0x08:
+				/* see if the buffer is empty */
+				if(active->key_read == 
+						active->key_write &&
+						!active->key_full) 
+					continue;
 
-				 int tmp_write = 
-					 active->key_write - 1;
-				 if(tmp_write < 0)
-					 tmp_write = 
-						 TTY_KEYBUFFER_SZ - 1;
-				 /* Can't delete a nl */
-				 if(active->keyboard[tmp_write]
-						 == '\n') continue;
+				int tmp_write = 
+					active->key_write - 1;
+				if(tmp_write < 0)
+					tmp_write = 
+						TTY_KEYBUFFER_SZ - 1;
+				/* Can't delete a nl */
+				if(active->keyboard[tmp_write]
+						== '\n') continue;
 
-				 /* Delete the character */
-				 active->keyboard[tmp_write]= 0;
-				 tty_delete_char(active);
-				 active->key_write = tmp_write;
-				 continue;
+				/* Delete the character */
+				active->keyboard[tmp_write]= 0;
+				tty_delete_char(active);
+				active->key_write = tmp_write;
+				continue;
 		}
 		/* Echo to tty */
 		switch(active->type)
-                {
-                        default: break;
-                        case TTY_TYPE_COLOR:
-                        case TTY_TYPE_MONO:
-                                tty_print_character(active, c);
-                                break;
-                        case TTY_TYPE_SERIAL:
-                                serial_write(&c, 1);
-                                break;
-                }
+		{
+			default: break;
+			case TTY_TYPE_COLOR:
+			case TTY_TYPE_MONO:
+				 tty_print_character(active, c);
+				 break;
+			case TTY_TYPE_SERIAL:
+				 serial_write(&c, 1);
+				 break;
+		}
 
 		/* put c into the buffer */
 		/* wrap if needed */

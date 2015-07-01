@@ -83,6 +83,14 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
         uint cache_sz, uchar* cache, struct vsfs_context* context);
 
 /**
+ * Make a blank vsfs.
+ */
+int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
+                uint start_sector, uint end_sector, uint cache_sz,
+                int (*write_sect)(void*, uint, struct FSHardwareDriver*),
+                struct FSDriver* driver);
+
+/**
  * Find an inode in a file system. If the inode is found, load it into the dst
  * buffer and return the inode number. If not found, return 0.
  */

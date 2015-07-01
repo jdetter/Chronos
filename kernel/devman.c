@@ -15,6 +15,7 @@
 #include "vm.h"
 #include "console.h"
 #include "pic.h"
+#include "ramfs.h"
 
 extern pgdir* k_pgdir;
 extern uint video_mode;
@@ -114,6 +115,8 @@ int dev_init()
 		ata_io_setup(driver, ata_drivers[x]);
 	}
 
+	/* Bring up ramfs */
+	ramfs_init();
 
 	serial_init(0);
 	/* Find serial port */

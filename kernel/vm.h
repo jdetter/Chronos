@@ -334,6 +334,11 @@ void switch_kvm(void);
 void switch_uvm(struct proc* p);
 
 /**
+ * Map another process's kstack into another process's address space.
+ */
+void vm_set_user_kstack(pgdir* dir, pgdir* kstack);
+
+/**
  * Map another process's stack into a process's stack swap space.
  */
 void vm_set_swap_stack(pgdir* dir, pgdir* swap);

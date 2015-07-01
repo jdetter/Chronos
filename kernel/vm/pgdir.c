@@ -270,6 +270,21 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	vm_pop_pgdir(save);
 }
 
+void vm_set_user_kstack(pgdir* dir, pgdir* kstack)
+{
+	pgdir* save = vm_push_pgdir();
+        int x;
+        for(x = UVM_KSTACK_S;x < UVM_KSTACK_E;x += PGSIZE)
+        {
+                int kstack_pg = findpg(x, 0, kstack, 0);
+                /* Make sure the mapping is clear */
+                unmappage(x, dir);
+                /* Map the page */
+                mappage(kstack_pg, x, dir, 0x0, 0x0);
+        }
+	vm_pop_pgdir(save);
+}
+
 void vm_set_swap_stack(pgdir* dir, pgdir* swap)
 {
 	pgdir* save = vm_push_pgdir();

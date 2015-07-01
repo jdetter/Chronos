@@ -147,6 +147,47 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
   return 0;
 }
 
+int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
+		uint start_sector, uint end_sector, uint cache_sz,
+		int (*write_sect)(void*, uint, struct FSHardwareDriver*),
+		struct FSDriver* driver)
+{
+	int block_bitmap = (blocks + (bsize * 8) - 1) / bsize / 8;
+	int inode_bitmap = (inodes + (bsize * 8) - 1) / bsize / 8;
+
+	char buffer[bsize];
+        struct vsfs_superblock* super_block=(struct vsfs_superblock*)buffer;
+        super_block->dmap = block_bitmap;
+        super_block->dblocks = blocks;
+        super_block->imap = inode_bitmap;
+        super_block->inodes = inodes;
+        write_sect(buffer, start_sector, driver->driver);
+
+	/* Initilize file system */
+	driver->init(start_sector, end_sector, bsize, 
+		cache_sz, driver->cache, driver->context);
+
+	struct vsfs_context* context = 
+		(struct vsfs_context*)driver->context;
+
+	/* Create root inode. */
+        struct vsfs_inode root_i;
+        vsfs_clear(&root_i);
+        root_i.perm = 0644;
+        root_i.links_count = 1;
+        root_i.type = VSFS_DIR;
+
+        int next_free;
+        if((next_free = find_free_inode(context)) != 1)
+                return -1;
+
+        allocate_directent(&root_i, ".", 1, context);
+        allocate_directent(&root_i, "..", 1, context);
+        write_inode(1, &root_i, context);
+	
+	return 0;	
+}
+
 void* vsfs_open(const char* path, struct vsfs_context* context)
 {
 	struct vsfs_inode i;

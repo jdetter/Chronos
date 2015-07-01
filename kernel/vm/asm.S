@@ -52,7 +52,7 @@ __check_interrupt__:
         andl    $(EFLAGS_INT_EN), %eax
         rorl	$0x09, %eax
 	ret
-
+# uint __get_cr2__(void)
 .globl __get_cr2__
 __get_cr2__:
         movl    %cr2, %eax
