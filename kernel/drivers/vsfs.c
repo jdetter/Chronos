@@ -40,6 +40,8 @@ void write_inode(uint inode_num, vsfs_inode* inode,
 		struct vsfs_context* context);
 void read_inode(uint inode_num, vsfs_inode* inode, 
 		struct vsfs_context* context);
+int check_block(uint block_num, struct vsfs_context* context);
+int check_inode(uint inode, struct vsfs_context* context);
 
 struct vsfs_cache_inode
 {
@@ -79,6 +81,8 @@ int vsfs_readdir(void* dir, int index, struct directent* dst,
 void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
 void* vsfs_opened(const char* path, struct vsfs_context* context);
 int vsfs_rmdir(const char* path, struct vsfs_context* context);
+int vsfs_mknod(const char* path, uint dev, uint dev_type,
+                uint perm, struct vsfs_context* context);
 
 int vsfs_driver_init(struct FSDriver* driver)
 {
@@ -100,6 +104,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 	driver->fsstat = (void*)vsfs_fsstat;
 	driver->opened = (void*)vsfs_opened;
 	driver->rmdir = (void*)vsfs_rmdir;
+	driver->mknod = (void*)vsfs_mknod;
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -356,6 +361,35 @@ int vsfs_rmdir(const char* path, struct vsfs_context* context)
 	return vsfs_unlink(path, context);
 }
 
+int vsfs_mknod(const char* path, uint dev, uint dev_type, 
+		uint perm, struct vsfs_context* context)
+{
+	/* Link file */
+	vsfs_inode in;
+	memset(&in, 0, sizeof(vsfs_inode));
+	in.perm = perm;
+	in.uid = 0x0;
+	in.gid = 0x0;
+	in.links_count = 1;
+	in.type = VSFS_DEV;
+	in.size = 0x0;
+	in.blocks = 0;	
+	memset(in.direct, 0, sizeof(uint) * VSFS_DIRECT);
+	in.indirect = 0;	
+	in.double_indirect = 0;
+
+	int ino = vsfs_link(path, &in, context);
+	if(!ino) return -1;
+	char block[BLOCKSIZE];
+	struct vsfs_device* device = (struct vsfs_device*)block;
+	device->dev = dev;
+	device->type = dev_type;
+	vsfs_write(&in, device, 0, 
+		sizeof(struct vsfs_device), context);
+	write_inode(ino, &in, context);
+	return 0;
+}
+
 /** End standardized vsfs library */
 
 /** Start vsfs caching functions */
@@ -403,6 +437,29 @@ void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context)
 
 	dst->cache_free = free;
 	dst->cache_allocated = allocated;
+
+	int free_blocks = 0;
+	int allocated_blocks = 0;
+	for(i = 0;i < context->super.dblocks;i++)
+	{
+		if(check_block(i, context))
+			allocated_blocks++;
+		else free_blocks++;
+	}
+
+	int free_inodes = 0;
+	int allocated_inodes = 0;
+	for(i = 0;i < context->super.inodes;i++)
+	{
+		if(check_inode(i, context))
+			allocated_inodes++;
+		else free_inodes++;
+	}
+
+	dst->inodes_available = free_inodes;
+	dst->inodes_allocated = allocated_inodes;
+	dst->blocks_available = free_blocks;
+	dst->blocks_allocated = allocated_blocks;
 }
 
 /** End vsfs caching functions */
@@ -563,6 +620,33 @@ void free_block(uint block_num, struct vsfs_context* context)
 }
 
 /**
+ * Check to see if a block is allocated. Returns 1 if it is
+ * allocated, 0 if it is free. -1 is returned on error.
+ */
+int check_block(uint block_num, struct vsfs_context* context)
+{
+  if(block_num == 0) return -1;
+  uchar free[512];
+  context->read(free, context->start + 1
+        + context->super.imap + block_num/4096, context->hdd);
+  uint block_index = block_num % 4096;
+  uint block_byte =  free[block_index / 8];
+  uchar mask = (1 << (block_index % 8));
+  return (mask & block_byte) ? 1 : 0;
+}
+
+/**
+ * Check to see if an inode is free. If the inode is free,
+ * 0 is returned. If the inode is allocated, 1 is returned.
+ */
+int check_inode(uint inode, struct vsfs_context* context)
+{
+	vsfs_inode in;
+	read_inode(inode, &in, context);
+	return in.type != 0x0;
+}
+
+/**
  * Remove the file from the directory in which it lives and decrement the link
  * count of the file. If the file now has 0 links to it, free the file and
  * all of the blocks it is holding onto.
@@ -574,12 +658,17 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
   int parent_num;
   if(file_path_parent(path, parent_name, FILE_MAX_PATH))
   {
-    /* Parent is just root */
-    read_inode(1, &parent, context);
-    parent_num = 1;
+    /* Cannot unlink the root! */
+    return -1;
   } else {
-    parent_num = vsfs_lookup(parent_name, &parent, context);
-    if(parent_num == 0) return -1;
+    if(strlen(parent_name) == 1 && parent_name[0] == '/')
+    {
+      parent_num = 1;
+      read_inode(parent_num, &parent, context);
+    } else {
+      parent_num = vsfs_lookup(parent_name, &parent, context);
+      if(parent_num == 0) return -1;
+    }
   }
 
   vsfs_inode child;

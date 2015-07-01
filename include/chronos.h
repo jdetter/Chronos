@@ -166,7 +166,8 @@ int create(const char* file, uint permissions);
  * Create the directory specified by the path. The directory will have the
  * specified permissions. If the path is invalid or more than one directory
  * needs to be created to make the path valid, -1 will be returned and the
- * directory will not be created. Otherwise, 0 is returned.
+ * directory will not be created. Otherwise the file will be created and 
+ * opened and a new file descriptor for the file will be returned.
  */
 int mkdir(const char* dir, uint permissions);
 

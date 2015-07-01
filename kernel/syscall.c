@@ -166,7 +166,7 @@ int syscall_get_buffer_ptrs(uchar*** ptr, uint* esp, uint arg_num)
 }
 
 /**
- * Find an open file descripor.
+ * Find an available file descripor.
  */
 static int find_fd(void)
 {
@@ -632,14 +632,7 @@ void sys_exit(void)
 
 int sys_open(const char* path, int flags, int permissions)
 {
-  int i;
-  int fd = -1;
-  for(i = 0; i < MAX_FILES; i++){
-    if(rproc->file_descriptors[i].type == 0x00){
-      fd = i;
-      break;
-    }
-  } 
+  int fd = find_fd();
   if(fd == -1){
     return -1;
   }
@@ -869,8 +862,7 @@ int sys_cwd(char* dst, uint sz){
 }
 
 int sys_create(const char* file, uint permissions){ 
-  fs_create(file, 0, permissions, rproc->uid, rproc->uid);  
-  return 0;
+  return fs_create(file, 0, permissions, rproc->uid, rproc->uid);  
 }
 
 int sys_mkdir(const char* dir, uint permissions){

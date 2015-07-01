@@ -11,11 +11,8 @@ int main(int argc, char* argv[])
 	for(i=1; i<argc; i ++)
 	{
 		printf("%s\n", argv[i]);
-		if(mkdir(argv[i], PERM_ARD | PERM_AEX
-			| PERM_UWR | PERM_GWR))
-		{
-			printf("FAIL\n");
-		}
+		mkdir(argv[i], PERM_ARD | PERM_AEX
+			| PERM_UWR | PERM_GWR);
 	}
 	exit();
 }

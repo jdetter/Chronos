@@ -323,7 +323,7 @@ inode fs_open(const char* path, uint flags, uint permissions,
 
         char fs_path[FILE_MAX_PATH];
         if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
-                return NULL; /* Impossible case */
+                return NULL; /* Bad path */
 
 	/* See if this file is already opened. */
 	void* inp = NULL;
@@ -393,7 +393,7 @@ int fs_stat(inode i, struct file_stat* dst)
 	return result;
 }
 
-inode fs_create(const char* path, uint flags, 
+int fs_create(const char* path, uint flags, 
 		uint permissions, uint uid, uint gid)
 {
 	/* fix up the path*/
@@ -402,45 +402,23 @@ inode fs_create(const char* path, uint flags,
 	memset(dst_path, 0, FILE_MAX_PATH);
 	memset(tmp_path, 0, FILE_MAX_PATH);
 	if(fs_path_resolve(path, tmp_path, FILE_MAX_PATH))
-		return NULL; /* bad path */
+		return -1; /* bad path */
 	if(file_path_file(tmp_path, dst_path, FILE_MAX_PATH))
-		return NULL;
+		return -1;
 
 	/* Find the file system this file belongs to */
 	struct FSDriver* fs = fs_find_fs(dst_path);
-	if(fs == NULL) return NULL; /* invalid path */	
+	if(fs == NULL) return -1; /* invalid path */	
 
 	char fs_path[FILE_MAX_PATH];
 	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
-		return NULL;
-
-	/* Find a new inode*/
-	struct inode_t* i = fs_find_inode();
-	if(i == NULL) return NULL; /* There are no more free inodes */
+		return -1;
 
 	/* Create the file with the driver */
 	if(fs->create(fs_path, 
                 permissions, uid, gid, fs->context))
-		return NULL;
-	i->inode_ptr = fs->open(fs_path, fs->context);
-	if(i->inode_ptr == NULL)
-	{
-		fs_free_inode(i);
-		return NULL;
-	}
-
-	/* Parse the inode structure */
-	struct file_stat st;
-        fs->stat(i->inode_ptr, &st, fs->context);
-
-        i->file_pos = 0;
-        i->file_sz = st.sz;
-        i->file_type = st.type;
-        i->inode_num = st.inode;
-        i->references = 1;
-        fs_get_name(i->name, dst_path, FILE_MAX_NAME);
-
-	return i;
+		return -1;
+	return 0;
 }
 
 int fs_chown(inode i, uint uid, uint gid)
@@ -610,8 +588,8 @@ int fs_unlink(const char* file)
 		return -1;
 
 	struct FSDriver* fs = fs_find_fs(file_tmp);
-	if(file_path_file(file_tmp, file_resolved, FILE_MAX_PATH))
-                return -1;
+	if(fs_get_path(fs, file_tmp, file_resolved, FILE_MAX_PATH))
+		return -1;
 	int result = fs->unlink(file_resolved, fs->context);
 
 	return result;
@@ -638,10 +616,27 @@ void fs_fsstat(void)
 		if(!fs->valid) continue;
 	
 		fs->fsstat(&fss, &fs->context);
+		tty_print_string(rproc->t, "Mount point: %s\n", 
+			fs->mount_point);
 		tty_print_string(rproc->t, 
-			"Free inodes: %d\n", fss.cache_free);
+			"Free cache inodes: %d\n", fss.cache_free);
 		tty_print_string(rproc->t, 
-			"Allocated inodes: %d\n", fss.cache_allocated);
+			"Allocated cache inodes: %d\n", fss.cache_allocated);
+		tty_print_string(rproc->t, 
+			"Free disk inodes: %d\n", fss.inodes_available);
+		tty_print_string(rproc->t, 
+			"Allocated disk inodes: %d\n", fss.inodes_allocated);
+		tty_print_string(rproc->t, 
+			"Free disk blocks: %d\n", fss.blocks_available);
+		tty_print_string(rproc->t, 
+			"Allocated disk blocks: %d\n", fss.blocks_allocated);
+		if(fss.blocks_allocated == 0 ||
+			fss.blocks_available == 0) continue;
+		tty_print_string(rproc->t, "Free space:      %dK\n", 
+			(fss.blocks_available / 2));
+		tty_print_string(rproc->t, "Allocated space: %dK\n", 
+			(fss.blocks_allocated / 2));
+		tty_print_string(rproc->t, "\n");
 	}
 }
 

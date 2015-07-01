@@ -195,6 +195,13 @@ struct FSDriver
 	 */
 	int (*rmdir)(const char* path, void* context);
 
+	/** 
+	 * Create a node on the file system. This allows programs to have
+	 * a common interface to access devices.
+	 */
+	int (*mknod)(const char* path, uint dev, uint dev_type,
+                uint perm, struct vsfs_context* context);
+
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
@@ -239,7 +246,7 @@ int fs_stat(inode i, struct file_stat* dst);
  * opened if it is created. Returns NULL if the file could not be created,
  * otherwise returns an inode.
  */
-inode fs_create(const char* path, uint flags, 
+int fs_create(const char* path, uint flags, 
 		uint permissions, uint uid, uint gid);
 
 /**

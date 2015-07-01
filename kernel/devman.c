@@ -138,6 +138,10 @@ int dev_init()
 	return 0;
 }
 
+void dev_populate(void)
+{
+
+}
 
 int dev_read(struct IODriver* device, void* dst, uint start_read, uint sz)
 {

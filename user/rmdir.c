@@ -11,10 +11,7 @@ int main(int argc, char* argv[])
 	for(i=1; i<argc; i ++)
 	{
 		printf("%s\n", argv[i]);
-		if(rmdir(argv[i]))
-		{
-			printf("FAIL\n");
-		}
+		rmdir(argv[i]);
 	}
 	exit();
 }
