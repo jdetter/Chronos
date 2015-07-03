@@ -183,6 +183,12 @@ void msetup()
 	panic("msetup called.\n");
 }
 
+int mpanic(int size)
+{
+	panic("boot: memory allocator out of space.\n");
+	return -1;
+}
+
 void vm_stable_page_pool(void);
 void setup_boot2_pgdir(void)
 {

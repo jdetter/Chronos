@@ -36,7 +36,11 @@ int fgets(char* dst, uint sz, uint fd)
 	for(x = 0;x < sz;x++)
 	{
 		char c;
-		read(0, &c, 1);
+		if(read(0, &c, 1) != 1) 
+		{
+			dst[x] = 0;
+			break;
+		}
 		dst[x] = c;
 		if(dst[x] == '\n' || dst[x] == 0) 
 		{

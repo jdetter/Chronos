@@ -372,7 +372,16 @@ void tty_set_color(tty_t t, uchar color)
 
 void tty_set_mode(struct tty* t, uchar mode)
 {
+	if(t->display_mode == mode) return;
 	t->display_mode = mode;
+	/* If we're active, then we need to put flush the buffer */
+	if(t->active)
+	{
+		/* Print the screen */
+		tty_print_screen(t, t->buffer_graphic);
+		/* Update the cursor position */
+		console_update_cursor(t->graphic_cursor_pos);
+	}
 }
 
 void tty_delete_char(tty_t t)

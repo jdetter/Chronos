@@ -6,6 +6,10 @@
 #include "file.h"
 #include "devman.h"
 
+#include "fsman.h"
+#include "tty.h"
+#include "proc.h"
+
 /* Pipe table */
 struct pipe pipe_table[MAX_PIPES];
 slock_t pipe_table_lock;
@@ -26,6 +30,8 @@ pipe_t pipe_alloc(void)
 		if(!pipe_table[x].allocated)
 		{
 			p = pipe_table + x;
+			p->allocated = 1;
+			p->faulted = 0;
 			break;
 		}
 	}
@@ -35,20 +41,47 @@ pipe_t pipe_alloc(void)
 	return p;
 }
 
+extern struct proc ptable[];
+extern slock_t ptable_lock;
+void pipe_fault(pipe_t t)
+{
+	slock_acquire(&ptable_lock);
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		if(ptable[x].state == PROC_BLOCKED 
+			&& ptable[x].block_type == PROC_BLOCKED_COND
+			&& (ptable[x].b_condition == &t->empty
+			|| ptable[x].b_condition == &t->fill))
+		{
+			ptable[x].b_condition = NULL;
+			ptable[x].block_type = 0;
+			ptable[x].state = PROC_RUNNABLE;
+		}
+	}
+	slock_release(&ptable_lock);
+}
+
 void pipe_free(pipe_t p)
 {
 	slock_acquire(&pipe_table_lock);
 	p->allocated = 0;
+	p->faulted = 0;
 	slock_release(&pipe_table_lock);
 }
 
 int pipe_write(void *src, uint sz, pipe_t pipe ){
+	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int byteswritten = 0;
 	while(byteswritten!=sz){
-		while(pipe->full == 1){
+		/* Check for full buffer and pipe fault */
+		if(pipe->full && pipe->faulted) break;
+		/* Never wait on a faulted pipe */
+		while(pipe->full == 1 && !pipe->faulted){
 			cond_wait_spin(&(pipe->empty), &(pipe->guard));
 		}
+		if(pipe->faulted) break;
 		int bytes_avail = 0;
 		int bytes_left = sz - byteswritten; 
 		if(pipe->write >= pipe->read){
@@ -70,15 +103,21 @@ int pipe_write(void *src, uint sz, pipe_t pipe ){
 		byteswritten += bytes_avail;
 	}
 	slock_release(&pipe->guard);
-	return sz;
+	return byteswritten;
 	
 }
 
 int pipe_read(void *dst, uint sz, pipe_t pipe){
+	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int bytesread = 0;
 	while(bytesread!=sz){
-		while(pipe->full == 0 && pipe->write == pipe->read){
+		/* If the pipe has faulted, and its empty, break */
+		if(pipe->faulted && !pipe->full && pipe->write == pipe->read)
+			break;
+		/* Never wait on a faulted pipe! */
+		while(pipe->full == 0 && pipe->write == pipe->read
+				 && !pipe->faulted){
 			cond_wait_spin(&(pipe->fill), &(pipe->guard));
 		}
 		int bytes_avail = 0;
@@ -102,5 +141,5 @@ int pipe_read(void *dst, uint sz, pipe_t pipe){
 		bytesread+= bytes_avail;
 	}
 	slock_release(&pipe->guard);
-	return sz;
+	return bytesread;
 }

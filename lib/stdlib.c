@@ -354,3 +354,12 @@ int trim(char* str)
         str[x + 1] = 0;
 	return strlen(str);
 }
+
+int ascii_char(char c)
+{
+	if(c < ' ') return 0;
+	if(c == 127) return 0;
+	if(c == 255) return 0;
+	return 1;
+	
+}

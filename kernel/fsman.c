@@ -421,24 +421,36 @@ int fs_create(const char* path, uint flags,
 	return 0;
 }
 
-int fs_chown(inode i, uint uid, uint gid)
+int fs_chown(const char* path, uint uid, uint gid)
 {
-	/* This is completely file system specific */
-	return i->fs->chown(i->inode_ptr, uid, gid, i->fs->context);
+	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
+	if(!i) return -1;
+
+	int result = i->fs->chown(i->inode_ptr,
+                i->inode_num, uid, gid, i->fs->context);
+
+	/* Close the inode */
+	fs_close(i);
+
+	return result;
 }
 
-int fs_chmod(inode i, ushort permission)
+int fs_chmod(const char* path, ushort permission)
 {
+	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
+        if(!i) return -1;
 	/* This is file system specific */
-	return i->fs->chmod(i->inode_ptr, permission, i->fs->context);
+	int result = i->fs->chmod(i->inode_ptr, 
+		i->inode_num, permission, i->fs->context);
+
+	/* Close the inode */
+        fs_close(i);
+
+	return result;
 }
 
 int fs_sync(inode i)
 {
-	/**
-	 * We aren't doing any caching yet, but this is where the cache
-	 * gets flushed to the disk if the user requests it.
-	 */
 	return 0;
 }
 
@@ -512,9 +524,8 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 	int bytes = i->fs->read(i->inode_ptr, dst, start, sz, i->fs->context);
 	/* Check for read error */
 	if(bytes < 0) return -1;
-
-	/* Update our file position */
-	i->file_pos += bytes;
+	/* Check for end of file */
+	if(bytes == 0 && sz > 0) return -1;
 	return bytes;
 }
 

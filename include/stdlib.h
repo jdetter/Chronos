@@ -103,4 +103,9 @@ int snprintf(char* dst, uint sz, char* fmt, ...);
  */
 int trim(char* str);
 
+/**
+ * Returns 1 if the character is printable, 0 otherwise.
+ */
+int ascii_char(char c);
+
 #endif

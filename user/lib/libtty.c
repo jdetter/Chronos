@@ -1,6 +1,8 @@
 #include "types.h"
 #include "libtty.h"
 #include "chronos.h"
+#include "stdlib.h"
+#include "stdarg.h"
 
 static char tty_buffer[4000];
 static uchar color;
@@ -13,6 +15,29 @@ void tty_mode_graphic(void)
 void tty_mode_text(void)
 {
 	tty_mode(0);
+}
+
+void tty_print_str(int row, int col, char* fmt, ...)
+{
+	va_list list;
+	va_start(&list, (void**)&fmt);
+	char str_buff[512];
+	memset(str_buff, 0, 512);
+	va_snprintf(str_buff, 512, &list, fmt);
+	char* str = str_buff;
+
+	if(row < 0 || col < 0 || row >= TTY_ROWS || col >= TTY_COLS)
+		return;
+	for(;row < TTY_ROWS && *str;row++)
+	{
+		for(;col < TTY_COLS && *str;col++, str++)
+		{
+			if(*str == '\n') break;
+			if(!ascii_char(*str)) return;
+			tty_print_cell(row, col, *str);
+		}
+		col = 0;
+	}
 }
 
 void tty_print_cell(int row, int col, char c)

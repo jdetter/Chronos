@@ -112,14 +112,16 @@ struct FSDriver
 	 * Change the ownership of the file. Both the uid and
 	 * the gid will be changed. Returns 0 on success.
 	 */
-	int (*chown)(void* i, uint uid, uint gid, void* context);
+	int (*chown)(void* i, int ino_num, 
+		uint uid, uint gid, void* context);
 
 	/**
 	 * Change the permissions on a file. The bits for the permission
 	 * field are defined in file.h. Returns the new permission
 	 * of the file. 
 	 */
-	int (*chmod)(void* i, uint permission, void* context);
+	int (*chmod)(void* i, int ino_num, 
+		uint permission, void* context);
 
 	/**
 	 * Truncate a file to the specified length. Returns the
@@ -253,13 +255,13 @@ int fs_create(const char* path, uint flags,
  * Change the ownership of the file to uid and gid. Returns 0
  * on success, returns -1 on failure.
  */
-int fs_chown(inode i, uint uid, uint gid);
+int fs_chown(const char* path, uint uid, uint gid);
 
 /**
  * Change the permissions of the file. The permissions are
  * defined in file.h. Returns 0 on success, -1 on failure.
  */
-int fs_chmod(inode i, ushort permission);
+int fs_chmod(const char* path, ushort permission);
 
 /**
  * Creates a hard link to another file. Hard links cannot be

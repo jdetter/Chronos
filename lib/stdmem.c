@@ -79,7 +79,8 @@ void* malloc(uint sz)
 		if(mem_printf)
 			mem_printf("stdmem: cannot alloc: not enough mem\n");
 		/* We don't have a node large enough to service the request. */
-		return NULL;
+		if(mpanic(sz)) return NULL;
+		return malloc(sz);
 	}
 
 	/* We did find a large enough node. */
@@ -139,7 +140,7 @@ int mfree(void* ptr)
 			mem_printf("stdmem: tried to free null pointer\n");
 		return 0;
 	}
-	if(!mem_init) msetup();;
+	if(!mem_init) msetup();
 
 	/* Security: check magic */
 	alloc_node* allocated = (alloc_node*)
@@ -287,7 +288,14 @@ void minit(uint start_addr, uint end_addr)
 	mem_init = 1; /* We have initilized the free list */
 }
 
-
+void mexpand(uint start_addr, uint end_addr)
+{
+	uint total_bytes = end_addr - start_addr;
+	alloc_node* node = (alloc_node*)start_addr;
+	node->magic = M_MAGIC;
+	node->sz = total_bytes - sizeof(struct alloc_node);
+	mfree(node + 1);
+}
 
 
 /* Set debug */

@@ -363,6 +363,28 @@ int syscall_handler(uint* esp)
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
 			return_value = sys_tty_cursor(int_arg1);
 			break;
+		case SYS_brk:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+                        return_value = sys_brk((void*)int_arg1);
+			break;
+		case SYS_sbrk:
+			if(syscall_get_int(&int_arg1, esp, 1)) break;
+                        return_value = (int)sys_sbrk((uint)int_arg1);
+			break;
+		case SYS_chmod:
+			if(syscall_get_str((char*)str_arg1,
+                                SYSCALL_STRLEN, esp, 1)) break;
+			if(syscall_get_int(&int_arg1, esp, 2)) break;
+			return_value = sys_chmod(str_arg1, (uint)int_arg1);
+			break;
+		case SYS_chown:
+			if(syscall_get_str((char*)str_arg1,
+                                SYSCALL_STRLEN, esp, 1)) break;
+                        if(syscall_get_int(&int_arg1, esp, 2)) break;
+                        if(syscall_get_int(&int_arg2, esp, 3)) break;
+                        return_value = sys_chown(str_arg1, 
+				(uint)int_arg1, (uint)int_arg2);
+			break;
 	}
 	
 	return return_value; /* Syscall successfully handled. */
@@ -402,10 +424,20 @@ int sys_fork(void)
   /* Increment file references for all inodes */
   int i;
   for(i = 0;i < MAX_FILES;i++)
-    if(new_proc->file_descriptors[i].type == FD_TYPE_FILE)
+  {
+    switch(new_proc->file_descriptors[i].type)
     {
-      fs_add_inode_reference(new_proc->file_descriptors[i].i);
+      case FD_TYPE_FILE:
+        fs_add_inode_reference(new_proc->file_descriptors[i].i);
+        break;
+      case FD_TYPE_PIPE:
+        if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_WRITE)
+          rproc->file_descriptors[i].pipe->write_ref++;
+        if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_READ)
+          rproc->file_descriptors[i].pipe->read_ref++;
+        break;
     }
+  }
 
   /** 
    * A quick note on the swap stack:
@@ -682,9 +714,14 @@ int sys_close(int fd)
   else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
   {
     /* Do we need to free the pipe? */
-    rproc->file_descriptors[fd].pipe->references--;
-    if(!rproc->file_descriptors[fd].pipe->references)
-      pipe_free(rproc->file_descriptors[fd].pipe);
+    if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
+      rproc->file_descriptors[fd].pipe->write_ref--;
+    if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
+      rproc->file_descriptors[fd].pipe->read_ref--;
+
+    if(!rproc->file_descriptors[fd].pipe->write_ref || 
+        !rproc->file_descriptors[fd].pipe->read_ref)
+      rproc->file_descriptors[fd].pipe->faulted = 1;
   }
   rproc->file_descriptors[fd].type = 0x00;  
   return 0;
@@ -697,14 +734,16 @@ int sys_read(int fd, char* dst, uint sz)
   {
     case 0x00: return -1;
     case FD_TYPE_FILE:
-      if(fs_read(rproc->file_descriptors[fd].i, dst, sz,
-        rproc->file_descriptors[fd].seek) < 0) {
+      if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
+        rproc->file_descriptors[fd].seek)) < 0) {
           return -1;
       }
       break;
     case FD_TYPE_DEVICE:
+      /* Check for read support */
       if(rproc->file_descriptors[fd].device->read)
       {
+        /* read is supported */
         rproc->file_descriptors[fd].device->read(dst,
         rproc->file_descriptors[fd].seek, sz,
         rproc->file_descriptors[fd].device->context);
@@ -793,12 +832,76 @@ int sys_lseek(int fd, int offset, int whence)
   return seek_pos;
 }
 
+int sys_brk(void* addr)
+{
+	slock_acquire(&ptable_lock);
+	/* see if the address makes sense */
+	uint check_addr = (uint)addr;
+	if(PGROUNDUP(check_addr) >= rproc->stack_end
+		|| check_addr < rproc->heap_start)
+	{
+		slock_release(&ptable_lock);
+		return -1;
+	}
+
+	/* Change the address break */
+	uint old = rproc->heap_end;
+	rproc->heap_end = (uint)addr;
+	/* Unmap pages */
+	old = PGROUNDUP(old);
+	uint page = PGROUNDUP(rproc->heap_end);
+	for(;page != old;page += PGSIZE)
+	{
+		/* Free the page */
+		uint pg = unmappage(page, rproc->pgdir);
+		if(pg) pfree(pg);
+	}
+
+	/* Release lock */
+	slock_release(&ptable_lock);
+	return 0;
+}
+
+void* sys_sbrk(uint increment)
+{
+	slock_acquire(&ptable_lock);
+	uint old_end = rproc->heap_end;
+	/* Will this collide with the stack? */
+	if(PGROUNDUP(old_end + increment) == rproc->stack_end)
+	{
+		slock_release(&ptable_lock);
+		return NULL;
+	}
+
+	/* Map needed pages */
+	mappages(old_end, increment, rproc->pgdir, 1);
+	/* Change heap end */
+	rproc->heap_end = old_end + increment;
+	/* release lock */
+	slock_release(&ptable_lock);
+
+	/* return old end */
+	return (void*)old_end;
+}
+
 void* sys_mmap(void* hint, uint sz, int protection)
 {
+  slock_acquire(&ptable_lock);
   uint pagestart = PGROUNDUP(rproc->heap_end);
   mappages(pagestart, sz, rproc->pgdir, 1);
   rproc->heap_end += sz;
+  slock_release(&ptable_lock);
   return (void*)pagestart;
+}
+
+int sys_chmod(const char* path, uint perm)
+{
+	return fs_chmod(path, perm);
+}
+
+int sys_chown(const char* path, uint uid, uint gid)
+{
+        return fs_chown(path, uid, gid);
 }
 
 int sys_wait_s(struct cond* c, struct slock* lock)
@@ -963,7 +1066,8 @@ int sys_pipe(int pipefd[2])
 		pipe_free(t);
 		return -1;
 	}
-	t->references = 2;
+	t->write_ref = 1;
+	t->read_ref = 1;
 	pipefd[0] = read;
 	pipefd[1] = write;
 
@@ -999,8 +1103,15 @@ int sys_dup2(int new_fd, int old_fd)
                 case FD_TYPE_PIPE:
                         slock_acquire(&rproc->
 				file_descriptors[old_fd].pipe->guard);
-                        rproc->file_descriptors[old_fd].pipe->references++;
-                        slock_release(&rproc->
+                        if(rproc->file_descriptors[old_fd].pipe_type == 
+					FD_PIPE_MODE_WRITE)
+				rproc->file_descriptors[old_fd].
+					pipe->write_ref++;
+			if(rproc->file_descriptors[old_fd].pipe_type 
+					== FD_PIPE_MODE_READ)
+				rproc->file_descriptors[old_fd].
+					pipe->read_ref++;
+			slock_release(&rproc->
 				file_descriptors[old_fd].pipe->guard);
                         break;
         }

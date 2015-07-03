@@ -36,6 +36,11 @@ void tty_mode_graphic(void);
 void tty_mode_text(void);
 
 /**
+ * Print a string at the given location.
+ */
+void tty_print_str(int row, int col, char* fmt, ...);
+
+/**
  * Print the character c at the given row and column.
  */
 void tty_print_cell(int row, int col, char c);
@@ -64,5 +69,11 @@ void tty_set_background(uchar color);
  * Flushes changes to the screen.
  */
 void tty_flush(void);
+
+/**
+ * Print a text buffer to the screen. A maximum of sz bytes will
+ * be read from the buffer and printed to the screen.
+ */
+int tty_print_text(int row, int col, char* str, uint sz);
 
 #endif

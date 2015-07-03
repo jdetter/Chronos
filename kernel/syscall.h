@@ -32,5 +32,9 @@ int sys_proc_dump(void);
 int sys_tty_mode(int graphical);
 int sys_tty_screen(char tty_buffer[4000]);
 int sys_tty_cursor(int pos);
+int sys_brk(void* addr);
+void* sys_sbrk(uint increment);
+int sys_chmod(const char* path, uint perm);
+int sys_chown(const char* path, uint uid, uint gid);
 
 #endif

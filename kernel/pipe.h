@@ -6,6 +6,7 @@
 
 struct pipe
 {
+	uchar faulted; /* 0 = no error, 1 = one end of the pipe is closed. */
 	uchar allocated; /* 0 = the pipe is not in use, 1 = the pipe is in use. */
 	char buffer[PIPE_DATA];
 	slock_t guard;
@@ -13,7 +14,8 @@ struct pipe
 	int write;
 	cond_t empty, fill; 
 	uchar full; 
-	int references; /* How many file descriptors reference this pipe? */
+	int read_ref; /* How many readers are there? */
+	int write_ref; /* How many writers are there? */
 };
 
 typedef struct pipe* pipe_t;

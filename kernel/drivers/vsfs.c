@@ -66,8 +66,10 @@ int vsfs_close(void* i, struct vsfs_context* context);
 int vsfs_stat(void* i, struct file_stat* dst, struct vsfs_context* context);
 int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
                 struct vsfs_context * context);
-int vsfs_chown(void* i, uint uid, uint gid, struct vsfs_context* context);
-int vsfs_chmod(void* i, uint permission, struct vsfs_context* context);
+int vsfs_chown(void* i, int ino_num, uint uid, uint gid, 
+                struct vsfs_context* context);
+int vsfs_chmod(void* i, int ino_num, uint permission, 
+                struct vsfs_context* context);
 int vsfs_truncate(void* i, int sz, void* context);
 int _vsfs_link(const char* file, const char* link,
                 struct vsfs_context* context);
@@ -254,18 +256,22 @@ int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
 	return 0;
 }
 
-int vsfs_chown(void* i, uint uid, uint gid, struct vsfs_context* context)
+int vsfs_chown(void* i, int ino_num, uint uid, uint gid, 
+		struct vsfs_context* context)
 {
 	struct vsfs_inode* in = i;
 	in->uid = uid;
 	in->gid = gid;
+	write_inode(ino_num, i, context);
 	return 0;
 }
 
-int vsfs_chmod(void* i, uint permission, struct vsfs_context* context)
+int vsfs_chmod(void* i, int ino_num, uint permission, 
+		struct vsfs_context* context)
 {
 	struct vsfs_inode* in = i;
 	in->perm = permission;
+	write_inode(ino_num, i, context);
 	return 0;
 }
 

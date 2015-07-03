@@ -32,6 +32,17 @@ void minit(uint start_addr, uint end_addr);
 void msetup(void);
 
 /**
+ * Called when the allocator runs out of space. Returns 0 if expansion
+ * was possible, 1 otherwise.
+ */
+int mpanic(int size);
+
+/**
+ *
+ */
+void mexpand(uint start, uint end);
+
+/**
  * Enable memory debugging. This can help you find memory leaks.
  */
 void mem_debug(void (*f)(char*));

@@ -29,11 +29,14 @@
 #define SYS_pipe	0x17
 #define SYS_dup		0x18
 #define SYS_dup2	0x19
-#define SYS_proc_dump	0x20
-#define SYS_tty_mode	0x21
-#define SYS_tty_screen	0x22
-#define SYS_tty_cursor	0x23
-
+#define SYS_proc_dump	0x1A
+#define SYS_tty_mode	0x1B
+#define SYS_tty_screen	0x1C
+#define SYS_tty_cursor	0x1D
+#define SYS_brk		0x1E
+#define SYS_sbrk	0x1F
+#define SYS_chmod	0x20
+#define SYS_chown	0x21
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -117,7 +120,8 @@ int close(int fd);
 /**
  * Read from the file descriptor. The destination buffer will be completely
  * filled before returning, unless there is an error. The function returns
- * the amount of bytes read into dst.
+ * the amount of bytes read into dst. If the end of the file is reached, -1
+ * is returned.
  */
 int read(int fd, void* dst, uint sz);
 

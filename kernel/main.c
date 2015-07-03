@@ -123,5 +123,11 @@ void main_stack(void)
 
 void msetup()
 {
-	panic("Memory allocator not initilized.");
+	panic("kernel: Memory allocator not initilized.\n");
+}
+
+int mpanic(int size)
+{
+	panic("kernel: Memory allocator out of space.\n");
+	return -1;
 }
