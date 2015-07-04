@@ -2,6 +2,13 @@
 #include "stdlock.h"
 #include "file.h"
 #include "syscall.h"
+#include "pipe.h"
+#include "devman.h"
+#include "tty.h"
+#include "fsman.h"
+#include "proc.h"
+
+extern struct proc* rproc;
 
 void cond_init(cond_t* c)
 {
@@ -11,15 +18,24 @@ void cond_init(cond_t* c)
 
 void cond_signal(cond_t* c)
 {
-	sys_signal(c);
+	uint* esp_saved = rproc->sys_esp;
+	rproc->sys_esp = (uint*)&c;
+	sys_signal();
+	rproc->sys_esp = esp_saved;
 }
 
 void cond_wait_spin(cond_t* c, slock_t* lock)
 {
-	sys_wait_s(c, lock);
+	uint* esp_saved = rproc->sys_esp;
+        rproc->sys_esp = (uint*)&c;
+	sys_wait_s();
+	rproc->sys_esp = esp_saved;
 }
 
 void cond_wait_ticket(cond_t* c, tlock_t* lock)
 {
-	sys_wait_t(c, lock);
+	uint* esp_saved = rproc->sys_esp;
+        rproc->sys_esp = (uint*)&c;
+	sys_wait_t();
+	rproc->sys_esp = esp_saved;
 }

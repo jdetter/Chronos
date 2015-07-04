@@ -93,6 +93,7 @@ struct proc
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
 
 	pgdir* pgdir; /* The page directory for the process */
+	uint* sys_esp; /* Pointer to the start of the syscall argv */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
 	struct task_segment* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	

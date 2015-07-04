@@ -8,7 +8,10 @@ KERNEL_OBJECTS := \
 	vm/pgdir \
 	vm/vm_alloc \
 	kcond \
-	syscall \
+	syscall/syscall \
+	syscall/sysproc \
+	syscall/sysfile \
+	syscall/sysutil \
 	trap \
 	cpu \
 	pipe \
