@@ -1,3 +1,11 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
+
 /* Partition a disk */
 
 /**
@@ -24,8 +32,80 @@
  * cleared (with all 0s).
  *
  */
+char* nextInt(char* ptr){
+	for(;*ptr&&*ptr!=','; ptr++);
+	return ptr;
+}
 
 int main(int argc, char** argv)
 {
+
+	typedef struct partition{
+		char boot;
+		char reserved_1 [3];
+		char type;
+		char reserved_2 [3];
+		unsigned int first_sect;
+		unsigned int num_of_sects;
+	}partition;
+	
+	partition table [4];
+	char* disk = NULL;
+	memset(table, 0, sizeof(partition)*4);
+	
+	int i;
+	for(i =1 ; i<argc ; i++){
+		if(argv[i][0] == '-' && argv[i][1]== 'p'){
+			char *config = argv[i+1];
+			int part_num = atoi(config);
+			config = nextInt(config);
+			if(!*config){
+				printf("disk-part: Invalid partition type");
+				return -1;
+			}
+			int part_start = atoi(config);
+			config = nextInt(config);
+			if(!*config){
+				printf("disk-part: Invalid partition type");
+				return -1;
+			}
+			int num_sects = atoi(config);
+			config = nextInt(config);
+			if(!*config){
+				printf("disk-part: Invalid partition type");
+				return -1;
+			}
+			int part_type = atoi(config);	
+			table[part_num].first_sect = part_start;
+			table[part_num].num_of_sects = num_sects;
+			table[part_num].type = part_type;
+		}else{
+			if(disk){
+				printf("disk-part: invalid options");
+				return -1;
+			}
+				
+			disk = argv[i];
+		
+		}
+		
+		
+		
+		
+	}
+	int fd = open(disk, O_RDONLY);
+		if(fd < 0){
+			
+			printf("disk-part: bad file\n");
+			return -1;
+		}
+	char buff [512];
+		read(fd, buff, 512);
+		memmove(buff+446, table, sizeof(partition)*4);
+		lseek(fd, 0, SEEK_SET);
+		write(fd, buff, 512);
+		printf("successful partition table\n");
+	
+	
 	return 0;
 }
