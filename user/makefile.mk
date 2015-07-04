@@ -21,7 +21,9 @@ USER_TARGETS := \
 	stall \
 	stat \
 	crash \
-	less
+	less \
+	chmod \
+	chown
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

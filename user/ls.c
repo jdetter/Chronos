@@ -69,7 +69,9 @@ int main(int argc, char* argv[])
 			struct file_stat st;
 			fstat(file_fd, &st);
 			get_perm(&st, out);
-			printf("%s %d %s\n", out, st.sz, entry.name);
+			printf("%s %d:%d %d %s\n", out, 
+				st.owner_id, st.group_id, 
+				st.sz, entry.name);
 			size += st.sz;
 		} else printf("%s\n", entry.name);
 	}

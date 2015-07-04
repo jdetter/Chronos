@@ -318,6 +318,28 @@ int tty_screen(char tty_buffer[4000]);
  * Sets the graphical cursor position.
  */
 int tty_cursor(int pos);
+
+/**
+ * Set the program break (the address where the heap ends). Returns 0 on
+ * success, -1 otherwise.
+ */
+int brk(void* addr);
+
+/**
+ * Increment the program break. Returns the original position of the
+ * program break.
+ */
+void* sbrk(uint increment);
+
+/**
+ * Change the mode of a file. Returns 0 on success.
+ */
+int chmod(const char* path, uint perm);
+
+/**
+ * Change the ownership of a file. Returns 0 on success.
+ */
+int chown(const char* path, uint uid, uint gid);
 #endif
 
 #endif
