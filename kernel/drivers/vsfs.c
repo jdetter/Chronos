@@ -63,28 +63,28 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
         uint cache_sz, uchar* cache, struct vsfs_context* context);
 void* vsfs_open(const char* path, struct vsfs_context* context);
 int vsfs_close(void* i, struct vsfs_context* context);
-int vsfs_stat(void* i, struct file_stat* dst, struct vsfs_context* context);
+int vsfs_stat(void* i, struct stat* dst, struct vsfs_context* context);
 int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
                 struct vsfs_context * context);
 int vsfs_chown(void* i, int ino_num, uint uid, uint gid, 
                 struct vsfs_context* context);
-int vsfs_chmod(void* i, int ino_num, uint permission, 
+int vsfs_chmod(void* i, int ino_num, mode_t permission, 
                 struct vsfs_context* context);
 int vsfs_truncate(void* i, int sz, void* context);
 int _vsfs_link(const char* file, const char* link,
                 struct vsfs_context* context);
 int vsfs_sym_link(const char* file, const char* link,
                 struct vsfs_context* context);
-int vsfs_mkdir(const char* path, uint permissions,
-                uint uid, uint gid, struct vsfs_context* context);
+int vsfs_mkdir(const char* path, mode_t permissions,
+                uid_t uid, gid_t gid, struct vsfs_context* context);
 
-int vsfs_readdir(void* dir, int index, struct directent* dst, 
+int vsfs_readdir(void* dir, int index, struct dirent* dst, 
 		struct vsfs_context* context);
 void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
 void* vsfs_opened(const char* path, struct vsfs_context* context);
 int vsfs_rmdir(const char* path, struct vsfs_context* context);
 int vsfs_mknod(const char* path, uint dev, uint dev_type,
-                uint perm, struct vsfs_context* context);
+                mode_t perm, struct vsfs_context* context);
 
 int vsfs_driver_init(struct FSDriver* driver)
 {
@@ -223,16 +223,16 @@ int vsfs_close(void* i, struct vsfs_context* context)
 	return 0;
 }
 
-int vsfs_stat(void* i, struct file_stat* dst, struct vsfs_context* context)
+int vsfs_stat(void* i, struct stat* dst, struct vsfs_context* context)
 {
 	struct vsfs_cache_inode* in = i;
-	dst->inode = in->inode_number;
-	dst->owner_id = in->node.uid;
-	dst->group_id = in->node.gid;
-	dst->perm = in->node.perm;
-	dst->sz = in->node.size;
-	dst->links = in->node.links_count;
-	dst->type = in->node.type;
+	memset(dst, 0, sizeof(struct stat));
+	dst->st_ino = in->inode_number;
+	dst->st_uid = in->node.uid;
+	dst->st_gid = in->node.gid;
+	dst->st_mode = in->node.perm;
+	dst->st_size = in->node.size;
+	dst->st_nlink = in->node.links_count;
 	
 	return 0;
 }
@@ -315,7 +315,7 @@ int vsfs_mkdir(const char* path, uint permissions,
         return 0;
 }
 
-int vsfs_readdir(void* dir, int index, struct directent* dst, 
+int vsfs_readdir(void* dir, int index, struct dirent* dst, 
                 struct vsfs_context* context)
 {
 	/* Directories per block */
@@ -333,13 +333,13 @@ int vsfs_readdir(void* dir, int index, struct directent* dst,
 		((struct vsfs_directent*)block_buffer) + offset;
 	
 	/* Parse the directory entry */
-	dst->inode = entry->inode_num;
+	dst->d_ino = entry->inode_num;
 	memset(dst->name, 0, FILE_MAX_NAME);
 	strncpy(dst->name, entry->name, FILE_MAX_NAME);
 	/* Get the inode */
 	struct vsfs_inode  in;
-	read_inode(dst->inode, &in, context);
-	dst->type = in.type;
+	read_inode(dst->d_ino, &in, context);
+	dst->d_type = in.type;
 	return 0;	
 }
 

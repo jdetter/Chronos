@@ -13,11 +13,26 @@ typedef unsigned int uint_32;
 typedef unsigned long uint_64;
 
 #ifndef __LINUX_DEFS__
-typedef unsigned long off_t; /* Used to represent file offsets */
-typedef unsigned long size_t; /* Used to represent the size of an object. */
+/* Types that conflict with the Linux definitions*/
+
+typedef unsigned int off_t; /* Used to represent file offsets */
+typedef unsigned int size_t; /* Used to represent the size of an object. */
+typedef unsigned int uid_t; /* User id*/
+typedef unsigned int gid_t; /* Group id*/
+
+/* File permissions */
+typedef unsigned int mode_t;
 
 /* NULL */
 #define NULL ((void*)0)
+
+/* Some POSIX definitions: */
+typedef unsigned int dev_t;
+typedef unsigned int ino_t;
+typedef unsigned int nlink_t;
+typedef unsigned int blksize_t;
+typedef unsigned int blkcnt_t;
+typedef signed int time_t;
 
 #endif
 

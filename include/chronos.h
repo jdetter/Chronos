@@ -94,19 +94,34 @@
 #define MAP_UNINITIALIZED 0	/* Ignored by Chronos */
 
 /**
- * Permissions for files. This is to be used with create and chmod. 
+ * Flag options for use in open:
  */
-#define PERM_UREAD      00100
-#define PERM_UWRITE     00200
-#define PERM_UEXEC      00400
+#define O_RDONLY  0x00000001  /* Open for reading */
+#define O_WRONLY  0x00000002  /* Open for writing */
+#define O_RDWR    (O_RDONLY | O_WRONLY)
+#define O_CREATE  0x00000004  /* If the file has not been created, create it. */
+#define O_CREAT   O_CREATE    /* Linux compatibility flag */
+#define O_ASYNC   0x00000010  /* Enables signal-driven io. */
+#define O_APPEND  0x00000020  /* Start writing to the end of the file. */
+#define O_DIR     0x00000040  /* Fail to open the file unless it is a directory. */
+#define O_DIRECTORY O_DIR     /* Linux compatibility */
+#define O_NOATIME 0x00000100  /* Do not change access time when file is opened. */
+#define O_TRUC    0x00000200  /* Once the file is opened, truncate the contents. */
+#define O_SERASE  0x00000400  /* Securely erase files when deleting or truncating */
+#define O_CLOEXEC 0x00000800  /* Close this file descriptor on a call to exec */
+#define O_DIRECT  0x00001000  /* Minimize cache effects on the io from this file */
+#define O_DSYNC   0x00002000  /* Write operations on the file complete immediatly*/
+#define O_EXCL    0x00004000  /* Fail if this call doesn't create a file. */
+#define O_LARGEFILE 0x00008000/* Allow files to be represented with off64_t */
+#define O_NOCTTY  0x00010000  /* Do not allow the tty to become the proc's tty  */
+#define O_NOFOLLOW 0x00020000 /* If the path is a symlink, fail to open.  */
+#define O_NONBLOCK 0x0004000  /* Open the file in non blocking mode. */
+#define O_NDELAY  O_NONBLOC   /* Linux Compatibility */
+#define O_PATH    0x00100000  /* Only use the fd to represent a path */
+#define O_SYNC    0x00200000  /* Don't return until metadata is pushed to disk  */
+#define O_TMPFILE 0x00400000  /* Open the directory and create a tmp file */
+#define O_TRUNC   0x00800000  /* If the file exists, truncate its contents. */
 
-#define PERM_GREAD      00010
-#define PERM_GWRITE     00020
-#define PERM_GEXEC      00040
-
-#define PERM_OREAD	00001
-#define PERM_OWRITE	00002
-#define PERM_OEXEC	00004
 
 #define MAX_ARG		0x20
 
@@ -148,7 +163,7 @@ void exit(void) __attribute__ ((noreturn));
  * Open the file designated by the path. The resulting file descriptor will
  * be returned if the file exists and the user is allowed to open the file.
  */
-int open(const char* path, int flags, int permissions);
+int open(const char* path, int flags, ...);
 
 /**
  * Close the file descriptor fd. This allows the file descriptor to be reused.
@@ -237,19 +252,19 @@ int mv(const char* orig, const char* dst);
  * Read that stats from file path and read them into dst. Returns 0 on sucess,
  * -1 on failure.
  */
-int fstat(int fd, struct file_stat* dst);
+int fstat(int fd, struct stat* dst);
 
 /**
  * Get a file stat structure from the given pathname. Returns 0 onsucess, -1
  * otherwise.
  */
-int stat(const char* pathname, struct file_stat* dst);
+int stat(const char* pathname, struct stat* dst);
 
 /**
  * Just like stat except if pathname is a symbolic link, it returns
  * statistics on the link itself. Returns 0 on success, -1 otherwise.
  */
-int lstat(const char* pathname, struct file_stat* dst);
+int lstat(const char* pathname, struct stat* dst);
 
 /**
  * Wait on the given condition variable c and release the spin lock.
@@ -271,7 +286,7 @@ int signal(struct cond* c);
  * index will be read into dst. If you have reached the end of the
  * directory, -1 is returned. Otherwise 0 is returned.
  */
-int readdir(int fd, int index, struct directent* dst);
+int readdir(int fd, int index, struct dirent* dst);
 
 /**
  * Creates a new pipe. A pipe is a buffer that can be read from and written
@@ -334,7 +349,7 @@ void* sbrk(uint increment);
 /**
  * Change the mode of a file. Returns 0 on success.
  */
-int chmod(const char* path, uint perm);
+int chmod(const char* path, mode_t perm);
 
 /**
  * Change the ownership of a file. Returns 0 on success.

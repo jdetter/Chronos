@@ -50,10 +50,10 @@ int sys_open(void)
 		return -1;
 	}
 
-	struct file_stat st;
+	struct stat st;
 	fs_stat(rproc->file_descriptors[fd].i, &st);
 
-	if(st.type == FILE_TYPE_DEVICE)
+	if(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
 	{
 		/* Get the driver open */
 		rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
@@ -212,9 +212,9 @@ int sys_lseek(void)
 		seek_pos = offset;
 	}
 	else if(whence == SEEK_END){
-		struct file_stat stat;
+		struct stat stat;
 		fs_stat(rproc->file_descriptors[fd].i, &stat);
-		seek_pos = stat.sz + offset;
+		seek_pos = stat.st_size + offset;
 	} else {
 		return -1;
 	}
@@ -228,19 +228,19 @@ int sys_lseek(void)
 int sys_chmod(void)
 {
 	const char* path;
-	uint perm;
+	mode_t mode;
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;
-	if(syscall_get_int((int*)&perm, 1)) return -1;
-	return fs_chmod(path, perm);
+	if(syscall_get_int((int*)&mode, 1)) return -1;
+	return fs_chmod(path, mode);
 }
 
 /* int chown(const char* path, uint uid, uint gid) */
 int sys_chown(void)
 {
 	const char* path;
-	uint uid;
-	uint gid;
+	uid_t uid;
+	gid_t gid;
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_int((int*)&uid, 1)) return -1;
@@ -298,9 +298,9 @@ int sys_mv(void)
 int sys_fstat(void)
 {
 	int fd;
-	struct file_stat* dst;
+	struct stat* dst;
 
-	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct file_stat), 1)) 
+	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
 
@@ -314,12 +314,12 @@ int sys_readdir(void)
 {
 	int fd;
 	int index;
-	struct directent* dst;
+	struct dirent* dst;
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int(&index, 1)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, 
-				sizeof(struct directent), 2))
+				sizeof(struct dirent), 2))
 		return -1;
 
 	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)

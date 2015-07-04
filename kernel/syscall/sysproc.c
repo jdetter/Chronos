@@ -425,9 +425,9 @@ int sys_chdir(void)
 	if(i == NULL) return -1;
 
 	/* is it a directory? */
-	struct file_stat st;
+	struct stat st;
 	fs_stat(i, &st);
-	if(st.type != FILE_TYPE_DIR)
+	if(!S_ISDIR(st.st_mode))
 	{
 		fs_close(i);
 		return -1;

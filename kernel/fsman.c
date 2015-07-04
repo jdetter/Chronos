@@ -11,6 +11,7 @@
 #include "stdlib.h"
 #include "pipe.h"
 #include "tty.h"
+#include "chronos.h"
 #include "proc.h"
 #include "ramfs.h"
 
@@ -286,11 +287,9 @@ static int fs_get_name(const char* path, char* dst, uint sz)
 static void fs_sync_inode(inode i)
 {
 	/* Get a stat structure */
-	struct file_stat s;
+	struct stat s;
 	i->fs->stat(i->inode_ptr, &s, i->fs->context);
-	i->file_sz = s.sz;
-	i->inode_num = s.inode;
-	i->file_type = s.type;
+	memmove(&i->st, &s, sizeof(struct stat));
 }
 
 /**
@@ -362,13 +361,11 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	}	
 
 	/* Lets quickly get the stats on the file */
-	struct file_stat st;
+	struct stat st;
 	fs->stat(i->inode_ptr, &st, fs->context);
 
 	i->file_pos = 0;
-	i->file_sz = st.sz;
-	i->file_type = st.type;
-	i->inode_num = st.inode;
+	memmove(&i->st, &st, sizeof(struct stat));
 	i->references = 1;
 	fs_get_name(dst_path, i->name, FILE_MAX_NAME);
 
@@ -385,12 +382,11 @@ int fs_close(inode i)
 	return result;
 }
 
-int fs_stat(inode i, struct file_stat* dst)
+int fs_stat(inode i, struct stat* dst)
 {
-	/* This is completely file system specific. */
-	int result = i->fs->stat(i->inode_ptr, dst, i->fs->context);
-	dst->inode = i->inode_num;
-	return result;
+	/* Return the cached version */
+	memmove(dst, &i->st, sizeof(struct stat));
+	return 0;
 }
 
 int fs_create(const char* path, uint flags, 
@@ -427,7 +423,7 @@ int fs_chown(const char* path, uint uid, uint gid)
 	if(!i) return -1;
 
 	int result = i->fs->chown(i->inode_ptr,
-                i->inode_num, uid, gid, i->fs->context);
+                i->st.st_ino, uid, gid, i->fs->context);
 
 	/* Close the inode */
 	fs_close(i);
@@ -441,7 +437,7 @@ int fs_chmod(const char* path, ushort permission)
         if(!i) return -1;
 	/* This is file system specific */
 	int result = i->fs->chmod(i->inode_ptr, 
-		i->inode_num, permission, i->fs->context);
+		i->st.st_ino, permission, i->fs->context);
 
 	/* Close the inode */
         fs_close(i);
@@ -459,7 +455,7 @@ int fs_truncate(inode i, int sz)
 	int result = i->fs->truncate(i->inode_ptr, 
 		sz, i->fs->context);
 	if(result < 0) return -1;
-	else i->file_sz = result;
+	else i->st.st_size = result;
 	return result;
 }
 
@@ -506,13 +502,11 @@ inode fs_mkdir(const char* path, uint flags,
 	i->inode_ptr = dir;
 
         /* Parse the inode structure */
-        struct file_stat st;
+        struct stat st;
         fs->stat(dir, &st, fs->context);
+	memmove(&i->st, &st, sizeof(struct stat));
 
         i->file_pos = 0;
-        i->file_sz = st.sz;
-        i->file_type = st.type;
-        i->inode_num = st.inode;
         i->references = 1;
         fs_get_name(i->name, fs_path, FILE_MAX_NAME);
 
@@ -606,7 +600,7 @@ int fs_unlink(const char* file)
 	return result;
 }
 
-int fs_readdir(inode i, int index, struct directent* dst)
+int fs_readdir(inode i, int index, struct dirent* dst)
 {
 	return i->fs->readdir(i->inode_ptr, index, dst, i->fs->context);
 }

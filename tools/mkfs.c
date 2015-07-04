@@ -10,8 +10,6 @@
 
 #include "file.h"
 #include "stdlock.h"
-#include "fsman.h"
-#include "vsfs.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,6 +19,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <dirent.h>
+#include "fsman.h"
+#include "vsfs.h"
 
 #define SECTSIZE 512
 

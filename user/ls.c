@@ -8,7 +8,7 @@
 #include "chronos.h"
 
 void usage(void);
-void get_perm(struct file_stat* st, char* dst);
+void get_perm(struct stat* st, char* dst);
 
 int main(int argc, char* argv[])
 {
@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 	uint size = 0;
 	for(x = 0;;x++)
 	{
-		struct directent entry;
+		struct dirent entry;
 		if(readdir(fd_dir, x, &entry))
 			break;
 		char entry_path[FILE_MAX_PATH];
@@ -66,13 +66,13 @@ int main(int argc, char* argv[])
 		{
 			char out[80];
 			memset(out, 0, 80);
-			struct file_stat st;
+			struct stat st;
 			fstat(file_fd, &st);
 			get_perm(&st, out);
 			printf("%s %d:%d %d %s\n", out, 
-				st.owner_id, st.group_id, 
-				st.sz, entry.name);
-			size += st.sz;
+				st.st_uid, st.st_gid, 
+				st.st_size, entry.name);
+			size += st.st_size;
 		} else printf("%s\n", entry.name);
 	}
 
@@ -91,54 +91,62 @@ void usage(void)
 	exit();
 }
 
-void get_perm(struct file_stat* st, char* dst)
+void get_perm(struct stat* st, char* dst)
 {
 	/* Start with type of device */
-	switch(st->type)
+	switch(st->st_mode & S_IFMT)
 	{
-		case FILE_TYPE_FILE:
+		case S_IFREG:
 			dst[0] = '-';
 			break;
-		case FILE_TYPE_DIR:
+		case S_IFDIR:
 			dst[0] = 'd';
 			break;
-		case FILE_TYPE_DEVICE:
-			dst[0] = 'v';
+		case S_IFCHR:
+			dst[0] = 'c';
 			break;
-		case FILE_TYPE_LINK:
+		case S_IFBLK:
+			dst[0] = 'b';
+			break;
+		case S_IFLNK:
 			dst[0] = 'l';
 			break;
-		case FILE_TYPE_SPECIAL:
+		case S_IFIFO:
+			dst[0] = 'f';
+			break;
+		case S_IFSOCK:
 			dst[0] = 's';
+			break;
+		default:
+			dst[0] = '?';
 			break;
 	}
 
-	if(st->perm & PERM_URD)
+	if(st->st_mode & PERM_URD)
 		dst[1] = 'r';
 	else dst[1] = '-';
-	if(st->perm & PERM_UWR)
+	if(st->st_mode & PERM_UWR)
 		dst[2] = 'w';
 	else dst[2] = '-';
-	if(st->perm & PERM_UEX)
+	if(st->st_mode & PERM_UEX)
 		dst[3] = 'x';
 	else dst[3] = '-';
-	if(st->perm & PERM_GRD)
+	if(st->st_mode & PERM_GRD)
 		dst[4] = 'r';
 	else dst[4] = '-';
-	if(st->perm & PERM_GWR)
+	if(st->st_mode & PERM_GWR)
 		dst[5] = 'w';
 	else dst[5] = '-';
-	if(st->perm & PERM_GEX)
+	if(st->st_mode & PERM_GEX)
 		dst[6] = 'x';
 	else dst[6] = '-';
-
-	if(st->perm & PERM_ORD)
+	if(st->st_mode & PERM_ORD)
 		dst[7] = 'r';
 	else dst[7] = '-';
-	if(st->perm & PERM_OWR)
+	if(st->st_mode & PERM_OWR)
 		dst[8] = 'w';
 	else dst[8] = '-';
-	if(st->perm & PERM_OEX)
+	if(st->st_mode & PERM_OEX)
 		dst[9] = 'x';
 	else dst[9] = '-';
 }

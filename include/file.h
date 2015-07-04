@@ -2,13 +2,7 @@
 #define _FILE_H_
 
 #define FILE_MAX_PATH	256
-#define FILE_MAX_NAME	64
-
-#define FILE_TYPE_FILE    0x01
-#define FILE_TYPE_DIR     0x02
-#define FILE_TYPE_DEVICE  0x03
-#define FILE_TYPE_LINK 	  0x04
-#define FILE_TYPE_SPECIAL 0x05
+#define FILE_MAX_NAME	256
 
 /**
  * For use in functions requiring permissions:
@@ -34,40 +28,85 @@
 #define PERM_OWR 0002 	/* Others can write */
 #define PERM_OEX 0001 	/* Others can execute */
 
-/**
- * Flag options for use in open:
- */
-#define O_CREATE  0x01	/* If the file has not been created, create it. */
-#define O_APPEND  0x02	/* Start writing to the end of the file. */
-#define O_DIR     0x04	/* Fail to open the file unless it is a directory. */
-#define O_NOATIME 0x08 	/* Do not change access time when file is opened. */
-#define O_TRUC    0x10	/* Once the file is opened, truncate the contents. */
-#define O_SERASE  0x20  /* Securely erase files when deleting or truncating */
-#define O_RDONLY  0x40 /* Open for reading */
-#define O_WRONLY  0x80 /* Open for writing */
-#define O_RDWR	  (O_RDONLY | O_WRONLY)
 
+/* Linux Permission Macros */
+
+#define S_IRWXU 00700 /* User has read, write execute */
+#define S_IRUSR 00400 /* User has read, write execute */
+#define S_IWUSR 00200 /* User has read, write execute */
+#define S_IXUSR 00100 /* User has read, write execute */
+
+#define S_IRWXG 00070 /* Group has read, write execute */
+#define S_IRGRP 00040 /* Group has read, write execute */
+#define S_IWGRP 00020 /* Group has read, write execute */
+#define S_IXGRP 00010 /* Group has read, write execute */
+
+#define S_IRWXO 00007 /* Other has read, write execute */
+#define S_IROTH 00004 /* Other has read, write execute */
+#define S_IWOTH 00002 /* Other has read, write execute */
+#define S_IXOTH 00001 /* Other has read, write execute */
+
+/* Special Linux permissions */
+
+#define S_IFMT   0170000 /* Determine file type */
+#define S_IFDIR  0040000 /* Directory */
+#define S_IFCHR  0020000 /* Character device */
+#define S_IFBLK  0060000 /* Block device */
+#define S_IFREG  0100000 /* Regular file */
+#define S_IFIFO  0010000 /* FIFO device */
+#define S_IFLNK  0120000 /* Symbolic link */
+#define S_IFSOCK 0140000 /* Socket*/
+
+#define S_ISIUD	0004000 /* Set user id bit*/
+#define S_ISGID	0002000 /* Set group id bit */
+#define S_ISVTX	0001000 /* Sticky bit */
+
+/* Linux file macros */
+
+#define S_ISDEV(m) ((ISBLK(m)) || (ISCHR(m)) || (IS_FIFO(m)))
+
+#define S_ISBLK(m) (((m) & S_IFMT) == S_IFBLK)
+#define S_ISCHR(m) (((m) & S_IFMT) == S_IFCHR)
+#define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
+
+/* POSIX.1b objects UNUSED - compatibility */
+#define S_TYPEISMQ(buf)  ((buf)->st_mode - (buf)->st_mode)
+#define S_TYPEISSEM(buf) ((buf)->st_mode - (buf)->st_mode)
+#define S_TYPEISSHM(buf) ((buf)->st_mode - (buf)->st_mode)
+
+#ifndef __LINUX_DEFS__
 /**
  * Structure for getting statistics on a file.
  */
-struct file_stat
+struct stat
 {
-        uint owner_id; /* Owner of the file */
-        uint group_id; /* Group that owns the file */
-        uint perm; /* Permissions of the file */
-        uint sz; /* Size of the file in bytes */
-        uint inode; /* inode number of the file  */
-        uint links; /* The amount of hard links to this file */
-        uint type; /* See options for file type above*/
+	dev_t	st_dev; /* Device ID */
+	ino_t	st_ino; /* Inode number */
+	mode_t	st_mode; /* Protection (permission) of the file */
+	nlink_t	st_nlink; /* Number of hard links to the file */
+	uid_t	st_uid; /* User ID of owner */
+	gid_t	st_gid; /* Group ID of owner */
+	dev_t	st_rdev; /* Device id if special file */
+	off_t	st_size; /* Size of the file in bytes */
+	blksize_t st_blksize; /* Blocksize for the file IO */
+	blkcnt_t st_blocks; /* Number of 512B blocks */
+	time_t st_atime; /* Time of last access */
+	time_t st_mtime; /* Last modification */
+	time_t st_ctime; /* Last time metadata was changed */
 };
 
 /**
  * Represents a generic directory entry.
  */
-struct directent
+struct dirent
 {
-	uint inode; /* Inode number of the directory entry */
-	uint type; /* Type of file (see above) */
+	ino_t d_ino; /* Inode number of the directory entry */
+	off_t d_off; /* Offset to the next dirent */
+	unsigned short d_reclen; /* Length of this record */
+	unsigned char  d_type; /* Type of file (see above) */
 	char name[FILE_MAX_NAME]; /* name of the directory entry */
 };
 
@@ -77,6 +116,8 @@ struct devnode
         uint dev;
         uint type;
 };
+
+#endif
 
 /**
  * Make sure the path ends with a slash. This guarentees that the path

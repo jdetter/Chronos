@@ -50,9 +50,7 @@ struct inode_t
 	uchar valid; /* Whether or not this inode is valid. */
 	slock_t lock; /* Lock needs to be held to access this inode */
 	uint file_pos; /* Seek position in the file */
-	uint file_sz; /* Length of the file in bytes. */
-	uchar file_type; /* Type of file */
-        uint inode_num; /* inode number */
+	struct stat st; /* Stats on the file */
 	char name[FILE_MAX_NAME]; /* the name of the file */
 	struct FSDriver* fs; /* File system this inode belongs to.*/
 	void* inode_ptr; /* Pointer to the fs specific inode. */
@@ -98,7 +96,7 @@ struct FSDriver
  	 * Parse statistics on an open file. Returns 0 on success,
 	 * returns 1 otherwise.
  	 */
-	int (*stat)(void* i, struct file_stat* dst,
+	int (*stat)(void* i, struct stat* dst,
 			void* context);
 
 	/**
@@ -177,7 +175,7 @@ struct FSDriver
 	 * 0 on success, -1 when the end of the directory has been reached.
 	 */
 	int (*readdir)(void* dir, int index, 
-		struct directent* dst, void* context);
+		struct dirent* dst, void* context);
 
 	/**
 	 * Parse statistics into the stat structure.
@@ -238,10 +236,10 @@ inode fs_open(const char* path, uint flags,
 int fs_close(inode i);
 
 /**
- * Fill a file_stat structure with the stats for the given inode. Returns
+ * Fill a stat structure with the stats for the given inode. Returns
  * 0 on success, returns -1 on failure.
  */
-int fs_stat(inode i, struct file_stat* dst);
+int fs_stat(inode i, struct stat* dst);
 
 /**
  * Create a file with the given permissions. The file will also be
@@ -308,7 +306,7 @@ int fs_unlink(const char* file);
 /**
  * Read the directory entry at the specified index.
  */
-int fs_readdir(inode i, int index, struct directent* dst);
+int fs_readdir(inode i, int index, struct dirent* dst);
 
 /**
  * Simplify the given path so that it doesn't contain any . or ..s

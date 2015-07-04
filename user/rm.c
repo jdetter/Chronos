@@ -11,17 +11,18 @@ int rec_rmdir(char* dir){
 	if(dirfile == -1){
 		return -1;
 	}
-	struct directent dir_stuff;	
+	struct dirent dir_stuff;	
 	int ind;
 	for(ind = 0; readdir(dirfile, ind, &dir_stuff) != -1; ind++){
-		if((dir_stuff.type == FILE_TYPE_FILE) || (dir_stuff.type == FILE_TYPE_SPECIAL)
-			|| (dir_stuff.type == FILE_TYPE_LINK)){
+		struct stat st;
+		fstat(dirfile, &st);
+		if((S_ISREG(st.st_mode)) || (S_ISLNK(st.st_mode))){
 			char file_path[FILE_MAX_PATH];
 			strncpy(file_path, res_path, FILE_MAX_PATH);
 			strncat(file_path, dir_stuff.name, FILE_MAX_PATH);
 			rm(file_path);
 		}
-		else if(dir_stuff.type == FILE_TYPE_DIR){
+		else if(S_ISDIR(st.st_mode)){
 			char dir_path[FILE_MAX_PATH];
 			strncpy(dir_path, res_path, FILE_MAX_PATH);
 			strncat(dir_path, dir_stuff.name, FILE_MAX_PATH);
@@ -99,12 +100,11 @@ int main(int argc, char** argv)
 	for(; argv[j] != NULL; j++){
 		if(*argv[j] != '-'){
 			int fd = open(argv[j], O_RDWR, 0);
-			struct file_stat file_dir; 
+			struct stat file_dir; 
 			fstat(fd, &file_dir);
-			int file_type = file_dir.type;
 
-			if(file_type == FILE_TYPE_FILE || file_type == FILE_TYPE_SPECIAL ||
-				file_type == FILE_TYPE_LINK){
+			if(S_ISREG(file_dir.st_mode) 
+				|| S_ISLNK(file_dir.st_mode)){
 				int removed = rm(argv[j]);
 				if(removed == -1){
 					if(user_input){
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 					printf("rm: %s was removed!\n", argv[j]);
 				}	
 			}
-			else if(file_type == FILE_TYPE_DIR){
+			else if(S_ISDIR(file_dir.st_mode)){
 				if(direct_rm){
 					int rmdirret;
 					if(recursive){
