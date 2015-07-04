@@ -211,6 +211,8 @@ int sys_signal(void)
 	return 0;
 }
 
+extern uint k_start_pages;
+extern uint k_pages;
 int sys_proc_dump(void)
 {
 	tty_print_string(rproc->t, "Running processes:\n");
@@ -301,8 +303,6 @@ int sys_proc_dump(void)
 			tty_print_string(rproc->t, "\n");
 
 		}
-		tty_print_string(rproc->t, "\n");
-
 		tty_print_string(rproc->t, "Virtual Memory: ");
 		uint stack = p->stack_start - p->stack_end;
 		uint heap = p->heap_end - p->heap_start;
@@ -311,7 +311,22 @@ int sys_proc_dump(void)
 		tty_print_string(rproc->t, "%dK\n", total);	
 	}
 
+	tty_print_string(rproc->t, "\n");
+
 	fs_fsstat();
+
+	int divisor = 1024 * 1024;
+	uint used_pages = k_start_pages - k_pages;
+	tty_print_string(rproc->t, "Used memory:  %dM\n", 
+		(used_pages * PGSIZE) / divisor);
+	tty_print_string(rproc->t, "Free memory:  %dM\n", 
+                (k_pages * PGSIZE) / divisor);
+	tty_print_string(rproc->t, "Total memory: %dM\n", 
+                (k_start_pages * PGSIZE) / divisor);
+	tty_print_string(rproc->t, "Used percent:  %d%%\n",
+                (used_pages * 100) / k_start_pages);
+        tty_print_string(rproc->t, "Free percent:  %d%%\n",
+                (k_pages * 100) / k_start_pages);
 	return 0;
 }
 

@@ -324,6 +324,12 @@ void freepgdir(pgdir* dir);
 void vm_copy_kvm(pgdir* dir);
 
 /**
+ * Instead of creating a copy of a user virtual memory space, directly map
+ * the user pages.
+ */
+void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir);
+
+/**
  * Make an exact copy of the user virtual memory space.
  */
 void vm_copy_uvm(pgdir* dst, pgdir* src);
@@ -376,6 +382,19 @@ void pgdir_cmp(pgdir* src, pgdir* dst);
  * Compare 2 pages.
  */
 void pg_cmp(uchar* pg1, uchar* pg2);
+
+/**
+ * Move memory from one address space to another. Return the amount of bytes
+ * copied.
+ */
+uint vm_memmove(void* dst, const void* src, uint sz,
+                pgdir* dst_pgdir, pgdir* src_pgdir);
+
+/**
+ * Free the directory and page table struct  but none of the pages pointed to 
+ * by the tables.
+ */
+void freepgdir_struct(pgdir* dir);
 
 #endif 
 

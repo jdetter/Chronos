@@ -4,7 +4,6 @@
 
 Critical system calls
 =====================
-execve - different than exec
 kill
 link
 stat
@@ -109,6 +108,7 @@ creat
 create
 exit
 _exit
+execve
 
 +---------------------------------+
 | Features that need implementing |

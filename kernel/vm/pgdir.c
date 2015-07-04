@@ -227,20 +227,18 @@ uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags)
 	return PGROUNDDOWN(page);
 }
 
-uint vm_memmove(void* dst, void* src, uint sz, 
+uint vm_memmove(void* dst, const void* src, uint sz, 
 		pgdir* dst_pgdir, pgdir* src_pgdir)
 {
 	if(sz == 0) return 0;
 	pgdir* save = vm_push_pgdir();
-	uint bytes = 0;
+	uint bytes = 0; /* bytes copied */
 
 	while(bytes != sz)
 	{
+		/* How many bytes are there left to copy? */
 		uint left = sz - bytes;
-		/* How many bytes are we copying in this pass? */
-		uint to_copy = PGROUNDUP((uint)src + bytes) 
-			- (uint)src + bytes;
-		if(to_copy > left) to_copy = left;
+		int to_copy = left;
 
 		/* The source page */
 		uint src_page = findpg((uint)src + bytes, 0, src_pgdir, 1);
@@ -257,7 +255,9 @@ uint vm_memmove(void* dst, void* src, uint sz,
 		/* Make sure copy amount is okay */
 		if(src_cpy < to_copy) to_copy = src_cpy;
 		if(dst_cpy < to_copy) to_copy = dst_cpy;
-		memmove(dst + dst_offset, src + src_offset, to_copy);
+		memmove((void*)dst_page + dst_offset, 
+			(void*)src_page + src_offset, to_copy);
+		/* Adjust bytes */
 		bytes += to_copy;
 	}
 
@@ -301,6 +301,24 @@ void vm_copy_kvm(pgdir* dir)
 		uint page = findpg(x, 0, k_pgdir, 0);
 		if(!page) continue;
 		mappage(page, x, dir, 0, 0);
+	}
+
+	vm_pop_pgdir(save);
+}
+
+void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir)
+{
+        pgdir* save = vm_push_pgdir();
+
+        uint x;
+        for(x = 0;x < (UVM_KVM_S >> 22);x++)
+        {   
+                uint src_page = PGROUNDDOWN(src_dir[x]); 
+                if(!src_page) continue;
+        	if(!dst_dir[x])dst_dir[x] = palloc() | UTBLFLAGS;
+		memmove((void*)PGROUNDDOWN(dst_dir[x]), 
+			(void*)PGROUNDDOWN(src_dir[x]), 
+			PGSIZE);
 	}
 
 	vm_pop_pgdir(save);
@@ -391,11 +409,26 @@ void vm_clear_swap_stack(pgdir* dir)
 void vm_free_uvm(pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();
-	uint x;
-	for(x = 0;x < PGROUNDUP(UVM_KVM_S); x+= PGSIZE)
+
+	int x;
+	for(x = 0;x < (UVM_KVM_S >> 22);x++)
 	{
-		uint pg = unmappage(x, dir);
-		if(pg) pfree(pg);
+		/* See if the table is allocated */
+		if(!dir[x]) continue;
+
+		uint* table = (uint*)PGROUNDDOWN(dir[x]);
+
+		/* Table is allocated, free entries */
+		int entry;
+		for(entry = 0;entry < PGSIZE / sizeof(int);entry++)
+		{
+			if(!table[entry]) continue;
+			pfree(table[entry]);
+		}
+
+		/* Free the table itself */
+		pfree((uint)table);
+		dir[x] = 0x0; /* Unset directory entry */
 	}
 
 	vm_pop_pgdir(save);
@@ -426,4 +459,19 @@ void freepgdir(pgdir* dir)
 	pfree((uint)dir);
 
 	vm_pop_pgdir(save);
+}
+
+void freepgdir_struct(pgdir* dir)
+{
+	pgdir* save = vm_push_pgdir();
+        
+	/* Free directory pages */
+        uint x;
+        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+                if(dir[x]) pfree(dir[x]);
+
+        /* free directory */
+        pfree((uint)dir);
+
+        vm_pop_pgdir(save);
 }

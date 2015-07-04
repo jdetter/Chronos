@@ -116,6 +116,9 @@ struct proc
 	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
 	uint entry_point; /* The address of the first instruction */
 	uint context; /* The address at the top of the saved stack */
+
+	uint user_ticks; /* The amount of ticks spent in user mode */
+	uint kernel_ticks; /* The amount of ticks spent in kernel mode */
 };
 
 /**

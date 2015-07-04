@@ -33,6 +33,8 @@ pid_t next_pid;
 /* The context of the scheduler right before user process gets scheduled. */
 extern uint  k_context;
 extern uint k_stack;
+/* How many ticks have there been since boot? */
+uint k_ticks;
 
 void proc_init()
 {

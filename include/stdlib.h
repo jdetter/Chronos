@@ -52,7 +52,7 @@ int strcmp(const char* str1, const char* str2);
  * MUST account for that. The dst buffer must always be valid. A total of sz
  * bytes should be copied. 
  */
-void memmove(void* dst, void* src, uint sz);
+void memmove(void* dst, const void* src, uint sz);
 
 /**
  * Fill the buffer dst with sz bytes that have the value val.

@@ -23,6 +23,7 @@
 struct int_gate interrupt_table[TRAP_COUNT];
 extern struct proc* rproc;
 extern uint trap_handlers[];
+extern uint k_ticks;
 uint __get_cr2__(void);
 
 void trap_return();
@@ -50,17 +51,19 @@ void trap_handler(struct trap_frame* tf)
 	char fault_string[64];
 	int syscall_ret = -1;
 	int handled = 0;
+	int user_problem = 0;
 
 	switch(trap)
 	{
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
-			cprintf("Serial interrupt.\n");
+			//cprintf("Keyboard interrupt.\n");
 			/* Keyboard interrupt */
 			tty_handle_keyboard_interrupt();	
 			handled = 1;
 			break;
 		case TRAP_DE:
 			strncpy(fault_string, "Divide by 0", 64);
+			user_problem = 1;
 			break;
 		case TRAP_DB:
 			strncpy(fault_string, "Debug", 64);
@@ -73,12 +76,15 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_OF:
 			strncpy(fault_string, "Overflow", 64);
+			user_problem = 1;
 			break;
 		case TRAP_BR:
 			strncpy(fault_string, "Seg Fault", 64);
+			user_problem = 1;
 			break;
 		case TRAP_UD:
 			strncpy(fault_string, "Invalid Instruction", 64);
+			user_problem = 1;
 			break;
 		case TRAP_NM:
 			strncpy(fault_string, "Device not available", 64);
@@ -97,27 +103,32 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_SS:
 			strncpy(fault_string, "Stack Overflow", 64);
+			user_problem = 1;
 			break;
 		case TRAP_GP:
 			strncpy(fault_string, "Protection violation", 64);
+			user_problem = 1;
 			break;
 		case TRAP_PF:
 			tty_print_string(rproc->t, "%s: Seg Fault: 0x%x\n",
 				rproc->name, 
 				__get_cr2__());
-			sys_exit();
+			_exit(1);
 			break;
 		case TRAP_0F:
 			strncpy(fault_string, "Reserved interrupt", 64);
 			break;
 		case TRAP_FP:
 			strncpy(fault_string, "Floating point error", 64);
+			user_problem = 1;
 			break;
 		case TRAP_AC:
 			strncpy(fault_string, "Bad alignment", 64);
+			user_problem = 1;
 			break;
 		case TRAP_MC:
 			strncpy(fault_string, "Machine Check", 64);
+			user_problem = 1;
 			break;
 		case TRAP_XM:
 			strncpy(fault_string, "SIMD Exception", 64);
@@ -133,6 +144,9 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case INT_PIC_TIMER: /* Time quantum has expired. */
 			//cprintf("Timer interrupt!\n");
+			/* This is the result of using up a user tick */
+			rproc->user_ticks++;
+			k_ticks++;
 			pic_eoi(INT_PIC_TIMER_CODE);
 			yield();
 			handled = 1;
@@ -144,7 +158,11 @@ void trap_handler(struct trap_frame* tf)
         if(!handled)
         {
                 cprintf("%s: 0x%x", fault_string, tf->error);
-                for(;;);
+
+		if(user_problem && rproc)
+		{
+			_exit(1);
+		} else for(;;);
         }
 
 	/* Make sure that the interrupt flags is set */
@@ -155,6 +173,7 @@ void trap_handler(struct trap_frame* tf)
 	/* While were here, clear the timer interrupt */
 	// pic_eoi(INT_PIC_TIMER_CODE);
 
+	/* Warning: Black magic below, this will be fixed later */
 	/* Force return */
 	asm volatile("movl %ebp, %esp");
 	asm volatile("popl %ebp");

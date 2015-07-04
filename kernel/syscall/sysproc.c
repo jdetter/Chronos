@@ -330,6 +330,10 @@ int sys_exec(void)
 	if(setgid)
 		rproc->egid = rproc->gid = st.st_gid;
 
+	/* Reset all ticks */
+	rproc->user_ticks = 0;
+	rproc->kernel_ticks = 0;
+	
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
 
@@ -342,10 +346,17 @@ int sys_execve(void)
 	const char* path;
 	const char** argv;
 	const char** envp;
+	/* envp is allowed to be null */
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;;
 	if(syscall_get_buffer_ptrs((uchar***)&argv, 1)) return -1;
-	if(syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
+	if(syscall_get_int((int*)&envp, 2)) return -1;
+	if(envp && syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
+
+	/* Create a copy of the path */
+        char program_path[MAX_PATH_LEN];
+        memset(program_path, 0, MAX_PATH_LEN);
+        strncpy(program_path, path, MAX_PATH_LEN);
 
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
@@ -364,71 +375,95 @@ int sys_execve(void)
 	/* acquire ptable lock */
 	slock_acquire(&ptable_lock);
 
-	uchar setuid = 0;
-	uchar setgid = 0;
-	/* Check for setuid and setgid */
-	inode i = fs_open(path, O_RDONLY, 0x0, 0x0, 0x0);
-	if(!i) return -1;
-	struct stat st;
-	if(fs_stat(i, &st)) return -1;
-	if(st.st_mode & S_ISUID)
-		setuid = 1;
-	if(st.st_mode & S_ISGID)
-		setuid = 1;
-	fs_close(i);
+	/* Create a temporary address space */
+	pgdir* tmp_pgdir = (pgdir*)palloc();
 
-	/* Create a copy of the path */
-	char program_path[MAX_PATH_LEN];
-	memset(program_path, 0, MAX_PATH_LEN);
-	strncpy(program_path, path, MAX_PATH_LEN);
+	uint env_start = PGROUNDUP(UVM_TOP);
+	int null_buff = 0x0;
+	if(envp)
+	{
+		/* Get the size of the  environment space */
+		int env_sz = 0;
+		int index;
+		for(index = 0;envp[index];index++)
+			env_sz += strlen(envp[index]) + 1;
+		/* take in account the array */
+		int env_count = index;
+		env_sz += (env_count * sizeof(int)) + sizeof(int);
+		/* Get the start of the environment space */
+		uint env_start = PGROUNDDOWN(UVM_TOP - env_sz);
+		uint* env_arr = (uint*)env_start;
+		uchar* env_data = (uchar*)env_start + 
+			(env_count * sizeof(int)) + sizeof(int);
+		for(index = 0;index < env_count;index++)
+		{
+			/* Set the value in env_arr */
+			vm_memmove(env_arr + index, env_data, sizeof(int),
+					tmp_pgdir, rproc->pgdir);
+
+			/* Move the string */
+			int len = strlen(envp[index]) + 1;
+			vm_memmove(env_data, envp[index], len, 
+					tmp_pgdir, rproc->pgdir);
+			env_data += len;
+		}
+		vm_memmove(env_arr + index, &null_buff, sizeof(int),
+				tmp_pgdir, rproc->pgdir);	
+	} else {
+		env_start -= sizeof(int);
+		vm_memmove((void*)env_start, &null_buff, sizeof(int),
+                                tmp_pgdir, rproc->pgdir);
+	}
 
 	/* Create argument array */
 	char* args[MAX_ARG];
 	memset(args, 0, MAX_ARG * sizeof(char*));
 
-	/* Make sure the swap stack is empty */
-	vm_clear_swap_stack(rproc->pgdir);
-
-	/* Create a temporary stack and map it to our swap stack */
-	uint stack_start = palloc();
-	mappage(stack_start, SVM_KSTACK_S, rproc->pgdir, 1, 0);
-	uchar* tmp_stack = (uchar*)SVM_KSTACK_S + PGSIZE;
-	uint uvm_stack = PGROUNDUP(UVM_TOP); /** CHANGE HERE ***/
+	uint uvm_stack = PGROUNDDOWN(env_start); 
 	/* copy arguments */
 	int x;
 	for(x = 0;argv[x];x++)
 	{
 		uint str_len = strlen(argv[x]) + 1;
-		tmp_stack -= str_len;
 		uvm_stack -= str_len;
-		memmove(tmp_stack, (char*)argv[x], str_len);
+		vm_memmove((void*)uvm_stack, (char*)argv[x], str_len,
+				tmp_pgdir, rproc->pgdir);
 		args[x] = (char*)uvm_stack;
 	}
-
 	/* Copy argument array */
-	tmp_stack -= MAX_ARG * sizeof(char*);
 	uvm_stack -= MAX_ARG * sizeof(char*);
-	memmove(tmp_stack, args, MAX_ARG * sizeof(char*));
+	vm_memmove((void*)uvm_stack, args, MAX_ARG * sizeof(char*),
+			tmp_pgdir, rproc->pgdir);
+
 	uint arg_arr_ptr = uvm_stack;
 	int arg_count = x;
 
+	/* Push envp */
+        uvm_stack -= sizeof(int);
+        vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
+                        tmp_pgdir, rproc->pgdir);
+	
 	/* Push argv */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = arg_arr_ptr;
+	uvm_stack -= sizeof(int);
+	vm_memmove((void*)uvm_stack, &arg_arr_ptr, sizeof(int),
+			tmp_pgdir, rproc->pgdir);
 
 	/* push argc */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = (uint)arg_count;
+	uvm_stack -= sizeof(int);
+	vm_memmove((void*)uvm_stack, &arg_count, sizeof(int),
+			tmp_pgdir, rproc->pgdir);
 
-	/* Add bogus return address */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = 0xFFFFFFFF;
+	/* Add bogus return address (solved by crt0 in stdlibc)*/
+	uvm_stack -= sizeof(int);
+	uint ret_addr = 0xFFFFFFFF;
+	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
+			tmp_pgdir, rproc->pgdir);
 
 	/* Free user memory */
 	vm_free_uvm(rproc->pgdir);
+
+	/* Map user pages */
+	vm_map_uvm(rproc->pgdir, tmp_pgdir);
 
 	/* Invalidate the TLB */
 	switch_uvm(rproc);
@@ -437,20 +472,15 @@ int sys_execve(void)
 	uint load_result = load_binary(program_path, rproc);
 	if(load_result == 0)
 	{
-		pfree(stack_start);
 		memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+		/* Free temporary directory */
+		freepgdir(tmp_pgdir);
 		slock_release(&ptable_lock);
 		return -1;
 	}
 
 	/* Change name */
 	strncpy(rproc->name, program_path, FILE_MAX_PATH);
-
-	/* Map the new stack in */
-	mappage(stack_start, PGROUNDUP(UVM_TOP) - PGSIZE, /** CHANGE HERE ***/
-			rproc->pgdir, 1, 0);
-	/* Unmap the swap stack */
-	vm_clear_swap_stack(rproc->pgdir);
 
 	/* We now have the esp and ebp. */
 	rproc->tf->esp = uvm_stack;
@@ -463,14 +493,34 @@ int sys_execve(void)
 	rproc->heap_start = PGROUNDUP(load_result);
 	rproc->heap_end = rproc->heap_start;
 
-	/* restore cwd */
-	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+	uchar setuid = 0;
+	uchar setgid = 0;
+	/* Check for setuid and setgid */
+	inode i = fs_open(program_path, O_RDONLY, 0x0, 0x0, 0x0);
+	if(!i) return -1;
+	struct stat st;
+	if(fs_stat(i, &st)) return -1;
+	if(st.st_mode & S_ISUID)
+		setuid = 1;
+	if(st.st_mode & S_ISGID)
+		setuid = 1;
+	fs_close(i);
 
 	/* change permission if needed */
 	if(setuid)
 		rproc->euid = rproc->uid = st.st_uid;
 	if(setgid)
 		rproc->egid = rproc->gid = st.st_gid;
+
+	/* restore cwd */
+        memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+
+	/* Free temporary space */
+	freepgdir_struct(tmp_pgdir);
+
+	 /* Reset all ticks */
+        rproc->user_ticks = 0;
+        rproc->kernel_ticks = 0;
 
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
@@ -492,7 +542,7 @@ int sys_exit(void)
 {
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
-	
+
 	int return_code;
 	rproc->return_code = 0;
 	if(syscall_get_int(&return_code, 0))
@@ -519,6 +569,13 @@ int sys_exit(void)
 	/* Release ourself to the scheduler, never to return. */
 	yield_withlock();
 	return 0;
+}
+
+void _exit(int return_code)
+{
+	rproc->sys_esp = (uint*)&return_code;	
+	sys__exit(); /* Will not return */
+	panic("_exit returned.\n");
 }
 
 int sys__exit(void)
@@ -582,7 +639,7 @@ int sys_brk(void)
 int sys_sbrk(void)
 {
 	uint increment;
-        if(syscall_get_int((int*)&increment, 0)) return -1;
+	if(syscall_get_int((int*)&increment, 0)) return -1;
 
 	slock_acquire(&ptable_lock);
 	uint old_end = rproc->heap_end;
@@ -605,7 +662,7 @@ int sys_sbrk(void)
 }
 
 /* void* mmap(void* hint, uint sz, int protection,
-		int flags, int fd, off_t offset) */
+   int flags, int fd, off_t offset) */
 int sys_mmap(void)
 {
 	void* hint;
@@ -621,7 +678,7 @@ int sys_mmap(void)
 	if(syscall_get_int(&flags,  3)) return -1;
 	if(syscall_get_int(&fd, 4)) return -1;
 	if(syscall_get_int((int*) &offset, 5)) return -1;
-	
+
 	slock_acquire(&ptable_lock);
 	uint pagestart = PGROUNDUP(rproc->heap_end);
 	mappages(pagestart, sz, rproc->pgdir, 1);
@@ -635,7 +692,7 @@ int sys_chdir(void)
 {
 	const char* dir;
 	if(syscall_get_str_ptr(&dir, 0)) return -1;
-	
+
 	if(strlen(dir) < 1) return -1;
 	char dir_path[MAX_PATH_LEN];
 	char tmp_path[MAX_PATH_LEN];
@@ -688,7 +745,7 @@ int sys_getuid(void){
 /* int setuid(uid_t uid)*/
 int sys_setuid(void){
 	uint id;
-	
+
 	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->uid = id;
 	return 0;
@@ -702,7 +759,7 @@ int sys_getgid(void){
 /* int setgid(gid_t gid)*/
 int sys_setgid(void){
 	uint id;
-	
+
 	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->gid = id;
 	return 0;

@@ -91,14 +91,14 @@ int strcmp(const char* str1, const char* str2)
 }
 
 
-void memmove(void* dst, void* src, uint sz)
+void memmove(void* dst, const void* src, uint sz)
 {
 	/* Check for do nothing */
 	if(dst == src) return;
 
 	uint x;
 	uchar* cdst = dst;
-	uchar* csrc = src;
+	const uchar* csrc = src;
 	/* Check for  <--s-<-->--d--> overlap*/
 	if(src + sz > dst && src + sz < dst + sz)
 	{

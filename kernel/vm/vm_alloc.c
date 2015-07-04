@@ -47,6 +47,7 @@ struct kvm_region vm_ignore_table[] = {
         {0x00000000, 0x00002000} /* Null page + k_pgdir*/
 };
 
+uint k_start_pages; /* How many pages did the vm start with? */
 uint k_pages; /* How many pages are left? */
 pgdir* k_pgdir; /* Kernel page directory */
 static struct vm_free_node* head;
@@ -178,6 +179,7 @@ void setup_kvm(void)
 	head = *(struct vm_free_node**)KVM_POOL_PTR;
 	k_pages = *(uint*)KVM_PAGE_CT;
 	video_mode = *(uint*)KVM_VMODE;
+	k_start_pages = k_pages;
 }
 
 void save_vm(void)
