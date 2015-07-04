@@ -492,11 +492,6 @@ pid_t gettid(void);
  */
 pid_t getppid(void);
 
-/**
- * Get process times. All results are measured in kernel ticks.
- */
-clock_t times(struct tms* buf);
-
 #endif
 
 #endif

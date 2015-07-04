@@ -122,16 +122,6 @@ int syscall_handler(uint* esp)
 	return return_value; /* Syscall successfully handled. */
 }
 
-int sys_times(void)
-{
-        return -1;
-}
-
-int sys_gettimeofday(void)
-{
-	return -1;
-}
-
 /* int wait_s(struct cond* c, struct slock* lock) */
 int sys_wait_s(void)
 {	

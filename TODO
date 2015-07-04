@@ -7,8 +7,6 @@ Critical system calls
 kill
 link
 stat
-times
-time
 gettimeofday
 
 High priority system calls
@@ -22,6 +20,7 @@ flock
 
 nanosleep
 reboot
+time
 
 getegid
 geteuid
@@ -79,6 +78,7 @@ lstat: add support for symbolic links
 mprotect: add support for NX protection
 readdir: needs linux compatibility
 exec
+times: needs to add children times
 
 Completely finished System calls:
 =================================
@@ -130,3 +130,13 @@ expanding user stacks
 
 swapping (swap pages to and from disk)
  + includes system calls: swapon swapoff
+
++--------------------------------+
+| Drivers that need implementing |
++--------------------------------+
+
+High priority drivers
+=====================
+Network Interface Controller driver (NIC)
+SATA (Modern hard drives)
+ATAPI (CDROMs)

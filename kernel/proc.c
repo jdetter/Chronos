@@ -17,6 +17,8 @@
 #include "syscall.h"
 #include "chronos.h"
 #include "iosched.h"
+#include "time.h"
+#include "rtc.h"
 
 extern struct vsfs_context context;
 
@@ -35,12 +37,16 @@ extern uint  k_context;
 extern uint k_stack;
 /* How many ticks have there been since boot? */
 uint k_ticks;
+/* Current system time */
+struct rtc_t k_time;
 
 void proc_init()
 {
 	next_pid = 0;
 	memset(ptable, 0, sizeof(struct proc) * PTABLE_SIZE);
 	rproc = NULL;
+	k_ticks = 0;
+	memset(&k_time, 0, sizeof(struct rtc_t));
 	slock_acquire(&ptable_lock);
 }
 
@@ -255,6 +261,15 @@ struct proc* get_proc_pid(int pid)
 
 	/* There is no process with that pid. */
 	return NULL;
+}
+
+int k_seconds(void)
+{
+	/** 
+	 * Seconds between 00:00:00 January 1st, 1970 and 
+	 * 00:00:00 January 1st, 2000 
+	 */
+	return -1;
 }
 
 void __context_restore__(uint* current, uint old);

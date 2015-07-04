@@ -16,6 +16,7 @@
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
+extern uint k_ticks;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
@@ -735,6 +736,50 @@ int sys_getcwd(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 0)) return -1;
 	strncpy(dst, rproc->cwd, sz);
 	return sz;
+}
+
+/* clock_t times(struct tms* buf) */
+int sys_times(void)
+{
+	struct tms* buf;
+	/* buf is allowed to be null */
+	if(syscall_get_int((int*)buf, 0)) return -1;
+	if(buf && syscall_get_buffer_ptr((void**)&buf, sizeof(struct tms), 0))
+		return -1;
+
+	if(buf)
+	{
+		buf->tms_utime = rproc->user_ticks;
+		buf->tms_stime = rproc->kernel_ticks;
+		/* Update with child information */
+		buf->tms_cutime = 0;
+		buf->tms_cstime = 0;
+	}
+	
+	return k_ticks;
+}
+
+/* int gettimeofday(struct timeval* tv, struct timezone* tz) */
+int sys_gettimeofday(void)
+{
+	struct timeval* tv;
+	struct timezone* tz;
+	/* timezone is not used by any OS ever. It is purely historical. */
+	if(syscall_get_int((int*)&tv, 0)) return -1;
+	if(tv && syscall_get_buffer_ptr((void**)&tv, 
+		sizeof(struct timeval), 0)) return -1;
+	/* Is timezone specified? */
+	if(syscall_get_int((int*)&tz, 1)) return -1;
+        if(tv && syscall_get_buffer_ptr((void**)&tz, 
+                sizeof(struct timeval), 1)) return -1;
+
+	if(tv)
+	{
+		//int seconds = 
+		//tv->tv_sec = 
+	}
+
+        return 0;
 }
 
 /* pid_t getuid(void) */
