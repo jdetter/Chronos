@@ -188,6 +188,9 @@ int syscall_handler(uint* esp)
 	int int_arg1;
 	int int_arg2;
 	int int_arg3;
+	int int_arg4;
+	int int_arg5;
+	int int_arg6;
 
 #define SYSCALL_STRLEN 512
 	char str_arg1[SYSCALL_STRLEN];
@@ -257,8 +260,12 @@ int syscall_handler(uint* esp)
 			if(syscall_get_int(&int_arg1, esp, 1)) break;
 			if(syscall_get_int(&int_arg2, esp, 2)) break;
 			if(syscall_get_int(&int_arg3, esp, 3)) break;
+			if(syscall_get_int(&int_arg4, esp, 4)) break;
+			if(syscall_get_int(&int_arg5, esp, 5)) break;
+			if(syscall_get_int(&int_arg6, esp, 6)) break;
 			return_value = (int)sys_mmap((void*)int_arg1,
-				(uint)int_arg2, int_arg3);
+				(uint)int_arg2, int_arg3,
+				int_arg4, int_arg5, int_arg6);
 			break;
 		case SYS_chdir:
 			if(syscall_get_str((char*)str_arg1,
@@ -884,7 +891,8 @@ void* sys_sbrk(uint increment)
 	return (void*)old_end;
 }
 
-void* sys_mmap(void* hint, uint sz, int protection)
+void* sys_mmap(void* hint, uint sz, int protection,
+		int flags, int fd, off_t offset)
 {
   slock_acquire(&ptable_lock);
   uint pagestart = PGROUNDUP(rproc->heap_end);

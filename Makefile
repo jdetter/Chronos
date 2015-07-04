@@ -1,5 +1,13 @@
+# Use the new tool chain to build executables.
+TARGET=i686-elf-
+CROSS_CC=tools/build/bin/$(TARGET)gcc
+CROSS_LD=tools/build/bin/$(TARGET)ld
+CROSS_AS=tools/build/bin/$(TARGET)gcc
+CROSS_OBJCOPY=tools/build/bin/$(TARGET)objcopy
+
+# use host to configure the tools
 CC=gcc
-LD=ld
+ld=ld
 AS=gcc
 OBJCOPY=objcopy
 

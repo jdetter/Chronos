@@ -4,6 +4,7 @@
  * Usage: mkfs -i [inodes] -s [size] file
  */
 
+#define __LINUX_DEFS__
 #include "types.h"
 #undef NULL
 

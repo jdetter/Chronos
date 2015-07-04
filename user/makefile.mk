@@ -70,15 +70,15 @@ user/bin:
 user-symbols: $(USER_SYMBOLS)
 
 user/syscall.o:
-	$(AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
+	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
 
 # Recipe for object files
 user/%.o: user/%.c
-	$(CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
+	$(CROSS_CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
 user/bin/%: user/%.o
-	$(LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o $(USER_LIB_OBJECTS)
+	$(CROSS_LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o $(USER_LIB_OBJECTS)
 
 # Recipe for symbole files
 user/bin/%.sym: user/bin/%
-	$(OBJCOPY) --only-keep-debug $< $@
+	$(CROSS_OBJCOPY) --only-keep-debug $< $@

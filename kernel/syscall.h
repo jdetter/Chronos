@@ -12,7 +12,8 @@ int sys_close(int fd);
 int sys_read(int fd, char* dst, uint sz);
 int sys_write(int fd, char* src, uint sz);
 int sys_lseek(int fd, int offset, int whence);
-void* sys_mmap(void* hint, uint sz, int protection);
+void* sys_mmap(void* hint, uint sz, int protection, 
+		int flags, int fd, off_t offset);
 int sys_chdir(const char* dir);
 int sys_cwd(char* dst, uint sz);
 int sys_create(const char* file, uint permissions);

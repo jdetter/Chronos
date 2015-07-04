@@ -38,6 +38,18 @@
 #define SYS_chmod	0x20
 #define SYS_chown	0x21
 
+/**
+ * For use in function lseek:
+ *  + SEEK_SET Sets the current seek from the start of the file.
+ *  + SEEK_CUR Adds the value to the current seek
+ *  + SEEK_END Sets the current seek from the end of the file.
+ */
+#define SEEK_SET 0x01
+#define SEEK_END 0x02
+#define SEEK_CUR 0x04
+#define SEEK_DATA 0x08
+#define SEEK_HOLE 0x10
+
 /* Segment descriptions */
 /* Null segment		0x00 */
 #define SEG_KERNEL_CODE	0x01
@@ -50,9 +62,36 @@
 
 #define SYS_EXIT_BASE	((SEG_USER_CODE << 3) - 16)
 
+/**
+ * Protectections for mmap
+ */
+#define PROT_NONE	0x00
 #define PROT_EXE	0x01
 #define PROT_READ	0x02
 #define PROT_WRITE	0x04
+
+/**
+ * Flags for mmap.
+ */
+#define MAP_ANONYMOUS   0x01	/* Mapping is not backed by a file */
+#define MAP_ANON        MAP_ANONYMOUS /* DEPRICATED */
+#define MAP_SHARED 	0x02	/* Share this mapping (fork) */
+#define MAP_PRIVATE	0x03	/* Set mapping to Copy on Write */
+#define MAP_DENYWRITE	0x04	/* Ignored */
+#define MAP_EXECUTABLE 	0x05	/* Ignored */
+#define MAP_FILE 	0x06	/* Ignored */
+#define MAP_FIXED	0x07	/* Do not take addr as a hint. */
+#define MAP_GROWSDOWN	0x08	/* Used for stacks. */
+#define MAP_MAP_HUGETLB 0x09	/* Huge pages (ignored ) */
+#define MAP_HUGE_2MB	0x0A	/* 2MB pages (ignored) */
+#define MAP_HUGE_1GB	0x0B	/* 1GB pages (ignored) */
+#define MAP_LOCKED	0x0C	/* Lock the pages of this mapped region */
+#define MAP_NONBLOCK	0x0D	/* Ignored for now */
+#define MAP_NORESERVE	0x0E	/* Do not reserve swap space */
+#define MAP_32BIT	0x0F	/* Compatibility flag */
+#define MAP_POPULATE	0x10	/* Prefault page tables */
+#define MAP_STACK	0x11	/* Suitable for thread stacks */
+#define MAP_UNINITIALIZED 0	/* Ignored by Chronos */
 
 /**
  * Permissions for files. This is to be used with create and chmod. 
@@ -123,28 +162,25 @@ int close(int fd);
  * the amount of bytes read into dst. If the end of the file is reached, -1
  * is returned.
  */
-int read(int fd, void* dst, uint sz);
+int read(int fd, void* dst, size_t sz);
 
 /**
  * Write to a file descriptor. sz bytes will be written to the file descriptor.
  * This function returns the amount of bytes written to the file descriptor.
  */ 
-int write(int fd, void* src, uint sz);
+int write(int fd, void* src, size_t sz);
 
 /**
  * Seek the file descriptor to the point offset. See the lseek definitions
  * above. Returns the resulting position of the file pointer.
  */
-int lseek(int fd, int offset, int whence);
+int lseek(int fd, off_t offset, int whence);
 
 /**
- * Map memory into the user's address space. Take the first argument as a
- * hint as to where the memory should be placed. Return a pointer to the
- * memory allocated. The memory must be contiguous in the user's address
- * space. See protection above for page protection options (RWX). On error,
- * NULL will be returned.
+ * Map memory into user memory.
  */
-void* mmap(void* hint, uint sz, int protection);
+void* mmap(void* addr, size_t sz, int prot, 
+		int flags, int fd, off_t offset);
 
 /**
  * Change the current working directory to dir. The path can be relative or
@@ -202,6 +238,18 @@ int mv(const char* orig, const char* dst);
  * -1 on failure.
  */
 int fstat(int fd, struct file_stat* dst);
+
+/**
+ * Get a file stat structure from the given pathname. Returns 0 onsucess, -1
+ * otherwise.
+ */
+int stat(const char* pathname, struct file_stat* dst);
+
+/**
+ * Just like stat except if pathname is a symbolic link, it returns
+ * statistics on the link itself. Returns 0 on success, -1 otherwise.
+ */
+int lstat(const char* pathname, struct file_stat* dst);
 
 /**
  * Wait on the given condition variable c and release the spin lock.

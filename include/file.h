@@ -11,16 +11,6 @@
 #define FILE_TYPE_SPECIAL 0x05
 
 /**
- * For use in function fs_seek:
- *  + SEEK_SET Sets the current seek from the start of the file.
- *  + SEEK_CUR Adds the value to the current seek
- *  + SEEK_END Sets the current seek from the end of the file.
- */
-#define SEEK_SET 0x01
-#define SEEK_END 0x02
-#define SEEK_CUR 0x04
-
-/**
  * For use in functions requiring permissions:
  */
 
