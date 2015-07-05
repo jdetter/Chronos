@@ -131,6 +131,8 @@ expanding user stacks
 swapping (swap pages to and from disk)
  + includes system calls: swapon swapoff
 
+multiprocessor support
+
 +--------------------------------+
 | Drivers that need implementing |
 +--------------------------------+
