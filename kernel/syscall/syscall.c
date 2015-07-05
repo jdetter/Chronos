@@ -47,7 +47,7 @@ int (*syscall_table[])(void) = {
 	sys_fstat,
 	sys_wait_s,
 	sys_wait_t,
-	sys_signal,
+	sys_signal_cv,
 	sys_readdir,
 	sys_pipe,
 	sys_dup,
@@ -175,8 +175,8 @@ int sys_wait_t(void)
 
 
 
-/* int signal(struct cond* c) */
-int sys_signal(void)
+/* int signal_cv(struct cond* c) */
+int sys_signal_cv(void)
 {
 	struct cond* c;
 	if(syscall_get_buffer_ptr((void**)&c, sizeof(struct cond), 0))

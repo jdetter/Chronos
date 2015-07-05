@@ -20,7 +20,7 @@ void cond_signal(cond_t* c)
 {
 	uint* esp_saved = rproc->sys_esp;
 	rproc->sys_esp = (uint*)&c;
-	sys_signal();
+	sys_signal_cv();
 	rproc->sys_esp = esp_saved;
 }
 

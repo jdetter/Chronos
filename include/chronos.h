@@ -24,7 +24,7 @@
 #define SYS_fstat 	0x12
 #define SYS_wait_s	0x13
 #define SYS_wait_t	0x14
-#define SYS_signal 	0x15
+#define SYS_signal_cv 	0x15
 #define SYS_readdir	0x16
 #define SYS_pipe	0x17
 #define SYS_dup		0x18
@@ -308,7 +308,7 @@ int wait_t(struct cond* c, struct tlock* lock);
 /**
  * Signal (single wakeup) a condition variable.
  */
-int signal(struct cond* c);
+int signal_cv(struct cond* c);
 
 /**
  * Read from the file descriptor directory fd. The directory entry at index

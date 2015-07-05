@@ -79,7 +79,7 @@ int sys_mv(void);
 int sys_fstat(void);
 int sys_wait_s(void);
 int sys_wait_t(void);
-int sys_signal(void);
+int sys_signal_cv(void);
 int sys_readdir(void);
 int sys_pipe(void);
 int sys_dup(void);
