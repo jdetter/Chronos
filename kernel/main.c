@@ -5,7 +5,6 @@
 #include "stdarg.h"
 #include "stdlib.h"
 #include "stdmem.h"
-#include "boot_pic.h"
 #include "stdlock.h"
 #include "fsman.h"
 #include "devman.h"
