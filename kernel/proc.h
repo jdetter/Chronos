@@ -154,11 +154,6 @@ uint load_binary(const char* path, struct proc* p);
 struct proc* get_proc_pid(int pid);
 
 /**
- * Get the kernel time in seconds.
- */
-int k_seconds(void);
-
-/**
  * Surrender a scheduling round.
  */
 void yield(void);

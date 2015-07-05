@@ -23,7 +23,8 @@ USER_TARGETS := \
 	crash \
 	less \
 	chmod \
-	chown
+	chown \
+	date
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

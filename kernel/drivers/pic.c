@@ -94,10 +94,16 @@ void pic_enable(uint interrupt)
 	{
 		/* We have to modify the slave. */
 		interrupt -= 8;
+		if(interrupt > 7) 
+			panic("Invalid interrupt number: %d\n", interrupt);
 		port = PORT_PIC_SLAVE_DATA;
+
+		/* Make sure master can recieve slave interrupts */
+		pic_enable(INT_PIC_SLAVE);
 	}
 
-	if(interrupt > 7) panic("Invalid interrupt number: %d\n", interrupt);
+	if(interrupt > 7) 
+		panic("Invalid interrupt number: %d\n", interrupt);
 
 	uchar curr_mask = inb(port);
 	/* Create the new mask */

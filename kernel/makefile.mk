@@ -17,7 +17,8 @@ KERNEL_OBJECTS := \
 	pipe \
 	fsman \
 	devman \
-	iosched
+	iosched \
+	ktime
 
 # assembly files
 KERNEL_ASSEMBLY := \

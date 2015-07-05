@@ -263,46 +263,6 @@ struct proc* get_proc_pid(int pid)
 	return NULL;
 }
 
-int k_seconds(void)
-{
-	/** 
-	 * Seconds between 00:00:00 January 1st, 1970 and 
-	 * 00:00:00 January 1st, 2000 
-	 */
-
-	int epoc_year = 1970;
-	int years = k_time.year - epoc_year; /* The last year is incomplete */
-	/* 
-	 * How many years are between epoc_year and the previous leap year?
-	 */
-	int leap_year_adjust = 2;
-	/* Calulate number of leap years */
-	int leap_years = (years + leap_year_adjust) / 4;
-	/* Calculate number of normal years */
-	int normal_years = years - leap_years;
-
-	/* Is this year a leap year? */
-	char is_leap = k_time.year % 4 == 0;
-	uchar months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	if(is_leap) months[1]++; /* Increment Feburary for leap years */
-	int day_of_year = 0;
-	int mon; /* Last month is incomplete */
-	for(mon = 0;mon < k_time.month  - 1;mon++)
-		day_of_year += months[mon];
-
-	/* Add days this month (today is still incomplete) */ 
-	day_of_year += k_time.day - 1;
-
-	/* How many seconds today? */
-	int seconds_today = (k_time.hours * 60 * 60)
-			+ (k_time.minutes * 60)
-			+ k_time.seconds;
-	int days = leap_years * 366 + normal_years * 365 + day_of_year;
-	int total = days * 24 * 60 * 60 + seconds_today;
-
-	return total;
-}
-
 void __context_restore__(uint* current, uint old);
 void yield(void)
 {

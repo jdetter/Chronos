@@ -14,8 +14,6 @@ int main(int argc, char** argv)
 {
 	printf("An init process has spawned on this tty.\n");
 	int result = fork();
-	if(result == 0) for(;;); /* Forever looping process */
-	result = fork();
 	if(result > 0)
 	{
 		waitpid(result, NULL, 0);

@@ -13,6 +13,8 @@
 #include "vm.h"
 #include "trap.h"
 #include "panic.h"
+#include "rtc.h"
+#include "ktime.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -770,13 +772,20 @@ int sys_gettimeofday(void)
 		sizeof(struct timeval), 0)) return -1;
 	/* Is timezone specified? */
 	if(syscall_get_int((int*)&tz, 1)) return -1;
-        if(tv && syscall_get_buffer_ptr((void**)&tz, 
+        if(tz && syscall_get_buffer_ptr((void**)&tz, 
                 sizeof(struct timeval), 1)) return -1;
+		
+	int seconds = ktime_seconds();
 
 	if(tv)
 	{
-		//int seconds = 
-		//tv->tv_sec = 
+		tv->tv_sec = seconds;
+		tv->tv_usec = 0;
+	}
+
+	if(tz)
+	{
+		memset(tz, 0, sizeof(struct timezone));
 	}
 
         return 0;

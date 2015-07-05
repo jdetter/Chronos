@@ -18,8 +18,9 @@
 #include "idt.h"
 #include "x86.h"
 #include "cpu.h"
-#include "rtc.h"
 #include "keyboard.h"
+#include "rtc.h"
+#include "ktime.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -76,12 +77,15 @@ void main_stack(void)
         pic_init();
         cprintf("[ OK ]\n");
 
-	pic_enable(INT_PIC_ATA1);
-
         /* Initilize CMOS */
         cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
         cmos_init();
         cprintf("[ OK ]\n");
+
+	/* Initilize kernel time */
+	cprintf("Initilizing kernel time...\t\t\t\t\t\t");
+	ktime_init();
+	cprintf("[ OK ]\n");
 
 	/* Initilize keyboard driver */
 	cprintf("Initilizing keyboard driver...\t\t\t\t\t\t");
@@ -103,14 +107,6 @@ void main_stack(void)
 	dev_populate();
 	cprintf("[ OK ]\n");
 
-	rtc_update(&k_time);
-	char time_dst[512];
-	rtc_str(time_dst, 512, &k_time);
-
-	cprintf("The time is: %s\n", time_dst);
-
-	k_seconds();
-	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
 	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);

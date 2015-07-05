@@ -17,10 +17,12 @@
 #include "pipe.h"
 #include "proc.h"
 #include "cmos.h"
+#include "rtc.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
 
+extern struct rtc_t k_time;
 struct int_gate interrupt_table[TRAP_COUNT];
 extern struct proc* rproc;
 extern uint trap_handlers[];
@@ -54,11 +56,11 @@ void trap_handler(struct trap_frame* tf)
 	int handled = 0;
 	int user_problem = 0;
 
-	pic_eoi(INT_PIC_CMOS_CODE);
-
 	switch(trap)
 	{
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
+			handled = 1;
+			break;
 			cprintf("Keyboard interrupt.\n");
 			/* Keyboard interrupt */
 			tty_handle_keyboard_interrupt();	
@@ -68,10 +70,14 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case INT_PIC_CMOS:
 			/* Update the system time */
-			cprintf("CMOS: ");
-			uchar val = cmos_read_interrupt();
-			cprintf("%d\n", val);
-			handled = 0;
+			pic_eoi(INT_PIC_CMOS_CODE);
+			uchar cmos_val = cmos_read_interrupt();
+			if(cmos_val == 144)
+			{
+				/* Clock update */
+				rtc_update(&k_time);
+			}
+			handled = 1;
 			break;
 		case TRAP_DE:
 			strncpy(fault_string, "Divide by 0", 64);
@@ -164,6 +170,7 @@ void trap_handler(struct trap_frame* tf)
 			handled = 1;
 			break;
 		default:
+			cprintf("Interrupt number: %d\n", trap);
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
@@ -177,8 +184,6 @@ void trap_handler(struct trap_frame* tf)
 		} else for(;;);
         }
 
-	/* Reset cmos interrupts */
-	cmos_read_interrupt();
 
 	/* Make sure that the interrupt flags is set */
 	tf->eflags |= EFLAGS_IF;

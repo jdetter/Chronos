@@ -53,10 +53,6 @@ void rtc_update(struct rtc_t* dst)
 		if(hours >= 24) hours = 0;
 	}
 
-	/* Assuming we are in US/Central */
-	hours += 19;
-	if(hours >= 24) hours %= 24;
-
 	dst->seconds = seconds;
 	dst->minutes = minutes;
 	dst->hours = hours;

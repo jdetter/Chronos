@@ -10,6 +10,9 @@
 #include "proc.h"
 #include "panic.h"
 #include "stdlib.h"
+#include "cmos.h"
+#include "rtc.h"
+#include "ktime.h"
 
 extern slock_t ptable_lock;
 extern struct proc ptable[];
@@ -18,6 +21,13 @@ extern struct proc* rproc;
 void iosched_check(void)
 {
 	tty_handle_keyboard_interrupt();
+	/* Check for system time changes */
+	uchar cmos_val = cmos_read_interrupt();
+	if(cmos_val == 144)
+	{
+		/* Clock update */
+		ktime_update();
+	}
 }
 
 int block_keyboard_io(void* dst, int request_size)
@@ -28,12 +38,12 @@ int block_keyboard_io(void* dst, int request_size)
 	slock_acquire(&rproc->t->key_lock);
 
 	rproc->state = PROC_BLOCKED;
-        rproc->block_type = PROC_BLOCKED_IO;
-        rproc->io_type = PROC_IO_KEYBOARD;
-        rproc->io_recieved = 0;
-        rproc->io_request = request_size;
-        rproc->io_dst = dst;
-        memset(dst, 0, request_size);
+	rproc->block_type = PROC_BLOCKED_IO;
+	rproc->io_type = PROC_IO_KEYBOARD;
+	rproc->io_recieved = 0;
+	rproc->io_request = request_size;
+	rproc->io_dst = dst;
+	memset(dst, 0, request_size);
 
 	if(rproc->t->key_nls) 
 	{
@@ -99,7 +109,7 @@ void signal_keyboard_io(tty_t t)
 				if(ptable[x].t->key_full &&
 						ptable[x].t->key_write == 
 						ptable[x].t->key_read) break;
-				
+
 
 				/* Read a character */
 				char c = t->keyboard[t->key_read];

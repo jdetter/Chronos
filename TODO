@@ -7,7 +7,6 @@ Critical system calls
 kill
 link
 stat
-gettimeofday
 
 High priority system calls
 ==========================
@@ -109,6 +108,7 @@ create
 exit
 _exit
 execve
+gettimeofday
 
 +---------------------------------+
 | Features that need implementing |

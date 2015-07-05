@@ -7,7 +7,9 @@
 #include "panic.h"
 #include "cmos.h"
 
-#define INT8_ENABLE	(0x40 | 0x20)
+#define INT8_ENABLE_INTERVAL	0x40
+#define INT8_ENABLE_ALARM	0x20
+#define INT8_ENABLE_UPDATE	0x10
 
 #define CMOS_COMMAND 	0x70
 #define CMOS_DATA	0x71
@@ -28,25 +30,23 @@ void cmos_init(void)
 	pic_enable(INT_PIC_CMOS);
 
 	/* Change frequency */
-	int rate = 0x0D;
-	outb(CMOS_COMMAND, 0x8A); /* Select register A*/
-	char regA = inb(CMOS_DATA);
-	cprintf("Old rega val: 0x%x\n", regA);
-	outb(CMOS_COMMAND, 0x8A);
-	outb(CMOS_COMMAND, (regA & 0xF0) | (rate & 0x0F));
+	//uint rate = 0x0D;
+	//outb(CMOS_COMMAND, 0x8A); /* Select register A*/
+	//uchar regA = inb(CMOS_DATA);
+	//outb(CMOS_COMMAND, 0x8A);
+	//outb(CMOS_COMMAND, (regA & 0xF0) | (rate & 0x0F));
 
 	/* Change seconds alarm */
-	outb(CMOS_COMMAND, 0x81); /* Select register 0x01 */
-	outb(CMOS_DATA, 0x01);
+	//outb(CMOS_COMMAND, 0x81); /* Select register 0x01 */
+	//outb(CMOS_DATA, 0x05);
 
 	/* Change minutes alarm */
-	outb(CMOS_COMMAND, 0x83); /* Select register 0x03*/
-	outb(CMOS_DATA, 0x00);
+	//outb(CMOS_COMMAND, 0x83); /* Select register 0x03*/
+	//outb(CMOS_DATA, 0x00);
 
-	/* Enable interrupt 8 */
+	/* Enable interrupt 8 - alarm */
 	outb(CMOS_COMMAND, 0x8B); /* Select register B*/
-	char regB = inb(CMOS_DATA) | INT8_ENABLE;
-	//cprintf("Old regb val: 0x%x\n", regB);
+	uchar regB = inb(CMOS_DATA) | INT8_ENABLE_UPDATE;
 	outb(CMOS_COMMAND, 0x8B);
 	outb(CMOS_DATA, regB); /* Write int8_enable flag */
 
