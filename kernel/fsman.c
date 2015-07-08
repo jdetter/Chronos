@@ -80,7 +80,7 @@ void fsman_init(void)
 
 	/* make sure there is a dev folder */
 	vsfs->mkdir("/dev", 
-		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR, 
+		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR | S_IFDIR,
 		0x0, 0x0, vsfs->context);
 
 	/* Create a ramfs instance */

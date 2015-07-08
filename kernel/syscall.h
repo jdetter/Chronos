@@ -91,6 +91,7 @@ int sys_brk(void);
 int sys_sbrk(void);
 int sys_chmod(void);
 int sys_chown(void);
+int sys_mprotect(void);
 
 #define SYS_MAX SYS_chown /* System call with the greatest value */
 #define SYS_MIN SYS_fork /* System call with the smallest value */

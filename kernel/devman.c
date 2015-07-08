@@ -17,6 +17,7 @@
 #include "keyboard.h"
 #include "pic.h"
 #include "ramfs.h"
+#include "device.h"
 
 extern pgdir* k_pgdir;
 extern uint video_mode;
@@ -98,6 +99,7 @@ int dev_init()
 			tty_init(t, x, video_type, 1, video_mem);
 		tty_io_setup(&driver->io_driver, x);
 		/* Set mount point */
+		driver->type = DEV_TTY;
 		snprintf(driver->node, 
 			FILE_MAX_PATH, "/dev/tty%d", x);
 	}
@@ -118,6 +120,7 @@ int dev_init()
 		if(ata_drivers[x]->valid != 1) continue;
 		/* Valid ata driver */
 		driver = dev_alloc();
+		driver->type = DEV_TTY;
 		ata_io_setup(&driver->io_driver, ata_drivers[x]);
 		snprintf(driver->node,
 			FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
@@ -135,6 +138,7 @@ int dev_init()
 		/* Add serial to mask */
 		pic_enable(INT_PIC_COM1_CODE);
 		/* Set mount point */
+		driver->type = DEV_COM;
                 snprintf(driver->node,
                         FILE_MAX_PATH, "/dev/sl0", x);
 	}
@@ -155,9 +159,39 @@ void dev_populate(void)
 	int x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{
+		int type = drivers[x].type;
+		switch(type)
+		{
+			/* Character devices */
+			case DEV_IO:
+			case DEV_TTY:
+			case DEV_COM:
+				type = S_IFCHR;
+				break;
+			/* Block devices */
+			case DEV_DISK_PART:
+			case DEV_DISK:
+			case DEV_RAM:
+			case DEV_LOOP:
+				type = S_IFBLK;
+				break;
+			case DEV_PIPE:
+				type = S_IFIFO;
+				break;
+			case DEV_SOCK:
+				type = S_IFSOCK;
+				break;
+			default:
+				type = 0;
+				cprintf("Invalid device: %d\n", x);
+				break;
+		}
+		if(!type) continue;
+
 		if(drivers[x].valid)
 		{
-			fs_mknod(drivers[x].node, x, drivers[x].type, dev_perm);
+			fs_mknod(drivers[x].node, x, drivers[x].type, 
+				dev_perm | type);
 		}
 	}
 }

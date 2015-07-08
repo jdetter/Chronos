@@ -331,4 +331,9 @@ int fs_rmdir(const char* path);
  */
 int fs_mknod(const char* path, int dev, int dev_type, int perm);
 
+/**
+ * Truncate a file to a specific length. Returns 0 on success.
+ */
+int fs_truncate(inode i, int sz);
+
 #endif

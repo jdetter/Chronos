@@ -304,6 +304,12 @@ uint unmappage(uint virt, pgdir* dir);
 uint findpg(uint virt, int create, pgdir* dir, uchar user);
 
 /**
+ * Set the flags on a specific page table entry. Doesn't change page directory
+ * flags.
+ */
+uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags);
+
+/**
  * Free all pages in the page table and free the directory itself.
  */
 void freepgdir(pgdir* dir);

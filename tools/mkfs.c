@@ -75,7 +75,7 @@ int add_dir(char* directory, char* path)
 			}	
 			if(S_ISDIR(s.st_mode))
 			{
-				new_inode.perm |= 0111;
+				new_inode.perm = s.st_mode;
 				new_inode.type = VSFS_DIR;
 				
 				/* Link the directory */
@@ -86,7 +86,7 @@ int add_dir(char* directory, char* path)
 			} else if(S_ISREG(s.st_mode))
 			{
 				printf("Adding file: %s\n", name);
-				new_inode.perm = s.st_mode & 511;
+				new_inode.perm = s.st_mode;
 				new_inode.type = VSFS_FILE;
 				/* Link the file */
 				int inode_num = 
@@ -290,7 +290,7 @@ int main(int argc, char** argv)
 	/* Create root inode. */
 	struct vsfs_inode root_i;
 	vsfs_clear(&root_i);
-	root_i.perm = 0644;
+	root_i.perm = 0644 | S_IFDIR;
 	root_i.links_count = 1;
 	root_i.type = VSFS_DIR;
 

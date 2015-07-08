@@ -29,23 +29,39 @@ int sys_open(void)
 {
 	const char* path;
 	int flags;
-	int permissions = 0x0;
+	mode_t mode = 0x0;
 
 	if(syscall_get_str_ptr(&path, 0)) return -1; 
 	if(syscall_get_int(&flags, 1)) return -1;
-
-	if(flags & O_CREATE)
-		if(syscall_get_int(&permissions, 2)) return -1;
-
 	int fd = find_fd();
 	if(fd == -1){
 		return -1;
 	}
+
+	if(flags & O_PATH)
+	{
+		strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
+		rproc->file_descriptors[fd].type = FD_TYPE_PATH;
+		return -1;
+	}
+
+	int created = 0;
+	if(flags & O_CREATE)
+	{
+		if(syscall_get_int((int*)&mode, 2)) return -1;
+		created = fs_create(path, flags, mode, rproc->uid, rproc->gid);
+	}
+
+	/* Check for O_EXCL */
+	if(flags & O_CREATE && flags & O_EXCL && !created)
+		return -1;
+
 	rproc->file_descriptors[fd].type = FD_TYPE_FILE;
 	rproc->file_descriptors[fd].flags = flags;
 	rproc->file_descriptors[fd].i = fs_open((char*) path, flags,
-			permissions, rproc->uid, rproc->uid);
-	if(rproc->file_descriptors[fd].i == NULL){
+			mode, rproc->uid, rproc->uid);
+	if(rproc->file_descriptors[fd].i == NULL)
+	{
 		memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
 		return -1;
 	}
@@ -53,7 +69,7 @@ int sys_open(void)
 	struct stat st;
 	fs_stat(rproc->file_descriptors[fd].i, &st);
 
-	if(S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode))
+	if(S_ISDEV(st.st_mode))
 	{
 		/* Get the driver open */
 		rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
@@ -61,6 +77,15 @@ int sys_open(void)
 		fs_read(rproc->file_descriptors[fd].i, &node, sizeof(struct devnode), 0);
 		rproc->file_descriptors[fd].device = &dev_lookup(node.dev)->io_driver;
 	}
+
+	if(flags & O_DIRECTORY && !S_ISDIR(st.st_mode))
+	{
+		memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
+                return -1;
+	}
+
+	if(flags & O_TRUNC && S_ISREG(st.st_mode))
+		fs_truncate(rproc->file_descriptors[fd].i, 0);
 
 	rproc->file_descriptors[fd].seek = 0;
 	return fd;
@@ -304,8 +329,6 @@ int sys_fstat(void)
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
 
-	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
-		return -1;
 	return fs_stat(rproc->file_descriptors[fd].i, dst);
 }
 

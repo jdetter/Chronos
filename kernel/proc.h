@@ -13,6 +13,7 @@
 #define FD_TYPE_FILE 	0x04
 #define FD_TYPE_DEVICE 	0x05
 #define FD_TYPE_PIPE	0x06
+#define FD_TYPE_PATH	0x07
 
 #define FD_PIPE_MODE_NULL  0x00
 #define FD_PIPE_MODE_WRITE 0x01
@@ -27,6 +28,7 @@ struct file_descriptor
 	struct IODriver* device;
 	pipe_t pipe;
 	uchar pipe_type;
+	char path[FILE_MAX_PATH];
 };
 
 #define MAX_FILES 0x20

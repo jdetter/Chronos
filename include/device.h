@@ -14,5 +14,6 @@
 #define DEV_RAM         0x0006 /* Memory */
 #define DEV_LOOP        0x0007 /* Loop device */
 #define DEV_COM         0x0008 /* Serial port */
+#define DEV_SOCK        0x000
 
 #endif

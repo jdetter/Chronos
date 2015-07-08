@@ -63,14 +63,14 @@
 
 /* Linux file macros */
 
-#define S_ISDEV(m) ((ISBLK(m)) || (ISCHR(m)) || (IS_FIFO(m)))
-
 #define S_ISBLK(m) (((m) & S_IFMT) == S_IFBLK)
 #define S_ISCHR(m) (((m) & S_IFMT) == S_IFCHR)
 #define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
 #define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
+
+#define S_ISDEV(m) ((S_ISBLK(m)) || (S_ISCHR(m)) || (S_ISFIFO(m)))
 
 /* POSIX.1b objects UNUSED - compatibility */
 #define S_TYPEISMQ(buf)  ((buf)->st_mode - (buf)->st_mode)

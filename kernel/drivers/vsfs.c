@@ -180,7 +180,7 @@ int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
 	/* Create root inode. */
         struct vsfs_inode root_i;
         vsfs_clear(&root_i);
-        root_i.perm = 0644;
+        root_i.perm = 0644 | S_IFDIR;
         root_i.links_count = 1;
         root_i.type = VSFS_DIR;
 
@@ -246,7 +246,7 @@ int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
 	if(ino != 0) return 0; /* file exists */
 
 	in.type = VSFS_FILE;
-	in.perm = permissions;
+	in.perm = permissions | S_IFREG;
 	in.uid = uid;
 	in.gid = gid;
 	
@@ -305,7 +305,7 @@ int vsfs_mkdir(const char* path, uint permissions,
         if(ino != 0) return -1; /* file exists */
 
         in.type = VSFS_DIR;
-        in.perm = permissions;
+        in.perm = permissions | S_IFDIR;
         in.uid = uid;
         in.gid = gid;
 
@@ -370,6 +370,13 @@ int vsfs_rmdir(const char* path, struct vsfs_context* context)
 int vsfs_mknod(const char* path, uint dev, uint dev_type, 
 		uint perm, struct vsfs_context* context)
 {
+	/* Force correct permissions */
+	if(!S_ISDEV(perm))
+	{
+		perm &= ~S_IFMT;
+		perm |= S_IFCHR;
+	}
+
 	/* Link file */
 	vsfs_inode in;
 	memset(&in, 0, sizeof(vsfs_inode));
@@ -1004,6 +1011,10 @@ void read_inode(uint inode_num, vsfs_inode* inode,
 int vsfs_link(const char* path, vsfs_inode* new_inode,
 		struct vsfs_context* context)
 {
+  /* Force correct permissions */
+  if((new_inode->perm & S_IFMT) == 0)
+    new_inode->perm |= S_IFREG;
+
   /* Create a temporary buffer for our path*/
   char tmp_path[FILE_MAX_PATH];
   strncpy(tmp_path, path, FILE_MAX_PATH);

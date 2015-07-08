@@ -39,16 +39,16 @@
 #define SYS_chown	0x21
 
 /**
- * For use in function lseek:
+ * For use in function lseek: (Linux Compliant)
  *  + SEEK_SET Sets the current seek from the start of the file.
  *  + SEEK_CUR Adds the value to the current seek
  *  + SEEK_END Sets the current seek from the end of the file.
  */
-#define SEEK_SET 0x01
-#define SEEK_END 0x02
-#define SEEK_CUR 0x04
-#define SEEK_DATA 0x08
-#define SEEK_HOLE 0x10
+#define SEEK_SET   0x00
+#define SEEK_END   0x01
+#define SEEK_CUR   0x02
+#define SEEK_DATA  0x03
+#define SEEK_HOLE  0x04
 
 /* Segment descriptions */
 /* Null segment		0x00 */
@@ -63,65 +63,65 @@
 #define SYS_EXIT_BASE	((SEG_USER_CODE << 3) - 16)
 
 /**
- * Protectections for mmap
+ * Protectections for mmap and mprotect
  */
 #define PROT_NONE	0x00
-#define PROT_EXE	0x01
-#define PROT_READ	0x02
-#define PROT_WRITE	0x04
+#define PROT_READ	0x01
+#define PROT_WRITE	0x02
+#define PROT_EXE	0x04
+#define PROT_GROWSDOWN  0x01000000
+#define PROT_GROWSUP    0x02000000
 
 /**
  * Flags for mmap.
  */
-#define MAP_ANONYMOUS   0x01	/* Mapping is not backed by a file */
+#define MAP_TYPE	0x0f 	/* Mask that determines the type of map */
+#define MAP_SHARED 	0x01	/* Share this mapping (fork) */
+#define MAP_PRIVATE	0x02	/* Set mapping to Copy on Write */
+#define MAP_FIXED	0x10	/* Do not take addr as a hint. */
+#define MAP_ANONYMOUS   0x20	/* Mapping is not backed by a file */
+#define MAP_32BIT	0x40	/* Only map 32bit addresses */
 #define MAP_ANON        MAP_ANONYMOUS /* DEPRICATED */
-#define MAP_SHARED 	0x02	/* Share this mapping (fork) */
-#define MAP_PRIVATE	0x03	/* Set mapping to Copy on Write */
-#define MAP_DENYWRITE	0x04	/* Ignored */
-#define MAP_EXECUTABLE 	0x05	/* Ignored */
-#define MAP_FILE 	0x06	/* Ignored */
-#define MAP_FIXED	0x07	/* Do not take addr as a hint. */
-#define MAP_GROWSDOWN	0x08	/* Used for stacks. */
-#define MAP_MAP_HUGETLB 0x09	/* Huge pages (ignored ) */
-#define MAP_HUGE_2MB	0x0A	/* 2MB pages (ignored) */
-#define MAP_HUGE_1GB	0x0B	/* 1GB pages (ignored) */
-#define MAP_LOCKED	0x0C	/* Lock the pages of this mapped region */
-#define MAP_NONBLOCK	0x0D	/* Ignored for now */
-#define MAP_NORESERVE	0x0E	/* Do not reserve swap space */
-#define MAP_32BIT	0x0F	/* Compatibility flag */
-#define MAP_POPULATE	0x10	/* Prefault page tables */
-#define MAP_STACK	0x11	/* Suitable for thread stacks */
-#define MAP_UNINITIALIZED 0	/* Ignored by Chronos */
+#define MAP_FILE 	0x00	/* DEPRICATED */
+#define MAP_GROWSDOWN	0x00100	/* Used for stacks. */
+#define MAP_DENYWRITE	0x00800	/* DEPRICATED */
+#define MAP_EXECUTABLE	0x01000	/* DEPRICATED */
+#define MAP_LOCKED	0x02000	/* Lock the page with mlock. */
+#define MAP_NORESERVE	0x04000	/* Do not reserve swap space for this mapping. */
+#define MAP_POPULATE	0x08000	/* Prepopulate the tlb. */
+#define MAP_NONBLOCK	0x10000	/* Used with populate. */
+#define MAP_STACK	0x20000	/* Marks allocation as a stack. */
+#define MAP_HUGETLB	0x40000	/* Allocate huge pages. */
+#define MAP_UNINITIALIZED 0x0	/* Disabled in Chronos. */
+
 
 /**
- * Flag options for use in open:
+ * Flag options for use in open. (Linux Compliant)
  */
-#define O_RDONLY  0x00000001  /* Open for reading */
-#define O_WRONLY  0x00000002  /* Open for writing */
-#define O_RDWR    (O_RDONLY | O_WRONLY)
-#define O_CREATE  0x00000004  /* If the file has not been created, create it. */
-#define O_CREAT   O_CREATE    /* Linux compatibility flag */
-#define O_ASYNC   0x00000010  /* Enables signal-driven io. */
-#define O_APPEND  0x00000020  /* Start writing to the end of the file. */
-#define O_DIR     0x00000040  /* Fail to open the file unless it is a directory. */
-#define O_DIRECTORY O_DIR     /* Linux compatibility */
-#define O_NOATIME 0x00000100  /* Do not change access time when file is opened. */
-#define O_TRUC    0x00000200  /* Once the file is opened, truncate the contents. */
-#define O_SERASE  0x00000400  /* Securely erase files when deleting or truncating */
-#define O_CLOEXEC 0x00000800  /* Close this file descriptor on a call to exec */
-#define O_DIRECT  0x00001000  /* Minimize cache effects on the io from this file */
-#define O_DSYNC   0x00002000  /* Write operations on the file complete immediatly*/
-#define O_EXCL    0x00004000  /* Fail if this call doesn't create a file. */
-#define O_LARGEFILE 0x00008000/* Allow files to be represented with off64_t */
-#define O_NOCTTY  0x00010000  /* Do not allow the tty to become the proc's tty  */
-#define O_NOFOLLOW 0x00020000 /* If the path is a symlink, fail to open.  */
-#define O_NONBLOCK 0x0004000  /* Open the file in non blocking mode. */
-#define O_NDELAY  O_NONBLOC   /* Linux Compatibility */
-#define O_PATH    0x00100000  /* Only use the fd to represent a path */
-#define O_SYNC    0x00200000  /* Don't return until metadata is pushed to disk  */
-#define O_TMPFILE 0x00400000  /* Open the directory and create a tmp file */
-#define O_TRUNC   0x00800000  /* If the file exists, truncate its contents. */
-
+#define O_RDONLY  00000000  /* Open for reading */
+#define O_WRONLY  00000001  /* Open for writing */
+#define O_RDWR    00000002  /* Open for reading and writing */
+#define O_CREATE  00000100  /* If the file has not been created, create it. */
+#define O_CREAT   O_CREATE  /* Linux compatibility flag */
+#define O_EXCL    00000200  /* Fail if this call doesn't create a file. */
+#define O_NOCTTY  00000400  /* Do not allow the tty to become the proc's tty  */
+#define O_TRUNC    00001000 /* Once the file is opened, truncate the contents. */
+#define O_APPEND  00002000  /* Start writing to the end of the file. */
+#define O_NONBLOCK 0004000  /* Open the file in non blocking mode. */
+#define O_NDELAY  O_NONBLOC /* Linux Compatibility */
+#define O_SYNC    04010000  /* Don't return until metadata is pushed to disk  */
+#define O_FSYNC   O_SYNC    /* Linux compatibility. */
+#define O_ASYNC   00020000  /* Enables signal-driven io. */
+#define O_LARGEFILE 00100000/* Allow files to be represented with off64_t */
+#define O_DIR     00200000  /* Fail to open the file unless it is a directory. */
+#define O_DIRECTORY O_DIR   /* Linux compatibility */
+#define O_NOFOLLOW 00400000 /* If the path is a symlink, fail to open.  */
+#define O_CLOEXEC  02000000 /* Close this file descriptor on a call to exec */
+#define O_DIRECT   00040000 /* Minimize cache effects on the io from this file */
+#define O_NOATIME  01000000 /* Do not change access time when file is opened. */
+#define O_PATH    010000000 /* Only use the fd to represent a path */
+#define O_DSYNC   0010000   /* Write operations on the file complete immediatly*/
+#define O_TMPFILE 020200000 /* Open the directory and create a tmp file */
 
 #define MAX_ARG		0x20
 

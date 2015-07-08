@@ -59,7 +59,8 @@ int (*syscall_table[])(void) = {
 	sys_brk,
 	sys_sbrk,
 	sys_chmod,
-	sys_chown	
+	sys_chown,
+	sys_mprotect
 };
 
 int syscall_handler(uint* esp)
@@ -292,3 +293,39 @@ int sys_tty_cursor(void)
 	tty_set_cursor_pos(rproc->t, pos, TTY_MODE_GRAPHIC);
 	return 0;
 }
+
+/* int mprotect(void* addr, size_t len, int prot)*/
+int sys_mprotect(void)
+{
+	void* addr;
+	size_t len;
+	int prot;
+
+	if(syscall_get_int((int*)&addr, 0)) return -1;
+	if(syscall_get_int((int*)&len, 1)) return -1;
+	if(syscall_get_int(&prot, 2)) return -1;
+
+	size_t start = (int)addr;
+	/* Start address must be page aligned.*/
+	if(PGROUNDDOWN(start) != start) return -1;
+	/* Start must be greater than 0x0 */
+	if(start == 0x0) return -1;
+	/* Start must be in the user address space */
+	if(start >= UVM_KVM_S) return -1;
+
+	size_t end = (int)(start + len);
+	
+	uchar flags = 0;
+	if(prot & PROT_READ) flags |= 0;
+	if(prot & PROT_WRITE) flags |= PGTBL_RW;
+	if(prot & PROT_READ) flags |= 0;
+
+	
+	size_t x;
+	for(x = start;x < end;x += PGSIZE)
+		pgflags(x, rproc->pgdir, 1, flags);
+
+	return 0;
+}
+
+

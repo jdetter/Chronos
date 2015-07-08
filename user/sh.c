@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 				break;
 				case OP_FILE:
 				fd_file = open(cmd_buff[i+1], 
-					O_CREATE|O_WRONLY|O_TRUC,
+					O_CREATE|O_WRONLY | O_TRUNC,
 					PERM_ARD | PERM_GWR | PERM_UWR);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");

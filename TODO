@@ -1,11 +1,10 @@
 System Calls that need implementing: (lookup parameters on man7.org)
 ====================================
 
-open
-fstat
-lstat
+open: add support for symbolic links
+lstat: add support for symbolic links
 poll
-mprotect
+mprotect: add support for NX protection
 rt_sigaction
 rt_sigprocmask
 rt_sigreturn
