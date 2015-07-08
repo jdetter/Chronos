@@ -108,4 +108,9 @@ int trim(char* str);
  */
 int ascii_char(char c);
 
+/**
+ * Convert a bcd coded byte into its binary equivalent.
+ */
+uchar bcdtobin(uchar val);
+
 #endif

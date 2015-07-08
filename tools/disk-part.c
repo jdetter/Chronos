@@ -10,11 +10,12 @@
  *
  *
  * example:
- *  disk-part -p 1,64,4096,7 -p 2,6000,1024,6
+ *  disk-part -p 1,64,4096,7 -p 2,6000,1024,6 disk.img
  *
  *  ^ This will create 2 partitions: one partition starting at sector 64 that
  *         contains 4096 sectors with type 7 (NTFS) and one partition starting 
  * 	   at sector 6000 that contains 1024 sectors. With type 6 (FAT16)
+ *	   and it will use disk.img as the disk to configure.
  *
  * NOTE: use classical generic MBR formatting:
  * - https://en.wikipedia.org/wiki/Master_boot_record#Sector_layout

@@ -35,7 +35,9 @@ KERNEL_DRIVERS := \
 	serial \
 	console \
         vsfs \
-	ramfs
+	ramfs \
+	cmos \
+	rtc
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))

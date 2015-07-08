@@ -13,10 +13,12 @@
 #include "pipe.h"
 #include "proc.h"
 #include "vm.h"
+#include "cmos.h"
 #include "panic.h"
 #include "idt.h"
 #include "x86.h"
 #include "cpu.h"
+#include "rtc.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -79,6 +81,17 @@ void main_stack(void)
 	cprintf("Populating the dev folder...\t\t\t\t\t\t");
 	dev_populate();
 	cprintf("[ OK ]\n");
+
+	/* Initilize CMOS */
+	cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
+	cmos_init();
+	cprintf("[ OK ]\n");
+
+	struct rtc_t r;
+	rtc_update(&r);
+	cprintf("The time is: %d:%d:%d %d/%d/%d",
+		r.seconds, r.minutes, r.hours,
+		r.day, r.month, r.year);
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");

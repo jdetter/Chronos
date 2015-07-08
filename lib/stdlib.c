@@ -363,3 +363,10 @@ int ascii_char(char c)
 	return 1;
 	
 }
+
+uchar bcdtobin(uchar val)
+{
+	uchar high = (val & 0xF0) >> 4;
+	uchar low = val & 0x0F;
+	return (high * 10) + low;
+}
