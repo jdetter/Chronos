@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 	int result = fork();
 	if(result > 0)
 	{
-		wait(result);
+		waitpid(result, NULL, 0);
 		printf("Warning: sh has exited.\n");
 		for(;;);
 	} else {

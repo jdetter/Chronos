@@ -101,8 +101,9 @@ int sys_link(void);
 int sys_stat(void);
 int sys_times(void);
 int sys_gettimeofday(void);
+int sys_waitpid(void);
 
-#define SYS_MAX SYS_gettimeofday /* System call with the greatest value*/
+#define SYS_MAX SYS_waitpid /* System call with the greatest value*/
 #define SYS_MIN SYS_fork /* System call with the smallest value */
 
 #endif

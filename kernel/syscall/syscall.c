@@ -68,7 +68,8 @@ int (*syscall_table[])(void) = {
 	sys_link,
 	sys_stat,
 	sys_times,
-	sys_gettimeofday
+	sys_gettimeofday,
+	sys_waitpid
 };
 
 /* int isatty(int fd); */

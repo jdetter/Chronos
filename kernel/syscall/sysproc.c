@@ -104,11 +104,19 @@ int sys_fork(void)
 }
 
 
-/* int wait(int pid) */
-int sys_wait(void)
+/* int waitpid(int pid, int* status, int options) */
+int sys_waitpid(void)
 {
 	int pid;
+	int* status;
+	int options = 0;
+	if(options);
 	if(syscall_get_int(&pid, 0)) return -1;
+	if(syscall_get_int((int*)&status, 1)) return -1;
+	if(status != NULL && syscall_get_buffer_ptr(
+			(void**)&status, sizeof(int), 1))
+		return -1;
+	if(syscall_get_int(&pid, 2)) return -1;
 
 	slock_acquire(&ptable_lock);
 
@@ -119,7 +127,7 @@ int sys_wait(void)
 		int process;
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
-			if(ptable[process].state == PROC_KILLED
+			if(ptable[process].state == PROC_ZOMBIE
 					&& ptable[process].parent == rproc)
 			{
 				if(pid == -1 || ptable[process].pid == pid)
@@ -134,6 +142,8 @@ int sys_wait(void)
 		{
 			/* Harvest the child */
 			ret_pid = p->pid;
+			if(status)
+				*status = rproc->return_code;
 			/* Free used memory */
 			freepgdir(p->pgdir);
 
@@ -148,6 +158,7 @@ int sys_wait(void)
 
 			memset(p, 0, sizeof(struct proc));
 			p->state = PROC_UNUSED;
+
 			break;
 		} else {
 			/* Lets block ourself */
@@ -165,6 +176,12 @@ int sys_wait(void)
 	slock_release(&ptable_lock);
 
 	return ret_pid;
+}
+
+/* int wait(int* status) */
+int sys_wait(void)
+{
+	return -1;
 }
 
 /* int exec(const char* path, const char** argv) */
@@ -307,12 +324,17 @@ int sys_exit(void)
 {
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
+	
+	int return_code;
+	rproc->return_code = 0;
+	if(syscall_get_int(&return_code, 0))
+		rproc->return_code = return_code;
 
-	/* Set state to killed */
-	rproc->state = PROC_KILLED;
+	/* Set state to zombie */
+	rproc->state = PROC_ZOMBIE;
 
 	/* Attempt to wakeup our parent */
-	if(rproc->zombie == 0)
+	if(rproc->orphan == 0)
 	{
 		if(rproc->parent->block_type == PROC_BLOCKED_WAIT)
 		{
@@ -335,7 +357,7 @@ int sys__exit(void)
 {
 	slock_acquire(&ptable_lock);
 	/* Set state to killed */
-	rproc->state = PROC_KILLED;
+	rproc->state = PROC_ZOMBIE;
 	/* Clear all of the file descriptors (LEAK) */
 	int x;
 	for(x = 0;x < MAX_FILES;x++)

@@ -47,6 +47,7 @@
 #define SYS_stat	0x29
 #define SYS_times	0x2A
 #define SYS_gettimeofday 0x2B
+#define SYS_waitpid	0x2C
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -152,11 +153,15 @@
 int fork(void);
 
 /**
- * Wait for a child process with the pid. If pid is -1, wait for any child
- * to exit. Only parents can wait for their children. Children of other
- * processes cannot be waited on.
+ * Wait for a child process with the pid. If pid is -1, wait for any child 
+ * process. If pid < -1, wait for any child whose process group id is equal
+ * to the absolute value of pid. 0 means wait for any child process whose
+ * process group id is equal to that of the calling process. > 0 means wait
+ * for a child process whose pid is equal to the specified pid. The status 
+ * argument should be specified for the resulting exit code of the child.
+ * Returns the pid of the process that was waited on.
  */
-int wait(int pid);
+int waitpid(int pid, int* status, int options);
 
 /**
  * Replace the currently running process with the process designated by the

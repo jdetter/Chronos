@@ -214,7 +214,7 @@ int main(int argc, char** argv)
 		for(i = 0;i < MAX_CMD;i++)
 		{
 			if(pids[i] <= 0) break;
-			wait(pids[i]);
+			waitpid(pids[i], NULL, 0);
 		}
 
 		for(i = 0;i < MAX_CMD;i++)
