@@ -13,5 +13,5 @@ int main(int argc, char* argv[])
 		printf("%s\n", argv[i]);
 		rmdir(argv[i]);
 	}
-	exit();
+	exit(0);
 }

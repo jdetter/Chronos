@@ -89,9 +89,10 @@ void main_stack(void)
 
 	struct rtc_t r;
 	rtc_update(&r);
-	cprintf("The time is: %d:%d:%d %d/%d/%d",
-		r.seconds, r.minutes, r.hours,
-		r.day, r.month, r.year);
+	char time_dst[512];
+	rtc_str(time_dst, 512, &r);
+
+	cprintf("The time is: %s\n", time_dst);
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");

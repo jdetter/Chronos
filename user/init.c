@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
 	
 	for(;;)printf("");
-	exit();
+	exit(0);
 	return 0;
 }
 

@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 		if(!memcmp(in_buff, "exit", 4) &&
 			strlen(in_buff) == 4)
 		{
-			exit();
+			exit(0);
 		}
 		int cur_cmd;
 		int cur_op;
@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 					}	
 				}
 				runprog(cmd);
-				exit();
+				exit(1);
 			} else pids[i] = f;
 		}
 

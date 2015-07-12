@@ -24,6 +24,16 @@ static int find_fd(void)
         return -1;
 }
 
+int sys_link(void)
+{
+	return -1;
+}
+
+int sys_stat(void)
+{
+	return -1;
+}
+
 /* int open(const char* path, int flags, ...); */
 int sys_open(void)
 {

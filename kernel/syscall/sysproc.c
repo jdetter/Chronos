@@ -12,8 +12,9 @@
 #include "stdlib.h"
 #include "vm.h"
 #include "trap.h"
+#include "panic.h"
 
-extern int next_pid;
+extern pid_t next_pid;
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 extern struct proc ptable[];
@@ -287,6 +288,21 @@ int sys_exec(void)
 	return 0;
 }
 
+int sys_execve(void)
+{
+	return -1;
+}
+
+int sys_getpid(void)
+{
+	return rproc->pid;
+}
+
+int sys_kill(void)
+{
+	return -1;
+}
+
 int sys_exit(void)
 {
 	/* Acquire the ptable lock */
@@ -312,6 +328,26 @@ int sys_exit(void)
 
 	/* Release ourself to the scheduler, never to return. */
 	yield_withlock();
+	return 0;
+}
+
+int sys__exit(void)
+{
+	slock_acquire(&ptable_lock);
+	/* Set state to killed */
+	rproc->state = PROC_KILLED;
+	/* Clear all of the file descriptors (LEAK) */
+	int x;
+	for(x = 0;x < MAX_FILES;x++)
+		rproc->file_descriptors[x].type = 0x0;
+
+	/* release the lock */
+	slock_release(&ptable_lock);
+
+	/* Finish up with a call to exit() */
+	sys_exit();
+	/* sys_exit doesn't return */
+	panic("sys_exit returned!\n");
 	return 0;
 }
 

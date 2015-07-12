@@ -11,5 +11,5 @@ int main(int argc, char** argv)
 	char* c = NULL;
 	*c = 0;
 
-	exit();
+	exit(0);
 }

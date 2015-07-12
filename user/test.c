@@ -14,5 +14,5 @@ int main(int argc, char** argv)
 	printf("result: %d\n", result);
 	proc_dump();
 
-	exit();
+	exit(0);
 }

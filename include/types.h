@@ -17,11 +17,14 @@ typedef unsigned long uint_64;
 
 typedef unsigned int off_t; /* Used to represent file offsets */
 typedef unsigned int size_t; /* Used to represent the size of an object. */
-typedef unsigned int uid_t; /* User id*/
-typedef unsigned int gid_t; /* Group id*/
+typedef signed int uid_t; /* User id*/
+typedef signed int gid_t; /* Group id*/
 
 /* File permissions */
 typedef unsigned int mode_t;
+
+typedef signed int pid_t; /* Process ID */
+typedef signed int clock_t;
 
 /* NULL */
 #define NULL ((void*)0)
@@ -33,6 +36,7 @@ typedef unsigned int nlink_t;
 typedef unsigned int blksize_t;
 typedef unsigned int blkcnt_t;
 typedef signed int time_t;
+typedef signed int suseconds_t;
 
 #endif
 

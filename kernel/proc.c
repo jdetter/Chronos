@@ -29,7 +29,7 @@ struct proc* init_proc;
 /* A pointer into the ptable of the running process */
 struct proc* rproc;
 /* The next available pid */
-uint next_pid;
+pid_t next_pid;
 /* The context of the scheduler right before user process gets scheduled. */
 extern uint  k_context;
 extern uint k_stack;

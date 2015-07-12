@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 	if(fd_dir < 0)
 	{
 		printf("ls: file not found: %s\n", path);
-		exit();
+		exit(1);
 	}
 
 	uint size = 0;
@@ -82,13 +82,13 @@ int main(int argc, char* argv[])
 			x, size / 1024);
 	}
 
-	exit();
+	exit(0);
 }
 
 void usage(void)
 {
 	printf("Usage: ls [-al] [path]\n");
-	exit();
+	exit(1);
 }
 
 void get_perm(struct stat* st, char* dst)

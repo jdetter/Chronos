@@ -14,5 +14,5 @@ int main(int argc, char* argv[])
 		mkdir(argv[i], PERM_ARD | PERM_AEX
 			| PERM_UWR | PERM_GWR);
 	}
-	exit();
+	exit(1);
 }
