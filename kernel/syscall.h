@@ -92,8 +92,18 @@ int sys_sbrk(void);
 int sys_chmod(void);
 int sys_chown(void);
 int sys_mprotect(void);
+int sys__exit(void);
+int sys_execve(void);
+int sys_getpid(void);
+int sys_isatty(void); /* newlib specific */
+int sys_kill(void);
+int sys_link(void);
+int sys_stat(void);
+int sys_times(void);
+int sys_gettimeofday(void);
+int sys_waitpid(void);
 
-#define SYS_MAX SYS_chown /* System call with the greatest value */
+#define SYS_MAX SYS_waitpid /* System call with the greatest value*/
 #define SYS_MIN SYS_fork /* System call with the smallest value */
 
 #endif

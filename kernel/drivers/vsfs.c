@@ -270,7 +270,7 @@ int vsfs_chmod(void* i, int ino_num, uint permission,
 		struct vsfs_context* context)
 {
 	struct vsfs_inode* in = i;
-	in->perm = permission;
+	in->perm = (in->perm & S_IFMT) | (permission & ~S_IFMT);
 	write_inode(ino_num, i, context);
 	return 0;
 }
@@ -296,8 +296,8 @@ int vsfs_sym_link(const char* file, const char* link,
 	return vsfs_soft_link(file, link, context);
 }
 
-int vsfs_mkdir(const char* path, uint permissions, 
-		uint uid, uint gid, struct vsfs_context* context)
+int vsfs_mkdir(const char* path, mode_t permissions, 
+		uid_t uid, gid_t gid, struct vsfs_context* context)
 {
         struct vsfs_inode in;
         /* First check if the file exists */

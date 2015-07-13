@@ -20,7 +20,7 @@
 #include "trap.h"
 #include "panic.h"
 
-extern uint next_pid;
+extern pid_t next_pid;
 extern slock_t ptable_lock; /* Process table lock */
 extern struct proc ptable[]; /* The process table */
 extern struct proc* rproc; /* The currently running process */
@@ -60,8 +60,39 @@ int (*syscall_table[])(void) = {
 	sys_sbrk,
 	sys_chmod,
 	sys_chown,
-	sys_mprotect
+	sys_mprotect,
+	sys__exit,
+	sys_execve,
+	sys_getpid,
+	sys_isatty, /* Specific to newlib */
+	sys_kill,
+	sys_link,
+	sys_stat,
+	sys_times,
+	sys_gettimeofday,
+	sys_waitpid
 };
+
+/* int isatty(int fd); */
+int sys_isatty(void)
+{
+	int fd;
+	if(syscall_get_int(&fd, 0)) return 1;
+
+	if(fd < 0 || fd > MAX_FILES) return 1;
+
+	switch(rproc->file_descriptors[fd].type)
+	{
+		case FD_TYPE_STDIN:
+		case FD_TYPE_STDOUT:
+		case FD_TYPE_STDERR:
+			return 1;
+			break;	
+		default: return 0;
+	}
+
+	return 0;
+}
 
 int syscall_handler(uint* esp)
 {
@@ -82,6 +113,16 @@ int syscall_handler(uint* esp)
 	return_value = syscall_table[syscall_number]();
 
 	return return_value; /* Syscall successfully handled. */
+}
+
+int sys_times(void)
+{
+        return -1;
+}
+
+int sys_gettimeofday(void)
+{
+	return -1;
 }
 
 /* int wait_s(struct cond* c, struct slock* lock) */
@@ -134,6 +175,8 @@ int sys_wait_t(void)
 	slock_release(&ptable_lock);
 	return 0;
 }
+
+
 
 /* int signal(struct cond* c) */
 int sys_signal(void)
@@ -314,13 +357,13 @@ int sys_mprotect(void)
 	if(start >= UVM_KVM_S) return -1;
 
 	size_t end = (int)(start + len);
-	
+
 	uchar flags = 0;
 	if(prot & PROT_READ) flags |= 0;
 	if(prot & PROT_WRITE) flags |= PGTBL_RW;
 	if(prot & PROT_READ) flags |= 0;
 
-	
+
 	size_t x;
 	for(x = start;x < end;x += PGSIZE)
 		pgflags(x, rproc->pgdir, 1, flags);

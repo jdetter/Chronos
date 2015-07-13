@@ -40,8 +40,8 @@ struct file_descriptor
 #define PROC_RUNNABLE 	0x03 /* Process has been ran before and is ready */
 #define PROC_RUNNING 	0x04 /* This process is currently on the CPU */
 #define PROC_BLOCKED 	0x05 /* This process is waiting on IO */
-#define PROC_ZOMBIE 	0x06 /* Parent process has been killed */
-#define PROC_KILLED 	0x07 /* Process is waiting for parent cleanup. */
+#define PROC_ZOMBIE 	0x06 /* Process called exit. (needs parent wait) */
+#define PROC_KILLED 	0x07 /* Process recieved kill signal. */
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -56,9 +56,13 @@ struct file_descriptor
 struct proc
 {
 	tty_t t; /* The tty this program is attached to. */
-	uint pid; /* The id of the process */
+	pid_t pid; /* The id of the process */
+	pid_t pgid; /* The process group */
+	pid_t tid; /* The ID of this thread (if its a thread) */
 	uint uid; /* The id of the user running the process */
+	uint euid; /* The effective uid of the process */
 	uint gid; /* The id of the group running the process */
+	uint egid; /* The effective gid of the process */
 	struct file_descriptor file_descriptors[MAX_FILES];
 	
 	uint state; /* The state of the process */
@@ -89,7 +93,8 @@ struct proc
 	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
 	int io_recieved; /* The actual amount of bytes recieved. */
 
-	uchar zombie; /* Whether or not the parent has been killed. */
+	uchar orphan; /* Whether or not the parent has been killed. */
+	int return_code; /* When the process finished, what did it return? */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME]; /* The name of the process */
 	char cwd[MAX_PATH_LEN]; /* Current working directory */

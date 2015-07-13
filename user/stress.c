@@ -32,11 +32,11 @@ int main(int argc, char** argv)
                         exec(arg1, argv);
 		} else { 
 			printf("Parent wait.\n");
-			wait(old);
-			wait(f);
+			waitpid(old, NULL, 0);
+			waitpid(f, NULL, 0);
 			printf("Parent is back.\n");
 		}
 	}
 
-	exit();
+	exit(0);
 }

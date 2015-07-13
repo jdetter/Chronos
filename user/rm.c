@@ -52,7 +52,7 @@ int confirm_delete(){
 
 void usage(){
 	printf("Usage: rm [-dfiRrv] file1, file2, ...");
-	exit();
+	exit(1);
 }
 
 int main(int argc, char** argv)
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
 				if(removed == -1){
 					if(user_input){
 						printf("rm: could not remove file %s\n", argv[j]);
-						exit();
+						exit(1);
 					}
 				}
 				if(print){
@@ -128,7 +128,7 @@ int main(int argc, char** argv)
 					if(rmdirret == -1){
 						if(user_input){
 							printf("rm: could not remove directory %s\n", argv[j]);
-							exit();
+							exit(1);
 						}
 					}
 					if(print){
@@ -138,11 +138,11 @@ int main(int argc, char** argv)
 				}
 				else{
 					printf("rm: -d or -r must be enabled to delete directories\n");
-					exit();
+					exit(1);
 				}
 			}
 		close(fd);
 		}
 	}
-	exit();
+	exit(0);
 }

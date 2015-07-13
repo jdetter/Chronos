@@ -12,8 +12,9 @@
 #include "stdlib.h"
 #include "vm.h"
 #include "trap.h"
+#include "panic.h"
 
-extern int next_pid;
+extern pid_t next_pid;
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 extern struct proc ptable[];
@@ -26,6 +27,10 @@ int sys_fork(void)
 	slock_acquire(&ptable_lock);
 	new_proc->k_stack = rproc->k_stack;
 	new_proc->pid = next_pid++;
+	new_proc->uid = rproc->uid;
+	new_proc->gid = rproc->gid;
+	new_proc->tid = 0; /* Not a thread */
+	new_proc->pgid = rproc->pgid;
 	new_proc->uid = rproc->uid;
 	new_proc->gid = rproc->gid;
 	new_proc->parent = rproc;
@@ -102,13 +107,24 @@ int sys_fork(void)
 	return new_proc->pid;
 }
 
-
-/* int wait(int pid) */
-int sys_wait(void)
+/* int waitpid(int pid, int* status, int options) */
+int sys_waitpid(void)
 {
 	int pid;
+	int* status;
+	int options = 0;
 	if(syscall_get_int(&pid, 0)) return -1;
+	if(syscall_get_int((int*)&status, 1)) return -1;
+	if(status != NULL && syscall_get_buffer_ptr(
+			(void**)&status, sizeof(int), 1))
+		return -1;
+	if(syscall_get_int(&options, 2)) return -1;
 
+	return waitpid(pid, status, options);
+}
+
+int waitpid(int pid, int* status, int options)
+{
 	slock_acquire(&ptable_lock);
 
 	int ret_pid = 0;
@@ -118,7 +134,7 @@ int sys_wait(void)
 		int process;
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
-			if(ptable[process].state == PROC_KILLED
+			if(ptable[process].state == PROC_ZOMBIE
 					&& ptable[process].parent == rproc)
 			{
 				if(pid == -1 || ptable[process].pid == pid)
@@ -133,6 +149,8 @@ int sys_wait(void)
 		{
 			/* Harvest the child */
 			ret_pid = p->pid;
+			if(status)
+				*status = rproc->return_code;
 			/* Free used memory */
 			freepgdir(p->pgdir);
 
@@ -147,6 +165,7 @@ int sys_wait(void)
 
 			memset(p, 0, sizeof(struct proc));
 			p->state = PROC_UNUSED;
+
 			break;
 		} else {
 			/* Lets block ourself */
@@ -164,6 +183,17 @@ int sys_wait(void)
 	slock_release(&ptable_lock);
 
 	return ret_pid;
+}
+
+/* int wait(int* status) */
+int sys_wait(void)
+{
+	int* status;
+	if(syscall_get_int((int*)&status, 0)) return -1;
+        if(status != NULL && syscall_get_buffer_ptr(
+                        (void**)&status, sizeof(int), 0))
+                return -1;
+	return waitpid(-1, status, 0);
 }
 
 /* int exec(const char* path, const char** argv) */
@@ -189,6 +219,19 @@ int sys_exec(void)
 			return -1;
 		}
 	}
+
+	uchar setuid = 0;
+	uchar setgid = 0;
+	/* Check for setuid and setgid */
+	inode i = fs_open(path, O_RDONLY, 0x0, 0x0, 0x0);
+	if(!i) return -1;
+	struct stat st;
+	if(fs_stat(i, &st)) return -1;
+	if(st.st_mode & S_ISUID)
+		setuid = 1;
+	if(st.st_mode & S_ISGID)
+		setuid = 1;
+	fs_close(i);
 
 	/* Create a copy of the path */
 	char program_path[MAX_PATH_LEN];
@@ -281,22 +324,48 @@ int sys_exec(void)
 	/* restore cwd */
 	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 
+	/* change permission if needed */
+	if(setuid)
+		rproc->euid = rproc->uid = st.st_uid;
+	if(setgid)
+		rproc->egid = rproc->gid = st.st_gid;
+
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
 
 	return 0;
 }
 
+int sys_execve(void)
+{
+	return -1;
+}
+
+int sys_getpid(void)
+{
+	return rproc->pid;
+}
+
+int sys_kill(void)
+{
+	return -1;
+}
+
 int sys_exit(void)
 {
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
+	
+	int return_code;
+	rproc->return_code = 0;
+	if(syscall_get_int(&return_code, 0))
+		rproc->return_code = return_code;
 
-	/* Set state to killed */
-	rproc->state = PROC_KILLED;
+	/* Set state to zombie */
+	rproc->state = PROC_ZOMBIE;
 
 	/* Attempt to wakeup our parent */
-	if(rproc->zombie == 0)
+	if(rproc->orphan == 0)
 	{
 		if(rproc->parent->block_type == PROC_BLOCKED_WAIT)
 		{
@@ -312,6 +381,29 @@ int sys_exit(void)
 
 	/* Release ourself to the scheduler, never to return. */
 	yield_withlock();
+	return 0;
+}
+
+int sys__exit(void)
+{
+	slock_acquire(&ptable_lock);
+	/* Set state to killed */
+	int return_code;
+	if(syscall_get_int(&return_code, 0)) return -1;
+	rproc->return_code = return_code;
+	rproc->state = PROC_ZOMBIE;
+	/* Clear all of the file descriptors (LEAK) */
+	int x;
+	for(x = 0;x < MAX_FILES;x++)
+		rproc->file_descriptors[x].type = 0x0;
+
+	/* release the lock */
+	slock_release(&ptable_lock);
+
+	/* Finish up with a call to exit() */
+	sys_exit();
+	/* sys_exit doesn't return */
+	panic("sys_exit returned!\n");
 	return 0;
 }
 

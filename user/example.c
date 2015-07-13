@@ -7,5 +7,5 @@
 int main(int argc, char** args)
 {
 	printf("Example program running.\n");
-	exit();
+	exit(0);
 }

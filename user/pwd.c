@@ -10,8 +10,8 @@ int main(int argc, char* argv[])
 	char buffer[256];
 	if(cwd(buffer, 256) == -1)
 	{
-		exit();
+		exit(1);
 	}
 	printf("%s \n", buffer);
-	exit();
+	exit(0);
 }
