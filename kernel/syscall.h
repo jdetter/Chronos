@@ -92,6 +92,12 @@ int sys_sbrk(void);
 int sys_chmod(void);
 int sys_chown(void);
 int sys_mprotect(void);
+int sys_getuid(void);
+int sys_setuid(void);
+int sys_getgid(void);
+int sys_setgid(void);
+int sys_gettid(void);
+int sys_getppid(void);
 
 #define SYS_MAX SYS_chown /* System call with the greatest value */
 #define SYS_MIN SYS_fork /* System call with the smallest value */
