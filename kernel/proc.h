@@ -56,13 +56,23 @@ struct file_descriptor
 struct proc
 {
 	tty_t t; /* The tty this program is attached to. */
+	pid_t sid; /* The session id*/
 	pid_t pid; /* The id of the process */
 	pid_t pgid; /* The process group */
 	pid_t tid; /* The ID of this thread (if its a thread) */
-	uint uid; /* The id of the user running the process */
-	uint euid; /* The effective uid of the process */
-	uint gid; /* The id of the group running the process */
-	uint egid; /* The effective gid of the process */
+	
+	uid_t uid; /* The id of the user running the process */
+	uid_t euid; /* The effective uid of the process */
+	uid_t suid; /* The saved uid */
+	uid_t ruid; /* The uid of the user that started the task. */
+	
+	gid_t gid; /* The id of the group running the process */
+	gid_t egid; /* The effective gid of the process */
+	gid_t sgid; /* The saved gid */
+	gid_t rgid; /* The gid of the user that started the task. */
+
+	mode_t umask; /* File creation mask */
+
 	struct file_descriptor file_descriptors[MAX_FILES];
 	
 	uint state; /* The state of the process */

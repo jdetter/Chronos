@@ -678,36 +678,41 @@ int sys_getcwd(void)
 	return sz;
 }
 
+/* pid_t getuid(void) */
 int sys_getuid(void){
 	return rproc->uid;
 }
 
+/* int setuid(uid_t uid)*/
 int sys_setuid(void){
 	uint id;
 	
-	if(syscall_get_int((int*)&id, 1)) return -1;
+	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->uid = id;
 	return 0;
 }
 
+/* gid_t getgid(void) */
 int sys_getgid(void){
 	return rproc->gid;
 }
 
+/* int setgid(gid_t gid)*/
 int sys_setgid(void){
 	uint id;
 	
-	if(syscall_get_int((*int)&id, 1)) return -1;
+	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->gid = id;
 	return 0;
 }
 
-pid_t sys_gettid(void){
+/* pid_t gettid(void) */
+int sys_gettid(void){
 	return rproc->tid;
 }
 
+/* pid_t getppid(void) */
 int sys_getppid(void){
+	if(!rproc->parent) return -1;
 	return (rproc->parent)->pid;
 }
-
-

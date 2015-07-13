@@ -107,7 +107,7 @@ int sys_getuid(void);
 int sys_setuid(void);
 int sys_getgid(void);
 int sys_setgid(void);
-pid_t sys_gettid(void);
+int sys_gettid(void);
 int sys_getppid(void);
 
 

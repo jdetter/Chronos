@@ -4,7 +4,6 @@
 
 Critical system calls
 =====================
-_exit - different than exit
 execve - different than exec
 kill
 link
@@ -76,7 +75,6 @@ System calls that need to be modified:
 lseek
 mmap
 munmap
-exit
 open: add support for symbolic links
 lstat: add support for symbolic links
 mprotect: add support for NX protection
@@ -109,6 +107,8 @@ waitpid
 getcwd
 creat
 create
+exit
+_exit
 
 +---------------------------------+
 | Features that need implementing |
