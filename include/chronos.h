@@ -15,11 +15,11 @@
 #define SYS_lseek	0x09
 #define SYS_mmap 	0x0A
 #define SYS_chdir 	0x0B
-#define SYS_cwd 	0x0C
+#define SYS_getcwd 	0x0C
 #define SYS_create 	0x0D
 #define SYS_mkdir 	0x0E
 #define SYS_rmdir 	0x0F
-#define SYS_rm 		0x10
+#define SYS_unlink	0x10
 #define SYS_mv 		0x11
 #define SYS_fstat 	0x12
 #define SYS_wait_s	0x13
@@ -48,6 +48,13 @@
 #define SYS_times	0x2A
 #define SYS_gettimeofday 0x2B
 #define SYS_waitpid	0x2C
+#define SYS_creat	0x2D
+#define SYS_getuid	0x2E
+#define SYS_setuid	0x2F
+#define SYS_getgid	0x30
+#define SYS_setgid	0x31
+#define SYS_gettid	0x32
+#define SYS_getppid	0x33
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -228,7 +235,7 @@ int chdir(const char* dir);
  * amount of characters put into the destination buffer. Returns -1 if the
  * buffer is not large enough to hold the path, 0 otherwise.
  */
-int cwd(char* dst, size_t sz);
+int getcwd(char* dst, size_t sz);
 
 /**
  * Create the file with the given permissions. If this call is successfull,
@@ -237,6 +244,11 @@ int cwd(char* dst, size_t sz);
  * returned.
  */
 int create(const char* file, mode_t mode);
+
+/**
+ * See create. Linux compatibility function.
+ */
+int creat(const char* file, mode_t mode);
 
 /**
  * Create the directory specified by the path. The directory will have the
@@ -257,7 +269,7 @@ int rmdir(const char* dir);
  * Remove the specified file. If the file is removed, 0 is returned. Otherwise
  * -1 is returned.
  */
-int rm(const char* file);
+int unlink(const char* file);
 
 /**
  * Move the specified file from orig to dst. If the file is moved, 0 is
@@ -447,6 +459,38 @@ time_t time(time_t* t);
  * -1 is returned.
  */
 int wait(int* status);
+
+/**
+ * Returns the uid of the calling process.
+ */
+pid_t getuid(void);
+
+/**
+ * Sets the uid of the calling process. Return 0 on success, -1 
+ * otherwise.
+ */
+int setuid(uid_t uid);
+
+/**
+ * Returns the gid of the calling process.
+ */
+gid_t getgid(void);
+
+/**
+ * Sets the gid of the calling process. Returns 0 on success, -1
+ * otherwise.
+ */
+int setgid(gid_t gid);
+
+/**
+ * Returns the tid of the calling process (thread).
+ */
+pid_t gettid(void);
+
+/**
+ * Returns the pid of the parent of the calling process.
+ */
+pid_t getppid(void);
 
 #endif
 

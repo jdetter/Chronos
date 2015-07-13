@@ -20,7 +20,7 @@ int rec_rmdir(char* dir){
 			char file_path[FILE_MAX_PATH];
 			strncpy(file_path, res_path, FILE_MAX_PATH);
 			strncat(file_path, dir_stuff.name, FILE_MAX_PATH);
-			rm(file_path);
+			unlink(file_path);
 		}
 		else if(S_ISDIR(st.st_mode)){
 			char dir_path[FILE_MAX_PATH];
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 
 			if(S_ISREG(file_dir.st_mode) 
 				|| S_ISLNK(file_dir.st_mode)){
-				int removed = rm(argv[j]);
+				int removed = unlink(argv[j]);
 				if(removed == -1){
 					if(user_input){
 						printf("rm: could not remove file %s\n", argv[j]);

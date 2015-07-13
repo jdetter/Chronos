@@ -4,7 +4,6 @@
 
 Critical system calls
 =====================
-_exit - different than exit
 execve - different than exec
 kill
 link
@@ -24,7 +23,6 @@ flock
 
 nanosleep
 reboot
-time
 
 getegid
 geteuid
@@ -77,17 +75,11 @@ System calls that need to be modified:
 lseek
 mmap
 munmap
-exit
 open: add support for symbolic links
 lstat: add support for symbolic links
 mprotect: add support for NX protection
-waitpid: needs renaming (wait)
-creat: needs renaming (create)
 readdir: needs linux compatibility
-getcwd: needs renaming (cwd)
 exec
-unlink: needs renaming (rm)
-waitpid: needs renaming (wait)
 
 Completely finished System calls:
 =================================
@@ -99,7 +91,7 @@ cwd
 chdir
 mkdir
 rmdir
-rm
+unlink
 dup
 dup2
 brk
@@ -112,6 +104,11 @@ getpid
 isatty
 wait
 waitpid
+getcwd
+creat
+create
+exit
+_exit
 
 +---------------------------------+
 | Features that need implementing |
