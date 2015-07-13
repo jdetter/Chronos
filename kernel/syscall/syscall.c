@@ -71,7 +71,13 @@ int (*syscall_table[])(void) = {
 	sys_times,
 	sys_gettimeofday,
 	sys_waitpid,
-	sys_create /* sys_creat == sys_create */
+	sys_create, /* sys_creat == sys_create */
+	sys_getuid,
+	sys_setuid,
+	sys_getgid,
+	sys_setgid,
+	sys_gettid,
+	sys_getppid
 };
 
 /* int isatty(int fd); */

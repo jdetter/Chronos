@@ -49,6 +49,12 @@
 #define SYS_gettimeofday 0x2B
 #define SYS_waitpid	0x2C
 #define SYS_creat	0x2D
+#define SYS_getuid	0x2E
+#define SYS_setuid	0x2F
+#define SYS_getgid	0x30
+#define SYS_setgid	0x31
+#define SYS_gettid	0x32
+#define SYS_getppid	0x33
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -453,6 +459,38 @@ time_t time(time_t* t);
  * -1 is returned.
  */
 int wait(int* status);
+
+/**
+ * Returns the uid of the calling process.
+ */
+pid_t getuid(void);
+
+/**
+ * Sets the uid of the calling process. Return 0 on success, -1 
+ * otherwise.
+ */
+int setuid(uid_t uid);
+
+/**
+ * Returns the gid of the calling process.
+ */
+gid_t getgid(void);
+
+/**
+ * Sets the gid of the calling process. Returns 0 on success, -1
+ * otherwise.
+ */
+int setgid(gid_t gid);
+
+/**
+ * Returns the tid of the calling process (thread).
+ */
+pid_t gettid(void);
+
+/**
+ * Returns the pid of the parent of the calling process.
+ */
+pid_t getppid(void);
 
 #endif
 
