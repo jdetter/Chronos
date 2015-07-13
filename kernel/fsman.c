@@ -435,6 +435,9 @@ int fs_chmod(const char* path, ushort permission)
 {
 	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
         if(!i) return -1;
+	/* Dont allow the type to change */
+	permission &= ~S_IFMT;
+
 	/* This is file system specific */
 	int result = i->fs->chmod(i->inode_ptr, 
 		i->st.st_ino, permission, i->fs->context);

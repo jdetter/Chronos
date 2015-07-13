@@ -270,7 +270,7 @@ int vsfs_chmod(void* i, int ino_num, uint permission,
 		struct vsfs_context* context)
 {
 	struct vsfs_inode* in = i;
-	in->perm = permission;
+	in->perm = (in->perm & S_IFMT) | (permission & ~S_IFMT);
 	write_inode(ino_num, i, context);
 	return 0;
 }

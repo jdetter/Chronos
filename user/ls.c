@@ -131,6 +131,10 @@ void get_perm(struct stat* st, char* dst)
 	if(st->st_mode & PERM_UEX)
 		dst[3] = 'x';
 	else dst[3] = '-';
+	/* Check for setuid */
+	if((st->st_mode & PERM_UEX) && (st->st_mode & S_ISUID))
+		dst[3] = 's';
+
 	if(st->st_mode & PERM_GRD)
 		dst[4] = 'r';
 	else dst[4] = '-';
@@ -140,6 +144,10 @@ void get_perm(struct stat* st, char* dst)
 	if(st->st_mode & PERM_GEX)
 		dst[6] = 'x';
 	else dst[6] = '-';
+	/* Check for setgid */
+	if((st->st_mode & PERM_GEX) && (st->st_mode & S_ISGID))
+                dst[6] = 's';
+
 	if(st->st_mode & PERM_ORD)
 		dst[7] = 'r';
 	else dst[7] = '-';

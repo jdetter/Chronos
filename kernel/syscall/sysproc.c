@@ -29,6 +29,10 @@ int sys_fork(void)
 	new_proc->pid = next_pid++;
 	new_proc->uid = rproc->uid;
 	new_proc->gid = rproc->gid;
+	new_proc->tid = 0; /* Not a thread */
+	new_proc->pgid = rproc->pgid;
+	new_proc->uid = rproc->uid;
+	new_proc->gid = rproc->gid;
 	new_proc->parent = rproc;
 	new_proc->heap_start = rproc->heap_start;
 	new_proc->heap_end = rproc->heap_end;
@@ -216,6 +220,19 @@ int sys_exec(void)
 		}
 	}
 
+	uchar setuid = 0;
+	uchar setgid = 0;
+	/* Check for setuid and setgid */
+	inode i = fs_open(path, O_RDONLY, 0x0, 0x0, 0x0);
+	if(!i) return -1;
+	struct stat st;
+	if(fs_stat(i, &st)) return -1;
+	if(st.st_mode & S_ISUID)
+		setuid = 1;
+	if(st.st_mode & S_ISGID)
+		setuid = 1;
+	fs_close(i);
+
 	/* Create a copy of the path */
 	char program_path[MAX_PATH_LEN];
 	memset(program_path, 0, MAX_PATH_LEN);
@@ -306,6 +323,12 @@ int sys_exec(void)
 
 	/* restore cwd */
 	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+
+	/* change permission if needed */
+	if(setuid)
+		rproc->euid = rproc->uid = st.st_uid;
+	if(setgid)
+		rproc->egid = rproc->gid = st.st_gid;
 
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);

@@ -57,7 +57,7 @@
 #define S_IFLNK  0120000 /* Symbolic link */
 #define S_IFSOCK 0140000 /* Socket*/
 
-#define S_ISIUD	0004000 /* Set user id bit*/
+#define S_ISUID	0004000 /* Set user id bit*/
 #define S_ISGID	0002000 /* Set group id bit */
 #define S_ISVTX	0001000 /* Sticky bit */
 

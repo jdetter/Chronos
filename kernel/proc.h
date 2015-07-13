@@ -58,9 +58,11 @@ struct proc
 	tty_t t; /* The tty this program is attached to. */
 	pid_t pid; /* The id of the process */
 	pid_t pgid; /* The process group */
-	pid_t tid; /* The ID of this thread (it its a thread) */
+	pid_t tid; /* The ID of this thread (if its a thread) */
 	uint uid; /* The id of the user running the process */
+	uint euid; /* The effective uid of the process */
 	uint gid; /* The id of the group running the process */
+	uint egid; /* The effective gid of the process */
 	struct file_descriptor file_descriptors[MAX_FILES];
 	
 	uint state; /* The state of the process */
