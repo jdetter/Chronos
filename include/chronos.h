@@ -15,11 +15,11 @@
 #define SYS_lseek	0x09
 #define SYS_mmap 	0x0A
 #define SYS_chdir 	0x0B
-#define SYS_cwd 	0x0C
+#define SYS_getcwd 	0x0C
 #define SYS_create 	0x0D
 #define SYS_mkdir 	0x0E
 #define SYS_rmdir 	0x0F
-#define SYS_rm 		0x10
+#define SYS_unlink	0x10
 #define SYS_mv 		0x11
 #define SYS_fstat 	0x12
 #define SYS_wait_s	0x13
@@ -37,6 +37,18 @@
 #define SYS_sbrk	0x1F
 #define SYS_chmod	0x20
 #define SYS_chown	0x21
+#define SYS_mprotect	0x22
+#define SYS__exit	0x23
+#define SYS_execve	0x24
+#define SYS_getpid	0x25
+#define SYS_isatty	0x26
+#define SYS_kill	0x27
+#define SYS_link	0x28
+#define SYS_stat	0x29
+#define SYS_times	0x2A
+#define SYS_gettimeofday 0x2B
+#define SYS_waitpid	0x2C
+#define SYS_creat	0x2D
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -132,6 +144,7 @@
 #include "stdarg.h"
 #include "file.h"
 #include "stdlock.h"
+#include "time.h"
 
 /**
  * Fork the currently running process. The address space will be copied
@@ -141,11 +154,15 @@
 int fork(void);
 
 /**
- * Wait for a child process with the pid. If pid is -1, wait for any child
- * to exit. Only parents can wait for their children. Children of other
- * processes cannot be waited on.
+ * Wait for a child process with the pid. If pid is -1, wait for any child 
+ * process. If pid < -1, wait for any child whose process group id is equal
+ * to the absolute value of pid. 0 means wait for any child process whose
+ * process group id is equal to that of the calling process. > 0 means wait
+ * for a child process whose pid is equal to the specified pid. The status 
+ * argument should be specified for the resulting exit code of the child.
+ * Returns the pid of the process that was waited on.
  */
-int wait(int pid);
+int waitpid(int pid, int* status, int options);
 
 /**
  * Replace the currently running process with the process designated by the
@@ -155,9 +172,10 @@ int exec(const char* path, const char** argv);
 
 /**
  * End the currently running task. This means that all files open by the task
- * will be freed up as well as all memory in use by the program.
+ * will be freed up as well as all memory in use by the program. This function
+ * does not return.
  */
-void exit(void) __attribute__ ((noreturn));
+void exit(int retcode) __attribute__ ((noreturn));
 
 /**
  * Open the file designated by the path. The resulting file descriptor will
@@ -211,7 +229,7 @@ int chdir(const char* dir);
  * amount of characters put into the destination buffer. Returns -1 if the
  * buffer is not large enough to hold the path, 0 otherwise.
  */
-int cwd(char* dst, uint sz);
+int getcwd(char* dst, size_t sz);
 
 /**
  * Create the file with the given permissions. If this call is successfull,
@@ -219,7 +237,12 @@ int cwd(char* dst, uint sz);
  * the file will not be created and -1 will be returned. Otherwise, 0 is
  * returned.
  */
-int create(const char* file, uint permissions);
+int create(const char* file, mode_t mode);
+
+/**
+ * See create. Linux compatibility function.
+ */
+int creat(const char* file, mode_t mode);
 
 /**
  * Create the directory specified by the path. The directory will have the
@@ -228,7 +251,7 @@ int create(const char* file, uint permissions);
  * directory will not be created. Otherwise the file will be created and 
  * opened and a new file descriptor for the file will be returned.
  */
-int mkdir(const char* dir, uint permissions);
+int mkdir(const char* dir, mode_t mode);
 
 /**
  * Remove the specified directory. The directory must be empty besides the
@@ -240,7 +263,7 @@ int rmdir(const char* dir);
  * Remove the specified file. If the file is removed, 0 is returned. Otherwise
  * -1 is returned.
  */
-int rm(const char* file);
+int unlink(const char* file);
 
 /**
  * Move the specified file from orig to dst. If the file is moved, 0 is
@@ -355,6 +378,82 @@ int chmod(const char* path, mode_t perm);
  * Change the ownership of a file. Returns 0 on success.
  */
 int chown(const char* path, uint uid, uint gid);
+
+/**
+ * Change the protection on a segment in memory. Returns 0 on success.
+ * See protections above.
+ */
+int mprotect(void* addr, size_t len, int prot);
+
+/**
+ * Exit from the current task. This version of exit doesn't close open files.
+ * Any open file descriptors will be leaked. This function doesn't return.
+ */
+void _exit(int retcode)  __attribute__ ((noreturn));
+
+/**
+ * Execute the program specified by filename. The program will be executed
+ * with the arguments specified in argv. The program will be executed with
+ * the environment variables specified in envp. argv and envp are null terminated.
+ */
+int execve(const char* filename, char* const argv[], char* const envp[]);
+
+/**
+ * Returns the pid of the running process.
+ */
+int getpid(void);
+
+/**
+ * Returns 1 if the fd is actually a tty. Returns 0 if the fd is
+ * not a tty. Returns -1 on error.
+ */
+int isatty(int fd);
+
+/**
+ * Send a signal to a process with the specified pid. Returns 0 on sucess, 
+ * -1 otherwise.
+ */
+int kill(pid_t pid, int sig);
+
+/**
+ * Create a new hardlink to the file specified by oldpath. The hard link
+ * will be created at newpath. Returns 0 on sucess. Returns -1 otherwise.
+ */
+int link(const char* oldpath, const char* newpath);
+
+/**
+ * Stats the file specified by path. The result of the stat will be parsed
+ * into the stat structure dst. Returns 0 on success, -1 otherwise.
+ */
+int stat(const char* path, struct stat* dst);
+
+/**
+ * Gets process times. The results are measured in kernel ticks. Returns
+ * The number of ticks that have occurred since the system has booted.
+ */
+clock_t times(struct tms* dst);
+
+/**
+ * Get the current time of day and parse it into the struct tv. The use of
+ * a timezone is ignored by Chronos. The tv struct will be parsed with the
+ * current time parameters. Returns 0 on success, -1 otherwise.
+ */
+int gettimeofday(struct timeval* tv, struct timezone* tz);
+
+/**
+ * Returns the amount of seconds since Epoch (January 1st, 1970 UTC 00:00:00).
+ * If t is non-NULL the result will also be stored in t. On success, the
+ * time in seconds since the Epoch is returned, otherwise returns -1.
+ */
+time_t time(time_t* t);
+
+/**
+ * Wait for a child process to exit. On success, returns the pid of the
+ * process that exited and puts the exit code into status. On failure,
+ * -1 is returned.
+ */
+int wait(int* status);
+
 #endif
 
 #endif

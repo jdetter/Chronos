@@ -69,11 +69,12 @@ int sys_write(void);
 int sys_lseek(void);
 int sys_mmap(void);
 int sys_chdir(void);
-int sys_cwd(void);
+int sys_getcwd(void);
 int sys_create(void);
+int sys_creat(void);
 int sys_mkdir(void);
 int sys_rmdir(void);
-int sys_rm(void);
+int sys_unlink(void);
 int sys_mv(void);
 int sys_fstat(void);
 int sys_wait_s(void);
@@ -92,14 +93,25 @@ int sys_sbrk(void);
 int sys_chmod(void);
 int sys_chown(void);
 int sys_mprotect(void);
+int sys__exit(void);
+int sys_execve(void);
+int sys_getpid(void);
+int sys_isatty(void); /* newlib specific */
+int sys_kill(void);
+int sys_link(void);
+int sys_stat(void);
+int sys_times(void);
+int sys_gettimeofday(void);
+int sys_waitpid(void);
 int sys_getuid(void);
 int sys_setuid(void);
 int sys_getgid(void);
 int sys_setgid(void);
-int sys_gettid(void);
+pid_t sys_gettid(void);
 int sys_getppid(void);
 
-#define SYS_MAX SYS_chown /* System call with the greatest value */
+
 #define SYS_MIN SYS_fork /* System call with the smallest value */
+#define SYS_MAX SYS_creat /* System call with the greatest value*/
 
 #endif

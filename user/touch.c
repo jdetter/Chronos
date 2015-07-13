@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 		printf("%s\n", argv[i]);
 		create(argv[i], PERM_ARD | PERM_UWR | PERM_GWR);
 	}
-	exit();
+	exit(0);
 }
 
 

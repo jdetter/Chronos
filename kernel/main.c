@@ -87,6 +87,13 @@ void main_stack(void)
 	cmos_init();
 	cprintf("[ OK ]\n");
 
+	struct rtc_t r;
+	rtc_update(&r);
+	char time_dst[512];
+	rtc_str(time_dst, 512, &r);
+
+	cprintf("The time is: %s\n", time_dst);
+	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
 	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);

@@ -24,6 +24,16 @@ static int find_fd(void)
         return -1;
 }
 
+int sys_link(void)
+{
+	return -1;
+}
+
+int sys_stat(void)
+{
+	return -1;
+}
+
 /* int open(const char* path, int flags, ...); */
 int sys_open(void)
 {
@@ -296,8 +306,8 @@ int sys_mkdir(void)
 	return 0;
 }
 
-/* int rm(const char* file) */
-int sys_rm(void)
+/* int unlink(const char* file) */
+int sys_unlink(void)
 {
 	const char* file;
 	if(syscall_get_str_ptr(&file, 0)) return -1;
@@ -328,6 +338,17 @@ int sys_fstat(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
+
+	if(fd < 0 || fd >= MAX_FILES) return -1;
+	/* Check file descriptor type */
+	switch(rproc->file_descriptors[fd].type)
+	{
+		case FD_TYPE_FILE:
+		case FD_TYPE_DEVICE:
+		case FD_TYPE_PIPE:
+			break;
+		default: return -1;
+	}
 
 	return fs_stat(rproc->file_descriptors[fd].i, dst);
 }

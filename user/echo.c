@@ -13,5 +13,5 @@ int main(int argc, char* argv[])
 		if(i == 1) printf("%s", argv[i]);
 		else printf(" %s", argv[i]);
 	printf("\n");
-	exit();
+	exit(0);
 }

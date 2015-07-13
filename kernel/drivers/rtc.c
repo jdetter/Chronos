@@ -31,7 +31,7 @@ void rtc_update(struct rtc_t* dst)
 			if(pm) hours &= ~(0x80);
 			hours = bcdtobin(hours);
 			if(pm) hours += 12;
-			if(hours >= 24) hours = 0;
+			if(hours >= 24) hours %= 24;
 		} else hours = bcdtobin(hours);
 		dayOfMonth = bcdtobin(dayOfMonth);
 		month = bcdtobin(month);
@@ -49,10 +49,48 @@ void rtc_update(struct rtc_t* dst)
 		if(hours >= 24) hours = 0;
 	}
 
+	/* Assuming we are in US/Central */
+	hours += 19;
+	if(hours >= 24) hours %= 24;
+
 	dst->seconds = seconds;
 	dst->minutes = minutes;
 	dst->hours = hours;
 	dst->day = dayOfMonth;
 	dst->month = month;
 	dst->year = year;
+}
+
+void rtc_str(char* dst, size_t sz, struct rtc_t* r)
+{
+	char* pm = "am";
+	uchar hours = r->hours;
+	if(hours >= 12)
+	{
+		pm = "pm";
+		hours -= 12;
+	} else if(hours == 0)
+	{
+		hours = 12;
+	}
+
+	char* leading_min = "0";
+	char* leading_hour = "0";
+	char* leading_day = "0";
+	char* leading_month = "0";
+
+	if(r->minutes > 9)
+		leading_min = "";
+	leading_hour = ""; /* Always disable leading hour */
+	if(r->day > 9)
+		leading_day = "";
+	if(r->month > 9)
+		leading_month = "";
+
+	snprintf(dst, sz, "%s%d:%s%d%s %s%d/%s%d/20%d", 
+		leading_hour, hours, 
+		leading_min, r->minutes, pm,
+		leading_day, r->day, 
+		leading_month, r->month, 
+		r->year);
 }

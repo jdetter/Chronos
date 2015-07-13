@@ -11,6 +11,6 @@ int main(int argc, char** argv)
 {
 	printf("A new process has spawned.\n");
 
-        exit();
+        exit(0);
 }
 

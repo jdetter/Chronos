@@ -10,7 +10,7 @@ int main(int argc, char** argv)
 	if(argc<2)
 	{
 		printf("Usage: cat [-n] [file]\n");
-		exit();
+		exit(1);
 	}
 	char* path= NULL;
 	int x;
@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 			if(path)
 			{
 				printf("Usage: cat [-n] [file]\n");
-				exit();
+				exit(1);
 			}
 			path = argv[1];
 		}
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 	if(fileDescript==-1)
 	{
 		printf("cat: File does not exist.\n");
-		exit();
+		exit(1);
 	}
 
 	#define BUFF_SIZE 512
@@ -51,5 +51,5 @@ int main(int argc, char** argv)
 		i += left;
 	}
 
-	exit();
+	exit(1);
 }

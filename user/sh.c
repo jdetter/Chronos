@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 		if(!memcmp(in_buff, "exit", 4) &&
 			strlen(in_buff) == 4)
 		{
-			exit();
+			exit(0);
 		}
 		int cur_cmd;
 		int cur_op;
@@ -207,14 +207,14 @@ int main(int argc, char** argv)
 					}	
 				}
 				runprog(cmd);
-				exit();
+				exit(1);
 			} else pids[i] = f;
 		}
 
 		for(i = 0;i < MAX_CMD;i++)
 		{
 			if(pids[i] <= 0) break;
-			wait(pids[i]);
+			waitpid(pids[i], NULL, 0);
 		}
 
 		for(i = 0;i < MAX_CMD;i++)
@@ -272,7 +272,7 @@ void runprog(char* string){
 		}
 
 		char cwd_buff[128];
-		cwd(cwd_buff, 128);
+		getcwd(cwd_buff, 128);
 	} else {
 		exec(argv[0], (const char**)argv);
 		printf("sh: binary not found: %s\n", argv[0]);

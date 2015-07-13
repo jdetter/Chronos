@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 	if(argc > 2)
 	{
 		usage();
-		exit();
+		exit(1);
 	}
 	/* Enter graphical mode */
 	tty_mode_graphic();
@@ -23,7 +23,7 @@ int main(int argc, char** argv)
 	tty_clear_screen();
 	/* Flush screen */
 	tty_flush();
-	exit();
+	exit(0);
 }
 
 
