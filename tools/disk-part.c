@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -52,7 +53,8 @@ int main(int argc, char** argv)
 	char* disk = NULL;
 	memset(table, 0, sizeof(partition)*4);
 	
-	for(int i =1 ; i<argc ; i++){
+	int i;
+	for(i =1 ; i<argc ; i++){
 		if(argv[i][0] == '-' && argv[i][1]== 'p'){
 			char *config = argv[i+1];
 			int part_num = atoi(config);
@@ -83,7 +85,7 @@ int main(int argc, char** argv)
 				return -1;
 			}
 				
-			disk = argv+i;
+			disk = argv[i];
 		
 		}
 		
