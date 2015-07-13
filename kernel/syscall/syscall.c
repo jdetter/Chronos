@@ -38,11 +38,11 @@ int (*syscall_table[])(void) = {
 	sys_lseek,
 	sys_mmap,
 	sys_chdir,
-	sys_cwd,
+	sys_getcwd,
 	sys_create,
 	sys_mkdir,
 	sys_rmdir,
-	sys_rm,
+	sys_unlink,
 	sys_mv,
 	sys_fstat,
 	sys_wait_s,
@@ -70,7 +70,8 @@ int (*syscall_table[])(void) = {
 	sys_stat,
 	sys_times,
 	sys_gettimeofday,
-	sys_waitpid
+	sys_waitpid,
+	sys_create /* sys_creat == sys_create */
 };
 
 /* int isatty(int fd); */

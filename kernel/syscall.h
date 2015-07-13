@@ -69,11 +69,12 @@ int sys_write(void);
 int sys_lseek(void);
 int sys_mmap(void);
 int sys_chdir(void);
-int sys_cwd(void);
+int sys_getcwd(void);
 int sys_create(void);
+int sys_creat(void);
 int sys_mkdir(void);
 int sys_rmdir(void);
-int sys_rm(void);
+int sys_unlink(void);
 int sys_mv(void);
 int sys_fstat(void);
 int sys_wait_s(void);
@@ -103,7 +104,7 @@ int sys_times(void);
 int sys_gettimeofday(void);
 int sys_waitpid(void);
 
-#define SYS_MAX SYS_waitpid /* System call with the greatest value*/
 #define SYS_MIN SYS_fork /* System call with the smallest value */
+#define SYS_MAX SYS_creat /* System call with the greatest value*/
 
 #endif

@@ -306,8 +306,8 @@ int sys_mkdir(void)
 	return 0;
 }
 
-/* int rm(const char* file) */
-int sys_rm(void)
+/* int unlink(const char* file) */
+int sys_unlink(void)
 {
 	const char* file;
 	if(syscall_get_str_ptr(&file, 0)) return -1;

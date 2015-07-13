@@ -531,8 +531,8 @@ int sys_chdir(void)
 	return 0;
 }
 
-/* int cwd(char* dst, uint sz) */
-int sys_cwd(void)
+/* int getcwd(char* dst, uint sz) */
+int sys_getcwd(void)
 {
 	char* dst;
 	uint sz;	

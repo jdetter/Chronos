@@ -24,7 +24,6 @@ flock
 
 nanosleep
 reboot
-time
 
 getegid
 geteuid
@@ -81,13 +80,8 @@ exit
 open: add support for symbolic links
 lstat: add support for symbolic links
 mprotect: add support for NX protection
-waitpid: needs renaming (wait)
-creat: needs renaming (create)
 readdir: needs linux compatibility
-getcwd: needs renaming (cwd)
 exec
-unlink: needs renaming (rm)
-waitpid: needs renaming (wait)
 
 Completely finished System calls:
 =================================
@@ -99,7 +93,7 @@ cwd
 chdir
 mkdir
 rmdir
-rm
+unlink
 dup
 dup2
 brk
@@ -112,6 +106,9 @@ getpid
 isatty
 wait
 waitpid
+getcwd
+creat
+create
 
 +---------------------------------+
 | Features that need implementing |
