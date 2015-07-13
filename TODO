@@ -6,14 +6,11 @@ Critical system calls
 =====================
 _exit - different than exit
 execve - different than exec
-getpid
-isatty
 kill
 link
 stat
 times
 time
-wait - different than waitpid
 gettimeofday
 
 High priority system calls
@@ -111,6 +108,10 @@ chmod
 chown
 fstat
 lseek
+getpid
+isatty
+wait
+waitpid
 
 +---------------------------------+
 | Features that need implementing |

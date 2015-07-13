@@ -63,6 +63,7 @@ int (*syscall_table[])(void) = {
 	sys_mprotect,
 	sys__exit,
 	sys_execve,
+	sys_getpid,
 	sys_isatty, /* Specific to newlib */
 	sys_kill,
 	sys_link,

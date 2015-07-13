@@ -103,21 +103,24 @@ int sys_fork(void)
 	return new_proc->pid;
 }
 
-
 /* int waitpid(int pid, int* status, int options) */
 int sys_waitpid(void)
 {
 	int pid;
 	int* status;
 	int options = 0;
-	if(options);
 	if(syscall_get_int(&pid, 0)) return -1;
 	if(syscall_get_int((int*)&status, 1)) return -1;
 	if(status != NULL && syscall_get_buffer_ptr(
 			(void**)&status, sizeof(int), 1))
 		return -1;
-	if(syscall_get_int(&pid, 2)) return -1;
+	if(syscall_get_int(&options, 2)) return -1;
 
+	return waitpid(pid, status, options);
+}
+
+int waitpid(int pid, int* status, int options)
+{
 	slock_acquire(&ptable_lock);
 
 	int ret_pid = 0;
@@ -181,7 +184,12 @@ int sys_waitpid(void)
 /* int wait(int* status) */
 int sys_wait(void)
 {
-	return -1;
+	int* status;
+	if(syscall_get_int((int*)&status, 0)) return -1;
+        if(status != NULL && syscall_get_buffer_ptr(
+                        (void**)&status, sizeof(int), 0))
+                return -1;
+	return waitpid(-1, status, 0);
 }
 
 /* int exec(const char* path, const char** argv) */
@@ -357,6 +365,9 @@ int sys__exit(void)
 {
 	slock_acquire(&ptable_lock);
 	/* Set state to killed */
+	int return_code;
+	if(syscall_get_int(&return_code, 0)) return -1;
+	rproc->return_code = return_code;
 	rproc->state = PROC_ZOMBIE;
 	/* Clear all of the file descriptors (LEAK) */
 	int x;

@@ -9,10 +9,9 @@
 
 int main(int argc, char** argv)
 {
-	proc_dump();
-	int result = rm("/boot/chronos.elf");
-	printf("result: %d\n", result);
-	proc_dump();
+	open("/bin", O_RDONLY);
+	printf("Leaking a file...\n");
+	_exit(1);
 
 	exit(0);
 }
