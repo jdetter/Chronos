@@ -163,7 +163,10 @@
  * Hardware mappings, kmalloc space, ...
  * ... 
  * 0xFD000000 Bottom of kernel space
- * 0xFCFFFFFF User application user space stack top
+ * 0xFCFFFFFF User application user space top
+ * ...
+ * ?????????? Environment variable space (dependant on size)
+ * ?????????? User stack start
  *     |
  *     | Stack grows down when the user needs more stack space
  *     |
@@ -182,8 +185,9 @@
 /** Definitions for the above memory map **/
 #define UVM_KVM_E	0xFFFFFFFF /* End of the kernel space*/
 #define UVM_KVM_S	0xFD000000 /* Start of the kernel space */
-
-#define UVM_USTACK_TOP	0xFCFFFFFF /* Top of the user's stack */
+#define UVM_TOP		0xFCFFFFFF /* Top of the user address space */
+/* User stack start is now unknown due to environment variables */
+//#define UVM_USTACK_TOP	0xFCFFFFFF /* Top of the user's stack */
 #define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
 
 /** Memory mapped file systems

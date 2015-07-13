@@ -84,7 +84,7 @@ struct proc* spawn_tty(tty_t t)
 	p->file_descriptors[1].type = FD_TYPE_STDOUT;
 	p->file_descriptors[2].type = FD_TYPE_STDERR;
 
-	p->stack_start = PGROUNDUP(UVM_USTACK_TOP);
+	p->stack_start = PGROUNDUP(UVM_TOP);
 	p->stack_end = p->stack_start - PGSIZE;
 	
 	p->block_type = PROC_BLOCKED_NONE;
