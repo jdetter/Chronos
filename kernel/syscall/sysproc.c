@@ -678,4 +678,36 @@ int sys_getcwd(void)
 	return sz;
 }
 
+int sys_getuid(void){
+	return rproc->uid;
+}
+
+int sys_setuid(void){
+	uint id;
+	
+	if(syscall_get_int((int*)&id, 1)) return -1;
+	rproc->uid = id;
+	return 0;
+}
+
+int sys_getgid(void){
+	return rproc->gid;
+}
+
+int sys_setgid(void){
+	uint id;
+	
+	if(syscall_get_int((*int)&id, 1)) return -1;
+	rproc->gid = id;
+	return 0;
+}
+
+pid_t sys_gettid(void){
+	return rproc->tid;
+}
+
+int sys_getppid(void){
+	return (rproc->parent)->pid;
+}
+
 

@@ -103,6 +103,13 @@ int sys_stat(void);
 int sys_times(void);
 int sys_gettimeofday(void);
 int sys_waitpid(void);
+int sys_getuid(void);
+int sys_setuid(void);
+int sys_getgid(void);
+int sys_setgid(void);
+pid_t sys_gettid(void);
+int sys_getppid(void);
+
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
 #define SYS_MAX SYS_creat /* System call with the greatest value*/
