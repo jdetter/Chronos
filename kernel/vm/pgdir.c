@@ -226,6 +226,45 @@ uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags)
 	vm_pop_pgdir(save);
 	return PGROUNDDOWN(page);
 }
+
+uint vm_memmove(void* dst, void* src, uint sz, 
+		pgdir* dst_pgdir, pgdir* src_pgdir)
+{
+	if(sz == 0) return 0;
+	pgdir* save = vm_push_pgdir();
+	uint bytes = 0;
+
+	while(bytes != sz)
+	{
+		uint left = sz - bytes;
+		/* How many bytes are we copying in this pass? */
+		uint to_copy = PGROUNDUP((uint)src + bytes) 
+			- (uint)src + bytes;
+		if(to_copy > left) to_copy = left;
+
+		/* The source page */
+		uint src_page = findpg((uint)src + bytes, 0, src_pgdir, 1);
+		uint src_offset = ((uint)src + bytes) & (PGSIZE - 1);
+		uint src_cpy = PGSIZE - src_offset;
+		if(!src_page) break;
+
+		/* Check destination page */
+		uint dst_page = findpg((uint)dst + bytes, 1, dst_pgdir, 1);
+		uint dst_offset = ((uint)dst + bytes) & (PGSIZE - 1);
+		uint dst_cpy = PGSIZE - dst_offset;
+		if(!dst_page) break;
+	
+		/* Make sure copy amount is okay */
+		if(src_cpy < to_copy) to_copy = src_cpy;
+		if(dst_cpy < to_copy) to_copy = dst_cpy;
+		memmove(dst + dst_offset, src + src_offset, to_copy);
+		bytes += to_copy;
+	}
+
+	vm_pop_pgdir(save);
+	return bytes;
+}
+
 uint unmappage(uint virt, pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();

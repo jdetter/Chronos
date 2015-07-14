@@ -341,9 +341,11 @@ int sys_execve(void)
 {
 	const char* path;
 	const char** argv;
+	const char** envp;
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;;
 	if(syscall_get_buffer_ptrs((uchar***)&argv, 1)) return -1;
+	if(syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
 
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
@@ -359,6 +361,8 @@ int sys_execve(void)
 			return -1;
 		}
 	}
+	/* acquire ptable lock */
+	slock_acquire(&ptable_lock);
 
 	uchar setuid = 0;
 	uchar setgid = 0;
@@ -377,8 +381,6 @@ int sys_execve(void)
 	char program_path[MAX_PATH_LEN];
 	memset(program_path, 0, MAX_PATH_LEN);
 	strncpy(program_path, path, MAX_PATH_LEN);
-	/* acquire ptable lock */
-	slock_acquire(&ptable_lock);
 
 	/* Create argument array */
 	char* args[MAX_ARG];

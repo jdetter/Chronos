@@ -10,7 +10,7 @@
 #define PORT_PIT_COMMAND 	0x43
 
 #define TICKS_PER_SECOND 1
-#define TICKS_DIVISOR (TIMER_FREQ / TICKS_PER_SECOND)
+#define TICKS_DIVISOR (8192)
 
 void pit_init(void)
 {
