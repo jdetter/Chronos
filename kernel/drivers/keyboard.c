@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "panic.h"
+#include "pic.h"
 int lShift = 0x2A;
 int rShift = 0x36;
 int set1 = 0xf1;
@@ -30,26 +31,8 @@ int capskey = 0x3B;
 
 char sctoa(int scancode);
 int kbd_init(){
-	return 0;
-	int x;
-	int status;
-init_1:
-	while(inb(KBD_STAT) & KBD_INPUT_FULL);
-	outb(KBD_DATA, KBD_ENABLE_SCANNING);
-
-	/* Wait for ACK or RESEND */
-	for(x = 0;x < 3;x++) status = inb(KBD_STAT);
-	if(status == KBD_RESEND) goto init_1;
-	else if(status != KBD_ACK) goto init_1;
+	pic_enable(INT_PIC_KEYBOARD);
 	
-	outb(KBD_DATA, 0x01); /* Set scan set to one */
-
-init_2:
-	/* Wait for ACK or RESEND */
-        for(x = 0;x < 3;x++) status = inb(KBD_CNTL);
-        if(status == KBD_RESEND) goto init_2;
-        else if(status != KBD_ACK) goto init_2;
-
 	return 0;
 }
 

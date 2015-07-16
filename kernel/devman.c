@@ -136,7 +136,7 @@ int dev_init()
 		driver = dev_alloc();
 		serial_io_setup(&driver->io_driver);
 		/* Add serial to mask */
-		pic_enable(INT_PIC_COM1_CODE);
+		pic_enable(INT_PIC_COM1);
 		/* Set mount point */
 		driver->type = DEV_COM;
                 snprintf(driver->node,

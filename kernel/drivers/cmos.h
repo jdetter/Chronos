@@ -21,4 +21,9 @@ void nmi_enable(void);
  */
 void nmi_disable(void);
 
+/**
+ * Read the CMOS interrupt register.
+ */
+uchar cmos_read_interrupt(void);
+
 #endif

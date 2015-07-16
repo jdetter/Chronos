@@ -3,9 +3,13 @@
 #include "stdlib.h"
 #include "stdlock.h"
 #include "rtc.h"
+#include "panic.h"
 
 void rtc_update(struct rtc_t* dst)
 {
+	/* Check for update */
+	while(cmos_read(0x0A) & 0x80);
+	
 	uchar mode		= cmos_read(0x0B);
 	uchar seconds 		= cmos_read(0x00);
 	uchar minutes 		= cmos_read(0x02);
@@ -58,7 +62,7 @@ void rtc_update(struct rtc_t* dst)
 	dst->hours = hours;
 	dst->day = dayOfMonth;
 	dst->month = month;
-	dst->year = year;
+	dst->year = year + 2000; /* Year only tracks last 2 digits */
 }
 
 void rtc_str(char* dst, size_t sz, struct rtc_t* r)
@@ -87,10 +91,10 @@ void rtc_str(char* dst, size_t sz, struct rtc_t* r)
 	if(r->month > 9)
 		leading_month = "";
 
-	snprintf(dst, sz, "%s%d:%s%d%s %s%d/%s%d/20%d", 
+	snprintf(dst, sz, "%s%d:%s%d%s %s%d/%s%d/%d", 
 		leading_hour, hours, 
 		leading_min, r->minutes, pm,
-		leading_day, r->day, 
 		leading_month, r->month, 
+		leading_day, r->day, 
 		r->year);
 }

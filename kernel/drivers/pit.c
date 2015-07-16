@@ -10,7 +10,9 @@
 #define PORT_PIT_COMMAND 	0x43
 
 #define TICKS_PER_SECOND 1
-#define TICKS_DIVISOR (8192)
+// FAST #define TICKS_DIVISOR (8192)
+// SLOWEST
+#define TICKS_DIVISOR 6553
 
 void pit_init(void)
 {

@@ -19,10 +19,12 @@
 #include "x86.h"
 #include "cpu.h"
 #include "rtc.h"
+#include "keyboard.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
 
+extern struct rtc_t k_time;
 extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
@@ -68,6 +70,25 @@ void main_stack(void)
 {
 	/* We now have a proper kernel stack */
 	cprintf("[ OK ]\n");
+	
+	/* Enable PIC */
+        cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
+        pic_init();
+        cprintf("[ OK ]\n");
+
+	pic_enable(INT_PIC_ATA1);
+
+        /* Initilize CMOS */
+        cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
+        cmos_init();
+        cprintf("[ OK ]\n");
+
+	/* Initilize keyboard driver */
+	cprintf("Initilizing keyboard driver...\t\t\t\t\t\t");
+	kbd_init();
+	cprintf("[ OK ]\n");
+
+	/* Detect devices */
 	cprintf("Detecting devices...\t\t\t\t\t\t\t");
 	dev_init();
 	cprintf("[ OK ]\n");
@@ -82,17 +103,13 @@ void main_stack(void)
 	dev_populate();
 	cprintf("[ OK ]\n");
 
-	/* Initilize CMOS */
-	cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
-	cmos_init();
-	cprintf("[ OK ]\n");
-
-	struct rtc_t r;
-	rtc_update(&r);
+	rtc_update(&k_time);
 	char time_dst[512];
-	rtc_str(time_dst, 512, &r);
+	rtc_str(time_dst, 512, &k_time);
 
 	cprintf("The time is: %s\n", time_dst);
+
+	k_seconds();
 	
 	/* Bring up kmalloc. */
         cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
@@ -101,11 +118,6 @@ void main_stack(void)
 	/* Enable memory debugging */
 	//mem_debug((void (*)(char*))cprintf);
 
-	/* Enable PIC */
-        cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
-	pic_init();
-	cprintf("[ OK ]\n");
-	
 	/* Enable PIT */
         cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
 	pit_init();

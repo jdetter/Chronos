@@ -21,4 +21,9 @@ struct tms
 	clock_t tms_cstime; /* system time of children */
 };
 
+/* Seconds in a normal year */
+#define T_SECONDS_YEAR 31557600
+/* Seconds in a leap year */
+#define T_SECONDS_LYEAR 31622400
+
 #endif

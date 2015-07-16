@@ -112,6 +112,6 @@ int sys_getppid(void);
 int sys_times(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_times /* System call with the greatest value*/
+#define SYS_MAX SYS_getppid /* System call with the greatest value*/
 
 #endif

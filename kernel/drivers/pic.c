@@ -1,6 +1,7 @@
 #include "types.h"
 #include "x86.h"
 #include "pic.h"
+#include "panic.h"
 
 #define PORT_PIC_MASTER_COMMAND 	0x0020
 #define PORT_PIC_MASTER_DATA 		0x0021
@@ -37,12 +38,12 @@ void pic_init(void)
 	io_wait();
 
 	/* Send configuration */
-	
+
+	/* Master has slave connected at port 2. */
+        outb(PORT_PIC_MASTER_DATA, 0x04);
+        io_wait();	
 	/* Slave is connected to master at IRQ2 */
 	outb(PORT_PIC_SLAVE_DATA, 0x02);
-	io_wait();
-	/* Master has slave connected at port 2. */
-	outb(PORT_PIC_MASTER_DATA, 0x04);
 	io_wait();
 
 	/* Set operation mode */
@@ -95,6 +96,8 @@ void pic_enable(uint interrupt)
 		interrupt -= 8;
 		port = PORT_PIC_SLAVE_DATA;
 	}
+
+	if(interrupt > 7) panic("Invalid interrupt number: %d\n", interrupt);
 
 	uchar curr_mask = inb(port);
 	/* Create the new mask */

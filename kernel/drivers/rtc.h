@@ -6,12 +6,12 @@
  */
 struct rtc_t
 {
-	uchar seconds;
-	uchar minutes;
-	uchar hours;
-	uchar day;
-	uchar month;
-	uchar year;
+	ushort seconds;
+	ushort minutes;
+	ushort hours;
+	ushort day;
+	ushort month; 
+	ushort year;
 };
 
 /**

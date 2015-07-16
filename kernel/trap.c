@@ -16,6 +16,7 @@
 #include "fsman.h"
 #include "pipe.h"
 #include "proc.h"
+#include "cmos.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -53,13 +54,24 @@ void trap_handler(struct trap_frame* tf)
 	int handled = 0;
 	int user_problem = 0;
 
+	pic_eoi(INT_PIC_CMOS_CODE);
+
 	switch(trap)
 	{
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
-			//cprintf("Keyboard interrupt.\n");
+			cprintf("Keyboard interrupt.\n");
 			/* Keyboard interrupt */
 			tty_handle_keyboard_interrupt();	
+			pic_eoi(INT_PIC_TIMER_CODE);
+			pic_eoi(INT_PIC_COM1_CODE);
 			handled = 1;
+			break;
+		case INT_PIC_CMOS:
+			/* Update the system time */
+			cprintf("CMOS: ");
+			uchar val = cmos_read_interrupt();
+			cprintf("%d\n", val);
+			handled = 0;
 			break;
 		case TRAP_DE:
 			strncpy(fault_string, "Divide by 0", 64);
@@ -164,6 +176,9 @@ void trap_handler(struct trap_frame* tf)
 			_exit(1);
 		} else for(;;);
         }
+
+	/* Reset cmos interrupts */
+	cmos_read_interrupt();
 
 	/* Make sure that the interrupt flags is set */
 	tf->eflags |= EFLAGS_IF;

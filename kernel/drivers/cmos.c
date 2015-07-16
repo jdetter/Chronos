@@ -3,6 +3,11 @@
 #include "stdlib.h"
 #include "cpu.h"
 #include "x86.h"
+#include "pic.h"
+#include "panic.h"
+#include "cmos.h"
+
+#define INT8_ENABLE	(0x40 | 0x20)
 
 #define CMOS_COMMAND 	0x70
 #define CMOS_DATA	0x71
@@ -18,13 +23,41 @@ void cmos_init(void)
 	nmi_enabled = 0;
 	nmi_update();
 	slock_init(&cmos_lock);
+	
+	/* Enable the CMOS interrupt in the pic */
+	pic_enable(INT_PIC_CMOS);
+
+	/* Change frequency */
+	int rate = 0x0D;
+	outb(CMOS_COMMAND, 0x8A); /* Select register A*/
+	char regA = inb(CMOS_DATA);
+	cprintf("Old rega val: 0x%x\n", regA);
+	outb(CMOS_COMMAND, 0x8A);
+	outb(CMOS_COMMAND, (regA & 0xF0) | (rate & 0x0F));
+
+	/* Change seconds alarm */
+	outb(CMOS_COMMAND, 0x81); /* Select register 0x01 */
+	outb(CMOS_DATA, 0x01);
+
+	/* Change minutes alarm */
+	outb(CMOS_COMMAND, 0x83); /* Select register 0x03*/
+	outb(CMOS_DATA, 0x00);
+
+	/* Enable interrupt 8 */
+	outb(CMOS_COMMAND, 0x8B); /* Select register B*/
+	char regB = inb(CMOS_DATA) | INT8_ENABLE;
+	//cprintf("Old regb val: 0x%x\n", regB);
+	outb(CMOS_COMMAND, 0x8B);
+	outb(CMOS_DATA, regB); /* Write int8_enable flag */
+
+	nmi_update();
 }
 
 uchar cmos_read(uchar reg)
 {
 	slock_acquire(&cmos_lock);
 	uchar nmi_mask = 0x0;
-	if(nmi_enabled) nmi_mask = 0x80;
+	if(!nmi_enabled) nmi_mask = 0x80;
 
 	/* Or the mask with the register */
 	uchar mask = nmi_mask | reg;
@@ -42,12 +75,11 @@ uchar cmos_read(uchar reg)
 static void nmi_update(void)
 {
 	slock_acquire(&cmos_lock);
-	uchar old = inb(CMOS_COMMAND);
 	io_wait();
-	if(nmi_enabled) /* clear the 7th bit 0x7F = 01111111*/
-		outb(CMOS_COMMAND, old & 0x7F);
-	else /* Set the 7th bit 0x80 = 10000000*/
-		outb(CMOS_COMMAND, old | 0x80);
+	if(nmi_enabled) 
+		outb(CMOS_COMMAND, 0x0A);
+	else 
+		outb(CMOS_COMMAND, 0x8A);
 
 	/* Read a value to reset the cmos register */
 	inb(CMOS_COMMAND);
@@ -66,4 +98,9 @@ void nmi_disable(void)
 	if(!nmi_enabled) return;
 	nmi_enabled = 0;
 	nmi_update();
+}
+
+uchar cmos_read_interrupt(void)
+{
+	return cmos_read(0x0C);
 }
