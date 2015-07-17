@@ -47,7 +47,7 @@ void proc_init()
 	rproc = NULL;
 	k_ticks = 0;
 	memset(&k_time, 0, sizeof(struct rtc_t));
-	slock_acquire(&ptable_lock);
+	slock_init(&ptable_lock);
 }
 
 struct proc* alloc_proc()

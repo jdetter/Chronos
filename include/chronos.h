@@ -91,6 +91,54 @@
 #define PROT_GROWSUP    0x02000000
 
 /**
+ * Signals
+ */
+
+/* POSIX 1990 */
+#define SIGHUP		1  /* Terminate */
+#define SIGINT 		2  /* Terminate */
+#define SIGQUIT 	3  /* Terminate + Core dump */
+#define SIGILL		4  /* Terminate + Core dump */
+#define SIGABRT 	6  /* Terminate + Core dump */
+#define SIGFPE 		8  /* Terminate + Core dump */
+#define SIGKILL 	9  /* Terminate */
+#define SIGSEGV 	11 /* Terminate + Core dump */
+#define SIGPIPE 	13 /* Terminate */
+#define SIGALRM 	14 /* Terminate */
+#define SIGTERM 	15 /* Terminate */
+#define SIGUSR1 	10 /* Terminate */
+#define SIGUSR2 	12 /* Terminate */
+#define SIGCHLD 	17 /* Ignore */
+#define SIGCONT 	18 /* Continue */
+#define SIGSTOP 	19 /* Stop */
+#define SIGTSTP 	20 /* Stop */
+#define SIGTTIN 	21 /* Stop */
+#define SIGTTOU 	22 /* Stop */
+#define SIGSYS		31 /* Terminate + Core dump */
+
+/* Various signals */
+#define SIGIOT		6  /* Terminate + Core dump */
+#define SIGEMT		0  /* Terminate - Not used on x86 */
+#define SIGSTKFLT	16 /* Terminate - Unused on x86 */
+#define SIGIO		29 /* Terminate */
+#define SIGCLD		0  /* Ignore - Not used on x86 */
+#define SIGPWR		30 /* Terminate */
+#define SIGINFO		SIGPWR /* Terminate */
+#define SIGLOST		0  /* Terminate - Unused on x86 */
+#define SIGWINCH	28 /* Ignore */
+#define SIGUNUSED	SIGSYS /* Terminate + Core dump */
+
+/* POSIX signals */
+#define SIGBUS		7  /* Terminate + Core dump */
+#define SIGPOLL		SIGIO  /* Terminate */
+#define SIGPROF 	27 /* Terminate */
+#define SIGTRAP		5  /* Terminate + Core dump */
+#define SIGURG		23 /* Ignore */
+#define SIGVTALRM	26 /* Terminate */
+#define SIGXCPU		24 /* Terminate + Core dump */
+#define SIGXFSZ		25 /* Terminate + Core dump */
+
+/**
  * Flags for mmap.
  */
 #define MAP_TYPE	0x0f 	/* Mask that determines the type of map */

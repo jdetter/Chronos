@@ -18,7 +18,8 @@ KERNEL_OBJECTS := \
 	fsman \
 	devman \
 	iosched \
-	ktime
+	ktime \
+	signal
 
 # assembly files
 KERNEL_ASSEMBLY := \

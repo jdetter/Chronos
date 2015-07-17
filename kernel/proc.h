@@ -42,6 +42,8 @@ struct file_descriptor
 #define PROC_BLOCKED 	0x05 /* This process is waiting on IO */
 #define PROC_ZOMBIE 	0x06 /* Process called exit. (needs parent wait) */
 #define PROC_KILLED 	0x07 /* Process recieved kill signal. */
+#define PROC_STOPPED 	0x08 /* Process recieved stop signal. */
+#define PROC_SIGNALED 	0x09 /* Process has a signal waiting. */
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -102,6 +104,8 @@ struct proc
 	uchar* io_dst; /* Where the destination bytes will be placed. */
 	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
 	int io_recieved; /* The actual amount of bytes recieved. */
+	struct signal_t* sig_queue; /* Signal queue*/
+	void (*signal_handler)(int sig_num); /* Optional signal handler. */
 
 	uchar orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */

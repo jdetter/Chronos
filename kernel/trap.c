@@ -48,7 +48,6 @@ void trap_init(void)
 
 void trap_handler(struct trap_frame* tf)
 {
-	//cprintf("Process %d has entered trap handler.\n", rproc->pid);
 	rproc->tf = tf;
 	int trap = tf->trap_number;
 	char fault_string[64];
