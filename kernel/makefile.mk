@@ -12,6 +12,7 @@ KERNEL_OBJECTS := \
 	syscall/sysproc \
 	syscall/sysfile \
 	syscall/sysutil \
+	syscall/sysmmap \
 	trap \
 	cpu \
 	pipe \

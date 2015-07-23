@@ -24,7 +24,8 @@ USER_TARGETS := \
 	less \
 	chmod \
 	chown \
-	date
+	date \
+	syscall-test
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

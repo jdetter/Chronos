@@ -28,34 +28,15 @@ int sys_fork(void)
 	struct proc* new_proc = alloc_proc();
 	if(!new_proc) return -1;
 	slock_acquire(&ptable_lock);
-	new_proc->k_stack = rproc->k_stack;
+	/* Copy the entire process */
+	memmove(new_proc, rproc, sizeof(struct proc));
 	new_proc->pid = next_pid++;
-	new_proc->uid = rproc->uid;
-	new_proc->gid = rproc->gid;
 	new_proc->tid = 0; /* Not a thread */
-	new_proc->pgid = rproc->pgid;
-	new_proc->uid = rproc->uid;
-	new_proc->gid = rproc->gid;
 	new_proc->parent = rproc;
-	new_proc->heap_start = rproc->heap_start;
-	new_proc->heap_end = rproc->heap_end;
-	new_proc->stack_start = rproc->stack_start;
-	new_proc->stack_end = rproc->stack_end;
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (uint*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
-	new_proc->tf = rproc->tf;
-	new_proc->t = rproc->t;
-	new_proc->entry_point = rproc->entry_point;
-	new_proc->tss = rproc->tss;
-	new_proc->context = rproc->context;
-	memmove(&new_proc->cwd, &rproc->cwd, MAX_PATH_LEN);
-	memmove(&new_proc->name, &rproc->name, MAX_PROC_NAME);
-
-	/* Copy all file descriptors */
-	memmove(&new_proc->file_descriptors, &rproc->file_descriptors,
-			sizeof(struct file_descriptor) * MAX_FILES);
 
 	/* Increment file references for all inodes */
 	int i;
@@ -153,10 +134,11 @@ int waitpid(int pid, int* status, int options)
 			/* Harvest the child */
 			ret_pid = p->pid;
 			if(status)
-				*status = rproc->return_code;
+				*status = p->return_code;
 			/* Free used memory */
 			freepgdir(p->pgdir);
 
+			/* pushcli here */
 			/* change rproc to the child process so that we can close its files. */
 			struct proc* current = rproc;
 			rproc = p;
@@ -329,14 +311,17 @@ int sys_exec(void)
 
 	/* change permission if needed */
 	if(setuid)
-		rproc->euid = rproc->uid = st.st_uid;
+		rproc->euid = st.st_uid;
 	if(setgid)
-		rproc->egid = rproc->gid = st.st_gid;
+		rproc->egid = st.st_gid;
 
 	/* Reset all ticks */
 	rproc->user_ticks = 0;
 	rproc->kernel_ticks = 0;
 	
+	/* Set mmap area start */
+	rproc->mmap_start = PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
+
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
 
@@ -525,6 +510,10 @@ int sys_execve(void)
         rproc->user_ticks = 0;
         rproc->kernel_ticks = 0;
 
+	/* Set mmap area start */
+        rproc->mmap_end = rproc->mmap_start = 
+		PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
+
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
 
@@ -549,7 +538,11 @@ int sys_exit(void)
 	int return_code;
 	rproc->return_code = 0;
 	if(syscall_get_int(&return_code, 0))
-		rproc->return_code = return_code;
+	{
+		cprintf("%s: invalid exit call.\n", rproc->name);
+		sys__exit();
+	}
+	rproc->return_code = return_code;
 
 	/* Set state to zombie */
 	rproc->state = PROC_ZOMBIE;
@@ -662,32 +655,6 @@ int sys_sbrk(void)
 
 	/* return old end */
 	return (int)old_end;
-}
-
-/* void* mmap(void* hint, uint sz, int protection,
-   int flags, int fd, off_t offset) */
-int sys_mmap(void)
-{
-	void* hint;
-	uint sz;
-	int protection;
-	int flags;
-	int fd;
-	off_t offset;
-
-	if(syscall_get_int((int*)&hint, 0)) return -1;
-	if(syscall_get_int((int*)&sz, 1)) return -1;
-	if(syscall_get_int(&protection, 2)) return -1;
-	if(syscall_get_int(&flags,  3)) return -1;
-	if(syscall_get_int(&fd, 4)) return -1;
-	if(syscall_get_int((int*) &offset, 5)) return -1;
-
-	slock_acquire(&ptable_lock);
-	uint pagestart = PGROUNDUP(rproc->heap_end);
-	mappages(pagestart, sz, rproc->pgdir, 1);
-	rproc->heap_end += sz;
-	slock_release(&ptable_lock);
-	return (int)pagestart;
 }
 
 /* int chdir(const char* dir) */

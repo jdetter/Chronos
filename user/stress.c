@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 {
 	printf("Forking...\n");
 	int x;
-	for(x = 0;x < 1;x++)
+	for(x = 0;x < 100;x++)
 	{
 		int f = fork();
 		if(!f)
