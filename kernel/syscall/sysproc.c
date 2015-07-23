@@ -1060,14 +1060,14 @@ int setregid(void){
 			rproc->egid = egid;	
 			
 		}
-		if((rgid!=-1 || euid!=old_ruid) && euid!= -1 ){
+		if((rgid!=-1 || egid!=old_ruid) && egid!= -1 ){
 			rproc->sgid = egid;
 		}
 	}
 	return 0;
 }
 
-int setumask(mode_t mask){
+int setumask(void){
 	mode_t mask;
 	if(syscall_get_int((int*)&mask, 0)) return -1;
 	mode_t prev;
