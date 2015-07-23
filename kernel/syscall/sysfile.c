@@ -13,7 +13,7 @@
 extern struct proc* rproc;
 
 /**
- * Find an available file descripor.
+ * Find an available file descriptor.
  */
 static int find_fd(void)
 {
@@ -26,12 +26,26 @@ static int find_fd(void)
 
 int sys_link(void)
 {
-	return -1;
+	const char* oldName;
+	const char* newName;
+	if(syscall_get_str_ptr(&oldName, 0)) return -1;
+	if(syscall_get_str_ptr(&newName, 0)) return -1;
+	return fs_link(oldName, newName);
+
 }
 
 int sys_stat(void)
 {
-	return -1;
+	const char* path;
+	struct stat* st;
+	if(syscall_get_str_ptr(&path, 0)) return -1;
+	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
+	if(i == NULL) return -1;
+	fs_stat(i, st);
+	fs_close(i);
+	return 0;
+
 }
 
 /* int open(const char* path, int flags, ...); */
