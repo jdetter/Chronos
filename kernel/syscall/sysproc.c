@@ -847,28 +847,31 @@ int getresuid(void){
 
 /* int getresuid(gid_t *rgid, gid_t *egid, gid_t *sgid) */
 int getresgid(void){
+	gid_t *rgid;
 	gid_t *egid;
 	gid_t *sgid;
-	gid_t *rgid;
-	if(syscall_get_buffer_ptr((void**)&rugid, sizeof(int*), 0))return -1;
-	if(syscall_get_buffer_ptr((void**)&eugid, sizeof(int*), 1))return -1;
-	if(syscall_get_buffer_ptr((void**)&sugid, sizeof(int*), 2)) return -1;
+	if(syscall_get_buffer_ptr((void**)&rgid, sizeof(int*), 0))return -1;
+	if(syscall_get_buffer_ptr((void**)&egid, sizeof(int*), 1))return -1;
+	if(syscall_get_buffer_ptr((void**)&sgid, sizeof(int*), 2)) return -1;
 	*rgid = rproc->rgid;
 	*egid = rproc->egid;
 	*sgid = rproc->sgid;
-	return 0;
-	
+	return 0;	
 }
 
 /* pid_t getsid(pid_t pid) */
 int getsid(void){
 	pid_t pid;
 	syscall_get_int((int*)&pid, 0);
+
 	if(pid == 0){
 		return rproc->sid;
-	}else{
-		return (*(get_proc_pid(pid)))->sid;
+	} else {
+		struct proc* p = get_proc_pid(pid);
+		if(p) return p->sid;
 	}
+
+	return -1;
 }
 
 /* int setsid(void) I dont know what I'm doing :)
@@ -888,14 +891,17 @@ int getpgid(void){
 	if(syscall_get_int((int*)&pid, 0)) return -1;
 	if(pid == 0){
 		return rproc->pgid;
-	}else{
-		return (*(get_proc_pid(pid)))->pgid;
+	} else {
+		struct proc* p = get_proc_pid(pid);
+                if(p) return p->pgid;
 	}
-	
+
+	return -1;	
 }
 
 /* pid_t getpgrp(void) */
-int getpgrp(void){
+int getpgrp(void)
+{
 	return rproc->pgid; 
 }
 
@@ -912,10 +918,11 @@ int setresuid(void){
 	arr[0] = ruid;
 	arr[1] = euid;
 	arr[2] = suid; 	
+	int i;
 	if(rproc->uid!=0){ //not privileged
-		for(int i = 0; i<3; i++){
+		for(i = 0; i<3; i++){
 			if(arr[i]!=rproc->ruid && arr[i]!=rproc->euid && arr[i]!=rproc->suid && arr[i]!=-1){
-				printf("sysproc.c setresuid: invalid uid for unprivileged processes");
+				cprintf("sysproc.c setresuid: invalid uid for unprivileged processes");
 				return -1;
 			}
 		}
@@ -954,8 +961,3 @@ int setresgid(void){
 	return 0;
 	
 }
-
-
-
-
-

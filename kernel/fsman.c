@@ -462,7 +462,7 @@ int fs_truncate(inode i, int sz)
 	return result;
 }
 
-int fs_link(const char* file, const char* link)
+int fs_link(const char* oldpath, const char* newpath)
 {
 	//int result = i->fs->link(i->inode_ptr,
 	//	file, link, i->fs->context);
