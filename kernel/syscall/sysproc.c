@@ -829,3 +829,133 @@ int sys_getppid(void){
 	if(!rproc->parent) return -1;
 	return (rproc->parent)->pid;
 }
+
+/* int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) */
+int getresuid(void){
+	uid_t *ruid;
+	uid_t *euid;
+	uid_t *suid;
+	if(syscall_get_buffer_ptr((void**)&ruid, sizeof(int*), 0)) return -1;
+	if(syscall_get_buffer_ptr((void**)&euid, sizeof(int*), 1)) return -1;
+	if(syscall_get_buffer_ptr((void**)&suid, sizeof(int*), 2)) return -1;	
+	*ruid = rproc->ruid;
+	*euid = rproc->euid;
+	*suid = rproc->suid;
+	return 0;
+	
+}
+
+/* int getresuid(gid_t *rgid, gid_t *egid, gid_t *sgid) */
+int getresgid(void){
+	gid_t *egid;
+	gid_t *sgid;
+	gid_t *rgid;
+	if(syscall_get_buffer_ptr((void**)&rugid, sizeof(int*), 0))return -1;
+	if(syscall_get_buffer_ptr((void**)&eugid, sizeof(int*), 1))return -1;
+	if(syscall_get_buffer_ptr((void**)&sugid, sizeof(int*), 2)) return -1;
+	*rgid = rproc->rgid;
+	*egid = rproc->egid;
+	*sgid = rproc->sgid;
+	return 0;
+	
+}
+
+/* pid_t getsid(pid_t pid) */
+int getsid(void){
+	pid_t pid;
+	syscall_get_int((int*)&pid, 0);
+	if(pid == 0){
+		return rproc->sid;
+	}else{
+		return (*(get_proc_pid(pid)))->sid;
+	}
+}
+
+/* int setsid(void) I dont know what I'm doing :)
+int setsid(void){
+	if(rproc->sid != rproc->pid){
+		create new session?
+	}
+	rproc->sid = rproc->pid;
+	rproc->pgid = rproc->pid;
+	return rproc->sid;
+	return 0;
+}*/
+
+/* pid_t getpgid(pid_t pid) */
+int getpgid(void){
+	pid_t pid;
+	if(syscall_get_int((int*)&pid, 0)) return -1;
+	if(pid == 0){
+		return rproc->pgid;
+	}else{
+		return (*(get_proc_pid(pid)))->pgid;
+	}
+	
+}
+
+/* pid_t getpgrp(void) */
+int getpgrp(void){
+	return rproc->pgid; 
+}
+
+/* int setresuid(uid_t ruid, uid_t euid, uid_t suid) */
+int setresuid(void){
+	uid_t ruid;
+	uid_t euid;
+	uid_t suid;
+	if(syscall_get_int((int*)&ruid, 0)) return -1;
+	if(syscall_get_int((int*)&euid, 1)) return -1;
+	if(syscall_get_int((int*)&suid, 2)) return -1;
+	
+	uid_t arr[3];
+	arr[0] = ruid;
+	arr[1] = euid;
+	arr[2] = suid; 	
+	if(rproc->uid!=0){ //not privileged
+		for(int i = 0; i<3; i++){
+			if(arr[i]!=rproc->ruid && arr[i]!=rproc->euid && arr[i]!=rproc->suid && arr[i]!=-1){
+				printf("sysproc.c setresuid: invalid uid for unprivileged processes");
+				return -1;
+			}
+		}
+		if(ruid != -1){
+			rproc->ruid = ruid;
+		}
+		if(euid != -1){
+			rproc->ruid = euid;
+		}
+		if(suid != -1){
+			rproc->ruid = suid;
+		}
+	}
+	else{ /* privileged process*/
+		if(ruid != -1){
+			rproc->ruid = ruid;
+		}
+		if(euid != -1){
+			rproc->ruid = euid;	
+		}
+		if(suid != -1){
+			rproc->ruid = suid;
+		}
+	}
+	return 0;
+	
+}
+/* int setresgid(gid_t rgid, gid_t egid, gid_t sgid)*/
+int setresgid(void){
+	gid_t rgid;
+	gid_t egid;
+	gid_t sgid;
+	if(syscall_get_int((int*)&rgid, 0)) return -1;
+	if(syscall_get_int((int*)&egid, 1)) return -1;
+	if(syscall_get_int((int*)&sgid, 2)) return -1;
+	return 0;
+	
+}
+
+
+
+
+
