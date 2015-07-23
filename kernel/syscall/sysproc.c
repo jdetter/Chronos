@@ -915,7 +915,7 @@ int setresuid(void){
 	if(rproc->uid!=0){ //not privileged
 		for(int i = 0; i<3; i++){
 			if(arr[i]!=rproc->ruid && arr[i]!=rproc->euid && arr[i]!=rproc->suid && arr[i]!=-1){
-				printf("sysproc.c setresuid: invalid uid for unprivileged processes");
+				printf("sysproc.c setresuid: invalid uid for unprivileged processes \n");
 				return -1;
 			}
 		}
@@ -923,10 +923,10 @@ int setresuid(void){
 			rproc->ruid = ruid;
 		}
 		if(euid != -1){
-			rproc->ruid = euid;
+			rproc->euid = euid;
 		}
 		if(suid != -1){
-			rproc->ruid = suid;
+			rproc->suid = suid;
 		}
 	}
 	else{ /* privileged process*/
@@ -934,10 +934,10 @@ int setresuid(void){
 			rproc->ruid = ruid;
 		}
 		if(euid != -1){
-			rproc->ruid = euid;	
+			rproc->euid = euid;	
 		}
 		if(suid != -1){
-			rproc->ruid = suid;
+			rproc->suid = suid;
 		}
 	}
 	return 0;
@@ -951,11 +951,134 @@ int setresgid(void){
 	if(syscall_get_int((int*)&rgid, 0)) return -1;
 	if(syscall_get_int((int*)&egid, 1)) return -1;
 	if(syscall_get_int((int*)&sgid, 2)) return -1;
+	gid_t arr[3];
+		arr[0] = rgid;
+		arr[1] = egid;
+		arr[2] = sgid; 	
+		if(rproc->gid!=0){ //not privileged
+			for(int i = 0; i<3; i++){
+				if(arr[i]!=rproc->rgid && arr[i]!=rproc->egid && arr[i]!=rproc->sgid && arr[i]!=-1){
+					printf("sysproc.c setresgid: invalid gid for unprivileged processes \n");
+					return -1;
+				}
+			}
+			if(ruid != -1){
+				rproc->rgid = rgid;
+			}
+			if(euid != -1){
+				rproc->egid = egid;
+			}
+			if(suid != -1){
+				rproc->sgid = sgid;
+			}
+		}
+		else{ /* privileged process*/
+			if(rgid != -1){
+				rproc->rgid = rgid;
+			}
+			if(euid != -1){
+				rproc->egid = egid;	
+			}
+			if(suid != -1){
+				rproc->sgid = sgid;
+			}
+		}
 	return 0;
 	
 }
 
+/* int setreuid(uid_t ruid, uid_t euid)*/
+int setreuid(void){
+	uid_t ruid;
+	uid_t euid;
+	if(syscall_get_int((int*)&ruid, 0)) return -1;
+	if(syscall_get_int((int*)&euid, 1)) return -1;	
+	uid_t old_ruid = rproc->ruid;
+	if(rproc->uid!=0){ //not privileged
+		if(euid!=rproc->ruid && euid!=rproc->euid && euid!=rproc->suid && euid!=-1){
+			printf("sysproc.c setreuid: invalid uid for unprivileged processes \n");
+			return -1;
+		}
+		if(ruid!=rproc->ruid && ruid!=rproc->euid && ruid!=-1){
+			printf("sysproc.c setreuid: invalid uid for unprivileged processes \n");
+			return -1;
+		}
+		if(euid!=-1){
+			rproc->euid = euid;
+		}
+		if(ruid!=-1){
+			rproc->ruid = ruid;
+		}
+		if((ruid!=-1 || euid!=old_ruid) && euid!= -1 ){
+			rproc->suid = euid;
+		}
+	}
+	else{ /* privileged process*/
+		if(ruid != -1){
+			rproc->ruid = ruid;
+		}
+		if(euid != -1){
+			rproc->euid = euid;	
+			
+		}
+		if((ruid!=-1 || euid!=old_ruid) && euid!= -1 ){
+			rproc->suid = euid;
+		}
+	}
+	return 0;
+}
 
+/*int setregid(gid_t rgid, gid_t egid);*/
+int setregid(void){
+	uid_t rgid;
+	uid_t egid;
+	if(syscall_get_int((int*)&rgid, 0)) return -1;
+	if(syscall_get_int((int*)&egid, 1)) return -1;	
+	uid_t old_rgid = rproc->rgid;
+	if(rproc->gid!=0){ //not privileged
+		if(egid!=rproc->rgid && egid!=rproc->egid && egid!=rproc->sgid && egid!=-1){
+			printf("sysproc.c setregid: invalid uid for unprivileged processes \n");
+		}
+		if(rgid!=rproc->rgid && rgid!=rproc->egid && rgid!=-1){
+			printf("sysproc.c setrguid: invalid uid for unprivileged processes \n");
+		}
+		if(egid!=-1){
+			rproc->egid = egid;
+		}
+		if(rgid!=-1){
+			rproc->rgid = rgid;
+		}
+		if((rgid!=-1 || egid!=old_ruid) && egid!= -1 ){
+			rproc->sgid = egid;
+		}
+	}
+	else{ /* privileged process*/
+		if(rgid != -1){
+			rproc->rgid = rgid;
+		}
+		if(egid != -1){
+			rproc->egid = egid;	
+			
+		}
+		if((rgid!=-1 || euid!=old_ruid) && euid!= -1 ){
+			rproc->sgid = egid;
+		}
+	}
+	return 0;
+}
+
+int setumask(mode_t mask){
+	mode_t mask;
+	if(syscall_get_int((int*)&mask, 0)) return -1;
+	mode_t prev;
+	prev = rproc->umask;
+	rproc->umask = (mask && 0777);
+	return prev;
+}
+
+int getumask(void){
+	return rproc->umask;
+}
 
 
 
