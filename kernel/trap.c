@@ -53,7 +53,7 @@ int trap_pf(uint address){
 	uint stack_tolerance = stack_bottom - stack_t*PGSIZE;
 	if(address<stack_bottom && address>=stack_tolerance){
 		uint address_down = PGROUNDDOWN(address);
-		if(addres_down == heap_end){
+		if(address_down == rproc->heap_end){
 			return 1;
 		}
 		int numOfPgs = (stack_bottom - address)/PGSIZE;
