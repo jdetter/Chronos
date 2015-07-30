@@ -18,6 +18,7 @@
 #include "proc.h"
 #include "cmos.h"
 #include "rtc.h"
+#include "vm.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -53,7 +54,7 @@ int trap_pf(uint address){
 	if(address<stack_bottom && address>=stack_tolerance){
 		uint address_down = PGROUNDDOWN(address);
 		int numOfPgs = (address - stack_bottom)/PGSIZE;
-		mappages(address_down, numOfpgs*PGSIZE, rproc->pgdir, 1);
+		mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 1);
 		return 0;
 	}else{
 		return 1;

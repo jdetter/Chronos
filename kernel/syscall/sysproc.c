@@ -1065,7 +1065,7 @@ int setregid(void){
 
 		}
 
-		if((rgid!=-1 || egid!=old_ruid) && egid!= -1 ){
+		if((rgid != -1 || egid != old_rgid) && egid!= -1 ){
 			rproc->sgid = egid;
 		}
 	}
