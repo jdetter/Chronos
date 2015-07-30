@@ -21,6 +21,7 @@
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
+#define stack_t 2
 
 extern struct rtc_t k_time;
 struct int_gate interrupt_table[TRAP_COUNT];
@@ -44,6 +45,19 @@ void trap_init(void)
 	}
 
 	lidt((uint)interrupt_table, INTERRUPT_TABLE_SIZE);		
+}
+
+int trap_pf(uint address){
+	uint stack_bottom = rproc->stack_end;
+	uint stack_tolerance = stack_bottom - stack_t*PGSIZE;
+	if(address<stack_bottom && address>=stack_tolerance){
+		uint address_down = PGROUNDDOWN(address);
+		int numOfPgs = (address - stack_bottom)/PGSIZE;
+		mappages(address_down, numOfpgs*PGSIZE, rproc->pgdir, 1);
+		return 0;
+	}else{
+		return 1;
+	}
 }
 
 void trap_handler(struct trap_frame* tf)
@@ -127,10 +141,14 @@ void trap_handler(struct trap_frame* tf)
 			user_problem = 1;
 			break;
 		case TRAP_PF:
-			tty_print_string(rproc->t, "%s: Seg Fault: 0x%x\n",
+			if(trap_pf(__get_cr2__())){
+				tty_print_string(rproc->t, "%s: Seg Fault: 0x%x\n",
 				rproc->name, 
 				__get_cr2__());
-			_exit(1);
+				_exit(1);
+			}else{
+				handled = 1;
+			}
 			break;
 		case TRAP_0F:
 			strncpy(fault_string, "Reserved interrupt", 64);

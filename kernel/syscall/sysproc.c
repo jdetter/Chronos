@@ -1067,11 +1067,8 @@ int setregid(void){
 			rproc->egid = egid;	
 
 		}
-<<<<<<< HEAD
+
 		if((rgid!=-1 || egid!=old_ruid) && egid!= -1 ){
-=======
-		if((rgid!=-1 || egid!=old_rgid) && egid!= -1 ){
->>>>>>> 7a90d173d41d33d73b14d48b4929699bd42731d0
 			rproc->sgid = egid;
 		}
 	}
