@@ -52,7 +52,7 @@ int trap_pf(uint address){
 	uint stack_tolerance = stack_bottom - stack_t*PGSIZE;
 	if(address<stack_bottom && address>=stack_tolerance){
 		uint address_down = PGROUNDDOWN(address);
-		int numOfPgs = (address - stack_bottom)/PGSIZE;
+		int numOfPgs = (stack_bottom - address)/PGSIZE;
 		mappages(address_down, numOfpgs*PGSIZE, rproc->pgdir, 1);
 		return 0;
 	}else{
