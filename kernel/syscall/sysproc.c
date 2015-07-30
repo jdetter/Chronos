@@ -874,16 +874,13 @@ int getsid(void){
 	return -1;
 }
 
-/* int setsid(void) I dont know what I'm doing :)
 int setsid(void){
-	if(rproc->sid != rproc->pid){
-		create new session?
-	}
+	if(rproc->sid == rproc->pid)
+		return -1; /* Already session leader */
 	rproc->sid = rproc->pid;
 	rproc->pgid = rproc->pid;
 	return rproc->sid;
-	return 0;
-}*/
+}
 
 /* pid_t getpgid(pid_t pid) */
 int getpgid(void){
