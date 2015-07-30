@@ -17,11 +17,11 @@ extern struct proc* rproc;
  */
 static int find_fd(void)
 {
-        int x;
-        for(x = 0;x < MAX_FILES;x++)
-                if(rproc->file_descriptors[x].type == 0x0)
-                        return x;
-        return -1;
+	int x;
+	for(x = 0;x < MAX_FILES;x++)
+		if(rproc->file_descriptors[x].type == 0x0)
+			return x;
+	return -1;
 }
 
 int sys_link(void)
@@ -105,7 +105,7 @@ int sys_open(void)
 	if(flags & O_DIRECTORY && !S_ISDIR(st.st_mode))
 	{
 		memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
-                return -1;
+		return -1;
 	}
 
 	if(flags & O_TRUNC && S_ISREG(st.st_mode))
@@ -157,35 +157,35 @@ int sys_read(void)
 	int i;
 	switch(rproc->file_descriptors[fd].type)
 	{
-		case 0x00: return -1;
-		case FD_TYPE_FILE:
-			   if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
-							   rproc->file_descriptors[fd].seek)) < 0) {
-				   return -1;
-			   }
-			   break;
-		case FD_TYPE_DEVICE:
-			   /* Check for read support */
-			   if(rproc->file_descriptors[fd].device->read)
-			   {
-				   /* read is supported */
-				   rproc->file_descriptors[fd].device->read(dst,
-						   rproc->file_descriptors[fd].seek, sz,
-						   rproc->file_descriptors[fd].device->context);
-			   } else return -1;
-			   break;
-		case FD_TYPE_STDIN:
-			   for(i = 0;i < sz; i++){
-				   char next_char = tty_get_char(rproc->t);
-				   dst[i] = next_char;
-			   }
-			   break;
-		case FD_TYPE_PIPE:
-			   if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
-				   pipe_read(dst, sz, rproc->file_descriptors[fd].pipe);
-			   else return -1;
-			   break;
-		default: return -1;
+	case 0x00: return -1;
+	case FD_TYPE_FILE:
+		if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
+				rproc->file_descriptors[fd].seek)) < 0) {
+			return -1;
+		}
+		break;
+	case FD_TYPE_DEVICE:
+		/* Check for read support */
+		if(rproc->file_descriptors[fd].device->read)
+		{
+			/* read is supported */
+			rproc->file_descriptors[fd].device->read(dst,
+					rproc->file_descriptors[fd].seek, sz,
+					rproc->file_descriptors[fd].device->context);
+		} else return -1;
+		break;
+	case FD_TYPE_STDIN:
+		for(i = 0;i < sz; i++){
+			char next_char = tty_get_char(rproc->t);
+			dst[i] = next_char;
+		}
+		break;
+	case FD_TYPE_PIPE:
+		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
+			pipe_read(dst, sz, rproc->file_descriptors[fd].pipe);
+		else return -1;
+		break;
+	default: return -1;
 	}
 
 	rproc->file_descriptors[fd].seek += sz;
@@ -206,35 +206,35 @@ int sys_write(void)
 	int str_len;
 	switch(rproc->file_descriptors[fd].type)
 	{
-		default: return -1;
-		case FD_TYPE_FILE:
-			 if(fs_write(rproc->file_descriptors[fd].i, src, sz,
-						 rproc->file_descriptors[fd].seek) == -1)
-				 return -1;
-			 break;
-		case FD_TYPE_STDOUT:
-			 str_len = strlen(src);
-			 for(x = 0;x < str_len;x++)
-				 tty_print_character(rproc->t, src[x]);
-			 break;
-		case FD_TYPE_STDERR:
-			 str_len = strlen(src);
-			 for(x = 0;x < str_len;x++)
-				 tty_print_character(rproc->t, src[x]);
-			 break;
-		case FD_TYPE_DEVICE:
-			 if(rproc->file_descriptors[fd].device->write)
-			 {
-				 rproc->file_descriptors[fd].device->write(src,
-						 rproc->file_descriptors[fd].seek, sz,
-						 rproc->file_descriptors[fd].device->context);
-			 }
-			 else return -1;
-			 break;
-		case FD_TYPE_PIPE:
-			 if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
-				 pipe_write(src, sz, rproc->file_descriptors[fd].pipe);
-			 else return -1;
+	default: return -1;
+	case FD_TYPE_FILE:
+		if(fs_write(rproc->file_descriptors[fd].i, src, sz,
+				rproc->file_descriptors[fd].seek) == -1)
+			return -1;
+		break;
+	case FD_TYPE_STDOUT:
+		str_len = strlen(src);
+		for(x = 0;x < str_len;x++)
+			tty_print_character(rproc->t, src[x]);
+		break;
+	case FD_TYPE_STDERR:
+		str_len = strlen(src);
+		for(x = 0;x < str_len;x++)
+			tty_print_character(rproc->t, src[x]);
+		break;
+	case FD_TYPE_DEVICE:
+		if(rproc->file_descriptors[fd].device->write)
+		{
+			rproc->file_descriptors[fd].device->write(src,
+					rproc->file_descriptors[fd].seek, sz,
+					rproc->file_descriptors[fd].device->context);
+		}
+		else return -1;
+		break;
+	case FD_TYPE_PIPE:
+		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
+			pipe_write(src, sz, rproc->file_descriptors[fd].pipe);
+		else return -1;
 	}
 
 	rproc->file_descriptors[fd].seek += sz;
@@ -357,11 +357,11 @@ int sys_fstat(void)
 	/* Check file descriptor type */
 	switch(rproc->file_descriptors[fd].type)
 	{
-		case FD_TYPE_FILE:
-		case FD_TYPE_DEVICE:
-		case FD_TYPE_PIPE:
-			break;
-		default: return -1;
+	case FD_TYPE_FILE:
+	case FD_TYPE_DEVICE:
+	case FD_TYPE_PIPE:
+		break;
+	default: return -1;
 	}
 
 	return fs_stat(rproc->file_descriptors[fd].i, dst);
@@ -377,7 +377,7 @@ int sys_readdir(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int(&index, 1)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, 
-				sizeof(struct dirent), 2))
+			sizeof(struct dirent), 2))
 		return -1;
 
 	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
@@ -461,30 +461,87 @@ int dup2(int new_fd, int old_fd)
 			sizeof(struct file_descriptor));
 	switch(rproc->file_descriptors[old_fd].type)
 	{
-		default: return -1;
-		case FD_TYPE_STDIN:
-		case FD_TYPE_STDOUT:
-		case FD_TYPE_STDERR:
-			 break;
-		case FD_TYPE_FILE:
-			 rproc->file_descriptors[old_fd].i->references++;
-			 break;
-		case FD_TYPE_DEVICE:break;
-		case FD_TYPE_PIPE:
-				    slock_acquire(&rproc->
-						    file_descriptors[old_fd].pipe->guard);
-				    if(rproc->file_descriptors[old_fd].pipe_type ==
-						    FD_PIPE_MODE_WRITE)
-					    rproc->file_descriptors[old_fd].
-						    pipe->write_ref++;
-				    if(rproc->file_descriptors[old_fd].pipe_type
-						    == FD_PIPE_MODE_READ)
-					    rproc->file_descriptors[old_fd].
-						    pipe->read_ref++;
-				    slock_release(&rproc->
-						    file_descriptors[old_fd].pipe->guard);
-				    break;
+	default: return -1;
+	case FD_TYPE_STDIN:
+	case FD_TYPE_STDOUT:
+	case FD_TYPE_STDERR:
+		break;
+	case FD_TYPE_FILE:
+		rproc->file_descriptors[old_fd].i->references++;
+		break;
+	case FD_TYPE_DEVICE:break;
+	case FD_TYPE_PIPE:
+		slock_acquire(&rproc->
+				file_descriptors[old_fd].pipe->guard);
+		if(rproc->file_descriptors[old_fd].pipe_type ==
+				FD_PIPE_MODE_WRITE)
+			rproc->file_descriptors[old_fd].
+			pipe->write_ref++;
+		if(rproc->file_descriptors[old_fd].pipe_type
+				== FD_PIPE_MODE_READ)
+			rproc->file_descriptors[old_fd].
+			pipe->read_ref++;
+		slock_release(&rproc->
+				file_descriptors[old_fd].pipe->guard);
+		break;
 	}
 
 	return 0;
 }
+
+int fchdir(int fd)
+{
+	if(fd < 0) return -1;
+	if(fd >= MAX_FILES) return -1;
+	switch(fd)
+	{
+	case FD_TYPE_FILE:
+	case FD_TYPE_DEVICE:
+	case FD_TYPE_PATH:
+		break;
+	default:
+		return -1;
+	}
+	strncpy(rproc->cwd, rproc->file_descriptors[fd].path, FILE_MAX_PATH);
+	return 0;
+}
+
+int fchmod(int fd, mode_t mode)
+{
+	if(fd < 0) return -1;
+	if(fd >= MAX_FILES) return -1;
+	switch(fd)
+	{
+	case FD_TYPE_FILE:
+	case FD_TYPE_DEVICE:
+	case FD_TYPE_PATH:
+		break;
+	default:
+		return -1;
+	}
+	return fs_chmod(rproc->file_descriptors[fd].path, mode);
+}
+
+int fchown(int fd, uid_t owner, gid_t group)
+{
+	if(fd < 0) return -1;
+	if(fd >= MAX_FILES) return -1;
+	switch(fd)
+	{
+	case FD_TYPE_FILE:
+	case FD_TYPE_DEVICE:
+	case FD_TYPE_PATH:
+		break;
+	default:
+		return -1;
+	}
+	return fs_chown(rproc->file_descriptors[fd].path, owner, group);
+}
+
+int lchown(const char *pathname, uid_t owner, gid_t group)
+{
+
+	return -1;
+}
+
+
