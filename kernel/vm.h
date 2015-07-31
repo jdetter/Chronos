@@ -171,6 +171,14 @@
  *     | Stack grows down when the user needs more stack space
  *     |
  *     V
+ * ?????????? mmap area start
+ * ...
+ * ?????????? mmap area end
+ *     |
+ *     | mmap area grows towards heap
+ *     |
+ *     V
+ *
  *     ^
  *     |
  *     | Heap grows up when the user needs more heap space
@@ -189,6 +197,8 @@
 /* User stack start is now unknown due to environment variables */
 //#define UVM_USTACK_TOP	0xFCFFFFFF /* Top of the user's stack */
 #define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
+
+#define UVM_MIN_STACK	0x00A00000 /* 10MB minimum stack size */
 
 /** Memory mapped file systems
  *  < Will be updated when implemented >
@@ -308,10 +318,22 @@ uint unmappage(uint virt, pgdir* dir);
 uint findpg(uint virt, int create, pgdir* dir, uchar user);
 
 /**
+ * Returns the flags for a virtual memory address. Returns -1 if the
+ * page is not mapped in memory. 
+ */
+int findpgflags(uint virt, pgdir* dir);
+
+/**
  * Set the flags on a specific page table entry. Doesn't change page directory
  * flags.
  */
 uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags);
+
+/**
+ * Sets the page read only. Returns the virtual address on success, 0 on
+ * failure.
+ */
+uint pgreadonly(uint virt, pgdir* dir, uchar user);
 
 /**
  * Free all pages in the page table and free the directory itself.
@@ -369,6 +391,19 @@ void vm_clear_swap_stack(pgdir* dir);
  */
 void switch_context(struct proc* p);
 
+/**
+ * Move memory from one address space to another. Return the amount of bytes
+ * copied.
+ */
+uint vm_memmove(void* dst, const void* src, uint sz,
+                pgdir* dst_pgdir, pgdir* src_pgdir);
+
+/**
+ * Free the directory and page table struct  but none of the pages pointed to 
+ * by the tables.
+ */
+void freepgdir_struct(pgdir* dir);
+
 /** Memory debugging functions */
 void free_list_check(void); /* Verfy the free list */
 void free_list_dump(void); /* Print the free list */
@@ -382,19 +417,6 @@ void pgdir_cmp(pgdir* src, pgdir* dst);
  * Compare 2 pages.
  */
 void pg_cmp(uchar* pg1, uchar* pg2);
-
-/**
- * Move memory from one address space to another. Return the amount of bytes
- * copied.
- */
-uint vm_memmove(void* dst, const void* src, uint sz,
-                pgdir* dst_pgdir, pgdir* src_pgdir);
-
-/**
- * Free the directory and page table struct  but none of the pages pointed to 
- * by the tables.
- */
-void freepgdir_struct(pgdir* dir);
 
 #endif 
 

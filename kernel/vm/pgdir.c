@@ -194,15 +194,41 @@ uint findpg(uint virt, int create, pgdir* dir, uchar user)
         return PGROUNDDOWN(page);
 }
 
-uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags)
+int findpgflags(uint virt, pgdir* dir)
 {
         pgdir* save = vm_push_pgdir();
-        uint tbl_flags = KTBLFLAGS;
-
-        if(user) tbl_flags = UTBLFLAGS;
 
         virt = PGROUNDDOWN(virt);
-        uint dir_index = PGDIRINDEX(virt);
+	uint dir_index = PGDIRINDEX(virt);
+	uint tbl_index = PGTBLINDEX(virt);
+
+	if(!dir[dir_index])
+	{
+		vm_pop_pgdir(save);
+		return -1;
+	}
+
+	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+	uint page;
+	if(!(page = tbl[tbl_index]))
+	{
+		vm_pop_pgdir(save);
+		return -1;
+	}
+
+	vm_pop_pgdir(save);
+	return page & (PGSIZE - 1);
+}
+
+uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags)
+{
+	pgdir* save = vm_push_pgdir();
+	uint tbl_flags = KTBLFLAGS;
+
+	if(user) tbl_flags = UTBLFLAGS;
+
+	virt = PGROUNDDOWN(virt);
+	uint dir_index = PGDIRINDEX(virt);
 	uint tbl_index = PGTBLINDEX(virt);
 
 	if(!dir[dir_index])
@@ -220,6 +246,40 @@ uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags)
 	} else {
 		page = PGROUNDDOWN(page);
 		page |= tbl_flags | flags;
+		tbl[tbl_index] = page;
+	}
+
+	vm_pop_pgdir(save);
+	return PGROUNDDOWN(page);
+}
+
+uint pgreadonly(uint virt, pgdir* dir, uchar user)
+{
+	pgdir* save = vm_push_pgdir();
+	uint tbl_flags = KTBLFLAGS;
+
+	if(user) tbl_flags = UTBLFLAGS;
+
+	virt = PGROUNDDOWN(virt);
+	uint dir_index = PGDIRINDEX(virt);
+	uint tbl_index = PGTBLINDEX(virt);
+
+	if(!dir[dir_index])
+	{
+		vm_pop_pgdir(save);
+		return 0;
+	}
+
+	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+	uint page;
+	if(!(page = tbl[tbl_index]))
+	{
+		vm_pop_pgdir(save);
+		return 0;
+	} else {
+		tbl_flags &= ~(PGTBL_RW);
+		page = PGROUNDDOWN(page);
+		page |= tbl_flags;
 		tbl[tbl_index] = page;
 	}
 
@@ -251,12 +311,12 @@ uint vm_memmove(void* dst, const void* src, uint sz,
 		uint dst_offset = ((uint)dst + bytes) & (PGSIZE - 1);
 		uint dst_cpy = PGSIZE - dst_offset;
 		if(!dst_page) break;
-	
+
 		/* Make sure copy amount is okay */
 		if(src_cpy < to_copy) to_copy = src_cpy;
 		if(dst_cpy < to_copy) to_copy = dst_cpy;
 		memmove((void*)dst_page + dst_offset, 
-			(void*)src_page + src_offset, to_copy);
+				(void*)src_page + src_offset, to_copy);
 		/* Adjust bytes */
 		bytes += to_copy;
 	}
@@ -308,17 +368,17 @@ void vm_copy_kvm(pgdir* dir)
 
 void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir)
 {
-        pgdir* save = vm_push_pgdir();
+	pgdir* save = vm_push_pgdir();
 
-        uint x;
-        for(x = 0;x < (UVM_KVM_S >> 22);x++)
-        {   
-                uint src_page = PGROUNDDOWN(src_dir[x]); 
-                if(!src_page) continue;
-        	if(!dst_dir[x])dst_dir[x] = palloc() | UTBLFLAGS;
+	uint x;
+	for(x = 0;x < (UVM_KVM_S >> 22);x++)
+	{   
+		uint src_page = PGROUNDDOWN(src_dir[x]); 
+		if(!src_page) continue;
+		if(!dst_dir[x])dst_dir[x] = palloc() | UTBLFLAGS;
 		memmove((void*)PGROUNDDOWN(dst_dir[x]), 
-			(void*)PGROUNDDOWN(src_dir[x]), 
-			PGSIZE);
+				(void*)PGROUNDDOWN(src_dir[x]), 
+				PGSIZE);
 	}
 
 	vm_pop_pgdir(save);
@@ -332,11 +392,14 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	{
 		uint src_page = findpg(x, 0, src_dir, 1);
 		if(!src_page) continue;
+		int src_flags = findpgflags(x, src_dir);
+		if(src_flags == -1) panic("kernel: page not present?\n");
 
 		uint dst_page = findpg(x, 1, dst_dir, 1);
 		memmove((uchar*)dst_page,
 				(uchar*)src_page,
 				PGSIZE);
+		pgflags(x, dst_dir, 1, src_flags);
 	}
 
 	/* Create new kstack */
@@ -464,14 +527,14 @@ void freepgdir(pgdir* dir)
 void freepgdir_struct(pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();
-        
+
 	/* Free directory pages */
-        uint x;
-        for(x = 0;x < (PGSIZE / sizeof(uint));x++)
-                if(dir[x]) pfree(dir[x]);
+	uint x;
+	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
+		if(dir[x]) pfree(dir[x]);
 
-        /* free directory */
-        pfree((uint)dir);
+	/* free directory */
+	pfree((uint)dir);
 
-        vm_pop_pgdir(save);
+	vm_pop_pgdir(save);
 }

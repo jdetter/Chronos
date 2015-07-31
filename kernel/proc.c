@@ -134,6 +134,10 @@ struct proc* spawn_tty(tty_t t)
 	p->heap_start = PGROUNDUP(end);
 	p->heap_end = p->heap_start;
 
+	/* Set the mmap area start */
+	rproc->mmap_end = rproc->mmap_start = 
+		PGROUNDUP(UVM_TOP) - UVM_MIN_STACK;
+
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);
 

@@ -55,6 +55,7 @@
 #define SYS_setgid	0x31
 #define SYS_gettid	0x32
 #define SYS_getppid	0x33
+#define SYS_munmap	0x34
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -539,6 +540,12 @@ pid_t gettid(void);
  * Returns the pid of the parent of the calling process.
  */
 pid_t getppid(void);
+
+/**
+ * Unmap a region in memory. This does not close the mapped file if there
+ * is a mapped file. Returns 0 on success, -1 otherwise.
+ */
+int munmap(void* addr, size_t length);
 
 #endif
 

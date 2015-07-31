@@ -83,18 +83,24 @@ struct proc
 	 * Security note: The kernel should never try to access memory that
 	 * is outside of:
 	 *     ->   stack_end <= x < stack_start
+	 *     ->   mmap_end <= x < mmap_start
 	 *     ->   heap_end > x >= heap_start
 	 *
 	 * Accesses outside of these ranges could cause page faults or other
 	 * types of faults.
 	 */
-	
+
+	slock_t mem_lock;	
 	/* Stack start will be greater than stack end */
 	uint stack_start; /* The high memory, start of the stack */
 	uint stack_end; /* Size of the stack in bytes. */
 	/* Heap end will be greater than heap start. */
 	uint heap_start; /* The low memory, start of the heap */
 	uint heap_end; /* Size of the heap in bytes. */
+
+	/* mmap area grows down towards heap */
+	uint mmap_start; /* Start of the mmap area */
+	uint mmap_end; /* end of the mmap area */
 
 	uchar block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */

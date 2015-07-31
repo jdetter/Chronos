@@ -53,8 +53,7 @@ static int default_actions[] =
 	SIGDEFAULT_IGN, 	/* 28 = SIGWINCH */
 	SIGDEFAULT_TERM,	/* 29 = SIGIO */
 	SIGDEFAULT_TERM,	/* 30 = SIGPWR */
-	SIGDEFAULT_CORE 	/* 31 = SIGSYS */
-	
+	SIGDEFAULT_CORE 	/* 31 = SIGSYS */	
 };
 
 /* Signal table */

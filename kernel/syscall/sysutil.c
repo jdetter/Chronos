@@ -16,6 +16,8 @@ uchar syscall_addr_safe(void* address)
 {
         if((rproc->stack_end >= (uint)address
                 && (uint)address < rproc->stack_start) ||
+        	   (rproc->mmap_end >= (uint)address
+                && (uint)address < rproc->mmap_start) ||
                    (rproc->heap_end < (uint)address
                 && (uint)address >= rproc->heap_start))
         {
