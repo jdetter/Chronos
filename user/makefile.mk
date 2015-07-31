@@ -1,5 +1,3 @@
-include user/lib/makefile.mk
-
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
 	init \
@@ -7,29 +5,30 @@ USER_TARGETS := \
 	otherexample \
 	cat \
 	echo \
-	ls \
 	login \
-	mkdir \
 	mv \
-	rm \
 	rmdir \
-	sh \
 	test \
 	stress \
 	touch \
 	pwd \
 	stall \
-	stat \
 	crash \
-	less \
 	chmod \
 	chown \
 	date \
 	stack-test \
 	exec-test \
 	env \
-	syscall-test \
-	kill-test
+	kill-test \
+	ret-test
+
+# rm
+# ls
+# mkdir
+# sh
+# stat
+# syscall-test 
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
@@ -63,14 +62,14 @@ USER_CFLAGS += -fno-strict-aliasing
 USER_CFLAGS += -fno-stack-protector
 
 # Don't link the standard library
-USER_LDFLAGS := -nostdlib
+# USER_LDFLAGS := -nostdlib
 # Set the entry point
-USER_LDFLAGS += --entry=main
+# USER_LDFLAGS += --entry=main
 # Set the memory location where the code should begin
-USER_LDFLAGS += --section-start=.text=0x1000
+# USER_LDFLAGS += --section-start=.text=0x1000
 # USER_LDFLAGS += --omagic
 
-USER_BUILD :=  $(USER_LIB_OBJECTS) $(LIBS) user/syscall.o user/bin $(USER_OBJECTS) $(USER_BINARIES) 
+USER_BUILD := lib/file.o lib/stdlock.o user/syscall.o user/bin $(USER_BINARIES) 
 	
 user/bin: 
 	mkdir -p user/bin	
@@ -78,14 +77,11 @@ user/bin:
 user-symbols: $(USER_SYMBOLS)
 
 user/syscall.o:
-	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include  -c user/syscall.S -o user/syscall.o
+	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c user/syscall.S -o user/syscall.o
 
-# Recipe for object files
-user/%.o: user/%.c
-	$(CROSS_CC) $(CFLAGS) $(USER_CFLAGS) -c $< -o $@
 # Recipe for binary files
-user/bin/%: user/%.o
-	$(CROSS_LD) $(LDFLAGS) $(USER_LDFLAGS) -o $@ $< $(LIBS) user/syscall.o $(USER_LIB_OBJECTS)
+user/bin/%: user/%.c
+	$(CROSS_CC) $(USER_LDFLAGS) -o $@ $< user/syscall.o lib/file.o lib/stdlock.o
 
 # Recipe for symbole files
 user/bin/%.sym: user/bin/%

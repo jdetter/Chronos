@@ -1,6 +1,6 @@
-#include "types.h"
-#include "stdio.h"
-#include "chronos.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/time.h>
 
 int main(int argc, char** argv)
 {
@@ -9,10 +9,10 @@ int main(int argc, char** argv)
 	if(gettimeofday(&tv, NULL))
 	{
 		printf("Error getting time from kernel.\n");
-		exit(1);
+		return 1;
 	}
 
 	printf("Unix time: %d\n", tv.tv_sec);
 
-	exit(0);
+	return 0;
 }

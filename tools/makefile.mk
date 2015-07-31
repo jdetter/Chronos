@@ -23,17 +23,17 @@ tools/bin/mkfs: tools/bin lib/file.o
 	cp include/stdlock.h tools/bin
 	cp include/types.h tools/bin
 	cp include/file.h tools/bin
-	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -c -o tools/bin/vsfs.o tools/bin/vsfs.c
-	$(CC) $(CFLAGS) -I kernel/drivers/ -I kernel/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o lib/file.o
+	$(CC) $(CFLAGS_TOOLS) $(CFLAGS) -m32 -I kernel/drivers/ -I kernel/ -I tools/bin -c -o tools/bin/vsfs.o tools/bin/vsfs.c
+	$(CC) $(CFLAGS_TOOLS) $(CFLAGS) -m32 -I kernel/drivers/ -I kernel/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o lib/file.o
 	
 tools/bin/fsck: tools/bin/mkfs lib/file.o
-	$(CC) $(CFLAGS) -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o lib/file.o
+	$(CC) $(CFLAGS) -m32 -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o lib/file.o
 
 tools/bin/boot2-verify: tools/bin
-	$(CC) $(CFLAGS) -o tools/bin/boot2-verify tools/boot2-verify.c
+	$(CC) $(CFLAGS) -m32 -o tools/bin/boot2-verify tools/boot2-verify.c
 tools/bin/boot-sign: tools/bin
-	$(CC) $(CFLAGS) -o tools/bin/boot-sign tools/boot-sign.c
+	$(CC) $(CFLAGS) -m32 -o tools/bin/boot-sign tools/boot-sign.c
 tools/bin/disk-part: tools/bin
-	$(CC) $(CFLAGS) -o tools/bin/disk-part tools/disk-part.c
+	$(CC) $(CFLAGS) -m32 -o tools/bin/disk-part tools/disk-part.c
 tools/bin/mkvect: tools/bin
-	$(CC) $(CFLAGS) -o tools/bin/mkvect tools/mkvect.c -I kernel -I tools/bin
+	$(CC) $(CFLAGS) -m32 -o tools/bin/mkvect tools/mkvect.c -I kernel -I tools/bin

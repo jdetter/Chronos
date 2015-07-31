@@ -1,10 +1,8 @@
-#include "types.h"
-#include "stdarg.h"
-#include "stdio.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
-#include "stdlib.h"
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
 
 int main(int argc, char* argv[])
 {
@@ -27,5 +25,5 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	exit(0);
+	return 0;
 }

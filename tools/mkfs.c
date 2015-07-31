@@ -24,11 +24,14 @@
 
 #define SECTSIZE 512
 
+void vsfs_fsstat(struct fs_stat* dst, struct vsfs_context* context);
 int allocate_directent(vsfs_inode* parent, char* name, 
 	uint inode_num, struct vsfs_context*);
 void write_inode(uint inode_num, vsfs_inode* inode, 
 	struct vsfs_context*);
 
+int added_files;
+int added_dirs;
 char zero[SECTSIZE];
 int find_free_inode(struct vsfs_context*);
 int fd;
@@ -82,9 +85,12 @@ int add_dir(char* directory, char* path)
 				vsfs_link(path_buffer, 
 					&new_inode, &context);
 				printf("Adding directory: %s\n", name);
+				added_files++;
+				added_dirs++;
 				add_dir(name_buffer, path_buffer);
 			} else if(S_ISREG(s.st_mode))
 			{
+				added_files++;
 				printf("Adding file: %s\n", name);
 				new_inode.perm = s.st_mode;
 				new_inode.type = VSFS_FILE;
@@ -249,8 +255,8 @@ int main(int argc, char** argv)
 
 
 	printf("**Creating VSFS file system**\n");
-	printf("inodes: %d\n", inodes);
-	printf("blocks: %d\n", blocks);	
+	printf("inodes: 0xx%x\n", inodes);
+	printf("blocks: 0x%x\n", blocks);	
 
 	/* Open the file */
 	fd = open(file, O_CREAT | O_TRUNC | O_RDWR, 
@@ -301,10 +307,24 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	added_files = 0;
+	added_dirs = 0;
+
 	allocate_directent(&root_i, ".", 1, &context);
 	allocate_directent(&root_i, "..", 1, &context);
 	write_inode(1, &root_i, &context);	
 	add_dir(root, "/");
+
+	printf("%d files added.\n", added_files);
+	printf("%d of which where directories.\n", added_dirs);
+
+	struct fs_stat st;
+	vsfs_fsstat(&st, &context);
+
+	printf("Inodes available: %d\n", st.inodes_available);	
+	printf("Inodes allocated: %d\n", st.inodes_allocated);	
+	printf("blocks available: %d\n", st.blocks_available);	
+	printf("blocks allocated: %d\n", st.blocks_allocated);	
 
 	printf("MKFS finished successfully.\n");
 

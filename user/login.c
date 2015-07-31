@@ -1,7 +1,4 @@
-#include "types.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
+#include <stdlib.h>
 
 int main(int argc, char** argv)
 {

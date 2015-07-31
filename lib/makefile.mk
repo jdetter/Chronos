@@ -39,4 +39,4 @@ LIB_TEST_CFLAGS += -fno-strict-aliasing
 libs: $(LIBS)
 
 lib/%.o: lib/%.c
-	$(CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(LIB_CFLAGS) -c -o $@ $<

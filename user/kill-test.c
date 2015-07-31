@@ -1,6 +1,6 @@
-#include "chronos.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
 
 int main(int argc, char** argv)
 {
@@ -18,6 +18,5 @@ int main(int argc, char** argv)
 			printf("[ OK ]\n");
 		else printf("[FAIL]\n");
 	}
-
-	exit(0);
+	return 0;
 }

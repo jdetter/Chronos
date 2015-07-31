@@ -304,13 +304,14 @@ int vsfs_mkdir(const char* path, mode_t permissions,
         int ino = vsfs_lookup(path, &in, context);
         if(ino != 0) return -1; /* file exists */
 
+	memset(&in, 0, sizeof(struct vsfs_inode));
         in.type = VSFS_DIR;
         in.perm = permissions | S_IFDIR;
         in.uid = uid;
         in.gid = gid;
 
         /* Link the file */
-        if(vsfs_link(path, &in, context))
+        if(vsfs_link(path, &in, context) < 0)
                 return -1; /* Couldn't create file */
         return 0;
 }
@@ -885,11 +886,11 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum,
 int read_block(vsfs_inode* inode, uint block_index, void* dst,
 		struct vsfs_context* context)
 {
-  if(block_index < 9){
+  if(block_index < VSFS_DIRECT){
    context->read(dst, context->b_off + inode->direct[block_index], 
 		context->hdd);
   }
-  else if(block_index < 137){
+  else if(block_index < VSFS_DIRECT + (512 / sizeof(int))){
     int ind_index = block_index - 9;
     uint indirect_block[128];
     context->read(indirect_block, context->b_off + inode->indirect,	

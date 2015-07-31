@@ -1,9 +1,9 @@
-#include "types.h"
-#include "stdarg.h"
-#include "stdio.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <chronos/types.h>
 
 int main(int argc, char* argv[])
 {
@@ -13,7 +13,8 @@ int main(int argc, char* argv[])
 		printf("%s\n", argv[i]);
 		create(argv[i], PERM_ARD | PERM_UWR | PERM_GWR);
 	}
-	exit(0);
+
+	return 0;
 }
 
 

@@ -1,6 +1,7 @@
-#include "chronos.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 int recurse(int num, char* buff)
 {

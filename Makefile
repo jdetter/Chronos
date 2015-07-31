@@ -1,9 +1,10 @@
 # Use the new tool chain to build executables.
-TARGET=i686-elf-
-CROSS_CC=tools/build/bin/$(TARGET)gcc
-CROSS_LD=tools/build/bin/$(TARGET)ld
-CROSS_AS=tools/build/bin/$(TARGET)gcc
-CROSS_OBJCOPY=tools/build/bin/$(TARGET)objcopy
+TARGET=i686-chronos-
+TOOL_DIR=/home/john/Workspaces/Chronos/hosted/bin
+CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
+CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
+CROSS_AS=$(TOOL_DIR)/$(TARGET)gcc
+CROSS_OBJCOPY=$(TOOL_DIR)/$(TARGET)objcopy
 
 # use host to configure the tools
 CC=gcc
@@ -11,19 +12,19 @@ ld=ld
 AS=gcc
 OBJCOPY=objcopy
 
-LDFLAGS := -m elf_i386 --omagic
-CFLAGS := -ggdb -m32 -Werror -Wall -gdwarf-2 -fno-common
-ASFLAGS += -ggdb -m32 -Werror -Wall
+LDFLAGS := 
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common
+ASFLAGS += -ggdb -Werror -Wall
 QEMU := qemu-system-i386
 
 # Flags for building indipendant binaries
 
 # Disable Position Independant Code
-BUILD_CFLAGS += -fno-pic
+# BUILD_CFLAGS += -fno-pic
 # Disable built in functions
 BUILD_CFLAGS += -fno-builtin
 # Disable optimizations that deal with aliases.
-BUILD_CFLAGS += -fno-strict-aliasing
+# BUILD_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 BUILD_CFLAGS += -fno-stack-protector
 
@@ -36,7 +37,6 @@ include tools/makefile.mk
 include lib/makefile.mk
 include kernel/makefile.mk
 include user/makefile.mk
-include user/lib/makefile.mk
 
 chronos.img: kernel/boot/boot-stage1.img \
 		kernel/boot/boot-stage2.img \
@@ -54,9 +54,10 @@ fs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	mkdir -p fs
 	mkdir -p fs/boot
 	mkdir -p fs/bin
+	tar xzvf tools/sysroot.tar.gz -C ./fs 
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
-	./tools/bin/mkfs -i 512 -s 2097152 -r fs fs.img
+	./tools/bin/mkfs -i 512 -s 134217728 -r fs fs.img
 
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img

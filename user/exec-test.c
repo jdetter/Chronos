@@ -1,5 +1,4 @@
-#include "chronos.h"
-#include "stdio.h"
+#include <stdio.h>
 
 int main(int argc, char** argv, char** env)
 {
@@ -11,6 +10,5 @@ int main(int argc, char** argv, char** env)
 	for(x = 0;env[x];x++)
 		printf("    %d: %s\n", x, env[x]);
 		
-	exit(0);
 	return 0;
 }

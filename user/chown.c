@@ -1,10 +1,9 @@
-#include "types.h"
-#include "stdarg.h"
-#include "stdio.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
-#include "stdlib.h"
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 int main(int argc, char* argv[])
 {
@@ -37,10 +36,10 @@ int main(int argc, char* argv[])
 
 				if(grp != NULL)
 				{
-					uid = atoi(argv[i], 10);
-					gid = atoi(grp, 10);
+					uid = atoi(argv[i]);
+					gid = atoi(grp);
 				} else {
-					uid = gid = atoi(argv[i], 10);
+					uid = gid = atoi(argv[i]);
 				}
 			} else {
 				chown(argv[i], uid, gid);	
@@ -48,5 +47,5 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	exit(0);
+	return 0;	
 }

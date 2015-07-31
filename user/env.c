@@ -1,5 +1,5 @@
-#include "chronos.h"
-#include "stdio.h"
+#include <unistd.h>
+#include <stdio.h>
 
 char* test_argv[] = 
 {
@@ -26,7 +26,7 @@ int main(int argc, char** argv, char** env)
 	{
 		execve(test_argv[0], test_argv, test_env);
 		printf("Execve failed!\n");
-		exit(1);
+		return 1;
 	} else if(f > 0)
 	{
 		int stat;
@@ -35,9 +35,8 @@ int main(int argc, char** argv, char** env)
 			printf("Child exit code: %d\n", stat);
 	} else {
 		printf("Fork failed!\n");
-		exit(1);
+		return 1;
 	}
 
-        exit(0);
         return 0;
 }

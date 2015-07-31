@@ -1,11 +1,9 @@
-#include "types.h"
-#include "stdio.h"
-#include "stdarg.h"
-#include "stdlib.h"
-#include "stdmem.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
 int main(int argc, char** argv)
 {

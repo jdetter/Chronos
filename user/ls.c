@@ -1,11 +1,11 @@
-#include "types.h"
-#include "stdarg.h"
-#include "stdio.h"
-#include "file.h"
-#include "stdarg.h"
-#include "stdlib.h"
-#include "stdlock.h"
-#include "chronos.h"
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <chronos/types.h>
 
 void usage(void);
 void get_perm(struct stat* st, char* dst);
@@ -74,6 +74,7 @@ int main(int argc, char* argv[])
 				st.st_size, entry.name);
 			size += st.st_size;
 		} else printf("%s\n", entry.name);
+		//close(file_fd);
 	}
 
 	if(list)
