@@ -15,6 +15,7 @@
 #include "panic.h"
 #include "rtc.h"
 #include "ktime.h"
+#include "signal.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -520,6 +521,11 @@ int sys_execve(void)
         rproc->user_ticks = 0;
         rproc->kernel_ticks = 0;
 
+	/* unset signal stack info */
+	rproc->sig_stack_start = 0;
+	rproc->sig_stack_end = 0;
+	sig_clear(rproc);
+	
 	/* Set mmap area start */
         rproc->mmap_end = rproc->mmap_start = 
 		PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
@@ -537,6 +543,46 @@ int sys_getpid(void)
 
 int sys_kill(void)
 {
+	pid_t pid;
+	int sig;
+
+	if(syscall_get_int(&pid, 0)) return -1;
+	if(syscall_get_int(&sig, 1)) return -1;
+
+	slock_acquire(&ptable_lock);
+
+	if(pid > 0)
+	{
+		struct proc* p = get_proc_pid(pid);
+		if(!p) goto bad;
+		if(sig_proc(p, sig))
+			goto bad;
+	} else if(pid == 0)
+	{
+		int x;
+		for(x = 0;x < PTABLE_SIZE;x++)
+		{
+			/* Send the signal to the group */
+			if(ptable[x].state && ptable[x].pgid == rproc->pgid)
+				sig_proc(ptable + x, sig);
+		}
+	} else if(pid == -1)
+	{
+		/* Send to all process that we have permission to */
+		
+	} else {
+		/* Send to process -pid*/
+		pid = -pid;
+		struct proc* p = get_proc_pid(pid);
+                if(!p) goto bad;
+                if(sig_proc(p, sig))
+                        goto bad;
+	}
+
+	slock_release(&ptable_lock);
+	return 0;
+bad:
+	slock_release(&ptable_lock);
 	return -1;
 }
 

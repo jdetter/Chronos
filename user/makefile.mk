@@ -28,7 +28,8 @@ USER_TARGETS := \
 	stack-test \
 	exec-test \
 	env \
-	syscall-test
+	syscall-test \
+	kill-test
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

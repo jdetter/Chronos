@@ -1,9 +1,9 @@
 #include "types.h"
+#include "x86.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "stdlock.h"
 #include "trap.h"
-#include "signal.h"
 #include "file.h"
 #include "fsman.h"
 #include "devman.h"
@@ -14,6 +14,7 @@
 #include "vm.h"
 #include "cpu.h"
 #include "chronos.h"
+#include "signal.h"
 
 extern struct proc* rproc;
 extern struct proc ptable;
@@ -104,11 +105,13 @@ void sig_init(void)
 static void sig_queue(struct proc* p, struct signal_t* sig)
 {
 	struct signal_t* ptr = p->sig_queue;
-	if(!ptr)
+	if(sig->catchable) /* Add to the end */
 	{
+		while(ptr->next) ptr = ptr->next;
+		ptr->next = sig;
+	} else { /* High priority signal, add to front. */
+		sig->next = ptr;
 		p->sig_queue = sig;
-		sig->next = NULL;
-		return;
 	}
 }
 
@@ -122,22 +125,21 @@ static void sig_dequeue(struct proc* p)
 	}
 }
 
+int sig_clear(struct proc* p)
+{
+	while(p->sig_queue) sig_dequeue(p);
+	return 0;
+}
+
 int sig_proc(struct proc* p, int sig)
 {
 	if(sig < SIG_FIRST || sig > SIG_LAST)
 		return -1;
 	if(!p) return -1;
 
-	/* Acquire the ptable lock */
-	slock_acquire(&ptable_lock);
-
 	/* Get a new signal */
 	struct signal_t* signal = sig_alloc();
-	if(!signal)
-	{
-		slock_release(&ptable_lock);
-		return -1;
-	}
+	if(!signal) return -1;
 
 	/* Setup signal */
 	signal->type = sig;
@@ -150,12 +152,23 @@ int sig_proc(struct proc* p, int sig)
 	/* Queue up this signal */
 	sig_queue(p, signal);
 
-	/* Change process state to signaled */
-	p->state = PROC_SIGNALED;
+	/* Check to see if a program needs to be woken up. */
+	if(signal->default_action == SIGDEFAULT_CONT
+			&& p->state == PROC_STOPPED)
+		p->state = PROC_RUNNABLE;
 
-	/* give up ptable lock */
-	slock_release(&ptable_lock);
+	return 0;
+}
 
+int sig_cleanup(void)
+{
+	/* Check to make sure there was a signal to cleanup */
+	if(!rproc->sig_queue && rproc->sig_queue->handling) return -1;
+	
+	/* Restore trap frame */
+	memmove(rproc->tf, &rproc->sig_queue->handle_frame, 
+		sizeof(struct trap_frame));
+	sig_dequeue(rproc);
 	return 0;
 }
 
@@ -167,7 +180,6 @@ int sig_handle(void)
 
 	/* Not sure if interrupts will mess this up but better be sure */
 	push_cli();
-	slock_acquire(&ptable_lock);
 
 	struct signal_t* sig = rproc->sig_queue;
 	void (*sig_handler)(int sig_num) = rproc->signal_handler;
@@ -192,71 +204,112 @@ int sig_handle(void)
 		case SIGDEFAULT_CORE:
 			if(sig->catchable && sig_handler)
 			{
-                                caught = 1;
+				caught = 1;
 			} else { 
-                                core = terminated = 1;
+				core = terminated = 1;
 			}
 			break;
 		case SIGDEFAULT_STOP:
 			if(sig->catchable && sig_handler)
-                        {
-                                caught = 1;
-                        } else {
-                        	stopped = 1;
-                        }
+			{
+				caught = 1;
+			} else {
+				stopped = 1;
+			}
 			break;
 		case SIGDEFAULT_CONT:
-			rproc->state = PROC_RUNNABLE;
 			if(sig->catchable && sig_handler)
-                        {
-                                caught = 1;
-                        }
+			{
+				caught = 1;
+			}
 			break;
 		case SIGDEFAULT_IGN:
 			if(sig->catchable && sig_handler)
-                        {
-                                caught = 1;
-                        }
+			{
+				caught = 1;
+			}
 			break;
 	}
 
-	if(caught)
-        {
-		/**
-		 * WARNING: SEPERATE SIGNAL STACKS NEEDED
-		 */
+	/* Signals are not catchable right now */
+	caught = 0;
+	terminated = 1;
 
-                /* We need to save some state information */
-                memmove(rproc->tf, &sig->handle_frame, 
+	if(caught)
+	{
+		/* Do we have a signal stack? */
+		if(!rproc->sig_stack_start)
+		{
+			/* Allocate a signal stack */
+			int pages = SIG_DEFAULT_STACK + SIG_DEFAULT_GUARD;
+			uint end = (uint)mmap(NULL, 
+				pages * PGSIZE, 
+				PROT_WRITE | PROT_READ,
+				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+
+			/* Unmap all guard pages */
+			int x;
+			for(x = 0;x < SIG_DEFAULT_GUARD;x++)
+			{
+				unmappage(end, rproc->pgdir);
+				end += PGSIZE;
+			}
+
+			/* Set start and end */
+			rproc->sig_stack_start = end + 
+				(SIG_DEFAULT_STACK * PGSIZE);
+			rproc->sig_stack_end = end;
+		}
+
+		/* Save the current trap frame */
+		memmove(&sig->handle_frame, rproc->tf, 
 			sizeof(struct trap_frame));
+
+		uint stack = rproc->sig_stack_start;
+		
 		/* set the return address to the sig handler */
 		rproc->tf->eip = (uint)sig_handler;
 
+		/* Push argument (sig) */
+		stack -= sizeof(int);
+		vm_memmove((void*)stack, &sig->type, sizeof(int),
+				rproc->pgdir, rproc->pgdir);
+
 		/* (safely) Push our magic return value */
-		uint esp = (uint)rproc->tf->esp;
-		esp -= 4;
+		stack -= sizeof(int);
 		uint mag = SIG_MAGIC;
-		vm_memmove((void*)esp, &mag, sizeof(int), 
-			rproc->pgdir, rproc->pgdir);
+		vm_memmove((void*)stack, &mag, sizeof(int), 
+				rproc->pgdir, rproc->pgdir);
 
 		/* Update stack pointer */
-		rproc->tf->esp = esp;
-        }
+		rproc->tf->esp = stack;
+
+		/* We are now actively handling this signal */
+		sig->handling = 1;
+	}
 
 	/* Check to see if we need to dump the core */
 	if(core)
 	{
 		/* Dump memory for gdb analysis */
 	}
-	
+
 	pop_cli();
-	
-	/* If we got stopped or terminated, we will enter scheduler. */
-	if(stopped || terminated)
+
+	/* If we got stopped, we will enter scheduler. */
+	if(stopped)
 	{
 		sig_dequeue(rproc);
 		yield_withlock();
-	}else slock_release(&ptable_lock);
+	}
+        
+	/* Check to see if we got terminated */
+        if(terminated)
+        {
+		cprintf("Process killed: %s\n", rproc->name);
+		slock_release(&ptable_lock);
+                _exit(1);
+        }
 
 	return 0;
 }

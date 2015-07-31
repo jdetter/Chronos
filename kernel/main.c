@@ -20,6 +20,8 @@
 #include "keyboard.h"
 #include "rtc.h"
 #include "ktime.h"
+#include "trap.h"
+#include "signal.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -69,6 +71,11 @@ int main(void)
 void main_stack(void)
 {
 	/* We now have a proper kernel stack */
+	cprintf("[ OK ]\n");
+
+	/* Initilize signals */
+	cprintf("Initilizing signals...\t\t\t\t\t\t\t");
+	sig_init();
 	cprintf("[ OK ]\n");
 	
 	/* Enable PIC */

@@ -6,6 +6,8 @@
                       /* SIG */
 #define SIG_MAGIC 0x00000516
 
+#define SIG_DEFAULT_GUARD 2 /* Default number of signal guard pages. */
+#define SIG_DEFAULT_STACK 5 /* Default number of signal stack pages. */
 /* Signal bounds checking */
 #define SIG_FIRST 1  /* SIGHUP */
 #define SIG_LAST  31 /* SIGSYS */
@@ -26,6 +28,7 @@ struct signal_t
 	uchar type; /* Type of signal */
 	uchar default_action; /* Default action */
 	uchar catchable; /* Can this signal be caught? */
+	uint handling; /* Are we handling this right now? */
 	struct trap_frame handle_frame; /* Saved state information */
 
 	/**
@@ -34,5 +37,33 @@ struct signal_t
 	 */
 	struct signal_t* next;
 };
+
+/**
+ * Initilize signals
+ */
+void sig_init(void);
+
+/**
+ * Once we are done handling a signal, clean it up.
+ */
+int sig_cleanup(void);
+
+/**
+ * Clear all waiting signals for a process. Returns 0 on success.
+ * Warning: ptable lock must be held.
+ */
+int sig_clear(struct proc* p);
+
+/**
+ * Send a signal to a process. Returns 0 on success.
+ * Warning: ptable lock must be held.
+ */
+int sig_proc(struct proc* p, int sig);
+
+/**
+ * Handle a signal that is waiting.
+ * Warning: ptable lock must be held.
+ */
+int sig_handle(void);
 
 #endif

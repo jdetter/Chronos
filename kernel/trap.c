@@ -19,6 +19,7 @@
 #include "cmos.h"
 #include "rtc.h"
 #include "vm.h"
+#include "signal.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -29,6 +30,7 @@ struct int_gate interrupt_table[TRAP_COUNT];
 extern struct proc* rproc;
 extern uint trap_handlers[];
 extern uint k_ticks;
+extern slock_t ptable_lock;
 uint __get_cr2__(void);
 
 void trap_return();
@@ -206,6 +208,14 @@ void trap_handler(struct trap_frame* tf)
 			_exit(1);
 		} else for(;;);
         }
+
+	/* Do we have any signals waiting? */
+	if(rproc->sig_queue)
+	{
+		slock_acquire(&ptable_lock);
+		sig_handle();
+		slock_release(&ptable_lock);
+	}
 
 
 	/* Make sure that the interrupt flags is set */

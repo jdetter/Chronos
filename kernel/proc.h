@@ -43,7 +43,6 @@ struct file_descriptor
 #define PROC_ZOMBIE 	0x06 /* Process called exit. (needs parent wait) */
 #define PROC_KILLED 	0x07 /* Process recieved kill signal. */
 #define PROC_STOPPED 	0x08 /* Process recieved stop signal. */
-#define PROC_SIGNALED 	0x09 /* Process has a signal waiting. */
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -112,6 +111,8 @@ struct proc
 	int io_recieved; /* The actual amount of bytes recieved. */
 	struct signal_t* sig_queue; /* Signal queue*/
 	void (*signal_handler)(int sig_num); /* Optional signal handler. */
+	uint sig_stack_start; /* The start of the signal stack (higher) */
+	uint sig_stack_end; /* The end of the signal stack (lower) */
 
 	uchar orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */
