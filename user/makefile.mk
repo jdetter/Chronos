@@ -25,7 +25,9 @@ USER_TARGETS := \
 	chmod \
 	chown \
 	date \
-	stack-test
+	stack-test \
+	exec-test \
+	env
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))

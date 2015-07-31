@@ -56,7 +56,7 @@ fs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	mkdir -p fs/bin
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
-	./tools/bin/mkfs -i 256 -s 1048576 -r fs fs.img
+	./tools/bin/mkfs -i 512 -s 2097152 -r fs fs.img
 
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img

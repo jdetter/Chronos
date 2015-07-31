@@ -153,7 +153,7 @@ int waitpid(int pid, int* status, int options)
 			/* Harvest the child */
 			ret_pid = p->pid;
 			if(status)
-				*status = rproc->return_code;
+				*status = p->return_code;
 			/* Free used memory */
 			freepgdir(p->pgdir);
 
@@ -343,7 +343,7 @@ int sys_exec(void)
 	return 0;
 }
 
-/* int exec(const char* path, char* const argv[], char* const envp[]) */
+/* int execve(const char* path, char* const argv[], char* const envp[]) */
 int sys_execve(void)
 {
 	const char* path;
@@ -392,16 +392,17 @@ int sys_execve(void)
 			env_sz += strlen(envp[index]) + 1;
 		/* take in account the array */
 		int env_count = index;
+		/* NOTE: remember that envp is null terminated */
 		env_sz += (env_count * sizeof(int)) + sizeof(int);
 		/* Get the start of the environment space */
-		uint env_start = PGROUNDDOWN(UVM_TOP - env_sz);
+		env_start = PGROUNDDOWN(UVM_TOP - env_sz);
 		uint* env_arr = (uint*)env_start;
 		uchar* env_data = (uchar*)env_start + 
 			(env_count * sizeof(int)) + sizeof(int);
 		for(index = 0;index < env_count;index++)
 		{
 			/* Set the value in env_arr */
-			vm_memmove(env_arr + index, env_data, sizeof(int),
+			vm_memmove(env_arr + index, &env_data, sizeof(int),
 					tmp_pgdir, rproc->pgdir);
 
 			/* Move the string */
@@ -410,8 +411,9 @@ int sys_execve(void)
 					tmp_pgdir, rproc->pgdir);
 			env_data += len;
 		}
+		/* Add null element */
 		vm_memmove(env_arr + index, &null_buff, sizeof(int),
-				tmp_pgdir, rproc->pgdir);	
+				tmp_pgdir, rproc->pgdir);
 	} else {
 		env_start -= sizeof(int);
 		vm_memmove((void*)env_start, &null_buff, sizeof(int),
@@ -423,6 +425,7 @@ int sys_execve(void)
 	memset(args, 0, MAX_ARG * sizeof(char*));
 
 	uint uvm_stack = PGROUNDDOWN(env_start); 
+	uint uvm_start = uvm_stack;
 	/* copy arguments */
 	int x;
 	for(x = 0;argv[x];x++)
@@ -435,10 +438,13 @@ int sys_execve(void)
 	}
 	/* Copy argument array */
 	uvm_stack -= MAX_ARG * sizeof(char*);
+	/* Integer align the arr (performance) */
+	uvm_stack &= ~(sizeof(int) - 1);
+	/* Copy the array */
 	vm_memmove((void*)uvm_stack, args, MAX_ARG * sizeof(char*),
 			tmp_pgdir, rproc->pgdir);
 
-	uint arg_arr_ptr = uvm_stack;
+	uint arg_arr_ptr = uvm_stack; /* argv */
 	int arg_count = x;
 
 	/* Push envp */
@@ -461,6 +467,10 @@ int sys_execve(void)
 	uint ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
 			tmp_pgdir, rproc->pgdir);
+
+	/* Set stack start and stack end */
+	rproc->stack_start = PGROUNDUP(uvm_start);
+	rproc->stack_end = PGROUNDDOWN(uvm_stack);
 
 	/* Free user memory */
 	vm_free_uvm(rproc->pgdir);
@@ -546,10 +556,9 @@ int sys_exit(void)
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 
-	int return_code;
-	rproc->return_code = 0;
-	if(syscall_get_int(&return_code, 0))
-		rproc->return_code = return_code;
+        int return_code = 1;
+        if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
+        rproc->return_code = return_code;
 
 	/* Set state to zombie */
 	rproc->state = PROC_ZOMBIE;

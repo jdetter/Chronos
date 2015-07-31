@@ -32,5 +32,26 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
+	pid = fork();
+	if(pid > 0)
+	{
+		/* Parent */
+		int result;
+		waitpid(pid, &result, 0x0);
+
+		printf("Massive stack test...\t\t\t\t\t\t\t");
+		if(result != 5)
+			printf("[FAIL]  %d\n", result);
+		else printf("[ OK ]\n");
+	} else if(pid == 0) {
+		/* Child */
+		recurse(2000, NULL);
+		exit(5);
+	} else {
+		printf("Fork failed!\n");
+		exit(1);
+	}
+
+
 	exit(0);
 }

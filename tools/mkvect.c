@@ -15,8 +15,23 @@ int main(int argc, char** argv)
 	{
 		printf(".globl handle_int_%d\n", x);
 		printf("handle_int_%d:\n", x);
-		if(x != 3)
-			printf("\tpushl $0\n");
+		switch(x)
+		{
+			/* These exceptions DO generate an exception code */
+			case  8: /* Double fault */
+			case 10: /* Invalid TSS */
+			case 11: /* Segment not present */
+			case 12: /* Stack segment fault */
+			case 13: /* general protection */
+			case 14: /* Page fault */
+			case 17: /* Alignment check */
+
+			/* For all NO GENERATE exceptions, push a 0 */
+			break;
+			default:
+				printf("\tpushl $0\n");
+				break;
+		}
 		printf("\tpushl $%d\n", x);
 		printf("\tjmp mktf\n");
 	}
