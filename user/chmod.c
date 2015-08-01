@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -17,7 +18,7 @@ int main(int argc, char* argv[])
 			if(mode == NULL)
 			{
 				mode = argv[i];
-				moct = atoi(mode, 8);
+				moct = strtol(mode, NULL, 8);
 			} else {
 				printf("%s: %d\n", argv[i], moct);
 				chmod(argv[i], moct);	

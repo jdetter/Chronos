@@ -1,10 +1,13 @@
-#include "types.h"
-#include "file.h"
-#include "stdlock.h"
-#include "chronos.h"
-#include "stdarg.h"
-#include "stdlib.h"
-#include "stdio.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+
+#define __LINUX_DEFS__
+#include <chronos/file.h>
+
 #define OP_PIPE 0x01 /* \ */
 #define OP_FILE 0x02 /* > */
 #define OP_APPEND 0x03 /* >> */
@@ -13,6 +16,18 @@
 
 #define MAX_CMD 16
 
+int trim(char* str)
+{
+        int x;
+        for(x = 0;x < strlen(str);x++)
+                if(str[x] != ' ')break;
+        strncpy(str, str + x, strlen(str) + 1);
+        for(x = strlen(str) - 1;x >= 0;x--)
+                if(str[x] != ' ') break;
+        str[x + 1] = 0;
+        return strlen(str);
+}
+
 void runprog(char* string);
 int main(int argc, char** argv)
 {
@@ -20,7 +35,8 @@ int main(int argc, char** argv)
 	while(1){
 		memset(in_buff, 0, 2048);
 		printf("# ");
-		fgets(in_buff, 2048, 0);
+		fflush(0);
+		fgets(in_buff, 2048, stdin);
 		/* delete new line character */
 		in_buff[strlen(in_buff) - 1] = 0;
 		trim(in_buff);
@@ -131,7 +147,7 @@ int main(int argc, char** argv)
 				break;
 				case OP_FILE:
 				fd_file = open(cmd_buff[i+1], 
-					O_CREATE|O_WRONLY | O_TRUNC,
+					O_CREAT|O_WRONLY | O_TRUNC,
 					PERM_ARD | PERM_GWR | PERM_UWR);
 				if(op_buff[i+1]!=0){
 					printf("sh: invalid op on file\n");
@@ -140,7 +156,7 @@ int main(int argc, char** argv)
 				break;
 				case OP_APPEND:
 				fd_file = open(cmd_buff[i+1], 
-					O_CREATE|O_WRONLY, 
+					O_CREAT|O_WRONLY, 
 					PERM_ARD | PERM_GWR | PERM_UWR);
 				lseek(fd_file, 0, SEEK_END);
 				if(op_buff[i+1]!=0){

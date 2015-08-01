@@ -20,8 +20,8 @@ USER_TARGETS := \
 	stack-test \
 	exec-test \
 	env \
-	kill-test \
-	ret-test
+	ret-test \
+	sh
 
 # rm
 # ls
@@ -29,6 +29,7 @@ USER_TARGETS := \
 # sh
 # stat
 # syscall-test 
+# kill-test
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
@@ -49,9 +50,6 @@ USER_CLEAN := \
 	$(USER_OBJECTS) \
 	$(USER_SYMBOLS)
 
-# Include files
-USER_CFLAGS += -I include
-USER_CFLAGS += -I user/lib
 # Disable Position Independant Code
 USER_CFLAGS += -fno-pic
 # Disable built in functions
@@ -60,14 +58,6 @@ USER_CFLAGS += -fno-builtin
 USER_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 USER_CFLAGS += -fno-stack-protector
-
-# Don't link the standard library
-# USER_LDFLAGS := -nostdlib
-# Set the entry point
-# USER_LDFLAGS += --entry=main
-# Set the memory location where the code should begin
-# USER_LDFLAGS += --section-start=.text=0x1000
-# USER_LDFLAGS += --omagic
 
 USER_BUILD := lib/file.o lib/stdlock.o user/syscall.o user/bin $(USER_BINARIES) 
 	
@@ -81,7 +71,7 @@ user/syscall.o:
 
 # Recipe for binary files
 user/bin/%: user/%.c
-	$(CROSS_CC) $(USER_LDFLAGS) -o $@ $< user/syscall.o lib/file.o lib/stdlock.o
+	$(CROSS_CC) $(CFLAGS) -o $@ $< user/syscall.o lib/file.o lib/stdlock.o
 
 # Recipe for symbole files
 user/bin/%.sym: user/bin/%

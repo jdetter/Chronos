@@ -19,7 +19,7 @@
 pgdir* __get_cr3__(void);
 void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
-void __drop_priv__(uint* k_context, uint new_esp);
+void __drop_priv__(uint* k_context, uint new_esp, uint new_eip);
 void __context_restore__(uint* current, uint old);
 
 uint k_context; /* The kernel context */
@@ -113,7 +113,7 @@ void switch_context(struct proc* p)
 	if(p->state == PROC_READY)
 	{
 		p->state = PROC_RUNNING;
-		__drop_priv__(&k_context, p->tf->esp);
+		__drop_priv__(&k_context, p->tf->esp, p->entry_point);
 
 		/* When we get back here, the process is done running for now. */
 		return;

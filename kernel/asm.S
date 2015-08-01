@@ -103,7 +103,7 @@ __context_restore__:
 #define SYSENTER_EIP_MSR 	0x176
 
 # drop privilieges and start init process 
-# void __drop_priv__(uint* k_context, uint new_esp);
+# void __drop_priv__(uint* k_context, uint new_esp, uint new_eip);
 .globl __drop_priv__
 __drop_priv__:
 # Kernel context must be saved here!
@@ -112,10 +112,15 @@ __drop_priv__:
 # now put stack pointer argument into ecx
 	movl	0x08(%esp), %ecx
 
+# put the new eip value into edx
+	movl	0x0C(%esp), %edx
+
 # complete context creation, similiar to mktf
 	
 # Push registers
         pushal
+/* save eip in edi */
+	movl	%edx, %edi	
 
 # Push pdbr
 	movl	%cr3, %edx
@@ -141,8 +146,9 @@ __drop_priv__:
 	movl	$SYSENTER_CS_MSR, %ecx
 	wrmsr
 
-# eip value
-        movl    $0x1000, %edx
+/* Restore eip value */
+	movl	%edi, %edx
+
 # ebx is holding the new esp, move it to %ecx.
 	movl	%ebx, %ecx
 

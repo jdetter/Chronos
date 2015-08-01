@@ -177,7 +177,6 @@ void trap_handler(struct trap_frame* tf)
 			strncpy(fault_string, "SIMD Exception", 64);
 			break;
 		case TRAP_SC:
-			//cprintf("System call started\n");
 			strncpy(fault_string, "System Call", 64);
 			syscall_ret = syscall_handler((uint*)tf->esp);
 			rproc->tf->eax = syscall_ret;

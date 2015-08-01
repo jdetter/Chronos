@@ -111,6 +111,17 @@ struct dirent
 	char name[FILE_MAX_NAME]; /* name of the directory entry */
 };
 
+/**
+ * Older version of the linux directory entry structure.
+ */
+struct old_linux_dirent
+{
+	long d_ino; /* inode number*/
+	off_t d_off; /* Offset into the directory file */
+	ushort d_reclen; /* Max size of d_name */
+	char d_name[FILE_MAX_NAME]; /* Name of the entry */
+};
+
 /* Device nodes */
 struct devnode
 {

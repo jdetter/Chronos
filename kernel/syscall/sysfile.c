@@ -9,6 +9,7 @@
 #include "stdlib.h"
 #include "chronos.h"
 #include "proc.h"
+#include "panic.h"
 
 extern struct proc* rproc;
 
@@ -22,6 +23,16 @@ static int find_fd(void)
 		if(rproc->file_descriptors[x].type == 0x0)
 			return x;
 	return -1;
+}
+
+/** Check to see if an fd is valid */
+static int fd_ok(int fd)
+{
+	if(fd < 0 || fd >= MAX_FILES)
+		return 1;
+	if(rproc->file_descriptors[fd].type)
+		return 0;
+	return 1;
 }
 
 int sys_link(void)
@@ -99,7 +110,7 @@ int sys_open(void)
 		rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
 		struct devnode node;
 		fs_read(rproc->file_descriptors[fd].i, &node, sizeof(struct devnode), 0);
-		rproc->file_descriptors[fd].device = &dev_lookup(node.dev)->io_driver;
+		rproc->file_descriptors[fd].device = dev_lookup(node.dev);
 	}
 
 	if(flags & O_DIRECTORY && !S_ISDIR(st.st_mode))
@@ -154,7 +165,6 @@ int sys_read(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 1)) return -1;
 
-	int i;
 	switch(rproc->file_descriptors[fd].type)
 	{
 	case 0x00: return -1;
@@ -166,19 +176,15 @@ int sys_read(void)
 		break;
 	case FD_TYPE_DEVICE:
 		/* Check for read support */
-		if(rproc->file_descriptors[fd].device->read)
+		if(rproc->file_descriptors[fd].device->io_driver.read)
 		{
 			/* read is supported */
-			rproc->file_descriptors[fd].device->read(dst,
-					rproc->file_descriptors[fd].seek, sz,
-					rproc->file_descriptors[fd].device->context);
+			sz = rproc->file_descriptors[fd].device->
+				io_driver.read(dst,
+				rproc->file_descriptors[fd].seek, sz,
+				rproc->file_descriptors[fd].device->
+				io_driver.context);
 		} else return -1;
-		break;
-	case FD_TYPE_STDIN:
-		for(i = 0;i < sz; i++){
-			char next_char = tty_get_char(rproc->t);
-			dst[i] = next_char;
-		}
 		break;
 	case FD_TYPE_PIPE:
 		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
@@ -202,8 +208,6 @@ int sys_write(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&src, sz, 1)) return -1;
 
-	int x;
-	int str_len;
 	switch(rproc->file_descriptors[fd].type)
 	{
 	default: return -1;
@@ -212,29 +216,19 @@ int sys_write(void)
 				rproc->file_descriptors[fd].seek) == -1)
 			return -1;
 		break;
-	case FD_TYPE_STDOUT:
-		str_len = strlen(src);
-		for(x = 0;x < str_len;x++)
-			tty_print_character(rproc->t, src[x]);
-		break;
-	case FD_TYPE_STDERR:
-		str_len = strlen(src);
-		for(x = 0;x < str_len;x++)
-			tty_print_character(rproc->t, src[x]);
-		break;
-	case FD_TYPE_DEVICE:
-		if(rproc->file_descriptors[fd].device->write)
-		{
-			rproc->file_descriptors[fd].device->write(src,
-					rproc->file_descriptors[fd].seek, sz,
-					rproc->file_descriptors[fd].device->context);
-		}
-		else return -1;
-		break;
 	case FD_TYPE_PIPE:
 		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
 			pipe_write(src, sz, rproc->file_descriptors[fd].pipe);
 		else return -1;
+	case FD_TYPE_DEVICE:
+		if(rproc->file_descriptors[fd].device->io_driver.write)
+			sz = rproc->file_descriptors[fd].device->
+				io_driver.write(src,
+				rproc->file_descriptors[fd].seek, sz, 
+				rproc->file_descriptors[fd].device->
+				io_driver.context);
+		else return -1;
+		break;
 	}
 
 	rproc->file_descriptors[fd].seek += sz;
@@ -352,37 +346,70 @@ int sys_fstat(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
-
 	if(fd < 0 || fd >= MAX_FILES) return -1;
+
+	int close_on_exit = 0;
+	inode i = NULL;
 	/* Check file descriptor type */
 	switch(rproc->file_descriptors[fd].type)
 	{
 	case FD_TYPE_FILE:
+		i = rproc->file_descriptors[fd].i;
+		break;
 	case FD_TYPE_DEVICE:
 	case FD_TYPE_PIPE:
+		i = fs_open(rproc->file_descriptors[fd].device->node, 
+			O_RDONLY, 0x0, 0x0, 0x0);
+		if(!i) return -1;
+		close_on_exit = 1;
 		break;
-	default: return -1;
+	default:
+		cprintf("Fstat called on: %d\n", rproc->file_descriptors[fd].type); 
+		return -1;
 	}
 
-	return fs_stat(rproc->file_descriptors[fd].i, dst);
+	int result = fs_stat(i, dst);
+
+	if(close_on_exit)fs_close(i);
+
+	return result;
 }
 
-/* int readdir(int fd, int index, struct directent* dst) */
+/* int readdir(int fd, struct old_linux_dirent* dirp, uint count) */
 int sys_readdir(void)
 {
+	/**
+	 * A note on the return values:
+	 *  +  1 = success
+	 *  + -1 = failure
+	 *  +  0 = failure (end of directory)
+	 */
+
 	int fd;
-	int index;
-	struct dirent* dst;
+	struct old_linux_dirent* dirp;
 
 	if(syscall_get_int(&fd, 0)) return -1;
-	if(syscall_get_int(&index, 1)) return -1;
-	if(syscall_get_buffer_ptr((void**)&dst, 
-			sizeof(struct dirent), 2))
+	if(syscall_get_buffer_ptr((void**)&dirp, 
+			sizeof(struct old_linux_dirent), 1))
 		return -1;
-
+	if(fd_ok(fd)) return -1;
 	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
 		return -1;
-	return fs_readdir(rproc->file_descriptors[fd].i, index, dst);
+
+	struct dirent dir;
+	int result = fs_readdir(rproc->file_descriptors[fd].i, 
+		rproc->file_descriptors[fd].seek, &dir);
+	if(result < 0) return -1;
+	if(result == 1) return 0;
+
+	/* Convert to old structure */
+	dirp->d_ino = dir.d_ino;
+	dirp->d_off = rproc->file_descriptors[fd].seek;
+	dirp->d_reclen = FILE_MAX_NAME;
+	strncpy(dirp->d_name, dir.name, FILE_MAX_NAME);
+
+	rproc->file_descriptors[fd].seek++; /* Increment seek */
+	return 1;
 }
 
 /* int pipe(int fd[2]) */
@@ -462,10 +489,6 @@ int dup2(int new_fd, int old_fd)
 	switch(rproc->file_descriptors[old_fd].type)
 	{
 	default: return -1;
-	case FD_TYPE_STDIN:
-	case FD_TYPE_STDOUT:
-	case FD_TYPE_STDERR:
-		break;
 	case FD_TYPE_FILE:
 		rproc->file_descriptors[old_fd].i->references++;
 		break;

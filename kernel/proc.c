@@ -88,9 +88,12 @@ struct proc* spawn_tty(tty_t t)
 		sizeof(struct file_descriptor) * MAX_FILES);
 
 	/* Setup stdin, stdout and stderr */
-	p->file_descriptors[0].type = FD_TYPE_STDIN;
-	p->file_descriptors[1].type = FD_TYPE_STDOUT;
-	p->file_descriptors[2].type = FD_TYPE_STDERR;
+	p->file_descriptors[0].type = FD_TYPE_DEVICE;
+	p->file_descriptors[0].device = t->driver;
+	p->file_descriptors[1].type = FD_TYPE_DEVICE;
+	p->file_descriptors[1].device = t->driver;
+	p->file_descriptors[2].type = FD_TYPE_DEVICE;
+	p->file_descriptors[2].device = t->driver;
 
 	p->stack_start = PGROUNDUP(UVM_TOP);
 	p->stack_end = p->stack_start - PGSIZE;
@@ -122,15 +125,26 @@ struct proc* spawn_tty(tty_t t)
 	/* Basic values for the trap frame */
 	/* Setup the user stack */
 	uchar* ustack = (uchar*)p->stack_start;
+
+	/* Fake env */
+	ustack -= sizeof(int);
+	*((uint*)ustack) = 0x0;
+
+	/* Fake argv */
+        ustack -= sizeof(int);
+        *((uint*)ustack) = 0x0;
+
+	/* argc = 0 */
+        ustack -= sizeof(int);
+        *((uint*)ustack) = 0x0;
+
 	/* Fake eip */
-	ustack -= 4;
-	*((uint*)ustack) = 0xFFFFFFFF;
-	p->tf->esp = (uint)ustack;
+        ustack -= sizeof(int);
+        *((uint*)ustack) = 0xFFFFFFFF;
+        p->tf->esp = (uint)ustack;
 
 	/* Load the binary */
 	uint end = load_binary("/bin/init", p);
-	if(p->entry_point != 0x1000)
-		panic("init binary wrong entry point.\n");
 	p->heap_start = PGROUNDUP(end);
 	p->heap_end = p->heap_start;
 

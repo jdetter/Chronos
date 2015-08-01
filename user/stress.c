@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 int main(int argc, char** argv)
 {
@@ -13,8 +14,8 @@ int main(int argc, char** argv)
 		{
 			printf("Execing child...\n");
 			char* arg1 = "/bin/stall";
-			const char* argv[] = {arg1, NULL};
-			exec(arg1, argv);
+			char* const argv[] = {arg1, NULL};
+			execve(arg1, argv, NULL);
 		}
 
 		int old = f;
@@ -23,8 +24,8 @@ int main(int argc, char** argv)
 		{
 			printf("Execing child...\n");
                         char* arg1 = "/bin/stall";
-                        const char* argv[] = {arg1, NULL};
-                        exec(arg1, argv);
+                        char* const argv[] = {arg1, NULL};
+                        execve(arg1, argv, NULL);
 		} else { 
 			printf("Parent wait.\n");
 			waitpid(old, NULL, 0);
@@ -33,5 +34,5 @@ int main(int argc, char** argv)
 		}
 	}
 
-	exit(0);
+	return 0;
 }

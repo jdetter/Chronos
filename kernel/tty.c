@@ -12,8 +12,6 @@
 #include "keyboard.h"
 #include "iosched.h"
 
-#define MAX_TTYS 4
-
 struct tty ttys[MAX_TTYS];
 static struct tty* active = NULL;
 
@@ -42,7 +40,10 @@ int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 	uchar* dst_c = dst;
 	int x;
 	for(x = 0;x < sz;x++, dst_c++)
+	{
 		*dst_c = tty_get_char(t);
+		if(*dst_c == '\n') break;
+	}
 	return sz;
 }
 

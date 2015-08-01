@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include <chronos/stdlock.h>
 #define MAX_ARG 64
@@ -39,22 +41,6 @@ int main(int argc, char** argv)
 	}
 
 	
-	for(;;)printf("");
-	exit(0);
+	for(;;)puts("");
 	return 0;
 }
-
-void some_recursion(int i)
-{
-	int result = i * 2;
-	int x;
-	for(x = 0;x < 100000;x++)
-	{
-		result = result / 2;
-		result = result * 2;
-	}
-	printf("Recursion: 0x%x\n", result);
-	if(i == 50) return;
-	else some_recursion(i + 1);
-}
-

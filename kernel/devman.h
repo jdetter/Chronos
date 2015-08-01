@@ -12,12 +12,12 @@
 
 struct IODriver
 {
+	void* context; /* Pointer to driver specific context */
 	slock_t device_lock;
 	/* Basic io functions */
 	int (*init)(struct IODriver* driver);
 	int (*read)(void* dst, uint start_read, uint sz, void* context);
         int (*write)(void* src, uint start_write, uint sz, void* context);
-	void* context;
 };
 
 struct DeviceDriver
@@ -25,7 +25,6 @@ struct DeviceDriver
 	struct IODriver io_driver; /* general io driver, see above */
 	int valid; /* Whether or not this driver is in use  */
 	int type; /* The type of device, defined in include/device.h */
-	void* driver; /* Pointer to driver specific structure */
 	char node[FILE_MAX_PATH]; /* where is the node for this driver? */
 };
 

@@ -7,9 +7,9 @@
 #define MAX_PATH_LEN	0x60
 
 #define FD_TYPE_NULL 	0x00
-#define FD_TYPE_STDIN 	0x01
-#define FD_TYPE_STDOUT 	0x02
-#define FD_TYPE_STDERR 	0x03
+// #define FD_TYPE_STDIN 	0x01
+// #define FD_TYPE_STDOUT 	0x02
+// #define FD_TYPE_STDERR 	0x03
 #define FD_TYPE_FILE 	0x04
 #define FD_TYPE_DEVICE 	0x05
 #define FD_TYPE_PIPE	0x06
@@ -25,7 +25,7 @@ struct file_descriptor
 	int flags;
 	int seek;
 	inode i;
-	struct IODriver* device;
+	struct DeviceDriver* device;
 	pipe_t pipe;
 	uchar pipe_type;
 	char path[FILE_MAX_PATH];

@@ -3,7 +3,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <chronos/types.h>
+
+#define __LINUX_DEFS__
+#include <chronos/file.h>
 
 int main(int argc, char* argv[])
 {
@@ -11,7 +13,7 @@ int main(int argc, char* argv[])
 	for(i=1; i<argc; i ++)
 	{
 		printf("%s\n", argv[i]);
-		create(argv[i], PERM_ARD | PERM_UWR | PERM_GWR);
+		creat(argv[i], PERM_ARD | PERM_UWR | PERM_GWR);
 	}
 
 	return 0;

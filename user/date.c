@@ -12,7 +12,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	printf("Unix time: %d\n", tv.tv_sec);
+	printf("Unix time: %d\n", (int)tv.tv_sec);
 
 	return 0;
 }

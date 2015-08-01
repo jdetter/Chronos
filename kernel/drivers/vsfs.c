@@ -322,6 +322,8 @@ int vsfs_readdir(void* dir, int index, struct dirent* dst,
 	/* Directories per block */
 	int dpb = BLOCKSIZE / sizeof(struct vsfs_directent);
 	struct vsfs_inode* i = dir;
+	if(i->size == index * sizeof(struct vsfs_directent))
+		return 1; /* End of directory*/
 	if(i->size <= index * sizeof(struct vsfs_directent))
 		return -1;
 
@@ -341,7 +343,8 @@ int vsfs_readdir(void* dir, int index, struct dirent* dst,
 	struct vsfs_inode  in;
 	read_inode(dst->d_ino, &in, context);
 	dst->d_type = in.type;
-	return 0;	
+
+	return 0;
 }
 
 void* vsfs_opened(const char* path, struct vsfs_context* context)

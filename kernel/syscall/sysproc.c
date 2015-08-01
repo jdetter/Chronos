@@ -691,7 +691,9 @@ int sys_sbrk(void)
 	slock_acquire(&ptable_lock);
 	uint old_end = rproc->heap_end;
 	/* Will this collide with the stack? */
-	if(PGROUNDUP(old_end + increment) == rproc->stack_end)
+	if(PGROUNDUP(old_end + increment) >= rproc->stack_end
+		|| (rproc->mmap_end && 
+			PGROUNDUP(old_end + increment) >= rproc->mmap_end))
 	{
 		slock_release(&ptable_lock);
 		return (int)NULL;

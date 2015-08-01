@@ -1,6 +1,11 @@
 #ifndef _TTY_H_
 #define _TTY_H_
 
+/**
+ * Maximum number of ttys that can be connected
+ */
+#define MAX_TTYS 4
+
 /** 
  * For a color monitor, there are 80 rows and 25 columns and each position
  * is 2 bytes, one byte is the character and one byte is the color. See the
@@ -74,6 +79,8 @@ struct tty
 	uint key_read; /* Read position in the buffer */
 	uint key_full; /* Is the buffer full? */
 	uint key_nls; /* How many new lines are in the buffer? */
+
+	struct DeviceDriver* driver; /* driver for standard in/out */
 };
 
 typedef struct tty* tty_t;

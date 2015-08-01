@@ -4,44 +4,15 @@
 
 Critical system calls
 =====================
-kill
-link
-stat
 
 High priority system calls
 ==========================
 signal
-fchdir
-fchmod
-fchown
-lchown
 flock
 
 nanosleep
 reboot
 time
-
-getegid
-geteuid
-getgid
-getpgid
-getpgrp
-getpid
-getppid
-getresgid
-getresuid
-getsid
-gettid
-getuid
-
-setgid
-setpgid
-setregid
-setresgid
-setresuid
-setreuid
-setsid
-setuid
 
 Medium priority system calls
 ============================
@@ -60,7 +31,6 @@ settimeofday
 swapon
 swapoff
 madvise
-umask
 
 Low priority system calls
 =========================
@@ -109,6 +79,34 @@ exit
 _exit
 execve
 gettimeofday
+kill
+link
+stat
+getegid
+geteuid
+getgid
+getpgid
+getpgrp
+getpid
+getppid
+getresgid
+getresuid
+getsid
+gettid
+getuid
+setgid
+setpgid
+setregid
+setresgid
+setresuid
+setreuid
+setsid
+setuid
+fchdir
+fchmod
+fchown
+lchown
+umask
 
 +---------------------------------+
 | Features that need implementing |

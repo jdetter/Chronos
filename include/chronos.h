@@ -360,11 +360,11 @@ int wait_t(struct cond* c, struct tlock* lock);
 int signal_cv(struct cond* c);
 
 /**
- * Read from the file descriptor directory fd. The directory entry at index
- * index will be read into dst. If you have reached the end of the
- * directory, -1 is returned. Otherwise 0 is returned.
+ * Reads a directory entry from the file fd into dirp. 1 is returned
+ * on success, 0 is returned on end of directory. -1 is returned on
+ * failure. Count is ignored (compatibility).
  */
-int readdir(int fd, int index, struct dirent* dst);
+int readdir(int fd, struct old_linux_dirent* dirp, uint count);
 
 /**
  * Creates a new pipe. A pipe is a buffer that can be read from and written

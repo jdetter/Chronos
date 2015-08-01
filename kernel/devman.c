@@ -98,6 +98,8 @@ int dev_init()
 		if(x != 0)
 			tty_init(t, x, video_type, 1, video_mem);
 		tty_io_setup(&driver->io_driver, x);
+		t->driver = driver;
+		tty_io_setup(&driver->io_driver, x);
 		/* Set mount point */
 		driver->type = DEV_TTY;
 		snprintf(driver->node, 

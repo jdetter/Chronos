@@ -88,16 +88,14 @@ int sys_isatty(void)
 
 	if(fd < 0 || fd > MAX_FILES) return 1;
 
-	switch(rproc->file_descriptors[fd].type)
+	int x;
+	for(x = 0;x < MAX_TTYS;x++)
 	{
-		case FD_TYPE_STDIN:
-		case FD_TYPE_STDOUT:
-		case FD_TYPE_STDERR:
+		tty_t t = tty_find(x);
+		if(t->driver == rproc->file_descriptors[fd].device)
 			return 1;
-			break;	
-		default: return 0;
 	}
-
+	
 	return 0;
 }
 
@@ -110,6 +108,8 @@ int syscall_handler(uint* esp)
 	if(syscall_get_int(&syscall_number, 0)) return 1;
 	esp += 2;
 	rproc->sys_esp = esp;
+
+	cprintf("%s: Syscall: 0x%x\n", rproc->name, syscall_number);
 
 	if(syscall_number > SYS_MAX || syscall_number < SYS_MIN)
 	{
@@ -269,15 +269,6 @@ int sys_proc_dump(void)
 			tty_print_string(rproc->t, "%d: ", file);
 			switch(fd->type)
 			{
-				case FD_TYPE_STDIN:
-					tty_print_string(rproc->t, "STDIN");
-					break;
-				case FD_TYPE_STDOUT:
-					tty_print_string(rproc->t, "STDOUT");
-					break;
-				case FD_TYPE_STDERR:
-					tty_print_string(rproc->t, "STDERR");
-					break;
 				case FD_TYPE_FILE:
 					tty_print_string(rproc->t, "FILE");
 					break;
