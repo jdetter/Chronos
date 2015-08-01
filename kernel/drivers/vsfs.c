@@ -4,6 +4,7 @@
 #include "types.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#include "panic.h"
 #else
 
 typedef unsigned int uint;
@@ -14,6 +15,8 @@ typedef unsigned long ulong;
 #include <stdlib.h>
 #include <string.h>
 
+#undef CACHE_WATCH
+#undef CACHE_PANIC
 #endif
 
 #include "file.h"
@@ -204,11 +207,16 @@ void* vsfs_open(const char* path, struct vsfs_context* context)
 	/* Get an inode from the cache */
 	struct vsfs_cache_inode* dst = 
 		(struct vsfs_cache_inode*)vsfs_alloc_inode(context);
-	if(dst == NULL) return NULL;
+	if(dst == NULL) return NULL; /* Out of inodes */
 	memmove(dst, &i, sizeof(struct vsfs_inode));
 
 	/* Setup stats while were here */
 	dst->inode_number = ino;
+
+#ifdef CACHE_WATCH
+	cprintf("VSFS inode allocated: %s inode location: 0x%x\n", 
+		path, dst);
+#endif
 
 	return dst;
 }
@@ -218,6 +226,10 @@ int vsfs_close(void* i, struct vsfs_context* context)
 	struct vsfs_cache_inode* in = i;
 	/* Flush the inode to disk */
 	write_inode(in->inode_number, &in->node, context);
+
+#ifdef CACHE_WATCH
+        cprintf("VSFS inode freed: 0x%x\n", i);
+#endif
 
 	vsfs_free_inode(i, context);
 	return 0;
@@ -359,9 +371,18 @@ void* vsfs_opened(const char* path, struct vsfs_context* context)
 		if(context->cache[x].allocated &&
 			context->cache[x].inode_number == inum)
 		{
+#ifdef CACHE_WATCH
+			cprintf("VSFS: file already opened: 0x%x\n",
+				context->cache + x);
+#endif
+
 			return context->cache + x;
 		}
 	}
+
+#ifdef CACHE_WATCH
+	cprintf("VSFS: file not found in cache.\n");
+#endif
 	return 0;
 }
 
@@ -423,6 +444,10 @@ struct vsfs_inode* vsfs_alloc_inode(struct vsfs_context* context)
 		}
 	}
 
+#ifdef CACHE_PANIC
+	if(!result) panic("VSFS: out of free inodes!\n");
+#endif
+
 	slock_release(&context->cache_lock);
 	return (struct vsfs_inode*)result;
 }
@@ -430,7 +455,7 @@ struct vsfs_inode* vsfs_alloc_inode(struct vsfs_context* context)
 void vsfs_free_inode(struct vsfs_inode* node, struct vsfs_context* context)
 {
 	struct vsfs_cache_inode* in = (struct vsfs_cache_inode*)node;
-	in->allocated = 0;
+	memset(in, 0, sizeof(struct vsfs_cache_inode));
 }
 
 

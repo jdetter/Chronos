@@ -35,7 +35,10 @@ int main(int argc, char** argv)
 	}
 
 	#define BUFF_SIZE 512
-	int fileLength = lseek(fileDescript, 0, SEEK_END);
+	struct stat st;
+	fstat(fileDescript, &st);
+	int fileLength = st.st_size;
+	
 	/* reset seek */
 	lseek(fileDescript, 0, SEEK_SET);
 	char buffer[BUFF_SIZE];
@@ -50,5 +53,5 @@ int main(int argc, char** argv)
 		i += left;
 	}
 
-	exit(1);
+	return 0;
 }

@@ -701,6 +701,8 @@ int sys_sbrk(void)
 
 	/* Map needed pages */
 	mappages(old_end, increment, rproc->pgdir, 1);
+	/* Zero space (security) */
+	memset((void*)old_end, 0, increment);
 	/* Change heap end */
 	rproc->heap_end = old_end + increment;
 	/* release lock */

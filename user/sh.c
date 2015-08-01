@@ -6,7 +6,8 @@
 #include <sys/wait.h>
 
 #define __LINUX_DEFS__
-#include <chronos/file.h>
+#include "file.h"
+#include "dirent.h"
 
 #define OP_PIPE 0x01 /* \ */
 #define OP_FILE 0x02 /* > */

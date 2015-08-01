@@ -14,6 +14,7 @@
 #include "chronos.h"
 #include "proc.h"
 #include "ramfs.h"
+#include "panic.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -105,11 +106,18 @@ static struct FSDriver* fs_alloc(void)
 	{
 		if(!fstable[x].valid)
 		{
+#ifdef CACHE_WATCH
+			cprintf("FSDriver allocated: %d\n", x);
+#endif
 			driver = fstable + x;
 			driver->valid = 1;
 			break;
 		}
 	}
+
+#ifdef CACHE_PANIC
+	if(!driver) panic("Too many file systems mounted!\n");
+#endif
 
 	slock_release(&fstable_lock);
 	return driver;
@@ -124,6 +132,12 @@ void fs_free(struct FSDriver* driver)
 
 int fs_add_inode_reference(struct inode_t* i)
 {
+#ifdef CACHE_WATCH
+	if(rproc) cprintf("INODE REFERENCE ADDED: %s process: %s pid: %d\n",
+				i->name, rproc->name, rproc->pid);
+	else cprintf("INODE REFERENCE ADDED: %s process: KERNEL\n",
+				i->name);
+#endif
 	i->references++;
 	return 0;
 }
@@ -263,6 +277,10 @@ static struct inode_t* fs_find_inode(void)
 		}
 	}
 
+#ifdef CACHE_PANIC
+	if(!result) panic("Out of fsman inodes!\n");
+#endif
+
 	return result;
 }
 
@@ -271,6 +289,12 @@ static struct inode_t* fs_find_inode(void)
  */
 static void fs_free_inode(inode i)
 {
+#ifdef CACHE_WATCH
+        if(rproc) cprintf("INODE FREED: %s process: %s pid: %d\n",
+                                i->name, rproc->name, rproc->pid);
+        else cprintf("INODE FREED: %s process: KERNEL\n",
+                                i->name);
+#endif
 	memset(i, 0, sizeof(struct inode_t));
 }
 
@@ -356,6 +380,12 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	i->inode_ptr = fs->open(fs_path, fs->context);
 	if(i->inode_ptr == NULL)
 	{
+#ifdef CACHE_WATCH
+        if(rproc) cprintf("INODE ACCESS DENIED: %s process: %s pid: %d\n",
+                                i->name, rproc->name, rproc->pid);
+        else cprintf("INODE ACCESS DENIED: %s process: KERNEL\n",
+                                i->name);
+#endif
 		fs_free_inode(i);
 		return NULL; /* Permission denied */
 	}	
@@ -369,17 +399,35 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	i->references = 1;
 	fs_get_name(dst_path, i->name, FILE_MAX_NAME);
 
+#ifdef CACHE_WATCH
+        if(rproc) cprintf("FILE OPENED: %s process: %s pid: %d\n",
+                                i->name, rproc->name, rproc->pid);
+        else cprintf("FILE OPENED: %s process: KERNEL\n",
+                                i->name);
+#endif
+
 	return i;
 }
 
 int fs_close(inode i)
 {
 	/* Close the file system file */
-	int result = i->fs->close(i->inode_ptr, i->fs->context);
 	i->references--;	
-	if(i->references == 0) 
-		memset(i, 0, sizeof(struct inode_t));
-	return result;
+	if(i->references == 0)
+	{ 
+		int close_result = i->fs->close(i->inode_ptr, 
+			i->fs->context);
+		fs_free_inode(i);
+		return close_result;
+	} else {
+#ifdef CACHE_WATCH
+        if(rproc) cprintf("INODE DEREFERENCED: %s process: %s pid: %d\n",
+                                i->name, rproc->name, rproc->pid);
+        else cprintf("INODE DEREFERENCED: %s process: KERNEL\n",
+                                i->name);
+#endif
+	}
+	return 0;
 }
 
 int fs_stat(inode i, struct stat* dst)

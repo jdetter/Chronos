@@ -56,6 +56,7 @@
 #define SYS_gettid	0x32
 #define SYS_getppid	0x33
 #define SYS_munmap	0x34
+#define SYS_getdents	0x35
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -365,6 +366,14 @@ int signal_cv(struct cond* c);
  * failure. Count is ignored (compatibility).
  */
 int readdir(int fd, struct old_linux_dirent* dirp, uint count);
+
+/**
+ * Better method of obtaining directory entries. Count specifies how
+ * many entries can be read at a time into the dirp buffer from the open
+ * file descriptor fd. Returns the number of bytes read on success, 0
+ * on end of diretory and -1 on error.
+ */
+int getdents(int fd, struct chronos_dirent* dirp, uint count);
 
 /**
  * Creates a new pipe. A pipe is a buffer that can be read from and written

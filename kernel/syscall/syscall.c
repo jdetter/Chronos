@@ -77,7 +77,9 @@ int (*syscall_table[])(void) = {
 	sys_getgid,
 	sys_setgid,
 	sys_gettid,
-	sys_getppid
+	sys_getppid,
+	sys_munmap,
+	sys_getdents
 };
 
 /* int isatty(int fd); */
@@ -109,7 +111,7 @@ int syscall_handler(uint* esp)
 	esp += 2;
 	rproc->sys_esp = esp;
 
-	cprintf("%s: Syscall: 0x%x\n", rproc->name, syscall_number);
+	//cprintf("%s: Syscall: 0x%x\n", rproc->name, syscall_number);
 
 	if(syscall_number > SYS_MAX || syscall_number < SYS_MIN)
 	{
@@ -118,6 +120,8 @@ int syscall_handler(uint* esp)
 		return -1;
 	}
 	return_value = syscall_table[syscall_number]();
+
+	//cprintf("syscall return value: 0x%x\n", return_value);
 
 	return return_value; /* Syscall successfully handled. */
 }

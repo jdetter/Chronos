@@ -369,6 +369,7 @@ int sys_fstat(void)
 	}
 
 	int result = fs_stat(i, dst);
+	//cprintf("Permission: 0x%x\n", dst->st_mode);
 
 	if(close_on_exit)fs_close(i);
 
@@ -410,6 +411,46 @@ int sys_readdir(void)
 
 	rproc->file_descriptors[fd].seek++; /* Increment seek */
 	return 1;
+}
+
+/* int getdents(int fd, struct chronos_dirent* dirp, uint count) */
+int sys_getdents(void)
+{
+        /**
+         * A note on the return values:
+         *  +  1 = success
+         *  + -1 = failure
+         *  +  0 = failure (end of directory)
+         */
+
+        int fd;
+	struct chronos_dirent* dirp;
+	uint count;
+
+        if(syscall_get_int(&fd, 0)) return -1;
+        if(syscall_get_int((int*)&count, 2)) return -1;
+        if(syscall_get_buffer_ptr((void**)&dirp,
+                        sizeof(struct chronos_dirent) * count, 1))
+                return -1;
+        if(fd_ok(fd)) return -1;
+        if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
+                return -1;
+
+        struct dirent dir;
+        int result = fs_readdir(rproc->file_descriptors[fd].i,
+                rproc->file_descriptors[fd].seek, &dir);
+        if(result < 0) return -1;
+        if(result == 1) return 0;
+
+        /* Convert to old structure */
+        dirp->d_ino = dir.d_ino;
+        dirp->d_off = rproc->file_descriptors[fd].seek;
+        dirp->d_reclen = sizeof(struct chronos_dirent);
+	dirp->d_type = dir.d_type;
+        strncpy(dirp->name, dir.name, FILE_MAX_NAME);
+
+        rproc->file_descriptors[fd].seek++; /* Increment seek */
+        return sizeof(struct chronos_dirent);
 }
 
 /* int pipe(int fd[2]) */

@@ -157,7 +157,9 @@ int dev_init()
 
 void dev_populate(void)
 {
-	int dev_perm = PERM_UAP | PERM_GAP;
+	int dev_perm = PERM_URD | PERM_UWR |
+		PERM_GRD | PERM_GWR | 
+		PERM_ORD | PERM_OWR;
 	int x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{

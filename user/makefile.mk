@@ -1,5 +1,6 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	types \
 	init \
 	example \
 	otherexample \
@@ -21,15 +22,12 @@ USER_TARGETS := \
 	exec-test \
 	env \
 	ret-test \
-	sh
+	sh \
+	ls \
+	rm \
+	mkdir 
 
-# rm
-# ls
-# mkdir
-# sh
 # stat
-# syscall-test 
-# kill-test
 
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
@@ -59,19 +57,21 @@ USER_CFLAGS += -fno-strict-aliasing
 # Disable stack smashing protection
 USER_CFLAGS += -fno-stack-protector
 
-USER_BUILD := lib/file.o lib/stdlock.o user/syscall.o user/bin $(USER_BINARIES) 
+USER_BUILD := kernel/file.o kernel/stdlock.o user/syscall.o user/bin $(USER_BINARIES) 
 	
 user/bin: 
-	mkdir -p user/bin	
+	mkdir -p user/bin
+	cp kernel/include/stdlock.h user/bin/
+	cp kernel/include/file.h user/bin/
 
 user-symbols: $(USER_SYMBOLS)
 
 user/syscall.o:
-	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I include -c user/syscall.S -o user/syscall.o
+	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I kernel/include -c user/syscall.S -o user/syscall.o
 
 # Recipe for binary files
 user/bin/%: user/%.c
-	$(CROSS_CC) $(CFLAGS) -o $@ $< user/syscall.o lib/file.o lib/stdlock.o
+	$(CROSS_CC) $(CFLAGS) -o $@ $< -I user/include -I user/bin
 
 # Recipe for symbole files
 user/bin/%.sym: user/bin/%

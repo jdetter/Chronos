@@ -113,13 +113,6 @@ void main_stack(void)
 	dev_populate();
 	cprintf("[ OK ]\n");
 
-	/* Bring up kmalloc. */
-        cprintf("Initilizing kmalloc...\t\t\t\t\t\t\t");
-	minit(KVM_KMALLOC_S, KVM_KMALLOC_E);
-	cprintf("[ OK ]\n");
-	/* Enable memory debugging */
-	//mem_debug((void (*)(char*))cprintf);
-
 	/* Enable PIT */
         cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
 	pit_init();

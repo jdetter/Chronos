@@ -8,6 +8,8 @@
 #include "types.h"
 #undef NULL
 
+#include <sys/types.h>
+#include <types.h>
 #include "file.h"
 #include "stdlock.h"
 

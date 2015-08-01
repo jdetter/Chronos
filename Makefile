@@ -34,7 +34,7 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 all: chronos.img
 
 include tools/makefile.mk
-include lib/makefile.mk
+# include lib/makefile.mk
 include kernel/makefile.mk
 include user/makefile.mk
 

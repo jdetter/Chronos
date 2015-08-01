@@ -1,6 +1,36 @@
-#include "chronos.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define __LINUX_DEFS__
+#include "file.h"
+#include <dirent.h>
+
+int file_path_dir(const char* src, char* dst, uint sz)
+{
+        if(strlen(src) + 1 >= sz)
+                return -1;
+        memset(dst, 0, sz);
+        int len = strlen(strncpy(dst, src, sz));
+        if(dst[len - 1] != '/')
+                dst[len] = '/';
+        return 0;
+}
+
+int file_path_file(const char* src, char* dst, uint sz)
+{
+        if(strlen(src) == 0) return 1;
+        memset(dst, 0, sz);
+        int len = strlen(strncpy(dst, src, sz));
+        if(!strcmp(dst, "/")) return 0;
+        for(;dst[len  - 1] == '/' && len - 1 >= 0;len--)
+                dst[len - 1] = 0;
+        return 0;
+}
+
 
 int rec_rmdir(char* dir){
 
@@ -11,9 +41,9 @@ int rec_rmdir(char* dir){
 	if(dirfile == -1){
 		return -1;
 	}
-	struct dirent dir_stuff;	
+	struct chronos_dirent dir_stuff;	
 	int ind;
-	for(ind = 0; readdir(dirfile, ind, &dir_stuff) != -1; ind++){
+	for(ind = 0; getdents(dirfile, &dir_stuff, 1) != 0; ind++){
 		struct stat st;
 		fstat(dirfile, &st);
 		if((S_ISREG(st.st_mode)) || (S_ISLNK(st.st_mode))){
@@ -109,7 +139,7 @@ int main(int argc, char** argv)
 				if(removed == -1){
 					if(user_input){
 						printf("rm: could not remove file %s\n", argv[j]);
-						exit(1);
+						return 1;
 					}
 				}
 				if(print){
@@ -128,7 +158,7 @@ int main(int argc, char** argv)
 					if(rmdirret == -1){
 						if(user_input){
 							printf("rm: could not remove directory %s\n", argv[j]);
-							exit(1);
+							return 1;
 						}
 					}
 					if(print){
@@ -138,11 +168,11 @@ int main(int argc, char** argv)
 				}
 				else{
 					printf("rm: -d or -r must be enabled to delete directories\n");
-					exit(1);
+					return 1;
 				}
 			}
 		close(fd);
 		}
 	}
-	exit(0);
+	return 0;
 }

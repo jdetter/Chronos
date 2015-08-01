@@ -110,8 +110,10 @@ int sys_setgid(void);
 int sys_gettid(void);
 int sys_getppid(void);
 int sys_times(void);
+int sys_munmap(void);
+int sys_getdents(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_getppid /* System call with the greatest value*/
+#define SYS_MAX SYS_getdents /* System call with the greatest value*/
 
 #endif

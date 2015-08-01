@@ -196,17 +196,21 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 {
 	struct ATADriverContext* context = driver->context;
-	ata_set_mode(context->master, driver);
+	uchar m = 0xE0;
+	if(!context->master) m = 0xF0;
+	outb(context->base_port + ATA_DRIVE, m | ((sect >> 24) & 0x0F));
 	outb(context->base_port + ATA_SECTOR_COUNT, 0x1);
 	outb(context->base_port + ATA_SECTOR_NUMBER, sect);
 	outb(context->base_port + ATA_CYLINDER_LOW, sect >> 8);
 	outb(context->base_port + ATA_CYLINDER_HIGH, sect >> 16);
-	outb(context->base_port + ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
+	//outb(context->base_port + ATA_CYLINDER_HIGH, (sect >> 24) & 0xE0);
 	outb(context->base_port + ATA_COMMAND, 0x30);
+
 	ata_wait(driver);
 	uint* srcw = (uint*)src;
 	outsl(context->base_port + ATA_DATA, srcw, SECTSIZE/4);
 
+	/* Cache flush*/
 	outb(context->base_port + ATA_COMMAND, 0xE7);
 	ata_wait(driver);
 

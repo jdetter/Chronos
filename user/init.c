@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#include <chronos/stdlock.h>
 #define MAX_ARG 64
 
 char* spawn_process = "/bin/sh";
@@ -15,7 +14,7 @@ void some_recursion(int i);
 
 int main(int argc, char** argv)
 {
-	printf("An init process has spawned on this tty.\n");
+	//printf("An init process has spawned on this tty.\n");
 	int result = fork();
 	if(result > 0)
 	{

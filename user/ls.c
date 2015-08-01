@@ -3,9 +3,59 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
 #include <sys/stat.h>
-#include <chronos/types.h>
+#include <unistd.h>
+
+#define __LINUX_DEFS__
+#include "file.h"
+#include "dirent.h"
+
+int file_path_dir(const char* src, char* dst, uint sz)
+{
+        if(strlen(src) + 1 >= sz)
+                return -1;
+        memset(dst, 0, sz);
+        int len = strlen(strncpy(dst, src, sz));
+        if(dst[len - 1] != '/')
+                dst[len] = '/';
+        return 0;
+}
+
+int file_path_file(const char* src, char* dst, uint sz)
+{
+        if(strlen(src) == 0) return 1;
+        memset(dst, 0, sz);
+        int len = strlen(strncpy(dst, src, sz));
+        if(!strcmp(dst, "/")) return 0;
+        for(;dst[len  - 1] == '/' && len - 1 >= 0;len--)
+                dst[len - 1] = 0;
+        return 0;
+}
+
+int file_path_name(const char* src, char* dst, uint sz)
+{
+        /* Move until we hit a non-slash */
+        int x;
+        for(x = strlen(src) - 1;x >=0; x--)
+                if(src[x] != '/') break;
+
+        /* Move until we hit a slash */
+        for(;x >=0; x--)
+                if(src[x] == '/') break;
+
+        /* Clear dst */
+        memset(dst, 0, sz);
+
+        /* Copy until we hit a slash or the end. */
+        int pos;
+        for(pos = 0;pos < strlen(src);pos++, x++)
+        {
+                if(src[x] == '/' || src[x] == 0) break;
+                dst[pos] = src[x];
+        }
+
+        return 0;
+}
 
 void usage(void);
 void get_perm(struct stat* st, char* dst);
@@ -52,8 +102,8 @@ int main(int argc, char* argv[])
 	uint size = 0;
 	for(x = 0;;x++)
 	{
-		struct dirent entry;
-		if(readdir(fd_dir, x, &entry))
+		struct chronos_dirent entry;
+		if(getdents(fd_dir, &entry, 1) != sizeof(struct chronos_dirent))
 			break;
 		char entry_path[FILE_MAX_PATH];
 		file_path_dir(path, entry_path, FILE_MAX_PATH);
@@ -71,10 +121,10 @@ int main(int argc, char* argv[])
 			get_perm(&st, out);
 			printf("%s %d:%d %d %s\n", out, 
 				st.st_uid, st.st_gid, 
-				st.st_size, entry.name);
+				(int)st.st_size, entry.name);
 			size += st.st_size;
 		} else printf("%s\n", entry.name);
-		//close(file_fd);
+		close(file_fd);
 	}
 
 	if(list)
@@ -83,7 +133,9 @@ int main(int argc, char* argv[])
 			x, size / 1024);
 	}
 
-	exit(0);
+	close(fd_dir);
+
+	return 0;
 }
 
 void usage(void)

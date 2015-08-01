@@ -28,8 +28,16 @@
 #define PERM_OWR 0002 	/* Others can write */
 #define PERM_OEX 0001 	/* Others can execute */
 
-
 /* Linux Permission Macros */
+#ifndef __LINUX_DEFS__
+
+struct chronos_dirent {
+        ino_t d_ino; /* inode number */
+        off_t d_off; /* next directory index number */
+        unsigned short d_reclen; /* The length of this structure */
+        unsigned short d_type; /* File type (fs specific) */
+        char name[FILE_MAX_NAME]; /* The name of the directory */
+};
 
 #define S_IRWXU 00700 /* User has read, write execute */
 #define S_IRUSR 00400 /* User has read, write execute */
@@ -78,7 +86,6 @@
 #define S_TYPEISSEM(buf) ((buf)->st_mode - (buf)->st_mode)
 #define S_TYPEISSHM(buf) ((buf)->st_mode - (buf)->st_mode)
 
-#ifndef __LINUX_DEFS__
 /**
  * Structure for getting statistics on a file.
  */
