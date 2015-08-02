@@ -1,13 +1,17 @@
-#ifndef _DIRENT_H_
-#define _DIRENT_H_
+#ifndef _SYS_DIRENT_H
+#define _SYS_DIRENT_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <sys/types.h>
+
 #undef FILE_MAX_NAME
 #define FILE_MAX_NAME 255
 #define MAXNAMLEN FILE_MAX_NAME
+
+#define __dirfd(dir) (dir)->dd_fd
 
 struct chronos_dirent {
         ino_t d_ino; /* inode number */
@@ -38,6 +42,18 @@ typedef struct
 	int dd_size; /* amount of data in the buffer */
 } DIR;
 
+/**
+ * Represents a generic directory entry.
+ */
+struct dirent
+{
+        ino_t d_ino; /* Inode number of the directory entry */
+        off_t d_off; /* Offset to the next dirent */
+        unsigned short d_reclen; /* Length of this record */
+        unsigned char  d_type; /* Type of file (see above) */
+        char name[FILE_MAX_NAME]; /* name of the directory entry */
+};
+
 #undef HAVE_DD_LOCK
 #define HAVE_NO_D_NAMLEN
 
@@ -65,6 +81,10 @@ DIR* opendir(const char* dir);
  * Close a directory.
  */
 int closedir(DIR* dir);
+
+/** Added here */
+void _seekdir(DIR *dir, long offset);
+DIR *_opendir(const char *);
 
 #ifdef __cplusplus
 }

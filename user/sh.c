@@ -4,10 +4,10 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #define __LINUX_DEFS__
 #include "file.h"
-#include "dirent.h"
 
 #define OP_PIPE 0x01 /* \ */
 #define OP_FILE 0x02 /* > */

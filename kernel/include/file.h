@@ -1,7 +1,9 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
+#undef FILE_MAX_PATH
 #define FILE_MAX_PATH	256
+#undef FILE_MAX_NAME
 #define FILE_MAX_NAME	256
 
 /**
