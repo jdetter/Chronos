@@ -41,7 +41,7 @@ int rec_rmdir(char* dir){
 	if(dirfile == -1){
 		return -1;
 	}
-	struct chronos_dirent dir_stuff;	
+	struct dirent dir_stuff;	
 	int ind;
 	for(ind = 0; getdents(dirfile, &dir_stuff, 1) != 0; ind++){
 		struct stat st;
@@ -49,13 +49,13 @@ int rec_rmdir(char* dir){
 		if((S_ISREG(st.st_mode)) || (S_ISLNK(st.st_mode))){
 			char file_path[FILE_MAX_PATH];
 			strncpy(file_path, res_path, FILE_MAX_PATH);
-			strncat(file_path, dir_stuff.name, FILE_MAX_PATH);
+			strncat(file_path, dir_stuff.d_name, FILE_MAX_PATH);
 			unlink(file_path);
 		}
 		else if(S_ISDIR(st.st_mode)){
 			char dir_path[FILE_MAX_PATH];
 			strncpy(dir_path, res_path, FILE_MAX_PATH);
-			strncat(dir_path, dir_stuff.name, FILE_MAX_PATH);
+			strncat(dir_path, dir_stuff.d_name, FILE_MAX_PATH);
 			rec_rmdir(dir_path);
 		}
 	}

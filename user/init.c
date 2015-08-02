@@ -14,7 +14,7 @@ void some_recursion(int i);
 
 int main(int argc, char** argv)
 {
-	//printf("An init process has spawned on this tty.\n");
+	printf("An init process has spawned on this tty.\n");
 	int result = fork();
 	if(result > 0)
 	{

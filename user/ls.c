@@ -102,15 +102,15 @@ int main(int argc, char* argv[])
 	uint size = 0;
 	for(x = 0;;x++)
 	{
-		struct chronos_dirent entry;
-		if(getdents(fd_dir, &entry, 1) != sizeof(struct chronos_dirent))
+		struct dirent entry;
+		if(getdents(fd_dir, &entry, sizeof(struct dirent)) != sizeof(struct chronos_dirent))
 			break;
 		char entry_path[FILE_MAX_PATH];
 		file_path_dir(path, entry_path, FILE_MAX_PATH);
-		strncat(entry_path, entry.name, FILE_MAX_PATH);
+		strncat(entry_path, entry.d_name, FILE_MAX_PATH);
 		int file_fd = open(entry_path, O_RDONLY, 0x0);
 
-		if(!all && entry.name[0] == '.') continue;
+		if(!all && entry.d_name[0] == '.') continue;
 
 		if(list)
 		{
@@ -121,9 +121,9 @@ int main(int argc, char* argv[])
 			get_perm(&st, out);
 			printf("%s %d:%d %d %s\n", out, 
 				st.st_uid, st.st_gid, 
-				(int)st.st_size, entry.name);
+				(int)st.st_size, entry.d_name);
 			size += st.st_size;
-		} else printf("%s\n", entry.name);
+		} else printf("%s\n", entry.d_name);
 		close(file_fd);
 	}
 

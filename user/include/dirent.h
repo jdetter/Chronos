@@ -37,7 +37,7 @@ typedef struct
 	int dd_fd; /* Directory file descriptor */
 	int dd_loc; /* Position in buffer */
 	int dd_seek;
-	char* dd_buff; /* buffer */
+	char* dd_buf; /* buffer */
 	int dd_len; /* buffer length */
 	int dd_size; /* amount of data in the buffer */
 } DIR;
@@ -51,7 +51,7 @@ struct dirent
         off_t d_off; /* Offset to the next dirent */
         unsigned short d_reclen; /* Length of this record */
         unsigned char  d_type; /* Type of file (see above) */
-        char name[FILE_MAX_NAME]; /* name of the directory entry */
+        char d_name[FILE_MAX_NAME]; /* name of the directory entry */
 };
 
 #undef HAVE_DD_LOCK
@@ -62,7 +62,7 @@ struct dirent
  * on success, 0 is returned on end of directory. -1 is returned on
  * failure. Count is ignored (compatibility).
  */
-int readdir(int fd, struct old_linux_dirent* dirp, uint count);
+//int readdir(int fd, struct old_linux_dirent* dirp, uint count);
 
 /**
  * Better method of obtaining directory entries. Count specifies how
@@ -70,7 +70,7 @@ int readdir(int fd, struct old_linux_dirent* dirp, uint count);
  * file descriptor fd. Returns the number of bytes read on success, 0
  * on end of diretory and -1 on error.
  */
-int getdents(int fd, struct chronos_dirent* dirp, uint count);
+int getdents(int fd, struct dirent* dirp, uint count);
 
 /**
  * Open a diretory for reading.
@@ -82,9 +82,14 @@ DIR* opendir(const char* dir);
  */
 int closedir(DIR* dir);
 
-/** Added here */
-void _seekdir(DIR *dir, long offset);
-DIR *_opendir(const char *);
+struct dirent* readdir(DIR* dirp);
+void seekdir(DIR *dir, long offset);
+void rewinddir(DIR *);
+int scandir (const char *__dir,
+             struct dirent ***__namelist,
+             int (*select) (const struct dirent *),
+             int (*compar) (const struct dirent **, 
+			const struct dirent **));
 
 #ifdef __cplusplus
 }

@@ -4,6 +4,12 @@
 
 Critical system calls
 =====================
+ioctl
+poll
+sigaction
+select
+issetugid
+getttynam
 
 High priority system calls
 ==========================
@@ -114,6 +120,8 @@ umask
 
 Critical priority features
 ==========================
+termios + termio
+
 threads
  + includes system calls: clone, tkill, tgkill
 users and groups

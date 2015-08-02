@@ -355,6 +355,8 @@ int vsfs_readdir(void* dir, int index, struct dirent* dst,
 	struct vsfs_inode  in;
 	read_inode(dst->d_ino, &in, context);
 	dst->d_type = in.type;
+	dst->d_off = sizeof(struct vsfs_directent) * (index + 1);
+	dst->d_reclen = sizeof(struct dirent);
 
 	return 0;
 }

@@ -813,9 +813,14 @@ int sys_gettimeofday(void)
         return 0;
 }
 
-/* pid_t getuid(void) */
+/* uid_t getuid(void) */
 int sys_getuid(void){
 	return rproc->uid;
+}
+
+/* uid_t getuid(void) */
+int sys_geteuid(void){
+        return rproc->euid;
 }
 
 /* int setuid(uid_t uid)*/
@@ -830,6 +835,11 @@ int sys_setuid(void){
 /* gid_t getgid(void) */
 int sys_getgid(void){
 	return rproc->gid;
+}
+
+/* gid_t getegid(void) */
+int sys_getegid(void){
+        return rproc->egid;
 }
 
 /* int setgid(gid_t gid)*/

@@ -57,6 +57,8 @@
 #define SYS_getppid	0x33
 #define SYS_munmap	0x34
 #define SYS_getdents	0x35
+#define SYS_getegid	0x36
+#define SYS_geteuid	0x37
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -373,7 +375,7 @@ int readdir(int fd, struct old_linux_dirent* dirp, uint count);
  * file descriptor fd. Returns the number of bytes read on success, 0
  * on end of diretory and -1 on error.
  */
-int getdents(int fd, struct chronos_dirent* dirp, uint count);
+int getdents(int fd, struct dirent* dirp, uint count);
 
 /**
  * Creates a new pipe. A pipe is a buffer that can be read from and written
@@ -555,6 +557,16 @@ pid_t getppid(void);
  * is a mapped file. Returns 0 on success, -1 otherwise.
  */
 int munmap(void* addr, size_t length);
+
+/**
+ * Returns the effective group id of the process.
+ */
+gid_t getegid(void);
+
+/**
+ * Returns the effective user id of the process.
+ */
+uid_t geteuid(void);
 
 #endif
 
