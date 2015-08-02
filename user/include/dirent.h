@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+#undef FILE_MAX_NAME
+#define FILE_MAX_NAME 255
+#define MAXNAMLEN FILE_MAX_NAME
+
 struct chronos_dirent {
         ino_t d_ino; /* inode number */
         off_t d_off; /* next directory index number */
@@ -24,6 +28,19 @@ struct old_linux_dirent
         char d_name[FILE_MAX_NAME]; /* Name of the entry */
 };
 
+typedef struct
+{
+	int dd_fd; /* Directory file descriptor */
+	int dd_loc; /* Position in buffer */
+	int dd_seek;
+	char* dd_buff; /* buffer */
+	int dd_len; /* buffer length */
+	int dd_size; /* amount of data in the buffer */
+} DIR;
+
+#undef HAVE_DD_LOCK
+#define HAVE_NO_D_NAMLEN
+
 /**
  * Reads a directory entry from the file fd into dirp. 1 is returned
  * on success, 0 is returned on end of directory. -1 is returned on
@@ -38,6 +55,16 @@ int readdir(int fd, struct old_linux_dirent* dirp, uint count);
  * on end of diretory and -1 on error.
  */
 int getdents(int fd, struct chronos_dirent* dirp, uint count);
+
+/**
+ * Open a diretory for reading.
+ */
+DIR* opendir(const char* dir);
+
+/**
+ * Close a directory.
+ */
+int closedir(DIR* dir);
 
 #ifdef __cplusplus
 }

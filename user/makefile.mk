@@ -25,7 +25,9 @@ USER_TARGETS := \
 	sh \
 	ls \
 	rm \
-	mkdir 
+	mkdir \
+	syscall-test \
+	opendir-test
 
 # stat
 
