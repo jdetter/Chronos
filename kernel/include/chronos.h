@@ -59,6 +59,7 @@
 #define SYS_getdents	0x35
 #define SYS_getegid	0x36
 #define SYS_geteuid	0x37
+#define SYS_ioctl	0x38
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -567,6 +568,16 @@ gid_t getegid(void);
  * Returns the effective user id of the process.
  */
 uid_t geteuid(void);
+
+/**
+ * Manipulate the underlying device parameters of special files.
+ * fd is the file that you wish to manipulate, request is a 
+ * device specific request code. The third parameter is an
+ * untyped pointer to memory. Usually returns 0 on success. On
+ * rare occasions it will return a non negative integer on
+ * success. Returns -1 on failure.
+ */
+int ioctl(int fd, unsigned long request, ...);
 
 #endif
 

@@ -81,7 +81,8 @@ int (*syscall_table[])(void) = {
 	sys_munmap,
 	sys_getdents,
 	sys_getegid,
-	sys_geteuid
+	sys_geteuid,
+	sys_ioctl
 };
 
 /* int isatty(int fd); */

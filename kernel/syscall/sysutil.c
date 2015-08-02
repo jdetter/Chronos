@@ -44,7 +44,24 @@ uchar syscall_get_int(int* dst, uint arg_num)
 	uint* esp = rproc->sys_esp;
         esp += arg_num;
         uchar* num_start = (uchar*)esp;
-        uchar* num_end = (uchar*)esp + 3;
+        uchar* num_end = (uchar*)esp + sizeof(int) - 1;
+
+        if(syscall_addr_safe(num_start) || syscall_addr_safe(num_end))
+                return 1;
+
+        *dst = *esp;
+        return 0;
+}
+
+/**
+ * Get an integer argument. The arg_num determines the offset to the argument.
+ */
+uchar syscall_get_long(long* dst, uint arg_num)
+{
+        uint* esp = rproc->sys_esp;
+        esp += arg_num;
+        uchar* num_start = (uchar*)esp;
+        uchar* num_end = (uchar*)esp + sizeof(long) - 1;
 
         if(syscall_addr_safe(num_start) || syscall_addr_safe(num_end))
                 return 1;

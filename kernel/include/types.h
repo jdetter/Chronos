@@ -13,6 +13,7 @@
 typedef unsigned char uchar;
 typedef unsigned int uint;
 typedef unsigned short ushort;
+typedef unsigned long ulong;
 
 /* data type sizes for i386 */
 typedef unsigned char uint_8;

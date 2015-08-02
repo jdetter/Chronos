@@ -590,8 +590,33 @@ int fchown(int fd, uid_t owner, gid_t group)
 
 int lchown(const char *pathname, uid_t owner, gid_t group)
 {
-
+	cprintf("Implementation needed for lchown.\n");
 	return -1;
 }
 
+int sys_ioctl(void)
+{
+	int fd;
+	ulong request;
+	void* arg;
 
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_long((long*)&request, 1)) return -1;
+	if(sizeof(long) == sizeof(int))
+	{
+		if(syscall_get_int((int*)&arg, 2)) return -1;
+	}else if(syscall_get_int((int*)&arg, 3)) return -1;
+
+	if(fd_ok(fd)) return -1;
+
+	/* Is this a device? */
+	if(rproc->file_descriptors[fd].type != FD_TYPE_DEVICE)
+		return -1;
+
+	/* Does this device support ioctl? */
+	if(!rproc->file_descriptors[fd].device->io_driver.ioctl)
+		return -1;
+
+	return rproc->file_descriptors[fd].device->io_driver.ioctl(request, 
+		arg, rproc->file_descriptors[fd].device->io_driver.context);
+}

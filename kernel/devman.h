@@ -18,6 +18,7 @@ struct IODriver
 	int (*init)(struct IODriver* driver);
 	int (*read)(void* dst, uint start_read, uint sz, void* context);
         int (*write)(void* src, uint start_write, uint sz, void* context);
+	int (*ioctl)(unsigned long request, void* arg, void* context);
 };
 
 struct DeviceDriver

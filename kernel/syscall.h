@@ -20,6 +20,11 @@ uchar syscall_ptr_safe(void* address);
 int syscall_get_int(int* dst, uint arg_num);
 
 /**
+ * Gets a long argument from the stack of the running process.
+ */
+uchar syscall_get_long(long* dst, uint arg_num);
+
+/**
  * Take the buffer from the user stack and put it into dst. sz_user
  * specifies the amount of byes to copy from the user stack. sz_kern
  * specifies the size of the destination buffer. arg specifies which
@@ -114,8 +119,9 @@ int sys_munmap(void);
 int sys_getdents(void);
 int sys_getegid(void);
 int sys_geteuid(void);
+int sys_ioctl(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_geteuid /* System call with the greatest value*/
+#define SYS_MAX SYS_ioctl /* System call with the greatest value*/
 
 #endif

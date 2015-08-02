@@ -4,6 +4,7 @@
 #include <sys/cdefs.h>
 #include <time.h>
 #include <_ansi.h>
+#include <sys/ioctl.h>
 
 #define __LINUX_DEFS__
 #include "file.h"
