@@ -8,8 +8,10 @@
 #define VIDEO_MODE_COLOR 0x20
 #define VIDEO_MODE_MONO 0x30
 
-/* Definitions for drivers */
+/* ioctl helper function */
+int ioctl_arg_ok(void* arg, uint sz);
 
+/* Definitions for drivers */
 struct IODriver
 {
 	void* context; /* Pointer to driver specific context */
@@ -28,6 +30,12 @@ struct DeviceDriver
 	int type; /* The type of device, defined in include/device.h */
 	char node[FILE_MAX_PATH]; /* where is the node for this driver? */
 };
+
+/**
+ * Some super basic devices
+ */
+extern struct DeviceDriver* dev_null; /* null device driver */
+extern struct DeviceDriver* dev_zero; /* zero device driver */
 
 /**
  * Setup all io drivers for all available devices.

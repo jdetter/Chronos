@@ -26,6 +26,12 @@ static struct DeviceDriver drivers[MAX_DEVICES];
 extern uchar serial_connected;
 uint curr_mapping;
 
+struct DeviceDriver* dev_null; /* null device driver */
+struct DeviceDriver* dev_zero; /* zero device driver */
+
+int io_null_init(struct IODriver* driver);
+int io_zero_init(struct IODriver* driver);
+
 static struct DeviceDriver* dev_alloc(void)
 {
 	slock_acquire(&driver_table_lock);
@@ -142,11 +148,24 @@ int dev_init()
 		/* Set mount point */
 		driver->type = DEV_COM;
                 snprintf(driver->node,
-                        FILE_MAX_PATH, "/dev/sl0", x);
+                        FILE_MAX_PATH, "/dev/sl0");
 	}
 
 	/* Keyboard */
 	kbd_init();
+
+	/* make null and zero devices */
+	driver = dev_alloc();
+	driver->type = DEV_IO;
+	snprintf(driver->node, FILE_MAX_PATH, "/dev/null");
+	driver->io_driver.init = io_null_init;
+	dev_null = driver;
+
+	driver = dev_alloc();
+        driver->type = DEV_IO;
+        snprintf(driver->node, FILE_MAX_PATH, "/dev/zero");
+        driver->io_driver.init = io_zero_init;
+	dev_zero = driver;
 
 	/* Do final init on all io devices */
 	for(x = 0;x < MAX_DEVICES;x++)
@@ -205,4 +224,43 @@ struct DeviceDriver* dev_lookup(int dev)
 	if(dev > 0 && dev < MAX_DEVICES && drivers[dev].valid)
 		return drivers + dev;
 	else return NULL;
+}
+
+int io_null_read(void* dst, uint start_read, uint sz, void* context)
+{
+	return 0;
+}
+
+int io_null_write(void* dst, uint start_read, uint sz, void* context)
+{
+	return sz;
+}
+
+int io_null_init(struct IODriver* driver)
+{
+	driver->init = io_null_init;
+	driver->read = io_null_read;
+	driver->write = io_null_write;
+	driver->ioctl = NULL;
+	return 0;
+}
+
+int io_zero_read(void* dst, uint start_read, uint sz, void* context)
+{
+	memset(dst, 0, sz);
+        return sz;
+}
+
+int io_zero_write(void* dst, uint start_read, uint sz, void* context)
+{
+        return sz;
+}
+
+int io_zero_init(struct IODriver* driver)
+{
+        driver->init = io_zero_init;
+        driver->read = io_zero_read;
+        driver->write = io_zero_write;
+        driver->ioctl = NULL;
+        return 0;
 }

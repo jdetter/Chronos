@@ -53,9 +53,9 @@ int (*syscall_table[])(void) = {
 	sys_dup,
 	sys_dup2,
 	sys_proc_dump,
-	sys_tty_mode,
-	sys_tty_screen,
-	sys_tty_cursor,
+	NULL,// sys_tty_mode,
+	NULL,// sys_tty_screen,
+	NULL,// sys_tty_cursor,
 	sys_brk,
 	sys_sbrk,
 	sys_chmod,
@@ -120,6 +120,13 @@ int syscall_handler(uint* esp)
 	{
 		cprintf("kernel syscall number invalid: 0x%x\n", 
 				syscall_number);
+		return -1;
+	}
+
+	if(!syscall_table[syscall_number])
+	{
+		cprintf("Warning: invalid system call: 0x%x\n", 
+			syscall_number);
 		return -1;
 	}
 	return_value = syscall_table[syscall_number]();
@@ -212,6 +219,7 @@ extern uint k_start_pages;
 extern uint k_pages;
 int sys_proc_dump(void)
 {
+	/*
 	tty_print_string(rproc->t, "Running processes:\n");
 	int x;
 	for(x = 0;x < PTABLE_SIZE;x++)
@@ -314,36 +322,7 @@ int sys_proc_dump(void)
 	tty_print_string(rproc->t, "Used percent:  %d%%\n",
                 (used_pages * 100) / k_start_pages);
         tty_print_string(rproc->t, "Free percent:  %d%%\n",
-                (k_pages * 100) / k_start_pages);
-	return 0;
-}
-
-/* int tty_mode(int graphical) */
-int sys_tty_mode(void)
-{
-	int graphical;
-	if(syscall_get_int(&graphical, 0)) return -1;
-	if(graphical)
-		tty_set_mode(rproc->t, TTY_MODE_GRAPHIC);
-	else tty_set_mode(rproc->t, TTY_MODE_TEXT);
-	return 0;
-}
-
-/* int tty_screen(char tty_buffer[4000]) */
-int sys_tty_screen(void)
-{
-	char* tty_buffer;
-	if(syscall_get_buffer_ptr((void**)&tty_buffer, 4000, 0)) return -1;
-	tty_print_screen(rproc->t, tty_buffer);
-	return 0;
-}
-
-/* int tty_cursor(int pos) */
-int sys_tty_cursor(void)
-{
-	int pos;
-	if(syscall_get_int(&pos, 0)) return -1;
-	tty_set_cursor_pos(rproc->t, pos, TTY_MODE_GRAPHIC);
+                (k_pages * 100) / k_start_pages); */
 	return 0;
 }
 

@@ -150,7 +150,7 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_PF:
 			if(trap_pf(__get_cr2__())){
-				tty_print_string(rproc->t, "%s: Seg Fault: 0x%x\n",
+				tty_printf(rproc->t, "%s: Seg Fault: 0x%x\n",
 				rproc->name, 
 				__get_cr2__());
 				_exit(1);

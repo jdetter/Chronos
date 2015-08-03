@@ -57,21 +57,21 @@
 #define TTY_BACK_BROWN          (TTY_FORE_BROWN << 4)
 #define TTY_BACK_GREY           (TTY_FORE_GREY << 4)
 
+#include "ioctl.h"
+
 /* tty structure. Contains all of the metadata for a tty. */
 struct tty
 {
 	uint num; /* The number of this tty */
 	uint active; /* 1: This tty is in the foreground, 0: background*/
 	uchar type; /* The type of this tty. (see above.)*/
-	char buffer_text[TTY_BUFFER_SZ]; /* Text buffer */
-	char buffer_graphic[TTY_BUFFER_SZ]; /* Graphical buffer */
-	uint text_cursor_pos; /* Text mode position of the cursor. */
-	uint graphic_cursor_pos; /* Graphic mode position of the cursor. */
-	uint text_cursor_enabled; /* Whether or not to show the cursor (text)*/
-	uint graphical_cursor_enabled; /* Whether or not to show the cursor*/
-	uchar display_mode; /* Whether we are in text or graphical mode */
+	char buffer[TTY_BUFFER_SZ]; /* Text buffer */
+	uint cursor_pos; /* Text mode position of the cursor. */
+	uint cursor_enabled; /* Whether or not to show the cursor (text)*/
 	uint mem_start; /* The start of video memory. (color, mono only)*/
 	uchar color; /* The current printing color of the terminal. */
+	pid_t cpgid; /* The process group id of the controlling process. */
+	uchar exclusive; /* Whether or not this tty can be opened */
 
 	char keyboard[TTY_KEYBUFFER_SZ]; /* Keyboard input buffer */
 	slock_t key_lock; /* The lock needed in order to read from keybaord */
@@ -81,6 +81,13 @@ struct tty
 	uint key_nls; /* How many new lines are in the buffer? */
 
 	struct DeviceDriver* driver; /* driver for standard in/out */
+
+	/* Terminal operating settings */
+	struct termios term;
+	uchar termios_locked; /* 0 = unlocked, 1 = locked */
+
+	/* Window size parameters */
+	struct winsize window;
 };
 
 typedef struct tty* tty_t;
@@ -122,20 +129,14 @@ void tty_enable(tty_t t);
 void tty_disable(tty_t t);
 
 /** 
- * Print the character at the current cursor position (text only).
+ * Print the character at the current cursor position.
  */
-void tty_print_character(tty_t t, char c);
+void tty_putc(tty_t t, char c);
 
 /**
- * Print the formatted string at the current cursor position (text only).
+ * Print the formatted string at the current cursor position.
  */
-void tty_print_string(tty_t t, char* fmt, ...);
-
-/**
- * Print the character at the specified row and column. The color attribute
- * should be used for printing the color of the character.
- */
-void tty_print_cell(tty_t t, uint row, uint col, uint character);
+void tty_printf(tty_t t, char* fmt, ...);
 
 /**
  * Print the entire video memory to the screen (graphic mode only).
@@ -143,40 +144,24 @@ void tty_print_cell(tty_t t, uint row, uint col, uint character);
 void tty_print_screen(tty_t t, char* buffer);
 
 /**
- * Clear the graphic display (graphic mode only).
- */
-void tty_clear_graphic(tty_t t);
-
-/**
  * Get a character from the tty.
  */
-char tty_get_char(tty_t t);
+char tty_getc(tty_t t);
 
 /**
- * Get the next available keystroke from the user. This will not return until
- * the user presses a key.
+ * Sets whether or not the cursor should appear on the screen.
  */
-uchar tty_get_key(tty_t t);
-
-/**
- * Sets whether or not the cursor should appear on the screen (mode specific).
- */
-uchar tty_set_cursor(tty_t t, uchar enabled, uchar mode);
+uchar tty_set_cursor(tty_t t, uchar enabled);
 
 /**
  * Sets the current position of the cursor for the specified mode.
  */
-uchar tty_set_cursor_pos(tty_t t, uchar pos, uchar mode);
+uchar tty_set_cursor_pos(tty_t t, uchar pos);
 
 /**
  * Sets the current color of the tty output (text mode only).
  */
 void tty_set_color(tty_t t, uchar color);
-
-/**
- * Sets the display mode of the tty. (see mode above)
- */
-void tty_set_mode(struct tty* t, uchar mode);
 
 /**
  * Scroll down one line in the console.
@@ -187,5 +172,10 @@ void tty_scroll(tty_t t);
  * Handles the keyboard interrupt with the active tty.
  */
 void tty_handle_keyboard_interrupt(void);
+
+/**
+ * Clear the input stream of the tty.
+ */
+void tty_clear_input(tty_t t);
 
 #endif

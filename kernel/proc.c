@@ -256,6 +256,64 @@ uint load_binary(const char* path, struct proc* p)
 	return elf_end;
 }
 
+uchar proc_tty_connected(tty_t t)
+{
+	slock_acquire(&ptable_lock);
+	uchar result = 0;
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		if(ptable[x].t == t)
+		{
+			result = 1;
+			break;
+		}
+	}
+	slock_release(&ptable_lock);
+	return result;
+}
+
+void proc_disconnect(struct proc* p)
+{
+	slock_acquire(&ptable_lock);
+	/* disconnect stdin, stdout and stderr */
+	p->file_descriptors[0].device = dev_null;
+	p->file_descriptors[1].device = dev_null;
+	p->file_descriptors[2].device = dev_null;
+
+	tty_t t = p->t;
+
+	/* remove controlling terminal */
+	p->t = NULL;
+	slock_release(&ptable_lock);
+
+	if(p->sid == p->sid)
+		proc_tty_disconnect(t);
+}
+
+void proc_tty_disconnect(tty_t t)
+{
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		if(ptable[x].t == t)
+			proc_disconnect(ptable + x);
+	}
+}
+
+void proc_set_ctty(struct proc* p, tty_t t)
+{
+	slock_acquire(&ptable_lock);
+	rproc->t = t;
+	rproc->file_descriptors[0].device = t->driver;
+	rproc->file_descriptors[0].type = FD_TYPE_DEVICE;
+	rproc->file_descriptors[1].device = t->driver;
+	rproc->file_descriptors[1].type = FD_TYPE_DEVICE;
+	rproc->file_descriptors[2].device = t->driver;
+	rproc->file_descriptors[2].type = FD_TYPE_DEVICE;
+	slock_release(&ptable_lock);
+}
+
 void sched_init()
 {
 	/* Zero all of the processes (unused) */
@@ -271,8 +329,8 @@ void sched_init()
 struct proc* get_proc_pid(int pid)
 {
 	int x;
-        for(x = 0;x < PTABLE_SIZE;x++)
-        {
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
 		if(ptable[x].pid == pid)
 			return ptable + x;
 	}
@@ -301,10 +359,10 @@ void yield_withlock(void)
 	/* We have the lock, just enter the scheduler. */
 	/* We are also not changing the state of the process here. */
 
-        /* Give up cpu for a scheduling round */
-        __context_restore__(&rproc->context, k_context);
+	/* Give up cpu for a scheduling round */
+	__context_restore__(&rproc->context, k_context);
 
-        /* When we get back here, we no longer have the ptable lock. */
+	/* When we get back here, we no longer have the ptable lock. */
 }
 
 

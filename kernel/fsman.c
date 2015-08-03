@@ -664,6 +664,7 @@ int fs_mount(const char* device, const char* point)
 
 void fs_fsstat(void)
 {
+	/*
 	struct fs_stat fss;
 	int x;
 	for(x = 0;x < FS_TABLE_MAX;x++)
@@ -694,6 +695,7 @@ void fs_fsstat(void)
 			(fss.blocks_allocated / 2));
 		tty_print_string(rproc->t, "\n");
 	}
+	*/
 }
 
 int fs_rmdir(const char* path)

@@ -46,7 +46,7 @@ void cprintf(char* fmt, ...)
                 if(fmt[x] == '%' && x + 1 < strlen(fmt))
                 {
                         if(fmt[x + 1] == '%')
-                                tty_print_character(t0, '%');
+                                tty_putc(t0, '%');
                         else if(fmt[x + 1] == 'd')
                         {
                                 /* Print in decimal */
@@ -54,7 +54,7 @@ void cprintf(char* fmt, ...)
                                 itoa(*((int*)argument), buffer, 32, 10);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
-                                        tty_print_character(t0, buffer[y]);
+                                        tty_putc(t0, buffer[y]);
                                 argument++;
                         } else if(fmt[x + 1] == 'p' || fmt[x + 1] == 'x')
                         {
@@ -63,20 +63,20 @@ void cprintf(char* fmt, ...)
                                 itoa(*((int*)argument), buffer, 32, 16);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
-                                        tty_print_character(t0, buffer[y]);
+                                        tty_putc(t0, buffer[y]);
                                 argument++;
                         } else if(fmt[x + 1] == 'c')
                         {
                                 /* Print character */
                                 char c = *((char*)argument);
-                                tty_print_character(t0, c);
+                                tty_putc(t0, c);
                                 argument++;
                         } else if(fmt[x + 1] == 's')
                         {
                                 char* str = *((char**)argument);
                                 int y;
                                 for(y = 0;y < strlen(str);y++)
-                                        tty_print_character(t0, str[y]);
+                                        tty_putc(t0, str[y]);
                                 argument++;
                         } else if(fmt[x + 1] == 'b')
                         {
@@ -85,12 +85,12 @@ void cprintf(char* fmt, ...)
                                 itoa(*((int*)argument), buffer, 32, 2);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
-                                        tty_print_character(t0, buffer[y]);
+                                        tty_putc(t0, buffer[y]);
                                 argument++;
                         }
 
                         x++;
-                } else tty_print_character(t0, fmt[x]);
+                } else tty_putc(t0, fmt[x]);
 	}
 }
 

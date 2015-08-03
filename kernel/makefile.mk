@@ -24,7 +24,8 @@ KERNEL_OBJECTS := \
 	stdlock \
 	stdarg \
 	file \
-	stdlib
+	stdlib \
+	ioctl
 
 # assembly files
 KERNEL_ASSEMBLY := \

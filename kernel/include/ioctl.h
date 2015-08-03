@@ -36,7 +36,7 @@ struct winsize
     unsigned short int ws_ypixel;
   };
 
-#define NCC 8
+#define NCCS 32
 struct termio
   {
     unsigned short int c_iflag;         /* input mode flags */
@@ -44,7 +44,7 @@ struct termio
     unsigned short int c_cflag;         /* control mode flags */
     unsigned short int c_lflag;         /* local mode flags */
     unsigned char c_line;               /* line discipline */
-    unsigned char c_cc[NCC];            /* control characters */
+    unsigned char c_cc[NCCS];            /* control characters */
 };
 
 /* modem lines */
@@ -293,6 +293,394 @@ struct termio
 #define TIOCSER_TEMT    0x01    /* Transmitter physically empty */
 
 /** End Ubuntu Linux /usr/include/asm-generic/ioctls.h */
+
+typedef unsigned char cc_t; 
+typedef unsigned int  speed_t; 
+typedef unsigned int  tcflag_t;
+
+struct termios
+{
+	tcflag_t c_iflag; /* input mode flags */
+	tcflag_t c_oflag; /* output mode flags */
+	tcflag_t c_cflag; /* control mode flags */
+	tcflag_t c_lflag; /* local mode flags */
+	cc_t c_line; 		/* line disipline */
+	cc_t cc_cc[NCCS]; /* control characters */
+	speed_t c_ispeed; /* input speed */
+	speed_t c_ospeed; /* output speed */
+#define _HAVE_STRUCT_TERMIOS_C_ISPEED 1
+#define _HAVE_STRUCT_TERMIOS_C_OSPEED
+};
+
+/* c_cc characters */
+/**
+ * (003, ETX, Ctrl-C, or also 0177, DEL, rubout) Interrupt
+ * character (INTR).  Send a SIGINT signal.  Recognized when ISIG
+ * is set, and then not passed as input.
+ */
+#define VINTR 0
+
+/**
+ * (034, FS, Ctrl-\) Quit character (QUIT).  Send SIGQUIT signal.
+ * Recognized when ISIG is set, and then not passed as input.
+ */
+#define VQUIT 1
+
+/**
+ * (0177, DEL, rubout, or 010, BS, Ctrl-H, or also #) Erase
+ * character (ERASE).  This erases the previous not-yet-erased
+ * character, but does not erase past EOF or beginning-of-line.
+ * Recognized when ICANON is set, and then not passed as input.
+ */
+#define VERASE 2
+
+/**
+ * (025, NAK, Ctrl-U, or Ctrl-X, or also @) Kill character
+ * (KILL).  This erases the input since the last EOF or
+ * beginning-of-line.  Recognized when ICANON is set, and then
+ * not passed as input.
+ */
+#define VKILL 3
+
+/**
+ * (004, EOT, Ctrl-D) End-of-file character (EOF).  More
+ * precisely: this character causes the pending tty buffer to be
+ * sent to the waiting user program without waiting for end-of-
+ * line.  If it is the first character of the line, the read(2)
+ * in the user program returns 0, which signifies end-of-file.
+ * Recognized when ICANON is set, and then not passed as input.
+ */
+#define VEOF 4
+
+/**
+ * Timeout in deciseconds for noncanonical read (TIME).
+ */
+#define VTIME 5
+
+/**
+ * Minimum number of characters for noncanonical read (MIN).
+ */
+#define VMIN 6
+
+/**
+ * No linux support? 
+ */
+#define VSWTC 7
+
+/**
+ *(021, DC1, Ctrl-Q) Start character (START).  Restarts output
+ * stopped by the Stop character.  Recognized when IXON is set,
+ * and then not passed as input.
+ */
+#define VSTART 8
+
+/**
+ * (023, DC3, Ctrl-S) Stop character (STOP).  Stop output until
+ * Start character typed.  Recognized when IXON is set, and then
+ * not passed as input.
+ */
+#define VSTOP 9
+
+/**
+ * (032, SUB, Ctrl-Z) Suspend character (SUSP).  Send SIGTSTP
+ * signal.  Recognized when ISIG is set, and then not passed as
+ * input.
+ */
+#define VSUSP 10
+
+/**
+ * Yet another end-of-line character
+ * (EOL2).  Recognized when ICANON is set.
+ */
+#define VEOL 11
+
+/**
+ * (not in POSIX; 022, DC2, Ctrl-R) Reprint unread characters
+ * (REPRINT).  Recognized when ICANON and IEXTEN are set, and
+ * then not passed as input.
+ */
+#define VREPRINT 12
+
+/**
+ * (not in POSIX; not supported under Linux; 017, SI, Ctrl-O)
+ * Toggle: start/stop discarding pending output.  Recognized when
+ * IEXTEN is set, and then not passed as input.
+ */
+#define VDISCARD 13
+
+/**
+ * (not in POSIX; 027, ETB, Ctrl-W) Word erase (WERASE).
+ * Recognized when ICANON and IEXTEN are set, and then not passed
+ * as input.
+ */
+#define VWERASE 14
+
+/**
+ * (not in POSIX; 026, SYN, Ctrl-V) Literal next (LNEXT).  Quotes
+ * the next input character, depriving it of a possible special
+ * meaning.  Recognized when IEXTEN is set, and then not passed
+ * as input.
+ */
+#define VLNEXT 15
+
+/**
+ * (not in POSIX; 0, NUL) Yet another end-of-line character
+ * (EOL2).  Recognized when ICANON is set.
+ */
+#define VEOL2 16
+
+/* c_iflag bits */
+#define IGNBRK  0000001 /* Ignore BREAK condition on input */
+
+/**
+ * If IGNBRK is set, a BREAK is ignored.  If it is not set but
+ * BRKINT is set, then a BREAK causes the input and output queues
+ * to be flushed, and if the terminal is the controlling terminal
+ * of a foreground process group, it will cause a SIGINT to be
+ * sent to this foreground process group.  When neither IGNBRK
+ * nor BRKINT are set, a BREAK reads as a null byte ('\0'),
+ * except when PARMRK is set, in which case it reads as the
+ * sequence \377 \0 \0.
+ */
+#define BRKINT  0000002
+
+#define IGNPAR  0000004 /* Ignore framing and parity errors */
+
+/**
+ * If IGNPAR is not set, prefix a character with a parity error
+ * or framing error with \377 \0.  If neither IGNPAR nor PARMRK
+ * is set, read a character with a parity error or framing error
+ * as \0.
+ */
+#define PARMRK  0000010
+#define INPCK   0000020 /* Enable input parity checking */
+#define ISTRIP  0000040 /* strip off the 8th bit */
+#define INLCR   0000100 /* translate NL to CR on input */
+#define IGNCR   0000200 /* Ignore carrige return on input */
+#define ICRNL   0000400 /* Translate carrige return to new line on input */
+#define IUCLC   0001000 /* Map uppercase characters to lowercase on input */
+#define IXON    0002000 /* Enable XON/XOFF flow control on output. */
+
+/**
+ * Typing any character will restart stopped output.
+ * Default: allow just eht START character to restart output
+ */
+#define IXANY   0004000 
+
+/**
+ * Enable XON/XOFF flow control on input 
+ */
+#define IXOFF   0010000
+
+/**
+ * Ring bell when input queue is full.
+ */
+#define IMAXBEL 0020000
+/** 
+ * Input is UTF8; this allows character-erase to be correctly performed in 
+ * cooked mode.*/
+#define IUTF8   0040000 /* Input is UTF8; this allows character-erase to be correctly performed in cooked mode.*/
+
+/* c_oflag bits */
+#define OPOST   0000001 /* Enable output processing */
+#define OLCUC   0000002 /* Map lowercase characters to uppercase on output */
+#define ONLCR   0000004 /* XSI Map NL to CR-NL on output */
+#define OCRNL   0000010 /* MAP CR to NL on output */
+#define ONOCR   0000020 /* Don't output CR at column 0 */
+#define ONLRET  0000040 /* Don't output CR */
+#define OFILL   0000100 /* Send fill characters for a delay */
+
+/**
+ * Fill character is ASCII DEL (0177). If unset, the fill
+ * character is ASCII NUL ('\0'). (no implement)
+ */
+#define OFDEL   0000200 
+
+# define NLDLY  0000400 /* Newline delay mask */
+# define   NL0  0000000
+# define   NL1  0000400
+# define CRDLY  0003000 /* Carrige return delay mask */
+# define   CR0  0000000
+# define   CR1  0001000
+# define   CR2  0002000
+# define   CR3  0003000
+# define TABDLY 0014000 /* Horizontal tab delay mask */
+# define   TAB0 0000000
+# define   TAB1 0004000
+# define   TAB2 0010000
+# define   TAB3 0014000
+# define BSDLY  0020000 /* Backspace delay mask. */
+# define   BS0  0000000
+# define   BS1  0020000
+# define FFDLY  0100000 /* ??? */
+# define   FF0  0000000
+# define   FF1  0100000
+
+#define VTDLY   0040000 /* Vertical tab delay mask */
+#define   VT0   0000000
+#define   VT1   0040000
+
+#ifdef __USE_MISC
+# define XTABS  0014000 /* ??? */
+#endif
+
+/* c_cflag bit meaning */
+#ifdef __USE_MISC
+# define CBAUD  0010017 /* Baud speed mask */
+#endif
+#define  B0     0000000         /* hang up */
+#define  B50    0000001
+#define  B75    0000002
+#define  B110   0000003
+#define  B134   0000004
+#define  B150   0000005
+#define  B200   0000006
+#define  B300   0000007
+#define  B600   0000010
+#define  B1200  0000011
+#define  B1800  0000012
+#define  B2400  0000013
+#define  B4800  0000014
+#define  B9600  0000015
+#define  B19200 0000016
+#define  B38400 0000017
+#ifdef __USE_MISC
+# define EXTA B19200
+# define EXTB B38400
+#endif
+#define CSIZE   0000060 /* Character size mask */
+#define   CS5   0000000
+#define   CS6   0000020
+#define   CS7   0000040
+#define   CS8   0000060
+#define CSTOPB  0000100 /* Set 2 stop bits rather than one */
+#define CREAD   0000200 /* Enable reciever */
+#define PARENB  0000400 /* Enable parity generation for both io */
+#define PARODD  0001000 /* If set, parity is odd. Otherwise parity is even.*/
+#define HUPCL   0002000 /* last process causes hang up. */
+#define CLOCAL  0004000 /* ignore modem control lines. */
+# define CBAUDEX 0010000 /* Extra baud speed mask */
+#define  B57600   0010001
+#define  B115200  0010002
+#define  B230400  0010003
+#define  B460800  0010004
+#define  B500000  0010005
+#define  B576000  0010006
+#define  B921600  0010007
+#define  B1000000 0010010
+#define  B1152000 0010011
+#define  B1500000 0010012
+#define  B2000000 0010013
+#define  B2500000 0010014
+#define  B3000000 0010015
+#define  B3500000 0010016
+#define  B4000000 0010017
+#define __MAX_BAUD B4000000
+# define CIBAUD   002003600000          /* input baud rate (not used) */
+# define CMSPAR   010000000000          /* mark or space (stick) parity */
+# define CRTSCTS  020000000000          /* flow control */
+
+/* c_lflag bits */
+#define ISIG    0000001 /* Generate signals for INTR, QUIT, SUSP and DSUSP*/
+#define ICANON  0000002 /* Enable canonical mode */
+# define XCASE  0000004 /* If ICANNON is set, terminal is upperase only */
+#define ECHO    0000010 /* Echo input characters. */
+
+/**
+ * If ICANON is also set, the ERASE character erases the
+ * preceding input character, and WERASE erases the preceding
+ * word.
+ */
+#define ECHOE   0000020
+
+/**
+ * If ICANON is also set, the KILL character erases the current
+ * line.
+ */
+#define ECHOK   0000040
+
+/**
+ * If ICANON is also set, echo the NL character even if ECHO is
+ * not set.
+ */
+#define ECHONL  0000100
+
+/**
+ * Disable flushing the input and output queues when generating
+ * signals for the INT, QUIT, and SUSP characters.
+ */
+#define NOFLSH  0000200
+
+/**
+ * Send the SIGTTOU signal to the process group of a background
+ * process which tries to write to its controlling terminal.
+ */
+#define TOSTOP  0000400
+
+/**
+ * If ECHO is also set, terminal special
+ * characters other than TAB, NL, START, and STOP are echoed as
+ * ^X, where X is the character with ASCII code 0x40 greater than
+ * the special character.  For example, character 0x08 (BS) is
+ * echoed as ^H.  [requires _BSD_SOURCE or _SVID_SOURCE]
+ */
+# define ECHOCTL 0001000
+
+/**
+ * If ICANON and ECHO are also set, characters are
+ * printed as they are being erased.
+ */
+# define ECHOPRT 0002000
+
+/**
+ * If ICANON is also set, KILL is echoed by
+ * erasing each character on the line, as specified by ECHOE and
+ * ECHOPRT
+ */
+# define ECHOKE  0004000
+
+/**
+ * Output is being flushed. This flag is toggled by typing the DISCARD
+ * character.
+ */
+# define FLUSHO  0010000
+
+/**
+ * All characters in
+ * the input queue are reprinted when the next character is read.
+ */
+# define PENDIN  0040000
+/**
+ * Enable implementation-defined input processing.  This flag, as
+ * well as ICANON must be enabled for the special characters
+ * EOL2, LNEXT, REPRINT, WERASE to be interpreted, and for the
+ * IUCLC flag to be effective.
+ */
+#define IEXTEN  0100000
+#ifdef __USE_BSD
+# define EXTPROC 0200000 /** ??? */
+#endif
+
+/* tcflow() and TCXONC use these */
+#define TCOOFF          0
+#define TCOON           1
+#define TCIOFF          2
+#define TCION           3
+
+/* tcflush() and TCFLSH use these */
+#define TCIFLUSH        0
+#define TCOFLUSH        1
+#define TCIOFLUSH       2
+
+/* tcsetattr uses these */
+#define TCSANOW         0
+#define TCSADRAIN       1
+#define TCSAFLUSH       2
+
+
+#define _IOT_termios /* Hurd ioctl type field.  */ \
+  _IOT (_IOTS (cflag_t), 4, _IOTS (cc_t), NCCS, _IOTS (speed_t), 2)
+
 
 /**
  * Manipulate the underlying device parameters of special files.

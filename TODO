@@ -4,7 +4,6 @@
 
 Critical system calls
 =====================
-ioctl
 poll
 sigaction
 select
@@ -113,6 +112,7 @@ fchmod
 fchown
 lchown
 umask
+ioctl
 
 +---------------------------------+
 | Features that need implementing |
