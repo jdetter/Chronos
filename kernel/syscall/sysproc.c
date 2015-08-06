@@ -1116,3 +1116,23 @@ int setumask(void){
 int getumask(void){
 	return rproc->umask;
 }
+
+/* uint sleep(uint seconds) */
+int sys_sleep(void)
+{
+	uint seconds;
+	if(syscall_get_int((int*)&seconds, 0)) return -1;
+	slock_acquire(&ptable_lock);
+	rproc->block_type = PROC_BLOCKED_SLEEP;
+	int end = seconds + ktime_seconds() + 1;
+	rproc->sleep_time = end;
+	rproc->state = PROC_BLOCKED;
+	while(1)
+	{
+		yield_withlock();
+		if(ktime_seconds() >= end) break;
+		slock_acquire(&ptable_lock);
+	}
+
+	return 0;
+}

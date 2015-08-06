@@ -1,5 +1,8 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	getlogin-test \
+	sleep-test \
+	ttyname-test \
 	types \
 	init \
 	example \

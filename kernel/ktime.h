@@ -14,7 +14,7 @@ void ktime_update(void);
 /**
  * Retrieve the kernel time in seconds.
  */
-int ktime_seconds(void);
+uint ktime_seconds(void);
 
 /**
  * Parse an rtc structure with the current system time parameters.

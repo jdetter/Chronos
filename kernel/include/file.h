@@ -5,6 +5,7 @@
 #define FILE_MAX_PATH	256
 #undef FILE_MAX_NAME
 #define FILE_MAX_NAME	256
+#define LINK_MAX	2048
 
 /**
  * For use in functions requiring permissions:

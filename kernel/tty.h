@@ -59,6 +59,15 @@
 
 #include "ioctl.h"
 
+struct kbd_buff
+{
+	char buffer[TTY_KEYBUFFER_SZ]; /* Keyboard input buffer */
+	uint key_write; /* Write position */
+	uint key_read; /* Read position */
+	uint key_full; /* Whether the buffer is full */
+	uint key_nls; /* line delimiter characters in the current buff */
+};
+
 /* tty structure. Contains all of the metadata for a tty. */
 struct tty
 {
@@ -73,12 +82,14 @@ struct tty
 	pid_t cpgid; /* The process group id of the controlling process. */
 	uchar exclusive; /* Whether or not this tty can be opened */
 
-	char keyboard[TTY_KEYBUFFER_SZ]; /* Keyboard input buffer */
+	/**
+ 	 * When in Canonical mode, input is made available line by line, so
+	 * we will keep track of the current line and the total amount
+	 * of characters in the buffer.
+	 */
+	struct kbd_buff kbd_line; /* Current line buffer */
+	struct kbd_buff keyboard; /* Total keyboard buffer */
 	slock_t key_lock; /* The lock needed in order to read from keybaord */
-	uint key_write; /* Write position in the buffer */
-	uint key_read; /* Read position in the buffer */
-	uint key_full; /* Is the buffer full? */
-	uint key_nls; /* How many new lines are in the buffer? */
 
 	struct DeviceDriver* driver; /* driver for standard in/out */
 
@@ -149,6 +160,13 @@ void tty_print_screen(tty_t t, char* buffer);
 char tty_getc(tty_t t);
 
 /**
+ * Get a string from the tty. A maximum of sz bytes will be copied into 
+ * the dst buffer. The string is NOT null terminated. Returns the amount
+ * of characters written into the buffer.
+ */
+int tty_gets(char* dst, int sz);
+
+/**
  * Sets whether or not the cursor should appear on the screen.
  */
 uchar tty_set_cursor(tty_t t, uchar enabled);
@@ -177,5 +195,50 @@ void tty_handle_keyboard_interrupt(void);
  * Clear the input stream of the tty.
  */
 void tty_clear_input(tty_t t);
+
+/**
+ * Checks to see if the device is a tty. If it is a tty, it returns a pointer
+ * to the tty_t struct. Otherwise it returns null.
+ */
+tty_t tty_check(struct DeviceDriver* driver);
+
+/**
+ * Flush the line buffer for the given tty.
+ */
+void tty_keyboard_flush_line(tty_t t);
+
+/**
+ * Kill the current line (erase the line). On success, returns
+ * the amount of characters deleted. On failure, returns -1.
+ */
+char tty_keyboard_kill(tty_t t);
+
+/**
+ * Delete a character from the line buffer. Returns 0 on success,
+ * returns -1 if no character could be deleted.
+ */
+char tty_keyboard_delete(tty_t t);
+
+/**
+ * Write a character to the given keyboard buffer.
+ */
+char tty_keyboard_write_buff(struct kbd_buff* kbd, char c);
+
+/**
+ * Read from the keyboard buffer (non-line buffer). Returns a character
+ * on success, returns 0 when the buffer is empty.
+ */
+char tty_keyboard_read_buff(struct kbd_buff* kbd);
+
+/**
+ * Read from the keyboard buffer. This takes in account for
+ * the line buffer as well as the regular buffer.
+ */
+char tty_keyboard_read(tty_t t);
+
+/**
+ * Check to see how many characters are waiting in the input buffer.
+ */
+int tty_keyboard_count(tty_t t);
 
 #endif

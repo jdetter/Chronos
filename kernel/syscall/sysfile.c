@@ -620,3 +620,123 @@ int sys_ioctl(void)
 	return rproc->file_descriptors[fd].device->io_driver.ioctl(request, 
 		arg, rproc->file_descriptors[fd].device->io_driver.context);
 }
+
+int sys_access(void)
+{
+	const char* pathname;
+	mode_t mode;
+
+	if(syscall_get_str_ptr(&pathname, 0)) return -1;
+	if(syscall_get_int((int*)&mode, 1)) return -1;
+
+	inode i = fs_open(pathname, O_RDONLY, 0x0, 0x0, 0x0);
+	if(!i) return -1;
+
+	struct stat st;
+	fs_stat(i, &st);
+	fs_close(i);
+	
+	/* skipping all checks here */
+
+	return 0;
+}
+
+int sys_ttyname(void)
+{
+	int fd;
+	char* buf;
+	size_t sz;
+
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_int((int*)&sz, 2)) return -1;
+	if(syscall_get_buffer_ptr((void**)&buf, sz, 1)) return -1;
+
+	/* see if the fd is okay */
+	if(fd_ok(fd)) return -1;
+
+	/* Check to make sure the file descriptor is actually a device */
+	if(rproc->file_descriptors[fd].type != FD_TYPE_DEVICE) return -1;
+
+	/* See if the device is a tty. */
+	if(!tty_check(rproc->file_descriptors[fd].device)) return -1;
+
+	/* Move the mount point into buf */
+	memmove(buf, rproc->file_descriptors[fd].device->node, sz);
+	return 0;
+}
+
+int sys_fpathconf(void)
+{
+	/* TODO: improve the limit checking here */
+	int fd;
+	int name;
+
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_int(&name, 1)) return -1;
+
+	if(fd_ok(fd)) return -1;
+
+	switch(name)
+	{
+		case _PC_LINK_MAX:
+			return LINK_MAX;
+		case _PC_NAME_MAX:
+		case _PC_PATH_MAX:
+			if(!rproc->file_descriptors[fd].type)
+				return -1;
+			return FILE_MAX_NAME - 1 -
+				strlen(rproc->file_descriptors[fd].path);
+		case _PC_PIPE_BUF:
+			return PIPE_DATA;
+		case _PC_CHOWN_RESTRICTED:
+			if(!rproc->file_descriptors[fd].type)
+                                return -1;
+			return FILE_MAX_NAME - 1 -
+                                strlen(rproc->file_descriptors[fd].path);
+		case _PC_NO_TRUNC:
+			return 1;
+		case _PC_VDISABLE:
+			if(!tty_check(rproc->file_descriptors[fd].device))
+				return -1;
+			return 1;
+		default:
+			break;
+	}	
+
+	return -1; /* no limit */
+}
+
+int sys_pathconf(void)
+{
+	/* TODO: improve the limit checking here */
+        char* path;
+        int name;
+
+	if(syscall_get_str_ptr((const char**)&path, 0)) return -1;
+	if(syscall_get_int(&name, 1)) return -1;
+
+	switch(name)
+	{
+		case _PC_LINK_MAX:
+			return LINK_MAX;
+		case _PC_NAME_MAX:
+		case _PC_PATH_MAX:
+			//if(!rproc->file_descriptors[fd].type)
+			//	return -1;
+			return FILE_MAX_NAME - 1 - strlen(path);
+		case _PC_PIPE_BUF:
+			return PIPE_DATA;
+		case _PC_CHOWN_RESTRICTED:
+			//if(!rproc->file_descriptors[fd].type)
+			//	return -1;
+			return FILE_MAX_NAME - 1 - strlen(path);
+		case _PC_NO_TRUNC:
+			return 1;
+		case _PC_VDISABLE:
+			return 1;
+		default:
+			break;
+	}
+
+	return -1;
+}

@@ -1,0 +1,8 @@
+Build problems with Nano:
+=========================
+
+System calls
+ + lstat
+ + utime
+ + kill
+ + sigaction

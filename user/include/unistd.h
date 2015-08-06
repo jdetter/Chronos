@@ -93,9 +93,9 @@ int     _EXFUN(getgroups, (int __gidsetsize, gid_t __grouplist[] ));
 long    _EXFUN(gethostid, (void));
 #endif
 char *  _EXFUN(getlogin, (void ));
-#if defined(_POSIX_THREAD_SAFE_FUNCTIONS)
+// #if defined(_POSIX_THREAD_SAFE_FUNCTIONS)
 int _EXFUN(getlogin_r, (char *name, size_t namesize) );
-#endif
+// #endif
 char *  _EXFUN(getpass, (const char *__prompt));
 int	_EXFUN(getpagesize, (void));
 #if defined(__CYGWIN__)
@@ -105,12 +105,12 @@ pid_t   _EXFUN(getpgid, (pid_t));
 pid_t   _EXFUN(getpgrp, (void ));
 pid_t   _EXFUN(getpid, (void ));
 pid_t   _EXFUN(getppid, (void ));
-#if defined(__CYGWIN__) || defined(__rtems__)
+// #if defined(__CYGWIN__) || defined(__rtems__)
 pid_t   _EXFUN(getsid, (pid_t));
-#endif
-#if !defined(__INSIDE_CYGWIN__)
+// #endif
+// #if !defined(__INSIDE_CYGWIN__)
 uid_t   _EXFUN(getuid, (void ));
-#endif
+// #endif
 #ifdef __CYGWIN__
 char *	_EXFUN(getusershell, (void));
 char *  _EXFUN(getwd, (char *__buf ));
@@ -191,9 +191,9 @@ long    _EXFUN(sysconf, (int __name ));
 pid_t   _EXFUN(tcgetpgrp, (int __fildes ));
 int     _EXFUN(tcsetpgrp, (int __fildes, pid_t __pgrp_id ));
 char *  _EXFUN(ttyname, (int __fildes ));
-#if defined(__CYGWIN__) || defined(__rtems__)
+// #if defined(__CYGWIN__) || defined(__rtems__)
 int     _EXFUN(ttyname_r, (int, char *, size_t)); 
-#endif
+// #endif
 int     _EXFUN(unlink, (const char *__path ));
 int 	_EXFUN(usleep, (useconds_t __useconds));
 int     _EXFUN(vhangup, (void ));

@@ -49,6 +49,7 @@ struct file_descriptor
 #define PROC_BLOCKED_WAIT 0x01 /* The process is waiting on a child */
 #define PROC_BLOCKED_COND 0x02 /* The thread is waiting on a condition */
 #define PROC_BLOCKED_IO   0x03 /* The process is waiting on io to finish */
+#define PROC_BLOCKED_SLEEP 0x04 /* The process is waiting on io to finish */
 
 /* Reasons for io block */
 #define PROC_IO_NONE     0x00 /* Not waiting on IO */
@@ -109,6 +110,7 @@ struct proc
 	uchar* io_dst; /* Where the destination bytes will be placed. */
 	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
 	int io_recieved; /* The actual amount of bytes recieved. */
+	uint sleep_time; /* The time when the sleep ends */
 	struct signal_t* sig_queue; /* Signal queue*/
 	void (*signal_handler)(int sig_num); /* Optional signal handler. */
 	uint sig_stack_start; /* The start of the signal stack (higher) */

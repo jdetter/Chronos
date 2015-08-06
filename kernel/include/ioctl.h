@@ -305,7 +305,7 @@ struct termios
 	tcflag_t c_cflag; /* control mode flags */
 	tcflag_t c_lflag; /* local mode flags */
 	cc_t c_line; 		/* line disipline */
-	cc_t cc_cc[NCCS]; /* control characters */
+	cc_t c_cc[NCCS]; /* control characters */
 	speed_t c_ispeed; /* input speed */
 	speed_t c_ospeed; /* output speed */
 #define _HAVE_STRUCT_TERMIOS_C_ISPEED 1

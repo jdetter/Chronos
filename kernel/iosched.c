@@ -18,6 +18,11 @@ extern slock_t ptable_lock;
 extern struct proc ptable[];
 extern struct proc* rproc;
 
+/**
+ * Check to see if there are any processes that need to be woken up.
+ */
+void iosched_check_sleep(void);
+
 void iosched_check(void)
 {
 	tty_handle_keyboard_interrupt();
@@ -28,46 +33,75 @@ void iosched_check(void)
 		/* Clock update */
 		ktime_update();
 	}
+
+	iosched_check_sleep();
 }
 
 int block_keyboard_io(void* dst, int request_size)
 {
+	cprintf("block called.\n");
+	/* quick sanity check */
+	if(!request_size || !dst) return 0;
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 	/* See if we can read now */
 	slock_acquire(&rproc->t->key_lock);
 
+	rproc->io_dst = dst;
+	memset(dst, 0, request_size);
+
+	/* Try to read what we can now */
+	/* NOTE: this takes in account for canonical mode already. */
+	int read_chars = 0;
+	int c;
+	while(read_chars < request_size  &&
+		(c = tty_keyboard_read(rproc->t)))
+	{
+		rproc->io_dst[read_chars] = c;
+		cprintf("Quick read character: %c\n", c);
+		read_chars++;
+	}
+
+	/* If we read anything at all, we need to return (mode independant)*/
+	if(read_chars)
+	{
+		/* for completeness, set io_recieved */
+		rproc->io_recieved = read_chars;
+
+		/* release locks */
+		slock_release(&ptable_lock);
+		slock_release(&rproc->t->key_lock);
+		return read_chars;
+	}
+
+	/* We didn't read anything, so we have to block. */
+	cprintf("Couldn't quick read any characters.\n");
+keyboard_sleep:
 	rproc->state = PROC_BLOCKED;
 	rproc->block_type = PROC_BLOCKED_IO;
 	rproc->io_type = PROC_IO_KEYBOARD;
 	rproc->io_recieved = 0;
 	rproc->io_request = request_size;
-	rproc->io_dst = dst;
-	memset(dst, 0, request_size);
 
-	if(rproc->t->key_nls) 
-	{
-		signal_keyboard_io(rproc->t);
-	} else {
+	cprintf("Yielding...\n");
+	slock_release(&rproc->t->key_lock);
+	yield_withlock();
 
-		slock_release(&rproc->t->key_lock);
-		yield_withlock();
-
-		/* Reacuire all locks */
-		/* Acquire the ptable lock */
-		slock_acquire(&ptable_lock);
-		/* See if we can read now */
-		slock_acquire(&rproc->t->key_lock);
-	}
+	/* Reacuire all locks */
+	/* Acquire the ptable lock */
+	slock_acquire(&ptable_lock);
+	/* See if we can read now */
+	slock_acquire(&rproc->t->key_lock);
 
 	/**
-	 * When we return here, we should have a partially filled buffer
-	 * that ends with a new line character AND/OR a null character.
-	 * We will also not have the ptable lock. If we recieved zero
-	 * bytes there was a wakeup error.
+	 * When we return here, we should have a partially filled buffer.
+	 * If nothing was read, we need to go back to sleep.
 	 */
 	if(rproc->io_recieved == 0)
-		panic("iosched: keyboard io wakeup error.\n");
+	{
+		cprintf("iosched: keyboard io wakeup error.\n");
+		goto keyboard_sleep;
+	}
 
 	slock_release(&ptable_lock);
 	slock_release(&rproc->t->key_lock);
@@ -77,11 +111,7 @@ int block_keyboard_io(void* dst, int request_size)
 /* ptable and key lock must be held here. */
 void signal_keyboard_io(tty_t t)
 {
-	/** 
-	 * If there are no new line characters in the buffer, 
-	 * We are not allowed to read.
-	 */
-	if(t->key_nls <= 0) return;
+	char canon = t->term.c_lflag & ICANON;
 
 	/* Keyboard signaled. */
 	int x;
@@ -92,54 +122,66 @@ void signal_keyboard_io(tty_t t)
 				&& ptable[x].io_type == PROC_IO_KEYBOARD
 				&& ptable[x].t == t)
 		{
+			cprintf("Found blocked process: %s\n", ptable[x].name);
+			/* Acquire the key lock */
 			/* Found blocked process. */
 			/* Read into the destination buffer */
 			int read_bytes = ptable[x].io_recieved;
-			int wake = 0;
-			/* If there is a new line were done. */
-			if(t->key_nls > 0) wake = 1;
+			int wake = 0; /* Wether or not to wake the process */
+
 			for(read_bytes = 0;read_bytes < 
 					ptable[x].io_request;
 					read_bytes++)
 			{
-				/* See if we have to wrap */
-				if(ptable[x].t->key_read >= TTY_KEYBUFFER_SZ)
-					ptable[x].t->key_read = 0;
-				/* Check for empty */
-				if(ptable[x].t->key_full &&
-						ptable[x].t->key_write == 
-						ptable[x].t->key_read) break;
-
-
 				/* Read a character */
-				char c = t->keyboard[t->key_read];
+				char c = tty_keyboard_read(t);
+				if(!c) break;
 				/* Place character into dst */
 				ptable[x].io_dst[read_bytes] = c;
-				/* Increment read position */
-				t->key_read++;
-				/* update empty */
-				t->key_full = 0;
-				/* If c is a new line, were done. */
-				if(c == '\n')  
+				cprintf("Read: %c\n", c);
+				if(canon && (c == '\n' || c == 13))
 				{
-					t->key_nls--;
-					wake = 1;
 					read_bytes++;
 					break;
 				}
-
 			}
+
+			/* If we read anything, wakeup the process */
+			if(read_bytes > 0) wake = 1;
 
 			/* update recieved */
 			ptable[x].io_recieved = read_bytes;
 
 			if(wake)
 			{
+				cprintf("Process unblocked.\n");
 				ptable[x].state = PROC_RUNNABLE;
 				ptable[x].block_type = PROC_BLOCKED_NONE;
 				ptable[x].io_type = PROC_IO_NONE;
 			}
+
 			break;
 		}
 	}
+}
+
+void iosched_check_sleep(void)
+{
+	slock_acquire(&ptable_lock);
+	uint time = ktime_seconds();
+
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		if(ptable[x].state == PROC_BLOCKED &&
+				ptable[x].block_type == PROC_BLOCKED_SLEEP &&
+				ptable[x].sleep_time <= time)
+		{
+			ptable[x].state = PROC_RUNNABLE;
+			ptable[x].block_type = 0x0;
+			ptable[x].sleep_time = 0x0;
+		}
+	}
+
+	slock_release(&ptable_lock);
 }

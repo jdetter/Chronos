@@ -60,6 +60,30 @@
 #define SYS_getegid	0x36
 #define SYS_geteuid	0x37
 #define SYS_ioctl	0x38
+#define SYS_access	0x39
+#define SYS_ttyname	0x3A
+#define SYS_fpathconf	0x3B
+#define SYS_pathconf	0x3C
+#define SYS_sleep	0x3D
+
+#ifndef __CHRONOS_ASM_ONLY__
+int __chronos_syscall(int num, ...);
+#endif
+
+#ifndef __CHRONOS_SYSCALLS_ONLY__
+
+/**
+ * Macros for pathconf
+ */
+#define _PC_LINK_MAX                      0
+#define _PC_MAX_CANON                     1
+#define _PC_MAX_INPUT                     2
+#define _PC_NAME_MAX                      3
+#define _PC_PATH_MAX                      4
+#define _PC_PIPE_BUF                      5
+#define _PC_CHOWN_RESTRICTED              6
+#define _PC_NO_TRUNC                      7
+#define _PC_VDISABLE                      8
 
 /**
  * For use in function lseek: (Linux Compliant)
@@ -142,6 +166,14 @@
 #define SIGVTALRM	26 /* Terminate */
 #define SIGXCPU		24 /* Terminate + Core dump */
 #define SIGXFSZ		25 /* Terminate + Core dump */
+
+/**
+ * Flags for access 
+ */
+#define R_OK  4               /* Test for read permission.  */
+#define W_OK  2               /* Test for write permission.  */
+#define X_OK  1               /* Test for execute permission.  */
+#define F_OK  0               /* Test for existence.  */
 
 /**
  * Flags for mmap.
@@ -578,6 +610,35 @@ uid_t geteuid(void);
  * success. Returns -1 on failure.
  */
 int ioctl(int fd, unsigned long request, ...);
+
+/**
+ * Check to see if the user running the current process can access
+ * the file. Returns 0 if the file exists and can be accessed.
+ */
+int access(const char* file, mode_t mode);
+
+/**
+ * Put the path of the terminal described by fd into the buffer buf. A
+ * maximum of sz - 1 bytes will be copied to the buffer (NULL terminated).
+ * Returns 0 on success, -1 if fd is invalid or isn't a tty.
+ */
+int ttyname(int fd, char* buf, size_t sz);
+
+/**
+ * gets a value for the configuration option name for the
+ * open file descriptor fd. Returns -1 on failure or
+ * if there is no limit.
+ */
+long fpathconf(int fd, int name);
+
+/**
+ * Gets a value for the configuration option name for the
+ * given file path. Returns -1 on failure or if there is
+ * no limit.
+ */
+long pathconf(const char* path, int name);
+
+#endif
 
 #endif
 

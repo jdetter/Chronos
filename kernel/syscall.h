@@ -120,8 +120,13 @@ int sys_getdents(void);
 int sys_getegid(void);
 int sys_geteuid(void);
 int sys_ioctl(void);
+int sys_access(void);
+int sys_ttyname(void);
+int sys_fpathconf(void);
+int sys_pathconf(void);
+int sys_sleep(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_ioctl /* System call with the greatest value*/
+#define SYS_MAX SYS_sleep /* System call with the greatest value*/
 
 #endif

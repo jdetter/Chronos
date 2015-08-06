@@ -43,15 +43,21 @@ int tty_io_init(struct IODriver* driver)
 
 int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 {
-	tty_t t = context;
-	uchar* dst_c = dst;
-	int x;
+	// tty_t t = context;
+	cprintf("Initiated read for max of %d characters.\n", sz);
+	sz = tty_gets(dst, sz);
+	cprintf("Returning with %d bytes.\n", sz);
+	cprintf("Buffer returned: %s\n", (char*)dst);
+	return sz;
+	/*int x;
 	for(x = 0;x < sz;x++, dst_c++)
 	{
 		*dst_c = tty_getc(t);
 		if(*dst_c == '\n') break;
 	}
-	return sz;
+
+	cprintf("Read finished with %d bytes.\n", x);
+	return sz; */
 }
 
 int tty_io_write(void* src, uint start_write, uint sz, void* context)
@@ -67,7 +73,7 @@ int tty_io_write(void* src, uint start_write, uint sz, void* context)
 int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 {
 	uint i = (uint)arg;
-	int* ip = (uint)arg;
+	int* ip = (int*)arg;
 	struct winsize* windowp = arg;
 	struct termios* termiosp = arg;
 	struct termio*  termiop = arg;
@@ -102,7 +108,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			t->term.c_cflag = termiop->c_cflag;
 			t->term.c_lflag = termiop->c_lflag;
 			t->term.c_line = termiop->c_line;
-			memmove(&t->term.cc_cc, termiop->c_cc, NCCS);
+			memmove(&t->term.c_cc, termiop->c_cc, NCCS);
 
 			break;
 		case TCSETAF:
@@ -115,7 +121,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			t->term.c_cflag = termiop->c_cflag;
 			t->term.c_lflag = termiop->c_lflag;
 			t->term.c_line = termiop->c_line;
-			memmove(&t->term.cc_cc, termiop->c_cc, NCCS);
+			memmove(&t->term.c_cc, termiop->c_cc, NCCS);
 			break;
 		case TCSETAW:
 		case TCSETA:
@@ -127,7 +133,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			t->term.c_cflag = termiop->c_cflag;
 			t->term.c_lflag = termiop->c_lflag;
 			t->term.c_line = termiop->c_line;
-			memmove(&t->term.cc_cc, termiop->c_cc, NCCS);
+			memmove(&t->term.c_cc, termiop->c_cc, NCCS);
 			break;
 		case TIOCGLCKTRMIOS:
 			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
@@ -157,28 +163,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			// case TIOCINQ:
 		case FIONREAD:
 			slock_acquire(&t->key_lock);
-			int read = t->key_read;
-			int write = t->key_write;
-			int val = 0;
-			if(t->key_full)
-			{
-				val = TTY_KEYBUFFER_SZ;
-				goto FIONREAD_done;
-			} else if(read == write)
-			{
-				val = 0;
-				goto FIONREAD_done;
-			}
-
-			/* if read < write then just return the diff */
-			if(read < write)
-			{
-				val = write - read;
-				goto FIONREAD_done;
-			} 
-			/* If read > write, then wrap */
-			val = TTY_KEYBUFFER_SZ - read + write;
-FIONREAD_done:
+			int val = tty_keyboard_count(rproc->t);
 			/* release lock */
 			slock_release(&t->key_lock);
 			return val;
@@ -221,7 +206,7 @@ FIONREAD_done:
 			/* TODO: make sure this is correct */
 			if(ioctl_arg_ok(arg, sizeof(pid_t)))
 				return -1;
-			*sidp = t->rproc->sid;
+			*sidp = rproc->sid;
 			break;
 		case TIOCEXCL:
 			/* TODO: enforce exlusive mode */
@@ -288,17 +273,22 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	t->cursor_enabled= cursor_enabled; /* Whether or not to show the cursor (text)*/
 	t->mem_start = mem_start; /* The start of video memory. (color, mono only)*/
 
-	/* Zero keyboard status */
-	memset(t->keyboard, 0, TTY_KEYBUFFER_SZ);
-	t->key_write = 0;
-	t->key_read = 0;
-	t->key_full = 0;	
-	t->key_nls = 0;
+	/* Init keyboard lock */
+	slock_init(&t->key_lock);
 
 	/* Set the window spec */
 	t->window.ws_row = CONSOLE_ROWS;
 	t->window.ws_col = CONSOLE_COLS;
-	slock_init(&t->key_lock);
+	
+	/* Set the behavior */
+	t->term.c_iflag = IGNBRK | IGNPAR | ICRNL;
+	t->term.c_oflag = OCRNL | ONLRET;
+	t->term.c_cflag = 0;
+	t->term.c_lflag = //ICANON | 
+		ECHO | ECHOE | ECHOK | ECHONL | ECHOCTL;
+
+	/* TODO: handle control characters */
+	memset(t->term.c_cc, 0, NCCS);
 }
 
 uint tty_num(tty_t t)
@@ -396,6 +386,21 @@ void tty_putc(tty_t t, char c)
 
 }
 
+tty_t tty_check(struct DeviceDriver* driver)
+{
+	uint addr = (uint)driver->io_driver.context;
+	if(addr >= (uint)ttys && addr < (uint)ttys + MAX_TTYS)
+	{
+		/**
+		 * addr points into the table so this is most
+		 * likely a tty.
+		 */
+		return (tty_t)addr;
+	}
+
+	return NULL;
+}
+
 void tty_scroll(tty_t t)
 {
 	if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
@@ -472,6 +477,11 @@ void tty_print_screen(tty_t t, char* buffer)
 	}
 }
 
+int tty_gets(char* dst, int sz)
+{
+	return block_keyboard_io(dst, sz);
+}
+
 char tty_getc(tty_t t)
 {
 	char c;
@@ -526,11 +536,8 @@ void tty_delete_char(tty_t t)
 void tty_clear_input(tty_t t)
 {
 	slock_acquire(&t->key_lock);
-	memset(t->keyboard, 0, TTY_KEYBUFFER_SZ);
-	t->key_write = 0;
-	t->key_read = 0;
-	t->key_full = 0;
-	t->key_nls = 0;
+	memset(&t->kbd_line, 0, sizeof(struct kbd_buff));
+	memset(&t->keyboard, 0, sizeof(struct kbd_buff));
 	slock_release(&t->key_lock);
 }
 
@@ -548,12 +555,6 @@ void tty_handle_keyboard_interrupt(void)
 	char c = 0;
 	do
 	{
-		/* If the buffer is full, break */
-		if(active->key_full) 
-		{
-			cprintf("tty: keyboard buffer is full!\n");
-			break;
-		}
 		switch(active->type)
 		{
 			default:
@@ -570,57 +571,221 @@ void tty_handle_keyboard_interrupt(void)
 		if(!c) break; /* no more characters */
 		/* Got character. */
 
-		switch(c)
+		cprintf("Got character: %c\n", c);
+		/* Preprocess the input (canonical mode only!) */
+		uchar canon = active->term.c_lflag & ICANON;
+		cprintf("Canonical mode: %d\n", canon);
+		if(canon)
 		{
-			/* replace line feed with nl */
-			case '\n': case 13: 
-				c = '\n';
-				active->key_nls++;
-				break;
+			if(c == 13)
+			{
+				/* Carrige return */
+				if(active->term.c_iflag & IGNCR) continue;
+				else if(active->term.c_iflag & ICRNL) c = '\n';
+			} else if(c == '\n')
+			{
+				if(active->term.c_iflag & INLCR) 
+					c = 13; /* Carriage return */
 
-				/* Delete is special */
-				/* Delete is not a character */
-			case 0x7F: case 0x08:
-				/* see if the buffer is empty */
-				if(active->key_read == 
-						active->key_write &&
-						!active->key_full) 
-					continue;
+			}
 
-				int tmp_write = 
-					active->key_write - 1;
-				if(tmp_write < 0)
-					tmp_write = 
-						TTY_KEYBUFFER_SZ - 1;
-				/* Can't delete a nl */
-				if(active->keyboard[tmp_write]
-						== '\n') continue;
-
-				/* Delete the character */
-				active->keyboard[tmp_write]= 0;
-				tty_delete_char(active);
-				active->key_write = tmp_write;
-				continue;
+			/* Check for case conversions */
+			if(active->term.c_iflag & IUCLC)
+			{
+				if(c >= 'A' && c <= 'Z')
+					c += ('a' - 'A');
+			}
 		}
 
-		/* Echo to tty */
-		tty_putc(active, c);
+		/* Are we running in canonical mode? */
+		if(canon)
+		{
+			/* Check for delete character */
+			if(c == 0x7F || c == 0x08)
+			{
+				if(tty_keyboard_delete(active))
+					tty_delete_char(active);
+			} else {
+				/* Write to the current line */
+				tty_keyboard_write_buff(&active->kbd_line, c);
+				if(active->kbd_line.key_nls)
+				{
+					/* A line delimiter was written */
+					cprintf("Signaled.\n");
+					signal_keyboard_io(active);
+				}
+			}
 
-
-		/* put c into the buffer */
-		/* wrap if needed */
-		if(active->key_write >= TTY_KEYBUFFER_SZ)
-			active->key_write = 0;
-		active->keyboard[active->key_write] = c;
-		active->key_write++;
-		/* update full */
-		if(active->key_write == active->key_read)
-			active->key_full = 1;
-		/* If that was a nl, we want to signal */
-		if(c == '\n')
+			/* Check for echo */
+			if(active->term.c_lflag & ECHO)
+				tty_putc(active, c);
+		} else {
+			if(tty_keyboard_write_buff(&active->keyboard, c))
+			{
+				cprintf("Warning: keyboard buffer is full.\n");
+			}
+			/* signal anyone waiting for anything */
 			signal_keyboard_io(active);
+
+		}
+		cprintf("NLS in line buffer: %d\n", active->kbd_line.key_nls);
+		cprintf("Line buffer: %s\n", active->kbd_line.buffer +
+				active->kbd_line.key_read);
 	} while(1);
+
 
 	slock_release(&ptable_lock);
 	slock_release(&active->key_lock);
+}
+
+char tty_keyboard_write_buff(struct kbd_buff* kbd, char c)
+{
+	/* Check for full buffer */
+	if(kbd->key_full) return -1;
+
+	/* Wrap write position if needed */
+	if(kbd->key_write >= TTY_KEYBUFFER_SZ)
+		kbd->key_write = 0;
+
+	/* Write the character */
+	kbd->buffer[kbd->key_write] = c;
+	/* Increment write position */
+	kbd->key_write++;
+	/* Wrap write position if needed */
+	if(kbd->key_write >= TTY_KEYBUFFER_SZ)
+		kbd->key_write = 0;
+	/* Check for full */
+	if(kbd->key_write == kbd->key_read)
+		kbd->key_full = 1;	
+
+	/* Did we just write a line delimiter? */
+	if(c == '\n' || c == 13) kbd->key_nls++;
+	return 0;
+}
+
+char tty_keyboard_read_buff(struct kbd_buff* kbd)
+{
+	/* Check for empty */
+	if(kbd->key_write == kbd->key_read && !kbd->key_full)
+		return 0;
+
+	/* Reset full */
+	kbd->key_full = 0;
+	/* Wrap read position if needed */
+	if(kbd->key_read >= TTY_KEYBUFFER_SZ)
+		kbd->key_read = 0;
+	/* Read the character */
+	char c = kbd->buffer[kbd->key_read];
+	/* Clear the character (Security) */
+	kbd->buffer[kbd->key_read] = 0;
+
+	/* Increment read position */
+	kbd->key_read++;
+	/* Wrap read position if needed */
+	if(kbd->key_read >= TTY_KEYBUFFER_SZ)
+		kbd->key_read = 0;
+	/* Did we just read a line delimiter? */
+	if(c == '\n' || c == 13) kbd->key_nls--;
+
+	/* Return the character */
+	return c;	
+}
+
+char tty_keyboard_delete(tty_t t)
+{
+	struct kbd_buff* keyboard = &t->kbd_line;
+	/* Check for empty */
+	if(keyboard->key_write == keyboard->key_read && 
+			!keyboard->key_full) return -1;
+
+	/* Delete the character at the last position */
+	if(keyboard->key_write == 0)
+		keyboard->key_write = TTY_KEYBUFFER_SZ - 1;
+	else keyboard->key_write--;
+
+	/* Sanity check: is this character deletable? */
+	if(keyboard->buffer[keyboard->key_write] == '\n' ||
+			keyboard->buffer[keyboard->key_write] == 13)
+		panic("tty: tried to delete a line delimiter!\n");
+
+	/* erase the character */
+	keyboard->buffer[keyboard->key_write] = 0;
+	return 0;
+}
+
+char tty_keyboard_kill(tty_t t)
+{
+	int x;
+	while(tty_keyboard_read_buff(&t->kbd_line))x++;
+	memset(&t->kbd_line, 0, sizeof(struct kbd_buff));
+
+	return x;
+}
+
+void tty_keyboard_flush_line(tty_t t)
+{
+	/* Flush the line buffer to the regular buffer */
+	char c;
+	while((c = tty_keyboard_read_buff(&t->kbd_line)))
+		tty_keyboard_write_buff(&t->keyboard, c);
+}
+
+char tty_keyboard_read(tty_t t)
+{
+	char c;
+	/* try to read from normal buffer first */
+	if((c = tty_keyboard_read_buff(&t->keyboard)))
+	{	
+		/* Read success */
+		return c;
+	} else cprintf("Keyboard buffer empty.\n");
+
+	/* If were in canonical mode we can also read from the line buffer */
+	if(t->term.c_lflag & ICANON)
+	{
+		if((c = tty_keyboard_read_buff(&t->kbd_line)))
+		{
+			/* Read success */
+			return c;
+		} else cprintf("Line buffer empty.\n");
+	}
+
+	cprintf("Read failure.\n");
+	/* read failure: buffer empty */
+	return 0;
+}
+
+int tty_keyboard_count(tty_t t)
+{
+	/* Count the amount of characters in the input buffer. */
+
+	int characters = 0;
+	if(t->term.c_lflag & ICANON)
+	{
+		/* Count the line buffer */
+		if(t->kbd_line.key_full)
+			characters += TTY_KEYBUFFER_SZ;
+		/* Check for empty */
+		else if(t->kbd_line.key_write == t->kbd_line.key_read);
+		else if(t->kbd_line.key_read < t->kbd_line.key_write)
+			characters += t->kbd_line.key_write -
+				t->kbd_line.key_read;
+		/* Calculate wrap */
+		else characters += t->kbd_line.key_write 
+			+ (TTY_KEYBUFFER_SZ - t->kbd_line.key_read);
+	}
+
+	/* Calculate back buffer */
+	if(t->keyboard.key_full)
+		characters += TTY_KEYBUFFER_SZ;
+	/* Check for empty */
+	else if(t->keyboard.key_write == t->keyboard.key_read);
+	else if(t->keyboard.key_read < t->keyboard.key_write)
+		characters += t->keyboard.key_write -
+			t->keyboard.key_read;
+	/* Calculate wrap */
+	else characters += t->keyboard.key_write  
+		+ (TTY_KEYBUFFER_SZ - t->keyboard.key_read);
+
+	return characters;
 }

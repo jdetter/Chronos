@@ -82,7 +82,12 @@ int (*syscall_table[])(void) = {
 	sys_getdents,
 	sys_getegid,
 	sys_geteuid,
-	sys_ioctl
+	sys_ioctl,
+	sys_access,
+	sys_ttyname,
+	sys_fpathconf,
+	sys_pathconf,
+	sys_sleep
 };
 
 /* int isatty(int fd); */

@@ -182,6 +182,7 @@ void dev_populate(void)
 	int x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{
+		if(!drivers[x].valid) continue;
 		int type = drivers[x].type;
 		switch(type)
 		{
