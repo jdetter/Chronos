@@ -284,8 +284,7 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	t->term.c_iflag = IGNBRK | IGNPAR | ICRNL;
 	t->term.c_oflag = OCRNL | ONLRET;
 	t->term.c_cflag = 0;
-	t->term.c_lflag = //ICANON | 
-		ECHO | ECHOE | ECHOK | ECHONL | ECHOCTL;
+	t->term.c_lflag = ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOCTL;
 
 	/* TODO: handle control characters */
 	memset(t->term.c_cc, 0, NCCS);
