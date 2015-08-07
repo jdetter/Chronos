@@ -150,4 +150,4 @@ kernel/%.o: kernel/%.c
 	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<
 
 kernel/drivers/%.o: kernel/drivers/%.c
-	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS)-c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<

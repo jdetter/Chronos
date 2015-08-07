@@ -1,6 +1,6 @@
 # Use the new tool chain to build executables.
 TARGET=i686-chronos-
-TOOL_DIR=/home/john/Workspaces/Chronos/hosted/bin
+TOOL_DIR=../tools/bin
 CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
 CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
 CROSS_AS=$(TOOL_DIR)/$(TARGET)gcc
