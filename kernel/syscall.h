@@ -125,8 +125,10 @@ int sys_ttyname(void);
 int sys_fpathconf(void);
 int sys_pathconf(void);
 int sys_sleep(void);
+int sys_umask(void);
+int sys_lstat(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_sleep /* System call with the greatest value*/
+#define SYS_MAX SYS_lstat /* System call with the greatest value*/
 
 #endif

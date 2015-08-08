@@ -65,6 +65,8 @@
 #define SYS_fpathconf	0x3B
 #define SYS_pathconf	0x3C
 #define SYS_sleep	0x3D
+#define SYS_umask	0x3E
+#define SYS_lstat	0x3F
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);
@@ -122,6 +124,10 @@ int __chronos_syscall(int num, ...);
 /**
  * Signals
  */
+
+#define SIG_DFL ((_sig_func_ptr)0) /* Default action */
+#define SIG_IGN ((_sig_func_ptr)1) /* Ignore */
+#define SIG_ERR ((_sig_func_ptr)-1) /* Error return */
 
 /* POSIX 1990 */
 #define SIGHUP		1  /* Terminate */
@@ -637,6 +643,11 @@ long fpathconf(int fd, int name);
  * no limit.
  */
 long pathconf(const char* path, int name);
+
+/**
+ * Sets the umask of the running process. The value of the mask is returned.
+ */
+mode_t umask(mode_t mask);
 
 #endif
 

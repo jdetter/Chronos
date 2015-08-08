@@ -39,7 +39,7 @@ void iosched_check(void)
 
 int block_keyboard_io(void* dst, int request_size)
 {
-	cprintf("block called.\n");
+	// cprintf("block called.\n");
 	/* quick sanity check */
 	if(!request_size || !dst) return 0;
 	/* Acquire the ptable lock */
@@ -58,7 +58,7 @@ int block_keyboard_io(void* dst, int request_size)
 		(c = tty_keyboard_read(rproc->t)))
 	{
 		rproc->io_dst[read_chars] = c;
-		cprintf("Quick read character: %c\n", c);
+		// cprintf("Quick read character: %c\n", c);
 		read_chars++;
 	}
 
@@ -75,7 +75,7 @@ int block_keyboard_io(void* dst, int request_size)
 	}
 
 	/* We didn't read anything, so we have to block. */
-	cprintf("Couldn't quick read any characters.\n");
+	// cprintf("Couldn't quick read any characters.\n");
 keyboard_sleep:
 	rproc->state = PROC_BLOCKED;
 	rproc->block_type = PROC_BLOCKED_IO;
@@ -83,7 +83,7 @@ keyboard_sleep:
 	rproc->io_recieved = 0;
 	rproc->io_request = request_size;
 
-	cprintf("Yielding...\n");
+	// cprintf("Yielding...\n");
 	slock_release(&rproc->t->key_lock);
 	yield_withlock();
 
@@ -122,7 +122,7 @@ void signal_keyboard_io(tty_t t)
 				&& ptable[x].io_type == PROC_IO_KEYBOARD
 				&& ptable[x].t == t)
 		{
-			cprintf("Found blocked process: %s\n", ptable[x].name);
+			// cprintf("Found blocked process: %s\n", ptable[x].name);
 			/* Acquire the key lock */
 			/* Found blocked process. */
 			/* Read into the destination buffer */
@@ -138,7 +138,7 @@ void signal_keyboard_io(tty_t t)
 				if(!c) break;
 				/* Place character into dst */
 				ptable[x].io_dst[read_bytes] = c;
-				cprintf("Read: %c\n", c);
+				// cprintf("Read: %c\n", c);
 				if(canon && (c == '\n' || c == 13))
 				{
 					read_bytes++;
@@ -154,7 +154,7 @@ void signal_keyboard_io(tty_t t)
 
 			if(wake)
 			{
-				cprintf("Process unblocked.\n");
+				// cprintf("Process unblocked.\n");
 				ptable[x].state = PROC_RUNNABLE;
 				ptable[x].block_type = PROC_BLOCKED_NONE;
 				ptable[x].io_type = PROC_IO_NONE;

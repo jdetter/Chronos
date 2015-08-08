@@ -1104,13 +1104,12 @@ int setregid(void){
 	return 0;
 }
 
-int setumask(void){
+/* mode_t umask(mode_t mask) */
+int sys_umask(void){
 	mode_t mask;
 	if(syscall_get_int((int*)&mask, 0)) return -1;
-	mode_t prev;
-	prev = rproc->umask;
 	rproc->umask = (mask & 0777);
-	return prev;
+	return mask;
 }
 
 int getumask(void){

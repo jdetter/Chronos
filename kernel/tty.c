@@ -44,10 +44,10 @@ int tty_io_init(struct IODriver* driver)
 int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 {
 	// tty_t t = context;
-	cprintf("Initiated read for max of %d characters.\n", sz);
+	// cprintf("Initiated read for max of %d characters.\n", sz);
 	sz = tty_gets(dst, sz);
-	cprintf("Returning with %d bytes.\n", sz);
-	cprintf("Buffer returned: %s\n", (char*)dst);
+	// cprintf("Returning with %d bytes.\n", sz);
+	// cprintf("Buffer returned: %s\n", (char*)dst);
 	return sz;
 	/*int x;
 	for(x = 0;x < sz;x++, dst_c++)
@@ -570,10 +570,10 @@ void tty_handle_keyboard_interrupt(void)
 		if(!c) break; /* no more characters */
 		/* Got character. */
 
-		cprintf("Got character: %c\n", c);
+		//cprintf("Got character: %c\n", c);
 		/* Preprocess the input (canonical mode only!) */
 		uchar canon = active->term.c_lflag & ICANON;
-		cprintf("Canonical mode: %d\n", canon);
+		//cprintf("Canonical mode: %d\n", canon);
 		if(canon)
 		{
 			if(c == 13)
@@ -610,7 +610,7 @@ void tty_handle_keyboard_interrupt(void)
 				if(active->kbd_line.key_nls)
 				{
 					/* A line delimiter was written */
-					cprintf("Signaled.\n");
+					//cprintf("Signaled.\n");
 					signal_keyboard_io(active);
 				}
 			}
@@ -627,9 +627,9 @@ void tty_handle_keyboard_interrupt(void)
 			signal_keyboard_io(active);
 
 		}
-		cprintf("NLS in line buffer: %d\n", active->kbd_line.key_nls);
-		cprintf("Line buffer: %s\n", active->kbd_line.buffer +
-				active->kbd_line.key_read);
+		// cprintf("NLS in line buffer: %d\n", active->kbd_line.key_nls);
+		// cprintf("Line buffer: %s\n", active->kbd_line.buffer +
+		//		active->kbd_line.key_read);
 	} while(1);
 
 
@@ -737,7 +737,7 @@ char tty_keyboard_read(tty_t t)
 	{	
 		/* Read success */
 		return c;
-	} else cprintf("Keyboard buffer empty.\n");
+	} // else cprintf("Keyboard buffer empty.\n");
 
 	/* If were in canonical mode we can also read from the line buffer */
 	if(t->term.c_lflag & ICANON)
@@ -746,10 +746,10 @@ char tty_keyboard_read(tty_t t)
 		{
 			/* Read success */
 			return c;
-		} else cprintf("Line buffer empty.\n");
+		} // else cprintf("Line buffer empty.\n");
 	}
 
-	cprintf("Read failure.\n");
+	// cprintf("Read failure.\n");
 	/* read failure: buffer empty */
 	return 0;
 }

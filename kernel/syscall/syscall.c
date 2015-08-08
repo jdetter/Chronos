@@ -87,7 +87,9 @@ int (*syscall_table[])(void) = {
 	sys_ttyname,
 	sys_fpathconf,
 	sys_pathconf,
-	sys_sleep
+	sys_sleep,
+	sys_umask,
+	sys_lstat
 };
 
 /* int isatty(int fd); */
