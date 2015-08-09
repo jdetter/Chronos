@@ -1,3 +1,11 @@
+Build problems with texinfo:
+============================
+ + full ncurses port needed (wide character support)
+
+Build problems with Cloog:
+=========================
+ + Criptic build problem?
+
 Build problems with Flex:
 =========================
  + Criptic build problem?
