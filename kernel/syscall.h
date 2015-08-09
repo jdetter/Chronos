@@ -25,6 +25,11 @@ int syscall_get_int(int* dst, uint arg_num);
 uchar syscall_get_long(long* dst, uint arg_num);
 
 /**
+ * Gets a long argument from the stack of the running process.
+ */
+uchar syscall_get_short(short* dst, uint arg_num);
+
+/**
  * Take the buffer from the user stack and put it into dst. sz_user
  * specifies the amount of byes to copy from the user stack. sz_kern
  * specifies the size of the destination buffer. arg specifies which
@@ -60,6 +65,14 @@ uchar syscall_get_buffer_ptrs(uchar*** ptr, uint arg_num);
  * 1 otherwise.
  */
 uchar syscall_get_str_ptr(const char** dst, uint arg_num);
+
+/**
+ * Find an available file descriptor.
+ */
+int find_fd(void);
+
+/** Check to see if an fd is valid */
+int fd_ok(int fd);
 
 int syscall_handler(uint* esp);
 int sys_close(void);
@@ -127,8 +140,12 @@ int sys_pathconf(void);
 int sys_sleep(void);
 int sys_umask(void);
 int sys_lstat(void);
+int sys_fchown(void);
+int sys_fchmod(void);
+int sys_gethostname(void);
+int sys_execl(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_lstat /* System call with the greatest value*/
+#define SYS_MAX SYS_execl /* System call with the greatest value*/
 
 #endif

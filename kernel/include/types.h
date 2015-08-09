@@ -30,7 +30,7 @@ typedef signed short uid_t; /* User id*/
 typedef signed short gid_t; /* Group id*/
 
 /* File permissions */
-typedef uint_32 mode_t;
+typedef signed int mode_t;
 
 typedef signed int pid_t; /* Process ID */
 typedef signed int clock_t;

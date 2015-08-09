@@ -89,7 +89,11 @@ int (*syscall_table[])(void) = {
 	sys_pathconf,
 	sys_sleep,
 	sys_umask,
-	sys_lstat
+	sys_lstat,
+	sys_fchown,
+	sys_fchmod,
+	sys_gethostname,
+	sys_execl
 };
 
 /* int isatty(int fd); */

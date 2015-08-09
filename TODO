@@ -9,6 +9,8 @@ sigaction
 select
 issetugid
 getlogin: not calling correct function in NewLib.
+utime
+utimes
 
 High priority system calls
 ==========================

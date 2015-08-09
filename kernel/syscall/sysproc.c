@@ -329,6 +329,27 @@ int sys_exec(void)
 	return 0;
 }
 
+/* int execl(const char* path, const char* arg0, ...) */
+int sys_execl(void)
+{
+	const char* path;
+	char* argv[MAX_ARG];
+
+	syscall_get_str_ptr(&path, 0);
+	int i;
+	for(i = 0;i < MAX_ARG;i++)
+	{
+		syscall_get_str_ptr((const char**)(argv + i), i + 1);
+		if(!argv[i]) break;
+	}
+
+	argv[i] = (char*)NULL;
+
+	return execve(path, argv, NULL);
+}
+
+
+
 /* int execve(const char* path, char* const argv[], char* const envp[]) */
 int sys_execve(void)
 {
@@ -342,6 +363,11 @@ int sys_execve(void)
 	if(syscall_get_int((int*)&envp, 2)) return -1;
 	if(envp && syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
 
+	return execve(path, (char* const*)argv, (char* const*)envp);
+}
+
+int execve(const char* path, char* const argv[], char* const envp[])
+{
 	/* Create a copy of the path */
         char program_path[MAX_PATH_LEN];
         memset(program_path, 0, MAX_PATH_LEN);

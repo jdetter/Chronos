@@ -21,6 +21,7 @@
 #include "rtc.h"
 #include "ktime.h"
 #include "trap.h"
+#include "netman.h"
 #include "signal.h"
 
 void __set_stack__(uint stack, uint function);
@@ -106,6 +107,10 @@ void main_stack(void)
 	/* Start disk driver */
 	cprintf("Starting file system manager...\t\t\t\t\t\t");
 	fsman_init();
+	cprintf("[ OK ]\n");
+
+	cprintf("Starting network manager...\t\t\t\t\t\t");
+	net_init();
 	cprintf("[ OK ]\n");
 
 	/* Populate the device folder */

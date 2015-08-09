@@ -67,6 +67,10 @@
 #define SYS_sleep	0x3D
 #define SYS_umask	0x3E
 #define SYS_lstat	0x3F
+#define SYS_fchown	0x40
+#define SYS_fchmod	0x41
+#define SYS_gethostname	0x42
+#define SYS_execl	0x43
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);
@@ -504,6 +508,12 @@ void _exit(int retcode)  __attribute__ ((noreturn));
 int execve(const char* filename, char* const argv[], char* const envp[]);
 
 /**
+ * Execute a program specified by path. This call is similar to exeve except
+ * the argument array is passed as parameters, starting with arg0, ...
+ */
+int execl(const char* path, const char* arg0, ... /* (char*)NULL */);
+
+/**
  * Returns the pid of the running process.
  */
 int getpid(void);
@@ -648,6 +658,22 @@ long pathconf(const char* path, int name);
  * Sets the umask of the running process. The value of the mask is returned.
  */
 mode_t umask(mode_t mask);
+
+/**
+ * Change the permissions on an open file descriptor. Returns 0 on success.
+ */
+int fchmod(int fd, mode_t mode);
+
+/**
+ * Change the ownership of an open file descriptor. Returns 0 on success.
+ */
+int fchown(int fd, uid_t owner, gid_t group);
+
+/**
+ * Get the hostname of the system and put it into dst. No more than len bytes
+ * will be copied into the buffer dst. Returns 0 on success.
+ */
+int gethostname(char* dst, size_t len);
 
 #endif
 

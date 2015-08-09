@@ -1,5 +1,6 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
+	netman \
 	main \
 	proc \
 	tty \
@@ -9,6 +10,7 @@ KERNEL_OBJECTS := \
 	vm/vm_alloc \
 	kcond \
 	syscall/syscall \
+	syscall/sysnet \
 	syscall/sysproc \
 	syscall/sysfile \
 	syscall/sysutil \

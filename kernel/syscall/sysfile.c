@@ -13,28 +13,6 @@
 
 extern struct proc* rproc;
 
-/**
- * Find an available file descriptor.
- */
-static int find_fd(void)
-{
-	int x;
-	for(x = 0;x < MAX_FILES;x++)
-		if(rproc->file_descriptors[x].type == 0x0)
-			return x;
-	return -1;
-}
-
-/** Check to see if an fd is valid */
-static int fd_ok(int fd)
-{
-	if(fd < 0 || fd >= MAX_FILES)
-		return 1;
-	if(rproc->file_descriptors[fd].type)
-		return 0;
-	return 1;
-}
-
 int sys_link(void)
 {
 	const char* oldName;
@@ -539,7 +517,7 @@ int dup2(int new_fd, int old_fd)
 	return 0;
 }
 
-int fchdir(int fd)
+int sys_fchdir(int fd)
 {
 	if(fd < 0) return -1;
 	if(fd >= MAX_FILES) return -1;
@@ -556,8 +534,14 @@ int fchdir(int fd)
 	return 0;
 }
 
-int fchmod(int fd, mode_t mode)
+int sys_fchmod(void)
 {
+	int fd;
+	mode_t mode;
+
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_int(&mode, 1)) return -1;
+
 	if(fd < 0) return -1;
 	if(fd >= MAX_FILES) return -1;
 	switch(fd)
@@ -572,8 +556,16 @@ int fchmod(int fd, mode_t mode)
 	return fs_chmod(rproc->file_descriptors[fd].path, mode);
 }
 
-int fchown(int fd, uid_t owner, gid_t group)
+int sys_fchown(void)
 {
+	int fd;
+	uid_t owner;
+	gid_t group;
+
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_short(&owner, 1)) return -1;
+	if(syscall_get_short(&group, 2)) return -1;
+
 	if(fd < 0) return -1;
 	if(fd >= MAX_FILES) return -1;
 	switch(fd)
@@ -739,4 +731,20 @@ int sys_pathconf(void)
 	}
 
 	return -1;
+}
+
+int sys_lstat(void)
+{
+        const char* path;
+        struct stat* st;
+        if(syscall_get_str_ptr(&path, 0)) return -1;
+        if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+        inode i = fs_open(path, O_RDONLY, 0, 0, 0);
+        if(i == NULL) return -1;
+        /* TODO: Handle symbolic links here! */
+
+	fs_stat(i, st);
+        fs_close(i);
+        return 0;
+
 }

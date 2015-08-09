@@ -67,7 +67,7 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
 void* vsfs_open(const char* path, struct vsfs_context* context);
 int vsfs_close(void* i, struct vsfs_context* context);
 int vsfs_stat(void* i, struct stat* dst, struct vsfs_context* context);
-int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
+int vsfs_create(const char* path, mode_t permissions, uint uid, uint gid,
                 struct vsfs_context * context);
 int vsfs_chown(void* i, int ino_num, uint uid, uint gid, 
                 struct vsfs_context* context);
@@ -249,7 +249,7 @@ int vsfs_stat(void* i, struct stat* dst, struct vsfs_context* context)
 	return 0;
 }
 
-int vsfs_create(const char* path, uint permissions, uint uid, uint gid,
+int vsfs_create(const char* path, mode_t permissions, uint uid, uint gid,
 		struct vsfs_context * context)
 {
 	struct vsfs_inode in;
@@ -278,7 +278,7 @@ int vsfs_chown(void* i, int ino_num, uint uid, uint gid,
 	return 0;
 }
 
-int vsfs_chmod(void* i, int ino_num, uint permission, 
+int vsfs_chmod(void* i, int ino_num, mode_t permission, 
 		struct vsfs_context* context)
 {
 	struct vsfs_inode* in = i;
@@ -395,7 +395,7 @@ int vsfs_rmdir(const char* path, struct vsfs_context* context)
 }
 
 int vsfs_mknod(const char* path, uint dev, uint dev_type, 
-		uint perm, struct vsfs_context* context)
+		mode_t perm, struct vsfs_context* context)
 {
 	/* Force correct permissions */
 	if(!S_ISDEV(perm))

@@ -3,10 +3,23 @@ Build problems with Nano:
 
 Functions
  + gethostname
- + lstat
  + utime
  + sigaction
+ + sigfillset
+ + sigaddset
+ + sigprocmask
  + kill
+ + sigprocmask
+ + execl
+ + utimes
+ + utime
+
+variables
+ + __collate_load_error
+
+fixed
+ + umask
+ + __collate_load_error
  + getpwuid
  + dirname
  + basename
@@ -14,11 +27,3 @@ Functions
  + endpwend
  + fchown
  + fchmod
- + sigprocmask
- + execl
-
-variables
- + __collate_load_error
-
-fixed
- + umask

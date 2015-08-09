@@ -11,6 +11,28 @@
 
 extern struct proc* rproc;
 
+/**
+ * Find an available file descriptor.
+ */
+int find_fd(void)
+{
+        int x;
+        for(x = 0;x < MAX_FILES;x++)
+                if(rproc->file_descriptors[x].type == 0x0)
+                        return x;
+        return -1;
+}
+
+/** Check to see if an fd is valid */
+int fd_ok(int fd)
+{
+        if(fd < 0 || fd >= MAX_FILES)
+                return 1;
+        if(rproc->file_descriptors[fd].type)
+                return 0;
+        return 1;
+}
+
 /* Is the given address safe to access? */
 uchar syscall_addr_safe(void* address)
 {
@@ -62,6 +84,23 @@ uchar syscall_get_long(long* dst, uint arg_num)
         esp += arg_num;
         uchar* num_start = (uchar*)esp;
         uchar* num_end = (uchar*)esp + sizeof(long) - 1;
+
+        if(syscall_addr_safe(num_start) || syscall_addr_safe(num_end))
+                return 1;
+
+        *dst = *esp;
+        return 0;
+}
+
+/**
+ * Get an integer argument. The arg_num determines the offset to the argument.
+ */
+uchar syscall_get_short(short* dst, uint arg_num)
+{
+        uint* esp = rproc->sys_esp;
+        esp += arg_num;
+        uchar* num_start = (uchar*)esp;
+        uchar* num_end = (uchar*)esp + sizeof(short) - 1;
 
         if(syscall_addr_safe(num_start) || syscall_addr_safe(num_end))
                 return 1;
