@@ -77,6 +77,12 @@
 #define SYS_sysconf	0x47
 #define SYS_ftruncate	0x48
 #define SYS_execvp	0x49
+#define SYS_getpgid	0x4A
+#define SYS_getresuid	0x4B
+#define SYS_getresgid	0x4C
+#define SYS_setresuid	0x4D
+#define SYS_setpgid	0x4E
+#define SYS_setresgid	0x4F
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);

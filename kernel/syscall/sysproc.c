@@ -895,7 +895,7 @@ int sys_getppid(void){
 }
 
 /* int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) */
-int getresuid(void){
+int sys_getresuid(void){
 	uid_t *ruid;
 	uid_t *euid;
 	uid_t *suid;
@@ -910,7 +910,7 @@ int getresuid(void){
 }
 
 /* int getresuid(gid_t *rgid, gid_t *egid, gid_t *sgid) */
-int getresgid(void){
+int sys_getresgid(void){
 	gid_t *rgid;
 	gid_t *egid;
 	gid_t *sgid;
@@ -946,8 +946,24 @@ int setsid(void){
 	return rproc->sid;
 }
 
+/* int setpgid(pid_t pid, pid_t pgid); */
+int sys_setpgid(void)
+{
+	pid_t pid;
+	pid_t pgid;
+
+	if(syscall_get_int(&pid, 0)) return -1;
+	if(syscall_get_int(&pgid, 1)) return -1;
+
+	struct proc* p = get_proc_pid(pid);
+	if(!p) return -1;
+	p->pgid = pgid;
+
+	return 0;
+}
+
 /* pid_t getpgid(pid_t pid) */
-int getpgid(void){
+int sys_getpgid(void){
 	pid_t pid;
 	if(syscall_get_int((int*)&pid, 0)) return -1;
 	if(pid == 0){
@@ -961,13 +977,13 @@ int getpgid(void){
 }
 
 /* pid_t getpgrp(void) */
-int getpgrp(void)
+int sys_getpgrp(void)
 {
 	return rproc->pgid; 
 }
 
 /* int setresuid(uid_t ruid, uid_t euid, uid_t suid) */
-int setresuid(void){
+int sys_setresuid(void){
 	uid_t ruid;
 	uid_t euid;
 	uid_t suid;
@@ -1012,7 +1028,7 @@ int setresuid(void){
 	
 }
 /* int setresgid(gid_t rgid, gid_t egid, gid_t sgid)*/
-int setresgid(void){
+int sys_setresgid(void){
 	gid_t rgid;
 	gid_t egid;
 	gid_t sgid;

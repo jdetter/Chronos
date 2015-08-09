@@ -155,8 +155,14 @@ int sys_fcntl(void);
 int sys_sysconf(void);
 int sys_ftruncate(void);
 int sys_execvp(void);
+int sys_getpgid(void);
+int sys_getresuid(void);
+int sys_getresgid(void);
+int sys_setresuid(void);
+int sys_setpgid(void);
+int sys_setresgid(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_execvp /* System call with the greatest value*/
+#define SYS_MAX SYS_setresgid /* System call with the greatest value*/
 
 #endif

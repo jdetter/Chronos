@@ -99,7 +99,13 @@ int (*syscall_table[])(void) = {
 	sys_fcntl,
 	sys_sysconf,
 	sys_ftruncate,
-	sys_execvp
+	sys_execvp,
+	sys_getpgid,
+	sys_getresuid,
+	sys_getresgid,
+	sys_setresuid,
+	sys_setpgid,
+	sys_setresgid,
 };
 
 /* int isatty(int fd); */
