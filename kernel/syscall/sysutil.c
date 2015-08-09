@@ -17,7 +17,19 @@ extern struct proc* rproc;
 int find_fd(void)
 {
         int x;
-        for(x = 0;x < MAX_FILES;x++)
+        for(x = 3;x < MAX_FILES;x++)
+                if(rproc->file_descriptors[x].type == 0x0)
+                        return x;
+        return -1;
+}
+
+/**
+ * Find an available file descriptor that is > val
+ */
+int find_fd_gt(int val)
+{
+        int x;
+        for(x = val;x < MAX_FILES;x++)
                 if(rproc->file_descriptors[x].type == 0x0)
                         return x;
         return -1;

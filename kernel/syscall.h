@@ -74,6 +74,11 @@ int find_fd(void);
 /** Check to see if an fd is valid */
 int fd_ok(int fd);
 
+/**
+ * Find an available file descriptor that is > val
+ */
+int find_fd_gt(int val);
+
 int syscall_handler(uint* esp);
 int sys_close(void);
 int sys_fork(void);
@@ -144,8 +149,14 @@ int sys_fchown(void);
 int sys_fchmod(void);
 int sys_gethostname(void);
 int sys_execl(void);
+int sys_utime(void);
+int sys_utimes(void);
+int sys_fcntl(void);
+int sys_sysconf(void);
+int sys_ftruncate(void);
+int sys_execvp(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_execl /* System call with the greatest value*/
+#define SYS_MAX SYS_execvp /* System call with the greatest value*/
 
 #endif

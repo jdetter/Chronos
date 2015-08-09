@@ -329,6 +329,12 @@ int sys_exec(void)
 	return 0;
 }
 
+int sys_execvp(void)
+{
+	cprintf("kernel: execvp not implemented yet.\n");
+	return -1;
+}
+
 /* int execl(const char* path, const char* arg0, ...) */
 int sys_execl(void)
 {

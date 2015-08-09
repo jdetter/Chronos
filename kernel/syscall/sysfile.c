@@ -11,6 +11,7 @@
 #include "proc.h"
 #include "panic.h"
 
+extern slock_t ptable_lock;
 extern struct proc* rproc;
 
 int sys_link(void)
@@ -747,4 +748,80 @@ int sys_lstat(void)
         fs_close(i);
         return 0;
 
+}
+
+int sys_utime(void)
+{
+	cprintf("kernel: utime system call not implemented.\n");
+	return -1;
+}
+
+int sys_utimes(void)
+{
+	cprintf("kernel: utimes system call not implemented.\n");
+	return -1;
+}
+
+/* int fcntl(int fd, int action, ...) */
+int sys_fcntl(void)
+{
+	int fd;
+	int action;
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_int(&action, 1)) return -1;
+
+	int i_arg;
+	if(syscall_get_int(&i_arg, 2)) return -1;
+
+	slock_acquire(&ptable_lock);
+
+	int result = 0;
+	switch(action)
+	{
+		case F_DUPFD:
+			i_arg = find_fd_gt(i_arg);
+			if(i_arg <= 0) return -1;
+			result = dup2(i_arg, fd);		
+			break;
+		case F_DUPFD_CLOEXEC:
+                        i_arg = find_fd_gt(i_arg);
+                        if(i_arg <= 0) return -1;
+                        result = dup2(i_arg, fd);
+			/* Also set the close on exec flag */
+			rproc->file_descriptors[i_arg].flags |= O_CLOEXEC;
+                        break;
+		case F_GETFD:
+			result = rproc->file_descriptors[i_arg].flags;
+			break;
+		case F_SETFD:
+			rproc->file_descriptors[i_arg].flags = i_arg;
+			break;
+	}
+	
+	slock_release(&ptable_lock);
+
+	return result;
+}
+
+int sys_sysconf(void)
+{
+	int name;
+	if(syscall_get_int(&name, 0)) return -1;
+
+	long result = -1;
+	switch(name)
+	{
+
+		default:
+			cprintf("kernel: no such limit: %d\n", name);
+			break;
+	}
+
+	return result;
+}
+
+int sys_ftruncate(void)
+{
+	cprintf("kernel: ftruncate not implemented yet.\n");
+	return -1;
 }

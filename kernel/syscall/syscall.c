@@ -93,7 +93,13 @@ int (*syscall_table[])(void) = {
 	sys_fchown,
 	sys_fchmod,
 	sys_gethostname,
-	sys_execl
+	sys_execl,
+	sys_utime,
+	sys_utimes,
+	sys_fcntl,
+	sys_sysconf,
+	sys_ftruncate,
+	sys_execvp
 };
 
 /* int isatty(int fd); */

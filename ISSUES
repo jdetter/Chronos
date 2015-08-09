@@ -1,3 +1,10 @@
+Build problems with GNU Make:
+=============================
+
+Functions
+ + execvp
+ + ftruncate
+
 Build problems with Nano:
 =========================
 

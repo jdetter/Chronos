@@ -48,6 +48,7 @@ struct FSHardwareDriver
 struct inode_t
 {
 	uchar valid; /* Whether or not this inode is valid. */
+	int flags; /* The flags that were used to open this file */
 	slock_t lock; /* Lock needs to be held to access this inode */
 	uint file_pos; /* Seek position in the file */
 	struct stat st; /* Stats on the file */

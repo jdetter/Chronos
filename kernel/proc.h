@@ -22,7 +22,7 @@
 struct file_descriptor
 {
 	uchar type;
-	int flags;
+//	int flags;
 	int seek;
 	inode i;
 	struct DeviceDriver* device;

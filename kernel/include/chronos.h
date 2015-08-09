@@ -71,6 +71,12 @@
 #define SYS_fchmod	0x41
 #define SYS_gethostname	0x42
 #define SYS_execl	0x43
+#define SYS_utime	0x44
+#define SYS_utimes	0x45
+#define SYS_fcntl	0x46
+#define SYS_sysconf	0x47
+#define SYS_ftruncate	0x48
+#define SYS_execvp	0x49
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);
@@ -238,6 +244,27 @@ int __chronos_syscall(int num, ...);
 
 #define MAX_ARG		0x20
 
+/**
+ * Flags for fcntl
+ */
+
+/* fcntl(2) requests */
+#define F_DUPFD         0       /* Duplicate a file descriptor */
+#define F_GETFD         1       /* Get fildes flags (close on exec) */
+#define F_SETFD         2       /* Set fildes flags (close on exec) */
+#define F_GETFL         3       /* Get file flags */
+#define F_SETFL         4       /* Set file flags */
+#define F_GETOWN        5       /* Get owner - for ASYNC */
+#define F_SETOWN        6       /* Set owner - for ASYNC */
+#define F_GETLK         7       /* Get record-locking information */
+#define F_SETLK         8       /* Set or Clear a record-lock (Non-Blocking) */
+#define F_SETLKW        9       /* Set or Clear a record-lock (Blocking) */
+#define F_RGETLK        10      /* Test a remote lock to see if it is blocked */
+#define F_RSETLK        11      /* Set or unlock a remote lock */
+#define F_CNVT          12      /* Convert a fhandle to an open fd */
+#define F_RSETLKW       13      /* Set or Clear remote record-lock(Blocking) */
+#define F_DUPFD_CLOEXEC 14      /* As F_DUPFD, but set close-on-exec flag */
+
 #ifndef __CHRONOS_ASM_ONLY__
 
 /* Dependant headers */
@@ -246,6 +273,15 @@ int __chronos_syscall(int num, ...);
 #include "file.h"
 #include "stdlock.h"
 #include "time.h"
+
+/**
+ * Buffer used in utime and utimes
+ */
+struct utimbuf
+{
+  time_t actime;
+  time_t modtime;
+};
 
 /**
  * Fork the currently running process. The address space will be copied
@@ -674,6 +710,27 @@ int fchown(int fd, uid_t owner, gid_t group);
  * will be copied into the buffer dst. Returns 0 on success.
  */
 int gethostname(char* dst, size_t len);
+
+/**
+ * Change the modification and access time on a file to the given times
+ * struct.
+ */
+int utime(const char* filename, const struct utimbuf* times);
+
+/**
+ * Just like utime except times is a pointer to an array of timevals.
+ */
+int utimes(const char* filename, const struct timeval times[2]);
+
+/**
+ * Manipulate the given file descriptor.
+ */
+int fcntl(int fd, int action, ...);
+
+/**
+ * Test a platform limit during runtime.
+ */
+long sysconf(int name);
 
 #endif
 
