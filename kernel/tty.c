@@ -603,7 +603,10 @@ void tty_handle_keyboard_interrupt(void)
 			if(c == 0x7F || c == 0x08)
 			{
 				if(tty_keyboard_delete(active))
+				{
 					tty_delete_char(active);
+					continue;
+				}
 			} else {
 				/* Write to the current line */
 				tty_keyboard_write_buff(&active->kbd_line, c);

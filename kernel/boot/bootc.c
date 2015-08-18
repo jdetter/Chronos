@@ -27,7 +27,7 @@
 
 void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
-void __kernel_jmp__();
+void __kernel_jmp__(uint entry);
 void __enable_paging__(uint* pgdir);
 
 char* no_image = "Chronos.elf not found!\n";
@@ -87,9 +87,6 @@ int main(void)
 	if(memcmp(elf_buffer, elf_buff, 4))
                 panic(invalid);
 
-	/* Lets try to load the kernel */
-	uchar* kernel = (uchar*)KVM_KERN_S;
-
 	/* Load the entire elf header. */
 	struct elf32_header elf;
 	vsfs_read(&chronos_image, &elf, 0, sizeof(struct elf32_header), &context);
@@ -101,8 +98,8 @@ int main(void)
 	if(elf.e_version != 1) panic("Bad ISA version");	
 
 	uint elf_entry = elf.e_entry;
-	if(elf_entry != (uint)kernel) 
-		panic("Wrong entry point: 0x%x", elf_entry);	
+	//if(elf_entry != (uint)kernel) 
+	//	panic("Wrong entry point: 0x%x", elf_entry);	
 
 	cprintf(checking_elf);
 
@@ -147,7 +144,7 @@ int main(void)
 	/* Save vm context */
 	save_vm();
 	/* Jump into the kernel */
-	__kernel_jmp__();
+	__kernel_jmp__(elf_entry);
 
 	panic("Jump failed.");
 	return 0;

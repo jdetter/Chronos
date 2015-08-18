@@ -54,10 +54,11 @@ fs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	mkdir -p fs
 	mkdir -p fs/boot
 	mkdir -p fs/bin
-	tar xzvf tools/sysroot.tar.gz -C ./fs 
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
-	./tools/bin/mkfs -i 512 -s 134217728 -r fs fs.img
+	cp -R ../sysroot/* fs/
+	./tools/bin/mkfs -i 1024 -s 340787200 -r fs fs.img
+#	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img
