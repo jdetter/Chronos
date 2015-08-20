@@ -3,10 +3,11 @@
 #include "vm.h"
 
 .code32		# Start generating 16 bit code. (Real mode)
+/** __kernel_jmp(uint address) */
 .globl __kernel_jmp__
 __kernel_jmp__:
+	movl	0x4(%esp), %eax
 	movl	$KVM_BOOT2_S, %esp
 	movl	%esp, %ebp
-	movl	$KVM_KERN_S, %eax
 # do the jump
 	jmp	*%eax
