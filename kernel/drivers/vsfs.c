@@ -775,28 +775,29 @@ int vsfs_unlink(const char* path, struct vsfs_context* context)
 
 int find_free_inode(struct vsfs_context* context){
     
-  int i;
+  int inode_block;
   uchar bitmap[512];
-  for(i = 0; i < context->super.imap; i++){
-    context->read(bitmap, context->start + 1 + i, context->hdd);
-    int j;
-    for(j = 0; j < 512; j++){
-      if(bitmap[j] != 0xFF){
-        int k = 0;
+  for(inode_block = 0; inode_block < context->super.imap; inode_block++){
+    context->read(bitmap, context->start + 1 + inode_block, context->hdd);
+    int block_byte;
+    for(block_byte = 0; block_byte < 512; block_byte++){
+      if(bitmap[block_byte] != 0xFF){
+        int bit = 0;
 	/* Never return inode 0. */
-	if(j == 0 && k == 0) k = 1;
+	if(inode_block == 0 && block_byte == 0 && bit == 0) bit = 1;
 
-        for(; k < 8; k++){
-          if(((1 << k) & bitmap[j]) == 0){
-            bitmap[j] |= (1 << k);
-            context->write(bitmap, context->start + 1 + i, context->hdd); 
-            return i*512 + j*8 + k;
+        for(; bit < 8; bit++){
+          if(((1 << bit) & bitmap[block_byte]) == 0){
+            bitmap[block_byte] |= (1 << bit);
+            context->write(bitmap, context->start + 1 + inode_block, 
+			context->hdd); 
+            return (inode_block * 512 * 8) + block_byte * 8 + bit;
           }
         }
       }
     }
   }
-  return 0;
+  return -1;
 }
 
 int find_free_block(struct vsfs_context* context){
@@ -813,9 +814,11 @@ int find_free_block(struct vsfs_context* context){
 
 		/* Search for a byte, b such that: b != 0xFF */
 	
-		int x;	
 		/* Note: make sure we skip block 0 for debugging. */
-		for(x = 1;x < 512;x++)
+		int x = 0;
+		if(bmap == 0) x = 1;
+
+		for(;x < 512;x++)
 		{
 			uchar val = sect[x];
 			if(val != 0xFF)

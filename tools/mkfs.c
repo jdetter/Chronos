@@ -118,6 +118,7 @@ int add_dir(char* directory, char* path)
 				vsfs_write(&new_inode, contents, 0, s.st_size, &context);
 				/* Update metadata */
 				write_inode(inode_num, &new_inode, &context);
+				close(reg_file);
 			} else {
 				printf("Unknown file: %s\n", name);
 			}

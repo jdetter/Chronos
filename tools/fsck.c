@@ -1,9 +1,3 @@
-/**
- * Make a VSFS file system.
- *
- * Usage: mkfs -i [inodes] -s [size] file
- */
-
 #define __LINUX_DEFS__
 #include "types.h"
 #undef NULL
@@ -33,8 +27,8 @@ char zero[SECTSIZE];
 int find_free_inode(void);
 int fd;
 
+struct FSDriver fs;
 struct FSHardwareDriver driver;
-struct vsfs_context context;
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -77,7 +71,7 @@ extern struct vsfs_superblock super;
 void ls(char* directory)
 {
 	vsfs_inode dir;
-	if(vsfs_lookup(directory, &dir, &context) == 0)
+	if(vsfs_lookup(directory, &dir, (struct vsfs_context*)&fs.context) == 0)
 	{
 		printf("No such directory: %s\n", directory);
 		return;
@@ -90,7 +84,7 @@ void ls(char* directory)
 		vsfs_read(&dir, &entry, 
 			x * sizeof(struct vsfs_directent), 
 			sizeof(struct vsfs_directent),
-			&context);
+			(struct vsfs_context*)&fs.context);
 		printf("%s\t\t%d\n", entry.name, entry.inode_num);
 	}
 
@@ -101,7 +95,7 @@ void ls(char* directory)
 void cat(char* file)
 {
 	vsfs_inode file_i;
-	if(vsfs_lookup(file, &file_i, &context) == 0)
+	if(vsfs_lookup(file, &file_i, (struct vsfs_context*)&fs.context) == 0)
         {
                 printf("No such directory: %s\n", file);
                 return;
@@ -114,9 +108,63 @@ void cat(char* file)
 	for(x = 0;x < 9;x++) printf("%d: %d\n", x, file_i.direct[x]);
 
 	char file_buffer[file_i.size];
-	vsfs_read(&file_i, file_buffer, 0, file_i.size, &context);
+	vsfs_read(&file_i, file_buffer, 0, file_i.size, 
+		(struct vsfs_context*)&fs.context);
 
 	printf("%s\n", file_buffer);
+}
+
+void cp(char* src, char* path)
+{
+	int file = open(src, O_RDONLY);
+	if(file < 0)
+	{
+		printf("%s: no such file.\n", src);
+		exit(1);
+	} else printf("%s opened.\n", src);
+
+
+	void* old = fs.open(path, &fs.context);
+	if(!old)
+	{
+		printf("Warning: %s did not exist before.\n", path);
+	}
+	printf("Unlink return value: %d\n", fs.unlink(path, &fs.context));
+	
+	void* removed = fs.open(path, &fs.context);
+	if(removed)
+	{
+		printf("Removal failed.\n");
+		exit(1);
+	}
+	struct stat st;
+	fstat(file, &st);
+
+	fs.create(path, st.st_mode, 0x0, 0x0, &fs.context);
+	char* buffer = malloc(st.st_size);
+	if(!buffer)
+	{
+		printf("File too large: %d\n", (int)st.st_size);
+		exit(1);
+	}
+	read(file, buffer, st.st_size);
+	void* ino = fs.open(path, &fs.context);
+	if(!ino)
+	{
+		printf("%s: Could not create new file.\n", path);
+		exit(1);
+	}
+
+	fs.write(ino, buffer, 0, st.st_size, &fs.context);
+	char elf_check[4];
+	fs.read(ino, elf_check, 0, 4, &fs.context);
+	if(memcmp(elf_check + 1, "ELF", 3))
+	{
+		printf("Patch failed!\n");
+		exit(1);
+	} else printf("Patch success.\n");
+	free(buffer);
+	fs.close(ino, &fs.context);
 }
 
 /* Lock forwards (not used) */
@@ -132,7 +180,10 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	char* file;
+	char* file = NULL;
+	char* sub_command = NULL;
+	char* arg1 = NULL;
+	char* arg2 = NULL;
 	int start = 0;
 	int x;
 	for(x = 1;x < argc;x++)
@@ -141,32 +192,51 @@ int main(int argc, char** argv)
 		{
 			x++;
 			start = atoi(argv[x]);
-		} else {
+		} else if(file == NULL)
 			file = argv[x];
-		}
+		else if(sub_command == NULL)
+			sub_command = argv[x];
+		else if(arg1 == NULL)
+			arg1 = argv[x];
+		else if(arg2 == NULL)
+			arg2 = argv[x];
+		else printf("Warning: too many arguments!\n");
 	}
 
 	fd = open(file, O_RDWR);
 	driver.valid = 1;
 	driver.read = ata_readsect;
 	driver.write = ata_writesect;
-	context.hdd = &driver;
+	struct vsfs_context* context = (struct vsfs_context*)fs.context;
+	context->hdd = &driver;
 	uchar fake_cache[512];
-	vsfs_init(start, 0, 512, 512, fake_cache, &context);
+	vsfs_init(start, 0, 512, 512, fake_cache, context);
+	vsfs_driver_init(&fs);
 
 	char cwd[1024];
 	memset(cwd, 0, 1024);
 	cwd[0] = '/';
 
-	printf("Inodes: %d\n", context.super.inodes);
-	printf("Inode bitmaps: %d\n", context.super.imap);
-	printf("Blocks: %d\n", context.super.dblocks);
-	printf("Block bitmaps: %d\n", context.super.dmap);
+	if(sub_command && !strcmp(sub_command, "cp"))
+	{
+		if(arg1 && arg2)
+		{
+			printf("cp %s %s\n", arg1, arg2);
+			fflush(stdin);
+			cp(arg1, arg2);
+			exit(0);
+		}
+	}
 
-	printf("imap_off: %d\n", context.imap_off);
-	printf("bmap_off: %d\n", context.bmap_off);
-	printf("i_off: %d\n", context.i_off);
-	printf("b_off: %d\n", context.b_off);
+	printf("Inodes: %d\n", context->super.inodes);
+	printf("Inode bitmaps: %d\n", context->super.imap);
+	printf("Blocks: %d\n", context->super.dblocks);
+	printf("Block bitmaps: %d\n", context->super.dmap);
+
+	printf("imap_off: %d\n", context->imap_off);
+	printf("bmap_off: %d\n", context->bmap_off);
+	printf("i_off: %d\n", context->i_off);
+	printf("b_off: %d\n", context->b_off);
 
 	char command[512];
 	while(1)
