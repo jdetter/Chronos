@@ -4,6 +4,7 @@
 
 Critical system calls
 =====================
+access
 poll
 sigaction
 select
@@ -11,6 +12,10 @@ issetugid
 getlogin: not calling correct function in NewLib.
 utime
 utimes
+vfork
+select
+execv
+alarm
 
 High priority system calls
 ==========================
@@ -23,8 +28,6 @@ time
 
 Medium priority system calls
 ============================
-alarm
-access
 exit_group
 getdents
 mlock

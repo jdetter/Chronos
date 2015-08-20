@@ -8,7 +8,6 @@ int main(int argc, char** argv)
 	printf("Address of getlogin: 0x%x\n", (int)getlogin);
 	printf("User: %s\n", result);
 	char buff[512];
-	getlogin_r(buff, 512);
 	printf("User: %s\n", buff);
 
 	return 0;

@@ -83,6 +83,10 @@
 #define SYS_setresuid	0x4D
 #define SYS_setpgid	0x4E
 #define SYS_setresgid	0x4F
+#define SYS_vfork	0x50
+#define SYS_select	0x51
+#define SYS_alarm	0x52
+#define SYS_seteuid	0x53
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);
@@ -737,6 +741,11 @@ int fcntl(int fd, int action, ...);
  * Test a platform limit during runtime.
  */
 long sysconf(int name);
+
+/**
+ * Fast fork.
+ */
+pid_t vfork(void);
 
 #endif
 

@@ -1,5 +1,5 @@
 # Use the new tool chain to build executables.
-TARGET=i686-chronos-
+TARGET=i686-pc-chronos-
 TOOL_DIR=../tools/bin
 CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
 CROSS_LD=$(TOOL_DIR)/$(TARGET)ld

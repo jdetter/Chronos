@@ -70,7 +70,7 @@ struct dirent
  * file descriptor fd. Returns the number of bytes read on success, 0
  * on end of diretory and -1 on error.
  */
-int getdents(int fd, struct dirent* dirp, uint count);
+int getdents(int fd, void* dp, int count);
 
 /**
  * Open a diretory for reading.
@@ -90,6 +90,8 @@ int scandir (const char *__dir,
              int (*select) (const struct dirent *),
              int (*compar) (const struct dirent **, 
 			const struct dirent **));
+
+void _seekdir(DIR *dir, long offset);
 
 #ifdef __cplusplus
 }
