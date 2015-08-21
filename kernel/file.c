@@ -1,15 +1,32 @@
+
+#ifdef __LINUX__
+
+typedef unsigned int uint;
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned long ulong;
+
+#include <stdlib.h>
+#include <string.h>
+
+#define _strncpy(dst, src, sz) strlen(strncpy(dst, src, sz))
+
+#else
 #include "types.h"
 #include "stdarg.h"
 #include "stdlib.h"
+#define _strncpy strncpy
+#endif
 
 int file_path_dir(const char* src, char* dst, uint sz)
 {
         if(strlen(src) + 1 >= sz)
                 return -1;
         memset(dst, 0, sz);
-        int strlen = strncpy(dst, src, sz);
-        if(dst[strlen - 1] != '/')
-                dst[strlen] = '/';
+
+        int len = _strncpy(dst, src, sz);
+        if(dst[len - 1] != '/')
+                dst[len] = '/';
         return 0;
 }
 
@@ -17,10 +34,10 @@ int file_path_file(const char* src, char* dst, uint sz)
 {
         if(strlen(src) == 0) return 1;
         memset(dst, 0, sz);
-        int strlen = strncpy(dst, src, sz);
+        int len = _strncpy(dst, src, sz);
         if(!strcmp(dst, "/")) return 0;
-        for(;dst[strlen  - 1] == '/' && strlen - 1 >= 0;strlen--)
-                dst[strlen - 1] = 0;
+        for(;dst[len  - 1] == '/' && len - 1 >= 0;len--)
+                dst[len - 1] = 0;
         return 0;
 }
 

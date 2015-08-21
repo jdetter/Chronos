@@ -1,6 +1,8 @@
-// VSFS driver
+/**
+ * Very simple file system driver.
+ */
 
-#ifndef VSFS_MKFS 
+#ifndef __LINUX__ 
 #include "types.h"
 #include "stdarg.h"
 #include "stdlib.h"
@@ -14,6 +16,10 @@ typedef unsigned long ulong;
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #undef CACHE_WATCH
 #undef CACHE_PANIC
@@ -174,8 +180,9 @@ int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
         write_sect(buffer, start_sector, driver->driver);
 
 	/* Initilize file system */
-	driver->init(start_sector, end_sector, bsize, 
-		cache_sz, driver->cache, driver->context);
+	/* TODO: update init here */
+	// driver->init(start_sector, end_sector, bsize, 
+	//	cache_sz, driver->cache, driver->context);
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
@@ -349,8 +356,8 @@ int vsfs_readdir(void* dir, int index, struct dirent* dst,
 	
 	/* Parse the directory entry */
 	dst->d_ino = entry->inode_num;
-	memset(dst->name, 0, FILE_MAX_NAME);
-	strncpy(dst->name, entry->name, FILE_MAX_NAME);
+	memset(dst->d_name, 0, FILE_MAX_NAME);
+	strncpy(dst->d_name, entry->name, FILE_MAX_NAME);
 	/* Get the inode */
 	struct vsfs_inode  in;
 	read_inode(dst->d_ino, &in, context);
@@ -1149,8 +1156,10 @@ int vsfs_soft_link(const char* new_file, const char* link,
 int vsfs_read(vsfs_inode* node, void* dst, uint start, uint sz,
 		struct vsfs_context* context)
 {
+  if(start >= node->size) return 0;
+
   if((start + sz) > node->size){
-    return -1;
+    sz = node->size - start;
   }
 
   char* dst_c = (char*) dst;

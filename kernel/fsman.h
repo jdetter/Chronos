@@ -57,7 +57,16 @@ struct inode_t
 	void* inode_ptr; /* Pointer to the fs specific inode. */
 	int references; /* How many programs reference this file? */
 };
+
+/**
+ * Turn the typedef of inode into a macro so that inode can be
+ * typdef'd in other files.
+ */
+#ifndef NO_DEFINE_INODE
 typedef struct inode_t* inode;
+#else /* !define inode */
+#define inode struct inode_t
+#endif
 
 struct fs_stat
 {
@@ -76,7 +85,8 @@ struct FSDriver
 	 * to function.
 	 */
 	int (*init)(uint start_sector, uint end_sector, uint block_size,
-		uint cache_sz, uchar* cache, void* context);
+		uint cache_sz, uchar* cache, 
+		struct FSDriver* driver, void* context);
 	
 	/**
 	 * Required file system driver function that opens a file
@@ -97,30 +107,27 @@ struct FSDriver
  	 * Parse statistics on an open file. Returns 0 on success,
 	 * returns 1 otherwise.
  	 */
-	int (*stat)(void* i, struct stat* dst,
-			void* context);
+	int (*stat)(void* i, struct stat* dst, void* context);
 
 	/**
  	 * Create a file in the file system given by path. Returns 0 on
 	 * success, -1 on failure. If the file already exists, returns 0.
 	 */
-	int (*create)(const char* path, uint permissions, uint uid,
-		uint gid, void* context);
+	int (*create)(const char* path, mode_t permissions, 
+			gid_t uid, gid_t gid, void* context);
 
 	/**
 	 * Change the ownership of the file. Both the uid and
 	 * the gid will be changed. Returns 0 on success.
 	 */
-	int (*chown)(void* i, int ino_num, 
-		uint uid, uint gid, void* context);
+	int (*chown)(void* i, uid_t uid, gid_t gid, void* context);
 
 	/**
 	 * Change the permissions on a file. The bits for the permission
 	 * field are defined in file.h. Returns the new permission
 	 * of the file. 
 	 */
-	int (*chmod)(void* i, int ino_num, 
-		uint permission, void* context);
+	int (*chmod)(void* i, mode_t permission, void* context);
 
 	/**
 	 * Truncate a file to the specified length. Returns the
@@ -336,5 +343,12 @@ int fs_mknod(const char* path, int dev, int dev_type, int perm);
  * Truncate a file to a specific length. Returns 0 on success.
  */
 int fs_truncate(inode i, int sz);
+
+/**
+ * Get rid of the macro declaration.
+ */
+#ifdef NO_DEFINE_INODE
+#undef inode
+#endif
 
 #endif

@@ -1,0 +1,82 @@
+qemu-system-i386 -nographic -smp 1 -m 512M  chronos.img
+Welcome to Chronos!
+Initilizing virtual memory...						[ OK ]
+Initilizing paging...							[ OK ]
+Starting ata driver...							[ OK ]
+Kernel path: /boot/chronos.elf
+Starting VSFS driver...							[ OK ]
+Chronos is ready to be loaded.
+Chronos has been loaded.
+Welcome to the Chronos kernel!
+Loading Global Descriptor table...					[ OK ]
+Installing Interrupt Descriptor table...				[ OK ]
+Initilizing Virtual Memory...						[ OK ]
+Switching over to kernel stack...					[ OK ]
+Initilizing signals...							[ OK ]
+Starting Programmable Interrupt Controller Driver...			[ OK ]
+Initilizing cmos...							[ OK ]
+Initilizing kernel time...						[ OK ]
+Initilizing keyboard driver...						[ OK ]
+Detecting devices...							[ OK ]
+Starting file system manager...						[ OK ]
+Starting network manager...						[ OK ]
+Populating the dev folder...						[ OK ]
+Starting Programmable Interrupt Timer Driver...				[ OK ]
+Initilizing cli stack...						[ OK ]
+Initilizing pipes...							[ OK ]
+Initilizing Process Scheduler...					[ OK ]
+Spawning tty0...							[ OK ]
+init: Syscall: 0x12
+syscall return value: 0x0
+init: Syscall: 0x1F
+syscall return value: 0xE000
+init: Syscall: 0x1F
+syscall return value: 0x4E418
+init: Syscall: 0x26
+syscall return value: 0x1
+init: Syscall: 0x8
+init writing to file : 1
+An init process has spawned on this tty.
+syscall return value: 0x29
+init: Syscall: 0x1
+syscall return value: 0x1
+init: Syscall: 0x2C
+init: Syscall: 0x8
+init writing to file : 1
+Spawning process /bin/sh...
+syscall return value: 0x1C
+init: Syscall: 0x24
+syscall return value: 0x0
+/bin/sh: Syscall: 0x1F
+syscall return value: 0x12000
+/bin/sh: Syscall: 0x1F
+syscall return value: 0x12028
+/bin/sh: Syscall: 0x12
+syscall return value: 0x0
+/bin/sh: Syscall: 0x26
+syscall return value: 0x1
+/bin/sh: Syscall: 0x8
+/bin/sh writing to file : 1
+# syscall return value: 0x2
+/bin/sh: Syscall: 0x12
+syscall return value: 0x0
+/bin/sh: Syscall: 0x26
+syscall return value: 0x1
+/bin/sh: Syscall: 0x7
+/bin/sh: reading from device: 
+nano file.c
+syscall return value: 0xC
+/bin/sh: Syscall: 0x1
+syscall return value: 0x2
+/bin/sh: Syscall: 0x24
+syscall return value: 0x0
+/bin/sh: Syscall: 0x2C
+nano: Seg Fault: 0x9066266E
+syscall return value: 0x2
+/bin/sh: Syscall: 0x8
+/bin/sh writing to file : 1
+# syscall return value: 0x2
+/bin/sh: Syscall: 0x7
+/bin/sh: reading from device: 
+QEMU: Terminated
+

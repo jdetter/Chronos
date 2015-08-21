@@ -666,9 +666,9 @@ int sys__exit(void)
 	rproc->return_code = return_code;
 	rproc->state = PROC_ZOMBIE;
 	/* Clear all of the file descriptors (LEAK) */
-	int x;
-	for(x = 0;x < MAX_FILES;x++)
-		rproc->file_descriptors[x].type = 0x0;
+	// int x;
+	// for(x = 0;x < MAX_FILES;x++)
+	//	rproc->file_descriptors[x].type = 0x0;
 
 	/* release the lock */
 	slock_release(&ptable_lock);
@@ -1182,4 +1182,22 @@ int sys_sleep(void)
 	}
 
 	return 0;
+}
+
+int sys_alarm(void)
+{
+	panic("WARNING: alarm system call unimplemented.\n");
+	return -1;
+}
+
+int sys_select(void)
+{
+	panic("WARNING: select system call unimplemented.\n");
+	return -1;
+}
+
+int sys_vfork(void)
+{
+	panic("WARNING: vfork system call unimplemented.\n");
+	return -1;
 }

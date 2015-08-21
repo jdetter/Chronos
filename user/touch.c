@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define __LINUX_DEFS__
+#define __LINUX__
 #include "file.h"
 
 int main(int argc, char* argv[])

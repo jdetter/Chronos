@@ -106,6 +106,9 @@ int (*syscall_table[])(void) = {
 	sys_setresuid,
 	sys_setpgid,
 	sys_setresgid,
+	sys_vfork,
+	sys_select,
+	sys_alarm
 };
 
 /* int isatty(int fd); */

@@ -3,37 +3,40 @@ TOOLS := boot-sign \
 	disk-part \
 	fsck \
 	boot2-verify \
-	mkvect
+	mkvect \
+	ext2.fsck
+
+TOOLS_SOURCE := $(addprefix tools/, $(TOOLS))
+TOOLS_SOURCE := $(addsuffix .c, $(TOOLS_SOURCE))
 
 TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
-TOOLS_CLEAN := tools/bin/
+TOOLS_CLEAN := tools/bin/ tools/deps/
 
-TOOLS_BUILD := tools/bin $(TOOLS_BINARIES)
+TOOLS_CFLAGS := -D__LINUX__ \
+		-I tools/include
 
-.PHONY: tools
-tools: $(TOOLS_BUILD)
+TOOLS_DEPS := tools/deps/vsfs.o \
+		tools/deps/file.o \
+		tools/deps/stdlock.o \
+		tools/deps/ext2.o
 
 tools/bin:
-	mkdir -p tools/bin/
+	mkdir -p tools/bin
+tools/deps:
+	mkdir -p tools/deps
 
-tools/bin/mkfs: tools/bin kernel/file.o
-# VSFS must be rebuilt in MKFS mode
-	echo "#define VSFS_MKFS" > tools/bin/vsfs.c
-	cat kernel/drivers/vsfs.c >> tools/bin/vsfs.c
-	cp kernel/include/stdlock.h tools/bin
-	cp kernel/include/types.h tools/bin
-	cp kernel/include/file.h tools/bin
-	$(CC) $(CFLAGS_TOOLS) $(CFLAGS) -m32 -I kernel/drivers/ -I kernel/ -I tools/bin -c -o tools/bin/vsfs.o tools/bin/vsfs.c
-	$(CC) $(CFLAGS_TOOLS) $(CFLAGS) -m32 -I kernel/drivers/ -I kernel/ -I tools/bin -o tools/bin/mkfs tools/mkfs.c tools/bin/vsfs.o kernel/file.o
-	
-tools/bin/fsck: tools/bin/mkfs kernel/file.o
-	$(CC) $(CFLAGS) -m32 -I kernel/drivers/ -I tools/bin -I kernel/ -o tools/bin/fsck tools/fsck.c tools/bin/vsfs.o kernel/file.o
+.PHONY: tools-deps
+tools-deps: tools/bin tools/deps
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/stdlock.c -o tools/deps/stdlock.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/vsfs.c -o tools/deps/vsfs.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/file.c -o tools/deps/file.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/ext2.c -o tools/deps/ext2.o
 
-tools/bin/boot2-verify: tools/bin
-	$(CC) $(CFLAGS) -m32 -o tools/bin/boot2-verify tools/boot2-verify.c
-tools/bin/boot-sign: tools/bin
-	$(CC) $(CFLAGS) -m32 -o tools/bin/boot-sign tools/boot-sign.c
-tools/bin/disk-part: tools/bin
-	$(CC) $(CFLAGS) -m32 -o tools/bin/disk-part tools/disk-part.c
-tools/bin/mkvect: tools/bin
-	$(CC) $(CFLAGS) -m32 -o tools/bin/mkvect tools/mkvect.c -I kernel -I tools/bin
+tools/bin/%: tools/%.c
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@.o $< 
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -o $@ $@.o $(TOOLS_DEPS)
+
+
+TOOLS_BUILD := tools/bin tools/deps tools-deps $(TOOLS_BINARIES)
+.PHONY: tools
+tools: $(TOOLS_BUILD)

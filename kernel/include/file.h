@@ -31,8 +31,17 @@
 #define PERM_OWR 0002 	/* Others can write */
 #define PERM_OEX 0001 	/* Others can execute */
 
+#define S_ISDEV(m) ((S_ISBLK(m)) || (S_ISCHR(m)) || (S_ISFIFO(m)))
+
+/* Device nodes */
+struct devnode
+{
+        uint dev;
+        uint type;
+};
+
 /* Linux Permission Macros */
-#ifndef __LINUX_DEFS__
+#ifndef __LINUX__
 
 struct chronos_dirent {
         ino_t d_ino; /* inode number */
@@ -82,8 +91,6 @@ struct chronos_dirent {
 #define S_ISLNK(m)   (((m) & S_IFMT) == S_IFLNK)
 #define S_ISSOCK(m)  (((m) & S_IFMT) == S_IFSOCK)
 
-#define S_ISDEV(m) ((S_ISBLK(m)) || (S_ISCHR(m)) || (S_ISFIFO(m)))
-
 /* POSIX.1b objects UNUSED - compatibility */
 #define S_TYPEISMQ(buf)  ((buf)->st_mode - (buf)->st_mode)
 #define S_TYPEISSEM(buf) ((buf)->st_mode - (buf)->st_mode)
@@ -118,7 +125,7 @@ struct dirent
 	off_t d_off; /* Offset to the next dirent */
 	unsigned short d_reclen; /* Length of this record */
 	unsigned char  d_type; /* Type of file (see above) */
-	char name[FILE_MAX_NAME]; /* name of the directory entry */
+	char d_name[FILE_MAX_NAME]; /* name of the directory entry */
 };
 
 /**
@@ -130,13 +137,6 @@ struct old_linux_dirent
 	off_t d_off; /* Offset into the directory file */
 	ushort d_reclen; /* Max size of d_name */
 	char d_name[FILE_MAX_NAME]; /* Name of the entry */
-};
-
-/* Device nodes */
-struct devnode
-{
-        uint dev;
-        uint type;
 };
 
 #endif

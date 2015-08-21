@@ -30,6 +30,7 @@ int sys_stat(void)
 	struct stat* st;
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+	cprintf("%s statting: %s\n", rproc->name, path);
 	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
 	if(i == NULL) return -1;
 	fs_stat(i, st);
@@ -52,6 +53,8 @@ int sys_open(void)
 		return -1;
 	}
 
+	cprintf("%s: opening %s\n", rproc->name, path);
+
 	if(flags & O_PATH)
 	{
 		strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
@@ -71,6 +74,7 @@ int sys_open(void)
 		return -1;
 
 	rproc->file_descriptors[fd].type = FD_TYPE_FILE;
+	strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
 	rproc->file_descriptors[fd].flags = flags;
 	rproc->file_descriptors[fd].i = fs_open((char*) path, flags,
 			mode, rproc->uid, rproc->uid);
@@ -82,6 +86,7 @@ int sys_open(void)
 
 	struct stat st;
 	fs_stat(rproc->file_descriptors[fd].i, &st);
+	cprintf("File size: %d  %x\n", st.st_size, st.st_size);
 
 	if(S_ISDEV(st.st_mode))
 	{
@@ -148,13 +153,20 @@ int sys_read(void)
 	{
 	case 0x00: return -1;
 	case FD_TYPE_FILE:
+		cprintf("%s: reading from file: %s seek: %d\n", rproc->name,
+			rproc->file_descriptors[fd].path, 
+			rproc->file_descriptors[fd].seek);
 		if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
-				rproc->file_descriptors[fd].seek)) < 0) {
+				rproc->file_descriptors[fd].seek)) < 0) 
+		{
+			cprintf("READ FAILURE!\n");
 			return -1;
 		}
 		break;
 	case FD_TYPE_DEVICE:
 		/* Check for read support */
+		cprintf("%s: reading from device: %s\n", rproc->name,
+			rproc->file_descriptors[fd].path);
 		if(rproc->file_descriptors[fd].device->io_driver.read)
 		{
 			/* read is supported */
@@ -186,6 +198,9 @@ int sys_write(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&src, sz, 1)) return -1;
+
+	cprintf("%s writing to file %s: %d\n", rproc->name, 
+		rproc->file_descriptors[fd].path, fd);
 
 	switch(rproc->file_descriptors[fd].type)
 	{
@@ -386,7 +401,7 @@ int sys_readdir(void)
 	dirp->d_ino = dir.d_ino;
 	dirp->d_off = rproc->file_descriptors[fd].seek;
 	dirp->d_reclen = FILE_MAX_NAME;
-	strncpy(dirp->d_name, dir.name, FILE_MAX_NAME);
+	strncpy(dirp->d_name, dir.d_name, FILE_MAX_NAME);
 
 	rproc->file_descriptors[fd].seek++; /* Increment seek */
 	return 1;

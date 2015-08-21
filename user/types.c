@@ -6,12 +6,11 @@
 #include <_ansi.h>
 #include <sys/ioctl.h>
 
-#define __LINUX_DEFS__
+#define __LINUX__
 #include "file.h"
 
 int main(int argc, char** argv)
 {
-
 	printf("dev: %lu\n", sizeof(dev_t));
 	printf("ino: %lu\n", sizeof(ino_t));
 	printf("mode: %lu\n", sizeof(mode_t));

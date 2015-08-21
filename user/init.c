@@ -28,10 +28,8 @@ int main(int argc, char** argv)
 		args[1] = "arg1";
 		args[2] = "args2";
 
-		char* envp[3];
-		envp[0] = "Environment 1";
-		envp[1] = "Environment 2";
-		envp[2] = NULL;
+		char* envp[1];
+		envp[0] = NULL;
 	
 		printf("Spawning process %s...\n", args[0]);
 		execve(spawn_process, (char* const*)args, (char* const*)envp);

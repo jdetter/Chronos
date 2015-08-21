@@ -234,7 +234,7 @@ int __chronos_syscall(int num, ...);
 #define O_CREAT   O_CREATE  /* Linux compatibility flag */
 #define O_EXCL    00000200  /* Fail if this call doesn't create a file. */
 #define O_NOCTTY  00000400  /* Do not allow the tty to become the proc's tty  */
-#define O_TRUNC    00001000 /* Once the file is opened, truncate the contents. */
+#define O_TRUNC   00001000 /* Once the file is opened, truncate the contents. */
 #define O_APPEND  00002000  /* Start writing to the end of the file. */
 #define O_NONBLOCK 0004000  /* Open the file in non blocking mode. */
 #define O_NDELAY  O_NONBLOC /* Linux Compatibility */

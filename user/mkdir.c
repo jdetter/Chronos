@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define __LINUX_DEFS__
+#define __LINUX__
 #include "file.h"
 
 int main(int argc, char* argv[])

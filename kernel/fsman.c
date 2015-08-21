@@ -76,8 +76,9 @@ void fsman_init(void)
 	strncpy(vsfs->mount_point, "/", FILE_MAX_PATH);
 
 	/* Initilize the file system */
-	vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
-		vsfs->cache, vsfs->context);
+	/* TODO: update init */
+	// vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
+	//	vsfs->cache, vsfs->context);
 
 	/* make sure there is a dev folder */
 	vsfs->mkdir("/dev", 
@@ -471,7 +472,7 @@ int fs_chown(const char* path, uint uid, uint gid)
 	if(!i) return -1;
 
 	int result = i->fs->chown(i->inode_ptr,
-                i->st.st_ino, uid, gid, i->fs->context);
+                uid, gid, i->fs->context);
 
 	/* Close the inode */
 	fs_close(i);
@@ -488,7 +489,7 @@ int fs_chmod(const char* path, ushort permission)
 
 	/* This is file system specific */
 	int result = i->fs->chmod(i->inode_ptr, 
-		i->st.st_ino, permission, i->fs->context);
+		permission, i->fs->context);
 
 	/* Close the inode */
         fs_close(i);
@@ -569,8 +570,6 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 	int bytes = i->fs->read(i->inode_ptr, dst, start, sz, i->fs->context);
 	/* Check for read error */
 	if(bytes < 0) return -1;
-	/* Check for end of file */
-	if(bytes == 0 && sz > 0) return -1;
 	return bytes;
 }
 

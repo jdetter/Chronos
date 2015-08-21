@@ -57,7 +57,7 @@ fs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	cp kernel/chronos.o fs/boot/chronos.elf
 	cp -R user/bin/* fs/bin/
 	cp -R ../sysroot/* fs/
-	./tools/bin/mkfs -i 8192 -s 340787200 -r fs fs.img
+	./tools/bin/mkfs -i 8192 -s 134217728 -r fs fs.img
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
 fsck: fs.img tools/bin/fsck
@@ -97,7 +97,7 @@ run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
 
-patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot-stage2.img
+patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot-stage2.img $(USER_BUILD)
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
 	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1

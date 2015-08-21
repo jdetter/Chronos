@@ -21,7 +21,7 @@ typedef unsigned short uint_16;
 typedef unsigned int uint_32;
 typedef unsigned long long uint_64;
 
-#ifndef __LINUX_DEFS__
+#ifndef __LINUX__
 /* Types that conflict with the Linux definitions*/
 
 typedef unsigned int off_t; /* Used to represent file offsets */

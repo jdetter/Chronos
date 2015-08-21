@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define __LINUX_DEFS__
+#define __LINUX__
 #include "file.h"
 #include <dirent.h>
 

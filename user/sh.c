@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <dirent.h>
 
-#define __LINUX_DEFS__
+#define __LINUX__
 #include "file.h"
 
 #define OP_PIPE 0x01 /* \ */
@@ -29,9 +29,14 @@ int trim(char* str)
         return strlen(str);
 }
 
+extern char** environ;
+
 void runprog(char* string);
 int main(int argc, char** argv)
 {
+	/* We need to set the TERM environment variable */
+	putenv("TERM=xterm-color");
+
 	char in_buff[2048];
 	while(1){
 		memset(in_buff, 0, 2048);
@@ -291,7 +296,7 @@ void runprog(char* string){
 		char cwd_buff[128];
 		getcwd(cwd_buff, 128);
 	} else {
-		execve(argv[0], (char* const*)argv, NULL);
+		execve(argv[0], (char* const*)argv, environ);
 		printf("sh: binary not found: %s\n", argv[0]);
 	}
 

@@ -114,6 +114,32 @@ void cat(char* file)
 	printf("%s\n", file_buffer);
 }
 
+void export(char* path, char* dst)
+{
+	void* file = fs.open(path, &fs.context);
+
+	if(!file)
+	{
+		printf("No file to export.\n");
+		exit(1);
+	} else printf("source file opened.\n");
+
+	struct stat st;
+	fs.stat(file, &st, &fs.context);
+
+	int size = st.st_size;
+	int output = open(dst, O_RDWR | O_CREAT, 0666);
+	if(output < 0)
+	{
+		printf("No file to output to.\n");
+		exit(1);
+	} else printf("dst file opened.\n");
+	char* cache = malloc(size);
+	fs.read(file, cache, 0x0, size, &fs.context);
+	write(output, cache, size);
+	printf("Cache: %s\n", cache);
+}
+
 void cp(char* src, char* path)
 {
 	int file = open(src, O_RDONLY);
@@ -156,21 +182,9 @@ void cp(char* src, char* path)
 	}
 
 	fs.write(ino, buffer, 0, st.st_size, &fs.context);
-	char elf_check[4];
-	fs.read(ino, elf_check, 0, 4, &fs.context);
-	if(memcmp(elf_check + 1, "ELF", 3))
-	{
-		printf("Patch failed!\n");
-		exit(1);
-	} else printf("Patch success.\n");
 	free(buffer);
 	fs.close(ino, &fs.context);
 }
-
-/* Lock forwards (not used) */
-void slock_init(slock_t* lock){}
-void slock_acquire(slock_t* lock){}
-void slock_release(slock_t* lock){}
 
 int main(int argc, char** argv)
 {
@@ -224,6 +238,18 @@ int main(int argc, char** argv)
 			printf("cp %s %s\n", arg1, arg2);
 			fflush(stdin);
 			cp(arg1, arg2);
+			printf("Patch success.\n");
+			exit(0);
+		}
+	}
+
+	if(sub_command && !strcmp(sub_command, "export"))
+	{
+		if(arg1 && arg2)
+		{
+			printf("export %s -> %s\n", arg1, arg2);
+			fflush(stdin);
+			export(arg1, arg2);
 			exit(0);
 		}
 	}

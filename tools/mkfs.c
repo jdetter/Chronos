@@ -166,11 +166,6 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 }
 
 
-/* Lock forwards (not used) */
-void slock_init(slock_t* lock){}
-void slock_acquire(slock_t* lock){}
-void slock_release(slock_t* lock){}
-
 int main(int argc, char** argv)
 {
 	//char* argv[] = {"", "-i", "128","-s", "262144", "-r", "../fs", "fs.img"};

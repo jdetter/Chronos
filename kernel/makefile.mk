@@ -143,7 +143,7 @@ kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) 
 kernel/boot/ata-read.o:
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) -I kernel/include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c
 
-kernel/idt.S: $(TOOLS_BUILD)
+kernel/idt.S: tools/bin/mkvect
 	tools/bin/mkvect > kernel/idt.S
 kernel/%.o: kernel/%.S
 	$(CROSS_AS) $(ASFLAGS) $(BUILD_ASFLAGS) -I kernel/include -I kernel/ -c -o $@ $<
