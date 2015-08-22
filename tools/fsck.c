@@ -219,8 +219,8 @@ int main(int argc, char** argv)
 
 	fd = open(file, O_RDWR);
 	driver.valid = 1;
-	driver.read = ata_readsect;
-	driver.write = ata_writesect;
+	driver.readsect = ata_readsect;
+	driver.writesect = ata_writesect;
 	struct vsfs_context* context = (struct vsfs_context*)fs.context;
 	context->hdd = &driver;
 	uchar fake_cache[512];

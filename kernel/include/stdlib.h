@@ -113,4 +113,10 @@ int ascii_char(char c);
  */
 uchar bcdtobin(uchar val);
 
+/**
+ * Calculate the log base 2 of a number. Returns -1 if the
+ * number is not a power of 2 (there is a remainder).
+ */
+int log2(uint val);
+
 #endif

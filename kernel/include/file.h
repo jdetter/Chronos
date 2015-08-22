@@ -167,4 +167,19 @@ int file_path_parent(const char* src, char* dst, uint sz);
  */
 int file_path_name(const char* src, char* dst, uint sz);
 
+/**
+ * Puts the root of the path into dst. A maximum of sz bytes will be
+ * copied. Returns 0 on success, returns -1 if there is no parent 
+ * (e.g. the source is "").
+ */
+int file_path_root(const char* src, char* dst, uint sz);
+
+/**
+ * Remove the first prefix from the path. This will remove a 
+ * slash (optional) and then remove characters until another
+ * slash is encountered. Returns the position of the resulting
+ * string.
+ */
+char* file_remove_prefix(const char* path);
+
 #endif

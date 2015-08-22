@@ -47,7 +47,8 @@ KERNEL_DRIVERS := \
         vsfs \
 	ramfs \
 	cmos \
-	rtc
+	rtc \
+	diskio
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))

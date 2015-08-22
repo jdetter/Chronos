@@ -18,6 +18,7 @@ TOOLS_CFLAGS := -D__LINUX__ \
 TOOLS_DEPS := tools/deps/vsfs.o \
 		tools/deps/file.o \
 		tools/deps/stdlock.o \
+		tools/deps/diskio.o \
 		tools/deps/ext2.o
 
 tools/bin:
@@ -31,6 +32,7 @@ tools-deps: tools/bin tools/deps
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/vsfs.c -o tools/deps/vsfs.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/file.c -o tools/deps/file.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/ext2.c -o tools/deps/ext2.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/diskio.c -o tools/deps/diskio.o
 
 tools/bin/%: tools/%.c
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@.o $< 

@@ -370,3 +370,20 @@ uchar bcdtobin(uchar val)
 	uchar low = val & 0x0F;
 	return (high * 10) + low;
 }
+
+int log2(uint value)
+{
+	uint value_orig = value;
+	/* Shift to the right until we hit a 1 */
+	int x = 0;
+	while(value != 1)
+	{
+		value >>= 1;
+		x++;
+	}
+
+	/* Check work */
+	if(1 << x != value_orig) return -1;
+
+	return x;
+}

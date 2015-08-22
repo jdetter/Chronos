@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -18,53 +19,83 @@ int fd;
 struct FSDriver fs;
 struct FSHardwareDriver driver;
 
-struct FSMemoryContext
-{
-	int sectsize;
-};
-
-struct FSMemoryContext fscontext;
-
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
-	struct FSMemoryContext* context = driver->context;
-        if(lseek(fd, context->sectsize * sect, SEEK_SET) != 
-			context->sectsize * sect)
+        if(lseek(fd, driver->sectsize * sect, SEEK_SET) != 
+			driver->sectsize * sect)
         {
                 printf("Sectore read seek failure: %d\n",
-                        context->sectsize * sect);
+                        driver->sectsize * sect);
                 exit(1);
         }
 
-        if(read(fd, dst, context->sectsize) != context->sectsize)
+        if(read(fd, dst, driver->sectsize) != driver->sectsize)
         {
                 printf("Sector Read failure.\n");
                 exit(1);
         }
 
-        return 0;
+        return driver->sectsize;
 }
 
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 {
-	struct FSMemoryContext* context = driver->context;
-        if(lseek(fd, context->sectsize * sect, SEEK_SET) != 
-			context->sectsize * sect)
+        if(lseek(fd, driver->sectsize * sect, SEEK_SET) != 
+			driver->sectsize * sect)
         {
                 printf("Sector write seek failure: %d\n",
-                        context->sectsize * sect);
+                        driver->sectsize * sect);
                 exit(1);
         }
 
-        if(write(fd, src, context->sectsize) != context->sectsize)
+        if(write(fd, src, driver->sectsize) != driver->sectsize)
         {
                 printf("Sector write failure.\n");
                 exit(1);
         }
 
-        return 0;
+        return driver->sectsize;
 }
 
+int ata_readblock(void* dst, uint block, struct FSHardwareDriver* driver)
+{
+        if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
+                        driver->blocksize * block)
+        {
+                printf("Block seek failure: %d\n",
+                        driver->blocksize * block);
+                exit(1);
+        }
+
+        if(read(fd, dst, driver->blocksize) != driver->blocksize)
+        {
+                printf("Block read failure.\n");
+                exit(1);
+        }
+
+        return driver->blocksize;
+}
+
+int ata_writeblock(void* src, uint block, struct FSHardwareDriver* driver)
+{
+        if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
+                        driver->blocksize * block)
+        {
+                printf("Sector write seek failure: %d\n",
+                        driver->blocksize * block);
+                exit(1);
+        }
+
+        if(write(fd, src, driver->blocksize) != driver->blocksize)
+        {
+                printf("Sector write failure.\n");
+                exit(1);
+        }
+
+        return driver->blocksize;
+}
+
+int ext2_test(void* context);
 int main(int argc, char** argv)
 {
 	char* file_system = NULL;
@@ -99,14 +130,50 @@ int main(int argc, char** argv)
 		else printf("ext3.fsck: extraneous argument: %s\n", argv[x]);
 	}
 
+	if(!file_system)
+	{
+		printf("No file system supplied.\n");
+		return 1;
+	}
+
+	fd = open(file_system, O_RDWR);
+
+	if(fd < 0)
+	{
+		printf("No such file: %s\n", file_system);
+		return 1;
+	}
+
+	struct stat st;
+	if(fstat(fd, &st))
+	{
+		printf("fstat failure!\n");
+		return -1;
+	}
+	/* Calculate the last valid sector */
+	int sectmax = st.st_size / block_size;
+
 	/* Initilize the memory hardware driver */
-	driver.read = ata_readsect;
-	driver.write = ata_writesect;
+	driver.readsect = ata_readsect;
+	driver.writesect = ata_writesect;
+	driver.readblock = ata_readblock;
+	driver.writeblock = ata_writeblock;
+	int shifter = -1;
+	int block_size_tmp = block_size;
+	while(block_size_tmp)
+	{
+		block_size_tmp >>= 1;
+		shifter++;
+	}
+	driver.sectsize = block_size;
+	driver.sectshifter = shifter;
+	driver.sectmax = sectmax;
 	driver.valid = 1;
-	driver.context = &fscontext;
-	fscontext.sectsize = block_size;
+	driver.context = NULL;
 
 	/* Start the driver */
 	ext2_init(start_block, block_size, FS_CACHE_SIZE, &driver, &fs);
+
+	ext2_test(&fs.context);
 	return 0;
 }

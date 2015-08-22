@@ -1,4 +1,3 @@
-
 #ifdef __LINUX__
 
 typedef unsigned int uint;
@@ -17,6 +16,29 @@ typedef unsigned long ulong;
 #include "stdlib.h"
 #define _strncpy strncpy
 #endif
+
+const char* file_remove_prefix(const char* path)
+{
+	if(!*path) return path;
+
+	while(*path && *path == '/') path++;
+	if(!*path) return path;
+	while(*path && *path != '/') path++;
+	return path;
+}
+
+int file_path_root(const char* path, char* dst, int sz)
+{
+        while(*path == '/') path++;
+        /* As long as we aren't at the end, we're at the root now. */
+        if(*path == 0) return -1;
+        /* Copy until the next slash or end of line char */
+        int x;
+        for(x = 0;x < sz - 1 && path[x] != 0 && path[x] != '/';x++)
+                dst[x] = path[x];
+        dst[x] = 0; /* Null terminate */
+        return 0;
+}
 
 int file_path_dir(const char* src, char* dst, uint sz)
 {

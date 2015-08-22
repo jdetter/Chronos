@@ -224,8 +224,8 @@ int main(int argc, char** argv)
 
 	/* Setup disk driver */
 	disk_driver.valid = 1;
-	disk_driver.read = ata_readsect;
-	disk_driver.write = ata_writesect;
+	disk_driver.readsect = ata_readsect;
+	disk_driver.writesect = ata_writesect;
 
 	int inodes_per_block = SECTSIZE / sizeof(vsfs_inode);
 	if(SECTSIZE % sizeof(vsfs_inode) != 0)
@@ -271,7 +271,7 @@ int main(int argc, char** argv)
 	int x;
 	for(x = 0;x < last_block;x++)
 	{
-		disk_driver.write(zero, x, NULL);
+		disk_driver.writesect(zero, x, NULL);
 	}
 
 	/* Create super block*/
@@ -281,7 +281,7 @@ int main(int argc, char** argv)
 	super_block->dblocks = blocks;
 	super_block->imap = inode_bitmap;
 	super_block->inodes = inodes;
-	disk_driver.write(buffer, 0, NULL);
+	disk_driver.writesect(buffer, 0, NULL);
 	memmove(&context.super, super_block, sizeof(struct vsfs_superblock));
 
 	/* Create a fake cache */

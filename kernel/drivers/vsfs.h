@@ -64,9 +64,9 @@ struct vsfs_context
 	/* File system hardware drivers */
 	struct FSHardwareDriver* hdd;
 	/* function forwards */
-        int (*read)(void* dst, uint sect,
+        int (*readsect)(void* dst, uint sect,
                 struct FSHardwareDriver* driver);
-        int (*write)(void* src, uint sect,
+        int (*writesect)(void* src, uint sect,
                 struct FSHardwareDriver* driver);
 };
 

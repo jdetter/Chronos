@@ -11,6 +11,7 @@
 
 # Linux Files
 *.swp
+*.swo
 
 # Build Files
 *.o

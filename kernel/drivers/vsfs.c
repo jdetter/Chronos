@@ -135,7 +135,7 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
     return -1;
   context->start = start_sector;
   uchar super_block[512];
-  if(context->hdd->read(super_block, start_sector, 
+  if(context->hdd->readsect(super_block, start_sector, 
 		context->hdd))
 	return -1;
 
@@ -147,8 +147,8 @@ int vsfs_init(uint start_sector, uint end_sector, uint block_size,
     (context->super.inodes / (512 / sizeof(vsfs_inode)));
 
   /* Function forwards */
-  context->read = context->hdd->read;
-  context->write = context->hdd->write;
+  context->readsect = context->hdd->readsect;
+  context->writesect = context->hdd->writesect;
 
   /* Setup cache */
   uint cache_count = cache_sz / sizeof(struct vsfs_cache_inode);
@@ -626,7 +626,7 @@ void free_inode(uint inode_num, struct vsfs_context* context)
   else if(i < 137){
     int ind_index = i - 9;
     uint indirect_block[128];
-    context->hdd->read(indirect_block, tofree.indirect, context->hdd);
+    context->hdd->readsect(indirect_block, tofree.indirect, context->hdd);
     free_block(indirect_block[ind_index], context);
   }
   else if(i < 16521){
@@ -635,33 +635,33 @@ void free_inode(uint inode_num, struct vsfs_context* context)
     int index2 = ind_ind_index % 128;
     uint dindirect[128];
     uint indirect[128];
-    context->read(dindirect, tofree.double_indirect, context->hdd);
-    context->read(indirect, dindirect[index1], context->hdd);
+    context->readsect(dindirect, tofree.double_indirect, context->hdd);
+    context->readsect(indirect, dindirect[index1], context->hdd);
     free_block(indirect[index2], context);
   }
   } 
   uchar free[512];
-  context->read(free, context->start + 1 + inode_num/4096, context->hdd);
+  context->readsect(free, context->start + 1 + inode_num/4096, context->hdd);
   uint inode_index = inode_num % 4096;
   uint inode_byte =  free[inode_index / 8];
   uchar mask = (1 << (inode_index % 8));
   mask = ~mask;
   free[inode_index / 8] = inode_byte & mask;
-  context->write(free, context->start + 1 + inode_num/4096, context->hdd); 
+  context->writesect(free, context->start + 1 + inode_num/4096, context->hdd); 
 }
 
 void free_block(uint block_num, struct vsfs_context* context)
 {
   if(block_num == 0) return;
   uchar free[512];
-  context->read(free, context->start + 1 
+  context->readsect(free, context->start + 1 
 	+ context->super.imap + block_num/4096, context->hdd);
   uint block_index = block_num % 4096;
   uint block_byte =  free[block_index / 8];
   uchar mask = (1 << (block_index % 8));
   mask = ~mask;
   free[block_index / 8] = block_byte & mask;
-  context->write(free, context->start + 1 + context->super.imap 
+  context->writesect(free, context->start + 1 + context->super.imap 
 	+ block_num/4096, context->hdd);
 }
 
@@ -673,7 +673,7 @@ int check_block(uint block_num, struct vsfs_context* context)
 {
   if(block_num == 0) return -1;
   uchar free[512];
-  context->read(free, context->start + 1
+  context->readsect(free, context->start + 1
         + context->super.imap + block_num/4096, context->hdd);
   uint block_index = block_num % 4096;
   uint block_byte =  free[block_index / 8];
@@ -785,7 +785,7 @@ int find_free_inode(struct vsfs_context* context){
   int inode_block;
   uchar bitmap[512];
   for(inode_block = 0; inode_block < context->super.imap; inode_block++){
-    context->read(bitmap, context->start + 1 + inode_block, context->hdd);
+    context->readsect(bitmap, context->start + 1 + inode_block, context->hdd);
     int block_byte;
     for(block_byte = 0; block_byte < 512; block_byte++){
       if(bitmap[block_byte] != 0xFF){
@@ -796,7 +796,7 @@ int find_free_inode(struct vsfs_context* context){
         for(; bit < 8; bit++){
           if(((1 << bit) & bitmap[block_byte]) == 0){
             bitmap[block_byte] |= (1 << bit);
-            context->write(bitmap, context->start + 1 + inode_block, 
+            context->writesect(bitmap, context->start + 1 + inode_block, 
 			context->hdd); 
             return (inode_block * 512 * 8) + block_byte * 8 + bit;
           }
@@ -816,7 +816,7 @@ int find_free_block(struct vsfs_context* context){
 	for(bmap = 0;bmap < context->super.dmap;bmap++)
 	{
 		/* read the bitmap */
-		context->read(sect, context->bmap_off 
+		context->readsect(sect, context->bmap_off 
 			+ bmap, context->hdd);
 
 		/* Search for a byte, b such that: b != 0xFF */
@@ -841,7 +841,7 @@ int find_free_block(struct vsfs_context* context){
 					+ bit;
 				/* allocate this block. */
 				sect[x] |= 1 << bit;
-				context->write(sect, context->bmap_off 
+				context->writesect(sect, context->bmap_off 
 					+ bmap, context->hdd);
 
 				/* Return the sector.*/
@@ -883,10 +883,10 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum,
       inode->indirect = find_free_block(context);
     }
     uint indirect_block[128];
-    context->read(indirect_block, context->b_off 
+    context->readsect(indirect_block, context->b_off 
 		+ inode->indirect, context->hdd);
     indirect_block[ind_index] = blocknum;
-    context->write(indirect_block, context->b_off 
+    context->writesect(indirect_block, context->b_off 
 		+ inode->indirect, context->hdd);
   }
   else if(block_index < 16521){
@@ -898,20 +898,20 @@ int add_block_to_inode(vsfs_inode* inode, uint blocknum,
     } 
     if(ind_ind_index % 128 == 0){
       uint double_block[128];
-      context->read(double_block, context->b_off 
+      context->readsect(double_block, context->b_off 
 		+ inode->double_indirect, context->hdd);
       double_block[index1] = find_free_block(context);
-      context->write(double_block, context->b_off 
+      context->writesect(double_block, context->b_off 
 		+ inode->double_indirect, context->hdd);
     }
       uint dindirect[128];
       uint indirect[128];
-      context->read(dindirect, context->b_off 
+      context->readsect(dindirect, context->b_off 
 		+ inode->double_indirect, context->hdd);
-      context->read(indirect, context->b_off 
+      context->readsect(indirect, context->b_off 
 		+ dindirect[index1], context->hdd);
       indirect[index2] = blocknum;
-      context->write(indirect, context->b_off 
+      context->writesect(indirect, context->b_off 
 		+ dindirect[index1], context->hdd);
   }
   else{
@@ -927,15 +927,15 @@ int read_block(vsfs_inode* inode, uint block_index, void* dst,
 		struct vsfs_context* context)
 {
   if(block_index < VSFS_DIRECT){
-   context->read(dst, context->b_off + inode->direct[block_index], 
+   context->readsect(dst, context->b_off + inode->direct[block_index], 
 		context->hdd);
   }
   else if(block_index < VSFS_DIRECT + (512 / sizeof(int))){
     int ind_index = block_index - 9;
     uint indirect_block[128];
-    context->read(indirect_block, context->b_off + inode->indirect,	
+    context->readsect(indirect_block, context->b_off + inode->indirect,	
 		context->hdd);
-    context->read(dst, context->b_off + indirect_block[ind_index],
+    context->readsect(dst, context->b_off + indirect_block[ind_index],
 		context->hdd);
   }
   else if(block_index < 16521){
@@ -944,9 +944,9 @@ int read_block(vsfs_inode* inode, uint block_index, void* dst,
     int index2 = ind_ind_index % 128;
     uint dindirect[128];
     uint indirect[128];
-    context->read(dindirect, context->b_off + inode->double_indirect, context->hdd);
-    context->read(indirect, context->b_off + dindirect[index1], context->hdd);
-    context->read(dst, context->b_off + indirect[index2], context->hdd);
+    context->readsect(dindirect, context->b_off + inode->double_indirect, context->hdd);
+    context->readsect(indirect, context->b_off + dindirect[index1], context->hdd);
+    context->readsect(dst, context->b_off + indirect[index2], context->hdd);
   }
   else{
     //gg
@@ -959,15 +959,15 @@ int write_block(vsfs_inode* inode, uint block_index, void* src,
 		struct vsfs_context* context)
 {
   if(block_index < VSFS_DIRECT){
-   context->write(src, context->b_off + 
+   context->writesect(src, context->b_off + 
 	inode->direct[block_index], context->hdd);
   }
   else if(block_index < 137){
     int ind_index = block_index - 9;
     uint indirect_block[128];
-    context->read(indirect_block, context->b_off 
+    context->readsect(indirect_block, context->b_off 
 		+ inode->indirect, context->hdd);
-    context->write(src, context->b_off 
+    context->writesect(src, context->b_off 
 		+ indirect_block[ind_index], context->hdd);
   }
   else if(block_index < 16521){
@@ -976,9 +976,9 @@ int write_block(vsfs_inode* inode, uint block_index, void* src,
     int index2 = ind_ind_index % 128;
     uint dindirect[128];
     uint indirect[128];
-    context->read(dindirect, context->b_off + inode->double_indirect, context->hdd);
-    context->read(indirect, context->b_off + dindirect[index1], context->hdd);
-    context->write(src, context->b_off + indirect[index2], context->hdd);
+    context->readsect(dindirect, context->b_off + inode->double_indirect, context->hdd);
+    context->readsect(indirect, context->b_off + dindirect[index1], context->hdd);
+    context->writesect(src, context->b_off + indirect[index2], context->hdd);
   } else {
     // file is too large
     return -1;
@@ -1031,11 +1031,11 @@ void write_inode(uint inode_num, vsfs_inode* inode,
 		struct vsfs_context* context)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  context->read(inodes, context->i_off 
+  context->readsect(inodes, context->i_off 
 	+ inode_num/(512/sizeof(vsfs_inode)), context->hdd);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(&inodes[offset], inode, sizeof(vsfs_inode));
-  context->write(inodes, context->i_off 
+  context->writesect(inodes, context->i_off 
 	+ inode_num/(512/sizeof(vsfs_inode)), context->hdd);
 }
 
@@ -1043,7 +1043,7 @@ void read_inode(uint inode_num, vsfs_inode* inode,
 		struct vsfs_context* context)
 {
   vsfs_inode inodes[512/sizeof(vsfs_inode)];
-  context->read(inodes, context->i_off 
+  context->readsect(inodes, context->i_off 
 		+ inode_num/(512/sizeof(vsfs_inode)), context->hdd);
   uint offset = inode_num % (512/sizeof(vsfs_inode));
   memmove(inode, &inodes[offset], sizeof(vsfs_inode));

@@ -6,10 +6,27 @@
 struct FSHardwareDriver
 {
 	uchar valid; /* 1 = valid, 0 = invalid. */
-	int (*read)(void* dst, uint sect, 
-		struct FSHardwareDriver* driver); 
-	int (*write)(void* src, uint sect, 
+	uint sectmax;
+	uint sectshifter;
+	uint sectsize;
+	uint blocksize;
+	uint blockshift;
+	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);  
+        int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
+	int (*readsect)(void* dst, uint sect, struct FSHardwareDriver* driver); 
+	int (*writesect)(void* src, uint sect, struct FSHardwareDriver* driver);
+	int (*read)(void* dst, uint start, uint sz,
 		struct FSHardwareDriver* driver);
+	int (*write)(void* src, uint start, uint sz,
+		struct FSHardwareDriver* driver);
+	int (*readsects)(void* dst, uint sectstart, uint sectcount,
+                struct FSHardwareDriver* driver);
+        int (*writesects)(void* src, uint sectstart, uint sectcount,
+                struct FSHardwareDriver* driver);
+	int (*readblocks)(void* dst, uint startblock, uint count,
+                struct FSHardwareDriver* driver);
+        int (*writeblocks)(void* src, uint startblock, uint count,
+                struct FSHardwareDriver* driver);
 	void* context; /* Pointer to driver specified context */
 };
 
@@ -39,7 +56,7 @@ struct FSHardwareDriver
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
 #define FS_CACHE_SIZE 16384
-#define FS_CONTEXT_SIZE 128 /* Size in bytes of an fs context */
+#define FS_CONTEXT_SIZE 512 /* Size in bytes of an fs context */
 
 /** 
  * General inode that is used by the operating system. The
@@ -84,7 +101,7 @@ struct FSDriver
 	 * Initilize the hardware and context needed for the file system
 	 * to function.
 	 */
-	int (*init)(uint start_sector, uint end_sector, uint block_size,
+	int (*init)(uint start_sector, uint end_sector, uint sectsize,
 		uint cache_sz, uchar* cache, 
 		struct FSDriver* driver, void* context);
 	
