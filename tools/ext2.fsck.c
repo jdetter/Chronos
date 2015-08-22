@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "types.h"
 #include "stdlock.h"
@@ -95,6 +96,117 @@ int ata_writeblock(void* src, uint block, struct FSHardwareDriver* driver)
         return driver->blocksize;
 }
 
+void get_perm(struct stat* st, char* dst)
+{
+        /* Start with type of device */
+        switch(st->st_mode & S_IFMT)
+        {
+                case S_IFREG:
+                        dst[0] = '-';
+                        break;
+                case S_IFDIR:
+                        dst[0] = 'd';
+                        break;
+                case S_IFCHR:
+                        dst[0] = 'c';
+                        break;
+                case S_IFBLK:
+                        dst[0] = 'b';
+                        break;
+                case S_IFLNK:
+                        dst[0] = 'l';
+                        break;
+                case S_IFIFO:
+                        dst[0] = 'f';
+                        break;
+                case S_IFSOCK:
+                        dst[0] = 's';
+                        break;
+                default:
+                        dst[0] = '?';
+                        break;
+        }
+
+        if(st->st_mode & PERM_URD)
+                dst[1] = 'r';
+        else dst[1] = '-';
+        if(st->st_mode & PERM_UWR)
+                dst[2] = 'w';
+        else dst[2] = '-';
+        if(st->st_mode & PERM_UEX)
+                dst[3] = 'x';
+        else dst[3] = '-';
+        /* Check for setuid */
+        if((st->st_mode & PERM_UEX) && (st->st_mode & S_ISUID))
+                dst[3] = 's';
+
+        if(st->st_mode & PERM_GRD)
+                dst[4] = 'r';
+        else dst[4] = '-';
+        if(st->st_mode & PERM_GWR)
+                dst[5] = 'w';
+        else dst[5] = '-';
+        if(st->st_mode & PERM_GEX)
+                dst[6] = 'x';
+        else dst[6] = '-';
+        /* Check for setgid */
+        if((st->st_mode & PERM_GEX) && (st->st_mode & S_ISGID))
+                dst[6] = 's';
+
+        if(st->st_mode & PERM_ORD)
+                dst[7] = 'r';
+        else dst[7] = '-';
+        if(st->st_mode & PERM_OWR)
+                dst[8] = 'w';
+        else dst[8] = '-';
+        if(st->st_mode & PERM_OEX)
+                dst[9] = 'x';
+        else dst[9] = '-';
+}
+
+void ls(char* path)
+{
+	void* inode = fs.open(path, fs.context);
+	char perm_str[64];
+	struct dirent dir;
+	struct stat st;
+	
+	int x;
+	for(x = 0;;x++)
+	{
+		int result = fs.readdir(inode, x, &dir, fs.context);
+		if(result < 0) break;
+		
+		fs.stat(inode, &st, fs.context);
+		memset(perm_str, 0, 64);
+		get_perm(&st, perm_str);
+		printf("%s %d %s\n", perm_str, (int)st.st_size, dir.d_name);
+		
+	}	
+
+	fs.close(inode, fs.context);
+}
+
+int cat(char* path)
+{
+	void* inode = fs.open(path, fs.context);
+	if(!inode) return -1;
+	struct stat st;
+
+	/* Stat the file */
+	if(fs.stat(inode, &st, fs.context)) return -1;
+
+	char buff[st.st_size + 1];
+	if(fs.read(inode, buff, 0, st.st_size, fs.context) != st.st_size)
+		return -1;
+	buff[st.st_size] = 0;
+
+	puts(buff);
+
+	fs.close(inode, fs.context);
+	return 0;
+}
+
 int ext2_test(void* context);
 int main(int argc, char** argv)
 {
@@ -174,6 +286,62 @@ int main(int argc, char** argv)
 	/* Start the driver */
 	ext2_init(start_block, block_size, FS_CACHE_SIZE, &driver, &fs);
 
-	ext2_test(&fs.context);
+	// ext2_test(&fs.context);
+
+	/* Check for command */
+	if(command)
+	{
+		if(arg1 && !strcmp("ls", command))
+			ls(arg1);
+	}
+
+	char cwd[512];
+	char comm_buffer[512];
+
+	memset(cwd, 0, 512);
+	memmove(cwd, "/", 1);
+
+	while(1)
+	{
+		printf("> ");
+		fflush(stdout);
+		fgets(comm_buffer, 512, stdin);
+		comm_buffer[strlen(comm_buffer) - 1] = 0;
+		
+		if(!strncmp(comm_buffer, "ls", 2))
+		{
+			ls(cwd);
+		} else if(!strncmp(comm_buffer, "cat", 3))
+		{
+			char* buff = comm_buffer + 4;
+			char compose[512];
+			memset(compose, 0, 512);
+			strncpy(compose, cwd, 512);
+			strncat(compose, "/", 512);
+			strncat(compose, buff, 512);
+			if(cat(compose))
+			{
+				printf("Cat error.\n");
+			}
+		} else if(!strncmp(comm_buffer, "cd", 2))
+                {
+                        char* buff = comm_buffer + 3;
+			if(*buff == '/')
+			{
+				/* absolute */
+				strncpy(cwd, buff, 512);
+			} else {
+				char compose[512];
+				memset(compose, 0, 512);
+				strncpy(compose, cwd, 512);
+				strncat(compose, "/", 512);
+				strncat(compose, buff, 512);
+				strncpy(cwd, compose, 512);
+			}
+		} else if(!strncmp(comm_buffer, "pwd", 3))
+		{
+			puts(cwd);
+		}
+	}
 	return 0;
 }

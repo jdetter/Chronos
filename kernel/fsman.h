@@ -210,7 +210,7 @@ struct FSDriver
 	/**
 	 * See if the file is already opened. If it is, returns
 	 * a pointer to that inode in the cache. If it isn't in
-	 * the cache, NULL is returned.
+	 * the cache, NULL is returned. DEPRICATED
 	 */
 	void* (*opened)(const char* path, void* context);
 
