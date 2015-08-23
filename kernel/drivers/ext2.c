@@ -193,6 +193,7 @@ struct ext2_block_group_table
 	uint_16 free_blocks; /* How many blocks are available? */
 	uint_16 free_inodes; /* How many inodes are available? */
 	uint_16 dir_count; /* How many directories are in this group? */
+	
 };
 
 struct ext2_dirent
@@ -285,6 +286,10 @@ struct ext2_context
 	int firstgroup; /* Block id of the first block group */
 	int addrs_per_block; /* How many LBAs are in a block? */
 	int indirectshift; /* shift for one level of indirection */
+	int bitmapshift; /* Shift for bit maps */
+	int bitmapcount; /* How many bits are in a bitmap? */
+	int grouptableaddr; /* in which block is the bgdt? */
+	int grouptableshift;
 };
 
 static inode* ext2_cache_alloc(context* context)
@@ -317,20 +322,63 @@ static void ext2_cache_free(inode* ino, context* context)
 	slock_release(&context->cache_lock);
 }
 
-static int ext2_calc_block_addr(int block_num, context* context)
+static int ext2_read_bgdt(int group, 
+		struct ext2_block_group_table* dst, context* context)
 {
-	int addr = -1;
-	
-	// 0 1 (3 5 7)
-	if(context->revision == 0)
-	{
-		/* Each block group has a superblock backup */
-	} else if(context->revision == 1)
-	{
-		
-	}
+	char block[context->blocksize];
+        int block_group_addr = context->grouptableaddr;
+        int offset = group << context->grouptableshift;
+        block_group_addr += (offset >> context->blockshift);
+        offset &= context->blocksize - 1;
 
-	return addr;
+        /* Read the block group */
+        if(context->driver->readblock(block, block_group_addr, context->driver) != context->blocksize)
+                return -1;
+        struct ext2_block_group_table* table = (void*)(block + offset);
+	memmove(dst, table, 1 << context->grouptableshift);
+
+	return 0;
+}
+
+static int ext2_alloc_block(int block_group, int blockid, context* context)
+{
+	char block[context->blocksize];
+	/* Get the block group descriptor table */
+	struct ext2_block_group_table table;
+	if(ext2_read_bgdt(block_group, &table, context))
+		return -1;
+	/* Is the block free? */
+	int block_offset = blockid >> context->bitmapshift;
+	int offset = blockid & (context->bitmapcount - 1);
+	if(context->driver->readblock(block, 
+				block_offset + table.block_bitmap_address,
+				context->driver) != context->blocksize)
+		return -1;
+
+	/* Get the bit */
+	uchar byte = offset >> 3; /* 8 bits in a byte */
+	uchar bit = offset & 7; /* Get last 3 bits */
+
+	if((block[byte] >> bit) & 0x1)
+		return -1; /* Already allocated!*/
+
+	/* Set the bit */
+	block[byte] |= 1 << bit;
+
+	/* Write the updated bitmap */
+	if(context->driver->writeblock(block,
+                                block_offset + table.block_bitmap_address,                    
+                                context->driver) != context->blocksize)
+                return -1;
+
+	return 0;
+}
+
+static int ext2_find_free_blocks(int group, int hint, int contiguous, context* context)
+{
+	
+
+	return 0;
 }
 
 static int ext2_read_inode(disk_inode* dst, int num, context* context)
@@ -341,25 +389,19 @@ static int ext2_read_inode(disk_inode* dst, int num, context* context)
 	int local_index = (num - 1) & 
 		(context->base_superblock.inodes_per_group - 1);
 
-	/* TODO: block group calculation algorithm */
-	int block_group_address = 2;
-	ext2_calc_block_addr(block_group, context);
-
-	/* Read the block group */
-	if(context->driver->readblock(block, block_group_address, context->driver) != context->blocksize)
-		return -1;
-	struct ext2_block_group_table* table = (void*)block;
+	struct ext2_block_group_table table;
+	ext2_read_bgdt(block_group, &table, context);
 
 	/* Get the address of the inode */
 	uint inode_offset = local_index << context->inodesizeshift;
-	uint inode_address = table->inode_table + 
+	uint inode_address = table.inode_table + 
 		(inode_offset >> context->blockshift);
 	uint inode_block_offset = inode_offset & (context->blocksize - 1);
 
 	/* Read from the inode table */
 	context->driver->readblock(block, inode_address, context->driver);
 	disk_inode* ino = (void*)(block + inode_block_offset);
-	memmove(dst, ino, context->inodesize);
+	memmove(dst, ino, sizeof(disk_inode));
 
 	return 0;
 }
@@ -381,49 +423,49 @@ static int ext2_block_address(int index, disk_inode* ino,
 	if(index < 1 << context->indirectshift)
 	{
 		context->driver->readblock(block, 
-			ino->indirect, context->driver);
+				ino->indirect, context->driver);
 		return i_block[index];
 	}
 
 	index -= context->addrs_per_block;
 	/* 2 levels of indirection */
 	if(index < 1 << context->indirectshift << 
-		context->indirectshift)
+			context->indirectshift)
 	{
 		int upper = (index >> context->indirectshift)
 			& (context->addrs_per_block - 1);
 		int lower = index & (context->addrs_per_block - 1);
 
 		context->driver->readblock(block,
-                        ino->dindirect, context->driver);
+				ino->dindirect, context->driver);
 		int indirect = i_block[upper];
 		context->driver->readblock(block,
-                        indirect, context->driver);
+				indirect, context->driver);
 		return i_block[lower];
 	}
 
 	/* REALLY big files */
 	index -= (1 << context->indirectshift << context->indirectshift);
 	if(index < 1 << context->indirectshift 
-		<< context->indirectshift
-		<< context->indirectshift)
+			<< context->indirectshift
+			<< context->indirectshift)
 	{
 		int upper = (index >> context->indirectshift
-			>> context->indirectshift)
-                        & (context->addrs_per_block - 1);
+				>> context->indirectshift)
+			& (context->addrs_per_block - 1);
 		int middle = (index >> context->indirectshift)
-                        & (context->addrs_per_block - 1);
-                int lower = index & (context->addrs_per_block - 1);
+			& (context->addrs_per_block - 1);
+		int lower = index & (context->addrs_per_block - 1);
 
-                context->driver->readblock(block,
-                        ino->tindirect, context->driver);
-                int dindirect= i_block[upper];
-                context->driver->readblock(block,
-                        dindirect, context->driver);
+		context->driver->readblock(block,
+				ino->tindirect, context->driver);
+		int dindirect= i_block[upper];
+		context->driver->readblock(block,
+				dindirect, context->driver);
 		int indirect= i_block[middle];
-                context->driver->readblock(block,
-                        indirect, context->driver);
-                return i_block[lower];
+		context->driver->readblock(block,
+				indirect, context->driver);
+		return i_block[lower];
 	}
 
 	return -1;
@@ -432,6 +474,14 @@ static int ext2_block_address(int index, disk_inode* ino,
 static int _ext2_read(void* dst, uint start, uint sz, 
 		disk_inode* ino, context* context)
 {
+	uint_64 file_size = ino->lower_size |
+		((uint_64)ino->upper_size << 32);
+
+	if(start >= file_size) return 0; /* End of file */
+	/* Don't allow reads past the end of the file. */
+	if(start + sz > file_size)
+		sz = file_size - start;
+
 	void* dst_c = dst;
 	uint bytes = 0;
 	uint read = 0;
@@ -474,6 +524,49 @@ static int _ext2_read(void* dst, uint start, uint sz,
 	return sz;
 }
 
+static int _ext2_write(void* src, uint start, uint sz,
+		disk_inode* ino, context* context)
+{
+	/* 
+	 * If we're writing past the end of the file, we 
+	 * need to add blocks where were writing
+	 */
+
+	return sz;
+}
+
+/**
+ * Read a directory entry. Returns 0 on success.
+ */
+static int _ext2_readdir(struct ext2_dirent* dst, int pos, 
+		disk_inode* ino, context* context)
+{
+	/**
+	 * The metadata of a directory entry is as follows:
+	 *
+	 * inode number  | 4 bytes
+	 * size of entry | 2 bytes
+	 * name length   | 1 byte
+	 * type of file  | 1 byte
+	 * name          | name length bytes
+	 * total possible length: 8 + EXT2_MAX_NAME
+	 */
+
+	uchar name_length;
+	/* Get the size of the record */
+	if(_ext2_read(&name_length, pos + 6, 1, ino, context) != 1)
+		return -1;
+	int readlen = name_length + 8;
+	if(readlen > sizeof(struct ext2_dirent))
+		readlen = sizeof(struct ext2_dirent);
+	/* Now that we know the name length, read the full dirent */
+	memset(dst, 0, sizeof(struct ext2_dirent));
+	if(_ext2_read(dst, pos, readlen, ino, context) != readlen)
+		return -1;
+
+	return 0;
+}
+
 static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst, 
 		disk_inode* handle, context* context)
 {
@@ -491,21 +584,14 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 	int pos = 0;
 	for(pos = 0;pos < file_size;)
 	{
-		uint_16 size;
-		if(_ext2_read(&size, pos + 4, 2, handle, context) != 2)
-			return -1;
-		int readlen = size;
-		if(readlen > sizeof(struct ext2_dirent))
-			readlen = sizeof(struct ext2_dirent);
-		/* Now that we know the size, read the full dirent */
-		memset(&dir, 0, sizeof(struct ext2_dirent));
-		if(_ext2_read(&dir, pos, readlen, handle,context) != readlen)
+		if(_ext2_readdir(&dir, pos, handle, context))
 			return -1;
 		if(!strcmp(dir.name, parent))
 		{
 			if(last)
 			{
-				if(dst) memmove(dst, &dir, size);
+				if(dst) memmove(dst, &dir, 
+						sizeof(struct ext2_dirent));
 				return dir.inode;
 			} else {
 				path = file_remove_prefix(path);
@@ -520,10 +606,10 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 			}
 		}
 
-		pos += size;
+		pos += dir.size;
 	}
 
-	return 0;
+	return -1; /* didn't find anything! */
 }
 
 static int ext2_lookup(const char* path, struct ext2_dirent* dst, 
@@ -565,6 +651,8 @@ int ext2_unlink(const char* file, context* context);
 int ext2_readdir(inode* dir, int index, struct dirent* dst,
 		context* context);
 int ext2_fsstat(struct fs_stat* dst, context* context);
+int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
+		uint pos, context* context);
 
 int ext2_test(context* context)
 {
@@ -630,6 +718,14 @@ int ext2_init(uint superblock_address, uint sectsize,
 	context->firstgroup = 1024 >> context->blockshift;
 	context->addrs_per_block = context->blocksize >> 2;
 	context->indirectshift = log2(context->addrs_per_block);
+	context->bitmapshift = context->blockshift << 2;
+	context->bitmapcount = 1 << context->bitmapshift;
+	context->grouptableshift = 5; /* size = 32*/
+	context->grouptableaddr = 1; /* 2048, 4096, 8192, ...*/
+	if(context->blocksize == 512 )
+		context->grouptableaddr = 4;
+	else if(context->blocksize == 1024)
+		context->grouptableaddr = 2;
 	if(context->indirectshift < 0) return -1;
 	/* set the driver block size and shift */
 	driver->blocksize = context->blocksize;
@@ -656,6 +752,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 	strncpy(root->path, "/", 2);
 	root->allocated = 1;
 	root->references = 1;
+	root->inode_num = 2;
 	/* For whatever reason the root inode is always 2. */
 	if(ext2_read_inode(&root->ino, 2, context))
 		return -1;
@@ -664,8 +761,11 @@ int ext2_init(uint superblock_address, uint sectsize,
 	fs->open = (void*)ext2_open;
 	fs->readdir = (void*)ext2_readdir;
 	fs->close = (void*)ext2_close;
+	fs->chmod = (void*)ext2_chmod;
+	fs->chown = (void*)ext2_chown;
 	fs->stat = (void*)ext2_stat;
 	fs->read = (void*)ext2_read;
+	fs->getdents = (void*)ext2_getdents;
 
 	return 0;
 }
@@ -734,7 +834,7 @@ void ext2_close(inode* ino, context* context)
 int ext2_stat(inode* ino, struct stat* dst, context* context)
 {
 	uint_64 file_size = ino->ino.lower_size |
-                ((uint_64)ino->ino.upper_size << 32);
+		((uint_64)ino->ino.upper_size << 32);
 
 	memset(dst, 0, sizeof(struct stat));
 	dst->st_dev = 0;
@@ -812,7 +912,7 @@ int ext2_read(inode* ino, void* dst, uint start, uint sz,
 int ext2_write(inode* ino, void* src, uint start, uint sz,
 		context* context)
 {
-	return -1;
+	return _ext2_write(src, start, sz, &ino->ino, context);
 }
 
 int ext2_rename(const char* src, const char* dst, context* context)
@@ -837,32 +937,56 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 	int pos;
 	for(x = 0, pos = 0;x < index + 1 && pos < file_size;x++)
 	{
-		uint sz;
-		if(_ext2_read(&sz, pos + 4, 2, &dir->ino, context) != 2)
+		if(_ext2_readdir(&diren, pos, &dir->ino, context))
 			return -1;
+
 		if(x == index)
 		{
-			if(sz > sizeof(struct ext2_dirent))
-				sz = sizeof(struct ext2_dirent);
-
-					if(_ext2_read(&diren, pos, sz, 
-								&dir->ino, context) != sz)
-						return -1;
-
 			/* convert ext2 dirent to dirent */
 			memset(dst, 0, sizeof(struct dirent));
 			dst->d_ino = diren.inode;
-			dst->d_off = pos + sz;
+			dst->d_off = pos + diren.size;
 			dst->d_reclen = sizeof(struct dirent);
 			strncpy(dst->d_name, diren.name, FILE_MAX_NAME);
 
 			return 0;
 		}
 
-		pos += sz;
+		pos += diren.size;
 	}
 
 	return -1;
+}
+
+int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count, 
+		uint pos, context* context)
+{
+	uint_64 file_size = dir->ino.lower_size |
+		((uint_64)dir->ino.upper_size << 32);
+
+	if(pos >= file_size) return 0; /* End of directory */
+
+	struct ext2_dirent diren;
+
+	int x;
+	int bytes_read = 0;
+	for(x = 0;x < count && pos + bytes_read < file_size;x++)
+	{
+		if(_ext2_readdir(&diren, pos + bytes_read, 
+					&dir->ino, context))
+			return -1;
+
+		/* convert ext2 dirent to dirent */
+		memset(dst_arr + x, 0, sizeof(struct dirent));
+		dst_arr[x].d_ino = diren.inode;
+		dst_arr[x].d_off = pos + bytes_read + diren.size;
+		dst_arr[x].d_reclen = sizeof(struct dirent);
+		strncpy(dst_arr[x].d_name, diren.name, FILE_MAX_NAME);
+
+		bytes_read += diren.size;
+	}
+
+	return bytes_read;
 }
 
 int ext2_fsstat(struct fs_stat* dst, context* context)

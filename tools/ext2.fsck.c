@@ -25,7 +25,7 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
         if(lseek(fd, driver->sectsize * sect, SEEK_SET) != 
 			driver->sectsize * sect)
         {
-                printf("Sectore read seek failure: %d\n",
+                printf("Sector read seek failure: %d\n",
                         driver->sectsize * sect);
                 exit(1);
         }
@@ -171,12 +171,19 @@ void ls(char* path)
 	struct dirent dir;
 	struct stat st;
 	
+	int offset = 0;
 	int x;
 	for(x = 0;;x++)
 	{
-		int result = fs.readdir(inode, x, &dir, fs.context);
-		if(result < 0) break;
+		memset(&dir, 0, sizeof(struct dirent));
+		int result = fs.getdents(inode, &dir, 1, offset, fs.context);
+		if(result < 0) 
+		{
+			printf("Error reading directory.\n");
+			return;
+		} else if(result == 0) break;
 		
+		offset += result;
 		fs.stat(inode, &st, fs.context);
 		memset(perm_str, 0, 64);
 		get_perm(&st, perm_str);
@@ -315,17 +322,23 @@ int main(int argc, char** argv)
 		{
 			char* buff = comm_buffer + 4;
 			char compose[512];
-			memset(compose, 0, 512);
-			strncpy(compose, cwd, 512);
-			strncat(compose, "/", 512);
-			strncat(compose, buff, 512);
+			if(*buff == '/')
+			{
+				/* Absolute*/
+				strncpy(compose, buff, 512);
+			} else {
+				memset(compose, 0, 512);
+				strncpy(compose, cwd, 512);
+				strncat(compose, "/", 512);
+				strncat(compose, buff, 512);
+			}
 			if(cat(compose))
 			{
 				printf("Cat error.\n");
 			}
 		} else if(!strncmp(comm_buffer, "cd", 2))
-                {
-                        char* buff = comm_buffer + 3;
+		{
+			char* buff = comm_buffer + 3;
 			if(*buff == '/')
 			{
 				/* absolute */

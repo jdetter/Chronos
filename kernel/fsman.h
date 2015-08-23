@@ -203,6 +203,15 @@ struct FSDriver
 		struct dirent* dst, void* context);
 
 	/**
+	 * Get directory entries from an inode. Pos is the offset to the
+	 * next available entry. Count is the amount of directory entries
+	 * to read. Returns the amount of bytes read. Returns -1 on failure
+	 * and returns 0 on end of directory.
+	 */
+	int (*getdents)(void* dir, struct dirent* dst_arr, uint count,
+                uint pos, void* context);
+
+	/**
 	 * Parse statistics into the stat structure.
 	 */
 	int (*fsstat)(struct fs_stat* dst, void* context);
