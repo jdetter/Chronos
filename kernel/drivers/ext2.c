@@ -324,19 +324,42 @@ static void ext2_cache_free(inode* ino, context* context)
 	slock_release(&context->cache_lock);
 }
 
+static int ext2_write_bgdt(int group,
+		struct ext2_block_group_table* src, context* context)
+{
+	char block[context->blocksize];
+	int block_group_addr = context->grouptableaddr;
+	int offset = group << context->grouptableshift;
+	block_group_addr += (offset >> context->blockshift);
+	offset &= context->blocksize - 1;
+
+	/* Read the block group */
+	if(context->driver->readblock(block, block_group_addr, 
+				context->driver) != context->blocksize)
+		return -1;
+	struct ext2_block_group_table* table = (void*)(block + offset);
+	memmove(table, src, sizeof(struct ext2_block_group_table));
+	if(context->driver->writeblock(block, block_group_addr, 
+				context->driver) != context->blocksize)
+		return -1;
+
+
+	return 0;
+}
+
 static int ext2_read_bgdt(int group, 
 		struct ext2_block_group_table* dst, context* context)
 {
 	char block[context->blocksize];
-        int block_group_addr = context->grouptableaddr;
-        int offset = group << context->grouptableshift;
-        block_group_addr += (offset >> context->blockshift);
-        offset &= context->blocksize - 1;
+	int block_group_addr = context->grouptableaddr;
+	int offset = group << context->grouptableshift;
+	block_group_addr += (offset >> context->blockshift);
+	offset &= context->blocksize - 1;
 
-        /* Read the block group */
-        if(context->driver->readblock(block, block_group_addr, context->driver) != context->blocksize)
-                return -1;
-        struct ext2_block_group_table* table = (void*)(block + offset);
+	/* Read the block group */
+	if(context->driver->readblock(block, block_group_addr, context->driver) != context->blocksize)
+		return -1;
+	struct ext2_block_group_table* table = (void*)(block + offset);
 	memmove(dst, table, 1 << context->grouptableshift);
 
 	return 0;
@@ -345,7 +368,7 @@ static int ext2_read_bgdt(int group,
 static int ext2_get_bit(char* block, int bit, context* context)
 {
 	uchar byte = bit >> 3; /* 8 bits in a byte */
-        uchar bit_offset = bit & 7; /* Get last 3 bits */
+	uchar bit_offset = bit & 7; /* Get last 3 bits */
 	if(byte >= context->blocksize)
 		return -1; /* Bit doesn't exist! */
 	return (block[byte] >> bit_offset) & 0x1;
@@ -353,12 +376,12 @@ static int ext2_get_bit(char* block, int bit, context* context)
 
 static int ext2_set_bit(char* block, int bit, int val, context* context)
 {
-        uchar byte = bit >> 3; /* 8 bits in a byte */
-        uchar bit_offset = bit & 7; /* Get last 3 bits */
-        if(byte >= context->blocksize)
-                return -1; /* Bit doesn't exist! */
+	uchar byte = bit >> 3; /* 8 bits in a byte */
+	uchar bit_offset = bit & 7; /* Get last 3 bits */
+	if(byte >= context->blocksize)
+		return -1; /* Bit doesn't exist! */
 	block[byte] |= (val & 0x01) << bit_offset;
-        return 0;
+	return 0;
 }
 
 static int ext2_alloc_block(int block_group, int blockid, context* context)
@@ -368,6 +391,7 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 	struct ext2_block_group_table table;
 	if(ext2_read_bgdt(block_group, &table, context))
 		return -1;
+
 	/* Is the block free? */
 	int block_offset = blockid >> context->bitmapshift;
 	int offset = blockid & (context->bitmapcount - 1);
@@ -386,28 +410,30 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 
 	/* Write the updated bitmap */
 	if(context->driver->writeblock(block,
-                                block_offset + table.block_bitmap_address,                    
-                                context->driver) != context->blocksize)
-                return -1;
+				block_offset + table.block_bitmap_address,                    
+				context->driver) != context->blocksize)
+		return -1;
 
-	/* Read the block group table */
-	/* TODO: update block group table metadata (free blocks - 1)*/
+	/* update block group table metadata (free blocks - 1)*/
+	table.free_blocks--;
+	if(ext2_write_bgdt(block_group, &table, context))
+		return -1;
 
 	return 0;
 }
 
-static int ext2_find_free_blocks(int group, int hint, 
+static int ext2_find_free_blocks(int hint, 
 		int contiguous, context* context)
 {
 	struct ext2_block_group_table table;
 	char block[context->blocksize];
 
 	/* Read the table descriptor */
-	if(ext2_read_bgdt(group, &table, context))
+	if(ext2_read_bgdt(hint, &table, context))
 		return -1;
 
 	if(context->driver->readblock(block, table.block_bitmap_address, 
-		context->driver) != context->blocksize)
+				context->driver) != context->blocksize)
 		return -1;
 	int sequence = 0; /* How many free in a row have we found? */
 	int range_start = -1;
@@ -416,7 +442,7 @@ static int ext2_find_free_blocks(int group, int hint,
 	{
 		/* Are there any free blocks in this byte? */
 		if(!(x & 7) /* Is this a new byte? */
-			&& block[x & ~7] == 0xFF)
+				&& block[x & ~7] == 0xFF)
 		{
 			/* This byte is completely allocated */
 			x += 7;
@@ -449,43 +475,11 @@ static int ext2_find_free_blocks(int group, int hint,
 	/* Allocate the range */
 	for(x = 0;x < sequence;x++)
 	{
-		if(ext2_alloc_block(group, range_start + x, context))
+		if(ext2_alloc_block(hint, range_start + x, context))
 			return -1;
 	}
 
-	return range_start;
-}
-
-/**
- * Quickly find any free block
- */
-static int ext2_find_free_block(int hint, context* context)
-{
-	int x = 0;
-	int block = -1;
-	if(hint > 0)x = hint;
-	for(;x < context->groupcount && block <= 0;x++)
-	{
-		block = ext2_find_free_blocks(x, -1, 1, context);
-		if(block > 0) break;
-	}
-	if(hint > 0 && block <= 0) /* that hint was bad */
-		return(ext2_find_free_block(-1, context));
-	struct ext2_block_group_table table;
-	if(ext2_read_bgdt(x, &table, context))
-		return -1;
-
-	if(block > 0) 
-	{
-		ext2_alloc_block(x, block, context);
-		/* Update the table */
-		/* TODO: update the table */
-
-		return block + table.inode_table + context->inodeblocks;
-	}
-
-
-	return -1;
+	return range_start + table.inode_table + context->inodeblocks;
 }
 
 static int ext2_read_inode(disk_inode* dst, int num, context* context)
@@ -604,7 +598,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(!indirect)
 		{
 			/* Find any free block */
-			indirect = ext2_find_free_block(block_hint, 
+			indirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(indirect < 0)
 				return -1;
@@ -636,7 +630,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(!dindirect)
 		{
 			/* Find any free block */
-			dindirect = ext2_find_free_block(block_hint, 
+			dindirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(dindirect < 0)
 				return -1;
@@ -662,7 +656,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(indirect == 0)
 		{
 			/* Find any free block */
-			indirect = ext2_find_free_block(block_hint,
+			indirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(indirect < 0)
 				return -1;
@@ -708,7 +702,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(!tindirect)
 		{
 			/* Find any free block */
-			tindirect = ext2_find_free_block(block_hint,
+			tindirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(tindirect < 0)
 				return -1;
@@ -729,7 +723,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(!dindirect)
 		{
 			/* Find any free block */
-			dindirect = ext2_find_free_block(block_hint,
+			dindirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(dindirect < 0)
 				return -1;
@@ -753,7 +747,7 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 		if(!indirect)
 		{
 			/* Find any free block */
-			indirect = ext2_find_free_block(block_hint,
+			indirect = ext2_find_free_blocks(block_hint, 1,
 					context);
 			if(indirect < 0)
 				return -1;
@@ -849,12 +843,64 @@ static int _ext2_write(void* src, uint start, uint sz,
 		((uint_64)ino->upper_size << 32);
 	if(start + sz > file_size)
 	{
-		/* We may need to allocate blocks */
-		int required_blocks = (start + sz) >> context->blockshift;
-		int blocks = file_size >> context->blockshift;
-		int blocks_to_add = required_blocks - blocks;
+		/* Allocate blocks */	
 	}
 
+	void* src_c = src;
+	uint bytes = 0;
+	uint write = 0;
+	char block[context->blocksize];
+	int start_index = start >> context->blockshift;
+	int end_index = (start + sz) >> context->blockshift;
+
+	/* read the first block */
+	write = context->blocksize - (start & (context->blocksize - 1));
+	if(write > sz) write = sz;
+	int lba = ext2_block_address(start_index, ino, context);
+
+	if(write != context->blocksize)
+	{
+		/* We're not writing this entire block */
+		if(context->driver->readblock(block, lba,
+					context->driver) != context->blocksize)
+			return -1;
+	}
+
+	memmove(block + (start & (context->blocksize - 1)), src, write);
+	/* Now we can write the block back to disk */
+	if(context->driver->writeblock(block, lba,
+				context->driver) != context->blocksize)
+		return -1;
+	if(write == sz) return sz;
+
+	/* write middle blocks */
+	int x = start_index + 1;
+	for(;x < end_index;x++)
+	{
+		memmove(block, src_c + bytes, context->blocksize);
+		lba = ext2_block_address(x, ino, context);
+		if(context->driver->writeblock(block, lba,
+					context->driver) !=context->blocksize)
+			return -1;
+		bytes += context->blocksize;
+	}
+
+	/* Are we done? */
+	if(bytes == sz) return sz;
+	lba = ext2_block_address(x, ino, context);
+
+	/* read final block */
+	if(sz - bytes == context->blocksize)
+	{
+		if(context->driver->readblock(block, lba,
+					context->driver) !=context->blocksize)
+			return -1;
+	}
+	memmove(block, src_c + bytes, sz - bytes);
+
+	if(context->driver->writeblock(block, lba,
+				context->driver) !=context->blocksize)
+		return -1;
 	return sz;
 }
 
@@ -993,7 +1039,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 {
 	if(sizeof(context) > FS_CONTEXT_SIZE)
 	{
-		cprintf("EXT2 Fatal error: not enough context space.\n");
+		cprintf("ext2: not enough context space.\n");
 		return -1;
 	}
 
@@ -1047,6 +1093,11 @@ int ext2_init(uint superblock_address, uint sectsize,
 	context->groupcount = base->block_count / 
 		base->blocks_per_group;
 	context->grouptableshift = 5; /* size = 32*/
+	if(sizeof(struct ext2_block_group_table) !=1<<context->grouptableshift)
+	{
+		cprintf("ext2: Bad block group table size!\n");
+		return -1;
+	}
 	context->grouptableaddr = 1; /* 2048, 4096, 8192, ...*/
 	if(context->blocksize == 512 )
 		context->grouptableaddr = 4;
@@ -1066,7 +1117,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 		/* Inode size is fixed at 128 */
 		context->inodesize = 128;	
 	} else {
-		printf("Invalid revision type.\n");
+		cprintf("ext2: Invalid revision type.\n");
 		return -1;
 	}
 
