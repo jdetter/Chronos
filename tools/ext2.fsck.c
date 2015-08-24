@@ -266,6 +266,7 @@ int main(int argc, char** argv)
 	struct stat st;
 	if(fstat(fd, &st))
 	{
+		perror("");
 		printf("fstat failure!\n");
 		return -1;
 	}
@@ -354,7 +355,10 @@ int main(int argc, char** argv)
 		} else if(!strncmp(comm_buffer, "pwd", 3))
 		{
 			puts(cwd);
-		}
+		} else if(!strncmp(comm_buffer, "test", 4))
+                {
+                        ext2_test(&fs.context);
+                }
 	}
 	return 0;
 }

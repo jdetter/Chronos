@@ -193,6 +193,7 @@ struct ext2_block_group_table
 	uint_16 free_blocks; /* How many blocks are available? */
 	uint_16 free_inodes; /* How many inodes are available? */
 	uint_16 dir_count; /* How many directories are in this group? */
+	char unused[14];
 };
 
 struct ext2_dirent
@@ -384,6 +385,94 @@ static int ext2_set_bit(char* block, int bit, int val, context* context)
 	return 0;
 }
 
+static int ext2_alloc_inode(int num, int dir, context* context)
+{
+        char block[context->blocksize];
+        if(num <= 0) return -1;
+        int block_group = (num - 1) >> context->inodegroupshift;
+        int local_index = (num - 1) &
+                (context->base_superblock.inodes_per_group - 1);
+
+        struct ext2_block_group_table table;
+        if(ext2_read_bgdt(block_group, &table, context))
+		return -1;
+
+	/* Read the bitmap */
+	if(context->driver->readblock(block, table.inode_bitmap_address, 
+				context->driver) 
+			!= context->blocksize) return -1;
+	/* Make sure this inode is not already allocated */
+	if(ext2_get_bit(block, local_index, context))
+		return -1; /* Already allocated */
+	/* Set the bit */
+	if(ext2_set_bit(block, local_index, 1, context))
+		return -1;
+
+	/* Update table metadata */
+	table.free_inodes--;
+	if(dir) table.dir_count++;
+
+	/* Write the updated table */
+	if(ext2_write_bgdt(block_group, &table, context))
+		return -1;
+	return 0;
+}
+
+static int ext2_find_free_inode_rec(int group, int dir, context* context)
+{
+	char block[context->blocksize];
+
+	/* Get the table */
+	struct ext2_block_group_table table;
+	if(ext2_read_bgdt(group, &table, context))
+		return -1;
+
+	/* Read the bitmap */
+	if(context->driver->readblock(block, table.inode_bitmap_address, 
+				context->driver) 
+			!= context->blocksize) return -1;
+
+
+	int x;
+	int found = 0;
+	for(x = 0;x < context->base_superblock.inodes_per_group;x++)
+	{
+		if(ext2_get_bit(block, x, context))
+		{
+			/* Found a free inode */
+			found = 1;
+			break;
+		}
+	}
+
+	if(!found) return -1;
+
+	int ino_num = x + (group << context->inodegroupshift);
+
+	/* allocate this inode */
+	if(ext2_alloc_inode(ino_num, dir, context))
+		return -1; /* Couldn't be allocated? */
+
+	return ino_num;
+}
+
+static int ext2_find_free_inode(int hint, int dir, context* context)
+{
+	/* First try the hinted group */
+	int result = ext2_find_free_inode_rec(hint, dir, context);
+	if(result >= 0) return result;
+
+	int x;
+	for(x = 0;x < context->groupcount;x++)
+	{
+		if(x == hint) continue; /* Dont retry hint */
+		result = ext2_find_free_inode_rec(x, dir, context);
+		if(result >= 0) return result;
+	}
+
+	return -1;
+}
+
 static int ext2_alloc_block(int block_group, int blockid, context* context)
 {
 	char block[context->blocksize];
@@ -422,14 +511,14 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 	return 0;
 }
 
-static int ext2_find_free_blocks(int hint, 
+static int ext2_find_free_blocks_rec(int group,
 		int contiguous, context* context)
 {
 	struct ext2_block_group_table table;
 	char block[context->blocksize];
 
 	/* Read the table descriptor */
-	if(ext2_read_bgdt(hint, &table, context))
+	if(ext2_read_bgdt(group, &table, context))
 		return -1;
 
 	if(context->driver->readblock(block, table.block_bitmap_address, 
@@ -475,11 +564,39 @@ static int ext2_find_free_blocks(int hint,
 	/* Allocate the range */
 	for(x = 0;x < sequence;x++)
 	{
-		if(ext2_alloc_block(hint, range_start + x, context))
+		if(ext2_alloc_block(group, range_start + x, context))
 			return -1;
 	}
 
 	return range_start + table.inode_table + context->inodeblocks;
+}
+
+static int ext2_find_free_blocks(int hint,
+		int contiguous, context* context)
+{
+	int result;
+	if(hint >= 0)
+	{
+		/* Attempt the hint first */
+		result = ext2_find_free_blocks_rec(hint, contiguous, context);
+		if(result > 0) return result;
+	}
+
+	/* Try every group except the hint */
+	int x;
+	for(x = 0;x < context->groupcount;x++)
+	{
+		if(x == hint) continue;
+
+		result = ext2_find_free_blocks_rec(hint, contiguous, context);
+		if(result > 0) return result;
+	}
+
+	/** 
+	 * The disk is full, or the disk is too fragmented or the requested
+	 * amount of contiguous blocks is too large.
+	 */
+	return -1;
 }
 
 static int ext2_read_inode(disk_inode* dst, int num, context* context)
@@ -503,6 +620,38 @@ static int ext2_read_inode(disk_inode* dst, int num, context* context)
 	context->driver->readblock(block, inode_address, context->driver);
 	disk_inode* ino = (void*)(block + inode_block_offset);
 	memmove(dst, ino, sizeof(disk_inode));
+
+	return 0;
+}
+
+static int ext2_write_inode(disk_inode* src, int num, context* context)
+{
+	char block[context->blocksize];
+	if(num <= 0) return -1;
+	int block_group = (num - 1) >> context->inodegroupshift;
+	int local_index = (num - 1) &
+		(context->base_superblock.inodes_per_group - 1);
+
+	struct ext2_block_group_table table;
+	ext2_read_bgdt(block_group, &table, context);
+
+	/* Get the address of the inode */
+	uint inode_offset = local_index << context->inodesizeshift;
+	uint inode_address = table.inode_table +
+		(inode_offset >> context->blockshift);
+	uint inode_block_offset = inode_offset & (context->blocksize - 1);
+
+	/* Read from the inode table */
+	if(context->driver->readblock(block, inode_address, context->driver)
+			!= context->blocksize)
+		return -1;
+	disk_inode* ino = (void*)(block + inode_block_offset);
+	memmove(ino, src, sizeof(disk_inode));
+
+	/* Write block back to disk */
+	if(context->driver->writeblock(block, inode_address, context->driver)
+			!= context->blocksize)
+		return -1;
 
 	return 0;
 }
@@ -832,24 +981,63 @@ static int _ext2_read(void* dst, uint start, uint sz,
 	return sz;
 }
 
-static int _ext2_write(void* src, uint start, uint sz,
+/**
+ * The writing algorithm is much more complex here. I have optimized it to
+ * handle long writes so that the file will have long contiguous sequences
+ * of blocks. This will make sequential writes very very fast.
+ */
+static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 		disk_inode* ino, context* context)
 {
+	char block[context->blocksize];
+
 	/* 
 	 * If we're writing past the end of the file, we 
 	 * need to add blocks where were writing
 	 */
-	uint_64 file_size = ino->lower_size |
-		((uint_64)ino->upper_size << 32);
-	if(start + sz > file_size)
+	//uint_64 file_size = ino->lower_size |
+	//	((uint_64)ino->upper_size << 32);
+
+	/* We need to add blocks where were about to write */
+
+	int start_alloc = start >> context->blockshift;
+	int end_alloc = (start + sz) >> context->blockshift;
+
+	/* Ask for a contiguous sequence of blocks in our group */
+	int sequence_start = ext2_find_free_blocks(group_hint, 
+			end_alloc - start_alloc + 1, context);
+
+	int x = 0;
+	for(;x + start_alloc < end_alloc + 1;x++)
 	{
-		/* Allocate blocks */	
+		/* Get the lba of the existing block */
+		int lba = ext2_block_address(start_alloc + x, ino, context);
+		if(lba && (x == 0 || x + start_alloc == end_alloc))
+		{
+			/* Contents should be copied */
+
+			/* Read data from old location */
+			if(context->driver->readblock(block, lba, 
+						context->driver) 
+					!= context->blocksize)
+				return -1;
+			/* Copy to new location */
+			if(context->driver->writeblock(block, 
+						sequence_start + x, 
+						context->driver) 
+					!= context->blocksize)
+				return -1;
+		}
+
+		/* Install new lba */
+		if(ext2_set_block_address(x + start_alloc, sequence_start + x,
+					group_hint, ino, context))
+			return -1;
 	}
 
 	void* src_c = src;
 	uint bytes = 0;
 	uint write = 0;
-	char block[context->blocksize];
 	int start_index = start >> context->blockshift;
 	int end_index = (start + sz) >> context->blockshift;
 
@@ -874,7 +1062,7 @@ static int _ext2_write(void* src, uint start, uint sz,
 	if(write == sz) return sz;
 
 	/* write middle blocks */
-	int x = start_index + 1;
+	x = start_index + 1;
 	for(;x < end_index;x++)
 	{
 		memmove(block, src_c + bytes, context->blocksize);
@@ -1025,11 +1213,27 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 
 int ext2_test(context* context)
 {
-	disk_inode ino;
-	int inonum = ext2_lookup_inode("/bin/bash", &ino, context);
-	cprintf("Inode number for /bin/bash: %d\n", inonum);
+	inode* ino = ext2_cache_alloc(context);
+	int ino_num = ext2_lookup("/folder", NULL, context);
+	ext2_read_inode(&ino->ino, ino_num, context);
 
-	ext2_cache_free(context->root, context);
+	char block[context->blocksize];
+	/* Recreate root inode */
+	int x;
+	for(x = 0;;x++)
+	{
+		int lba = ext2_block_address(x, &ino->ino, context);
+		if(!lba) break;
+		context->driver->readblock(block, lba, context->driver);
+		/* Allocate a new block */
+		int new_lba = ext2_find_free_blocks(0, 1, context);
+		context->driver->writeblock(block, new_lba, context->driver);
+		ext2_set_block_address(x, new_lba, 0, &ino->ino, context);
+		printf("%d: %d replaced by %d.\n", x, lba, new_lba);
+	}
+
+	/* Write the folder */
+	ext2_write_inode(&ino->ino, ino_num, context);
 	return 0;
 }
 
@@ -1093,7 +1297,8 @@ int ext2_init(uint superblock_address, uint sectsize,
 	context->groupcount = base->block_count / 
 		base->blocks_per_group;
 	context->grouptableshift = 5; /* size = 32*/
-	if(sizeof(struct ext2_block_group_table) !=1<<context->grouptableshift)
+	if(sizeof(struct ext2_block_group_table) 
+			!= (1 << context->grouptableshift))
 	{
 		cprintf("ext2: Bad block group table size!\n");
 		return -1;
@@ -1292,7 +1497,8 @@ int ext2_read(inode* ino, void* dst, uint start, uint sz,
 int ext2_write(inode* ino, void* src, uint start, uint sz,
 		context* context)
 {
-	return _ext2_write(src, start, sz, &ino->ino, context);
+	_ext2_write(NULL, 0, 0, 0, 0, NULL);
+	return -1;
 }
 
 int ext2_rename(const char* src, const char* dst, context* context)
