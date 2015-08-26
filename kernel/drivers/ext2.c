@@ -60,6 +60,7 @@ int log2_linux(uint value)
 #include "fsman.h"
 #include "ext2.h"
 #include "diskio.h"
+#include "cacheman.h"
 
 #define EXT2_DIRECT_COUNT 12
 
@@ -127,11 +128,9 @@ struct ext2_disk_inode
 
 struct ext2_cache_inode
 {
-	uchar allocated;
 	struct ext2_disk_inode ino;
 	uint_32 inode_num;
 	uint_32 inode_group;
-	uint_32 references;
 	char path[FILE_MAX_PATH];
 };
 
@@ -270,11 +269,7 @@ typedef struct ext2_context context;
 
 struct ext2_context
 {
-	/* Some cache information */
-	slock_t cache_lock; /* Lock that must acquired to touch the cache*/
-	uint cache_count; /* How many inodes are there in memory? */
-	inode* cache; /* Inode cache */
-	slock_t fs_lock; /* Lock that must be acquired to touch the fs */
+	struct cache inode_cache;
 	inode* root; /* The root inode */
 
 	/* superblock information */
@@ -306,34 +301,17 @@ struct ext2_context
 	int inodeblocks; /* How many blocks are inode blocks? (grp)*/
 };
 
-static inode* ext2_cache_alloc(context* context)
+static int ext2_inode_cache_check(void* obj, int id, struct cache* cache)
 {
-	/* acquire lock */
-	slock_acquire(&context->cache_lock);
-	inode* result = NULL;
+	/* The object is just a cache node */
+	inode* ino = obj;
 
-	int x;
-	for(x = 0;x < context->cache_count;x++)
-	{
-		if(!context->cache[x].allocated)
-		{
-			context->cache[x].allocated = 1;
-			result = &context->cache[x];
-			break;
-		}
-	}
+	/* The id is actually a pointer to a char array */
+	char* path = (char*)id;
 
-	slock_release(&context->cache_lock);
+	if(!path || !ino) return -1;
 
-	return result;
-}
-
-static void ext2_cache_free(inode* ino, context* context)
-{
-	slock_acquire(&context->cache_lock);
-	/* Make sure there aren't any references left */
-	if(!ino->references) memset(ino, 0, sizeof(inode));
-	slock_release(&context->cache_lock);
+	return strcmp(ino->path, path);
 }
 
 static int ext2_write_bgdt(int group,
@@ -1297,8 +1275,8 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
                 memmove(current.name, file, strlen(file));
 
 		/* Flush to disk */
-		_ext2_write(&current, pos, 8 + strlen(file), group,
-			dir, context);
+		if(_ext2_write(&current, pos, 8 + strlen(file), group,
+			dir, context) != 8 + strlen(file)) return -1;
 
 		/* update the directory size */
 		dir_size += context->blocksize;
@@ -1308,20 +1286,23 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 		/* Allocate the size we need */
 		current.size -= needed;
 		/* Flush to disk */
-		_ext2_write(&current, pos, 8, group, dir, context);
+		if(_ext2_write(&current, pos, 8, group, dir, context)
+				!= 8) return -1;
 
 		/* update to our new position */
 		pos += current.size;
 		/* make the new entry */
 		current.size = needed;
-                current.inode = inode_num;
-                current.name_length = strlen(file);
-                current.type = type;
-                memmove(current.name, file, strlen(file));
-	
+		current.inode = inode_num;
+		current.name_length = strlen(file);
+		current.type = type;
+		memmove(current.name, file, strlen(file));
+
 		/* Flush to disk */
-		_ext2_write(&current, pos, 8 + strlen(file), 
-				group, dir, context);	
+		if(_ext2_write(&current, pos, 8 + strlen(file), 
+					group, dir, context) 
+				!= 8 + strlen(file))
+			return -1;
 
 		/* The directory size has not changed. */
 	}
@@ -1406,6 +1387,12 @@ static int ext2_free_dirent(disk_inode* dir, int group,
 static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 		int follow, disk_inode* handle, context* context)
 {
+	/* Check if this is root */
+	if(!strcmp("/", path))
+	{
+		if(dst) memset(dst, 0, sizeof(struct ext2_dirent));
+		return context->root->inode_num;
+	}
 	uint_64 file_size = handle->lower_size | 
 		((uint_64)handle->upper_size << 32);
 	char parent[EXT2_MAX_PATH];
@@ -1438,7 +1425,8 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 					return -1;
 				if(S_ISDIR(new_handle.mode))	
 					return ext2_lookup_rec(path, dst, 
-							&new_handle,context);
+							follow, &new_handle,
+							context);
 				if(S_ISLNK(new_handle.mode))
 				{
 					char path_buff[EXT2_MAX_PATH];
@@ -1466,7 +1454,7 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 static int ext2_lookup(const char* path, struct ext2_dirent* dst, 
 		context* context)
 {
-	return ext2_lookup_rec(path, dst, &context->root->ino, context);
+	return ext2_lookup_rec(path, dst, 1, &context->root->ino, context);
 }
 
 static int ext2_lookup_inode(const char* path, disk_inode* dst, 
@@ -1507,18 +1495,10 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 
 int ext2_test(context* context)
 {
-	char* str = "This is new content.\n";
-	inode* i = ext2_open("/bin/bash", context);
+	/* flush the root */
+	ext2_write_inode(&context->root->ino, context->root->inode_num, context);
 
-	_ext2_write(str, 0, strlen(str), 0, &i->ino, context);
-
-	ext2_close(i, context);
-
-
-	if(1)return 0;
-	ext2_free_inode(0, 0, NULL);
-	ext2_find_free_inode(0, 0, NULL);
-	ext2_write_inode(NULL, 0, NULL);
+	return 0;
 }
 
 int ext2_init(uint superblock_address, uint sectsize,
@@ -1538,12 +1518,12 @@ int ext2_init(uint superblock_address, uint sectsize,
 	memset(fs->cache, FS_CACHE_SIZE, 0);
 
 	context* context = (void*)fs->context;
-	slock_init(&context->cache_lock);
-	context->cache_count = cache_sz / sizeof(inode);
-	context->cache = (void*)fs->cache;
 	context->driver = driver;
-	context->sectsize = sectsize;
 	context->fs = fs;
+	context->sectsize = sectsize;
+	cache_init(fs->cache, cache_sz, sizeof(inode), 
+			&context->inode_cache);
+	cache_set_check(ext2_inode_cache_check, &context->inode_cache);
 
 	/* enable read and write for the driver */
 	diskio_setup(driver);
@@ -1617,10 +1597,8 @@ int ext2_init(uint superblock_address, uint sectsize,
 		context->blockshift;
 
 	/* Cache the root inode */
-	inode* root = ext2_cache_alloc(context);
+	inode* root = cache_reference(0, 1, &context->inode_cache);
 	strncpy(root->path, "/", 2);
-	root->allocated = 1;
-	root->references = 1;
 	root->inode_num = 2;
 	/* For whatever reason the root inode is always 2. */
 	if(ext2_read_inode(&root->ino, 2, context))
@@ -1649,49 +1627,21 @@ int ext2_init(uint superblock_address, uint sectsize,
 
 inode* ext2_opened(const char* path, context* context)
 {
-	slock_acquire(&context->cache_lock);
-	inode* ino = NULL;
-	int x;
-	for(x = 0;x < context->cache_count;x++)
-	{
-		if(!context->cache[x].allocated) continue;
-		if(!strcmp(context->cache[x].path, path))
-		{
-			ino = context->cache + x;
-			break;
-		}
-	}
-
-	/* Did we find anything? */
-	if(ino) ino->references++;
-	slock_release(&context->cache_lock);
-	return ino;
+	return cache_search((int)path, &context->inode_cache);
 }
 
 inode* ext2_open(const char* path, context* context)
 {
+	cprintf("Opening: %s\n", path);
 	/* Check to see if it is already opened */
 	inode* ino = NULL;
 	if((ino = ext2_opened(path, context)))
-	{
-		slock_acquire(&context->cache_lock);
-		/* Add a reference */
-		if(ino->references != 0 && ino->allocated == 1)
-			ino->references++;
-		else {
-			/* Someone deallocated this node! */
-			ino->allocated = 0;
-			slock_release(&context->cache_lock);
-			return ext2_open(path, context);
-		}
-		slock_release(&context->cache_lock);
 		return ino;
-	}
 
+	cprintf("Opened fresh copy: %s\n", path);
 	/* The file is not already opened. */
-	ino = ext2_cache_alloc(context);
+	ino = cache_reference(0, 1, &context->inode_cache);
 	strncpy(ino->path, path, FILE_MAX_PATH);
-	ino->references++;
 
 	/* Get the file metadata */
 	int num = ext2_lookup_inode(path, &ino->ino, context);
@@ -1703,14 +1653,15 @@ inode* ext2_open(const char* path, context* context)
 
 void ext2_close(inode* ino, context* context)
 {
+	/* Create a local copy. */
+	inode ino_copy;
+	memmove(&ino_copy, ino, sizeof(inode));
+
 	if(!ino) return;
-	ino->references--;
-	if(!ino->references)
+	if(!cache_dereference(ino, &context->inode_cache))
 	{
 		/* write the node to disk */
 		ext2_write_inode(&ino->ino, ino->inode_num, context);
-		/* Attempt to free the node if possible */
-		ext2_cache_free(ino, context);
 	}
 }
 
@@ -1740,11 +1691,15 @@ int ext2_stat(inode* ino, struct stat* dst, context* context)
 int ext2_create(const char* path, mode_t permissions, 
 		uid_t uid, gid_t gid, context* context)
 {
+	/* Make sure this is just a normal file */
+	permissions &= ~S_IFMT;
+	permissions |= S_IFREG;
 	/* Get the parent directory */
 	char parent[EXT2_MAX_PATH];
 	if(file_path_parent(path, parent, EXT2_MAX_PATH))
 		return -1;
 	const char* name = path + (strlen(parent) + 1);
+	if(!strcmp(parent, "/")) name--;/* adjust for root */
 
 	inode* parent_inode = ext2_open(parent, context);
 
@@ -1806,6 +1761,7 @@ int ext2_link(const char* file, const char* link, context* context)
 	if(file_path_parent(link, parent, EXT2_MAX_PATH))
 		return -1;
 	const char* name = link + (strlen(parent) + 1);
+	if(!strcmp("/", parent)) name--; /* compensate for root */
 
 	inode* parent_inode = ext2_open(parent, context);
 

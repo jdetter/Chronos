@@ -3,6 +3,9 @@
 
 #define FS_HARDWARE_CONTEXT_SIZE 64
 
+/* Some dependant headers */
+#include "cacheman.h"
+
 struct FSHardwareDriver
 {
 	uchar valid; /* 1 = valid, 0 = invalid. */
@@ -11,6 +14,10 @@ struct FSHardwareDriver
 	uint sectsize;
 	uint blocksize;
 	uint blockshift;
+	struct cache cache;
+	slock_t cache_lock; /* Required to use reference and dereference */
+	void* (*reference)(uint block, struct FSHardwareDriver* driver);
+	int (*dereference)(void* ref, struct FSHardwareDriver* driver);
 	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);  
         int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
 	int (*readsect)(void* dst, uint sect, struct FSHardwareDriver* driver); 

@@ -214,6 +214,25 @@ int cat(char* path)
 	return 0;
 }
 
+int touch(char* path)
+{
+	return fs.create(path, 0644, 0, 0, fs.context);
+}
+
+int hard_link(char* argument)
+{
+	char* arg1 = argument;
+	char* arg2 = argument;
+	for(;*arg2 != ' ' && *arg2 != 0;arg2++);
+	if(*arg2 == ' ')
+	{
+		*arg2 = 0;	
+		arg2++;
+	}
+
+	return fs.link(arg1, arg2, fs.context);
+}
+
 int ext2_test(void* context);
 int main(int argc, char** argv)
 {
@@ -355,9 +374,15 @@ int main(int argc, char** argv)
 		} else if(!strncmp(comm_buffer, "pwd", 3))
 		{
 			puts(cwd);
+		} else if(!strncmp(comm_buffer, "touch ", 6))
+                {
+                        touch(comm_buffer + 6);
 		} else if(!strncmp(comm_buffer, "test", 4))
                 {
                         ext2_test(&fs.context);
+                } else if(!strncmp(comm_buffer, "link ", 5))
+                {
+                        hard_link(comm_buffer + 5);
                 }
 	}
 	return 0;
