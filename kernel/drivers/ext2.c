@@ -130,6 +130,7 @@ struct ext2_cache_inode
 	uchar allocated;
 	struct ext2_disk_inode ino;
 	uint_32 inode_num;
+	uint_32 inode_group;
 	uint_32 references;
 	char path[FILE_MAX_PATH];
 };
@@ -252,6 +253,16 @@ struct ext2_dirent
 #define EXT2_INODE_HASHED		0x00010000
 #define EXT2_INODE_AFS_DIR		0x00020000
 #define EXT2_INODE_JOURNAL_DATA		0x00040000
+
+/* EXT2 file types */
+#define EXT2_FILE_UNKNOWN 	0x0
+#define EXT2_FILE_REG_FILE 	0x1
+#define EXT2_FILE_DIR 		0x2
+#define EXT2_FILE_CHRDEV 	0x3
+#define EXT2_FILE_BLKDEV 	0x4
+#define EXT2_FILE_FIFO 		0x5
+#define EXT2_FILE_SOCK 		0x6
+#define EXT2_FILE_SYMLINK 	0x7
 
 typedef struct ext2_disk_inode disk_inode;
 typedef struct ext2_cache_inode inode;
@@ -381,7 +392,9 @@ static int ext2_set_bit(char* block, int bit, int val, context* context)
 	uchar bit_offset = bit & 7; /* Get last 3 bits */
 	if(byte >= context->blocksize)
 		return -1; /* Bit doesn't exist! */
-	block[byte] |= (val & 0x01) << bit_offset;
+	if(val) block[byte] |= 1 << bit_offset;
+	else block[byte] &= ~(1 << bit_offset);
+
 	return 0;
 }
 
@@ -416,6 +429,39 @@ static int ext2_alloc_inode(int num, int dir, context* context)
 	if(ext2_write_bgdt(block_group, &table, context))
 		return -1;
 	return 0;
+}
+
+static int ext2_free_inode(int num, int dir, context* context)
+{
+        char block[context->blocksize];
+        if(num <= 0) return -1;
+        int block_group = (num - 1) >> context->inodegroupshift;
+        int local_index = (num - 1) &
+                (context->base_superblock.inodes_per_group - 1);
+
+        struct ext2_block_group_table table;
+        if(ext2_read_bgdt(block_group, &table, context))
+                return -1;
+
+        /* Read the bitmap */
+        if(context->driver->readblock(block, table.inode_bitmap_address,
+                                context->driver)
+                        != context->blocksize) return -1;
+        /* Make sure this inode is allocated */
+        if(!ext2_get_bit(block, local_index, context))
+                return -1; /* not allocated */
+        /* Clear the bit */
+        if(ext2_set_bit(block, local_index, 0, context))
+                return -1;
+
+        /* Update table metadata */
+        table.free_inodes++;
+        if(dir) table.dir_count--;
+
+        /* Write the updated table */
+        if(ext2_write_bgdt(block_group, &table, context))
+                return -1;
+        return 0;
 }
 
 static int ext2_find_free_inode_rec(int group, int dir, context* context)
@@ -505,6 +551,57 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 
 	/* update block group table metadata (free blocks - 1)*/
 	table.free_blocks--;
+	if(ext2_write_bgdt(block_group, &table, context))
+		return -1;
+
+	return 0;
+}
+
+static int ext2_free_block(int block_num, context* context)
+{
+        char block[context->blocksize];
+	struct ext2_block_group_table table;
+	struct ext2_block_group_table attempt;
+
+	/* Lets find the group that this block belongs to */
+	int x;
+	for(x = 0;x < context->groupcount;x++)
+	{
+		if(ext2_read_bgdt(x, &attempt, context))
+			return -1;
+		if(attempt.inode_table < block_num)
+			memmove(&table, &attempt, 
+					sizeof(struct ext2_block_group_table));
+		else break;
+	}
+	int block_group = x - 1;
+	printf("Calculated block group: %d\n", block_group);
+	int blockid = block_num - (table.inode_table + context->inodeblocks);
+	printf("Calculated block id: %d\n", blockid);
+
+	int block_offset = blockid >> context->bitmapshift;
+	int offset = blockid & (context->bitmapcount - 1);
+	if(context->driver->readblock(block,
+				block_offset + table.block_bitmap_address,
+				context->driver) != context->blocksize)
+		return -1;
+
+	/* Is the block allocated? */
+	if(!ext2_get_bit(block, offset, context))
+		return -1; /* Already free */
+
+	/* Unset the bit */
+	if(ext2_set_bit(block, offset, 0, context))
+		return -1;
+
+	/* Write the updated bitmap */
+	if(context->driver->writeblock(block,
+				block_offset + table.block_bitmap_address,       
+				context->driver) != context->blocksize)
+		return -1;
+
+	/* update block group table metadata (free blocks - 1)*/
+	table.free_blocks++;
 	if(ext2_write_bgdt(block_group, &table, context))
 		return -1;
 
@@ -939,7 +1036,7 @@ static int _ext2_read(void* dst, uint start, uint sz,
 	if(start + sz > file_size)
 		sz = file_size - start;
 
-	void* dst_c = dst;
+	char* dst_c = dst;
 	uint bytes = 0;
 	uint read = 0;
 	char block[context->blocksize];
@@ -984,10 +1081,12 @@ static int _ext2_read(void* dst, uint start, uint sz,
 /**
  * The writing algorithm is much more complex here. I have optimized it to
  * handle long writes so that the file will have long contiguous sequences
- * of blocks. This will make sequential writes very very fast.
+ * of blocks. This will make sequential writes very very fast. A huge
+ * performance gain here is to ask: when should we replace blocks? When
+ * they cause a fragment? When they are on a 'seam'?
  */
-static int _ext2_write(void* src, uint start, uint sz, int group_hint,
-		disk_inode* ino, context* context)
+static int _ext2_write(const void* src, uint start, uint sz, 
+		int group_hint, disk_inode* ino, context* context)
 {
 	char block[context->blocksize];
 
@@ -995,8 +1094,19 @@ static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 	 * If we're writing past the end of the file, we 
 	 * need to add blocks where were writing
 	 */
-	//uint_64 file_size = ino->lower_size |
-	//	((uint_64)ino->upper_size << 32);
+	uint_64 file_size = ino->lower_size |
+		((uint_64)ino->upper_size << 32);
+	uint_64 start_64 = start;
+	uint_64 sz_64 = sz;
+	uint_64 end_write = start_64 + sz_64;
+
+	/* Are we growing the file? */
+        if(end_write > file_size)
+        {
+                /* Update size */
+                ino->lower_size = (uint_32)end_write;
+                ino->upper_size = (uint_32)(end_write >> 32);
+        }
 
 	/* We need to add blocks where were about to write */
 
@@ -1006,12 +1116,14 @@ static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 	/* Ask for a contiguous sequence of blocks in our group */
 	int sequence_start = ext2_find_free_blocks(group_hint, 
 			end_alloc - start_alloc + 1, context);
+	if(sequence_start < 0) return -1;
 
 	int x = 0;
 	for(;x + start_alloc < end_alloc + 1;x++)
 	{
 		/* Get the lba of the existing block */
 		int lba = ext2_block_address(start_alloc + x, ino, context);
+	
 		if(lba && (x == 0 || x + start_alloc == end_alloc))
 		{
 			/* Contents should be copied */
@@ -1033,9 +1145,12 @@ static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 		if(ext2_set_block_address(x + start_alloc, sequence_start + x,
 					group_hint, ino, context))
 			return -1;
+
+		/* Free old lba if there was one */
+		if(lba) ext2_free_block(lba, context);
 	}
 
-	void* src_c = src;
+	const char* src_c = src;
 	uint bytes = 0;
 	uint write = 0;
 	int start_index = start >> context->blockshift;
@@ -1060,6 +1175,7 @@ static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 				context->driver) != context->blocksize)
 		return -1;
 	if(write == sz) return sz;
+	bytes += write;
 
 	/* write middle blocks */
 	x = start_index + 1;
@@ -1089,6 +1205,9 @@ static int _ext2_write(void* src, uint start, uint sz, int group_hint,
 	if(context->driver->writeblock(block, lba,
 				context->driver) !=context->blocksize)
 		return -1;
+
+	/* The inode will get flushed when it is written to disk. */
+
 	return sz;
 }
 
@@ -1124,8 +1243,168 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 	return 0;
 }
 
-static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst, 
-		disk_inode* handle, context* context)
+/* Returns the inode number of the newly created directory entry */
+/* Round a number up to the 4th bit boundary */
+#define EXT2_ROUND_B4_UP(num) (((num) + 3) & ~3)
+static int ext2_alloc_dirent(disk_inode* dir, int inode_num, 
+		int group, const char* file, uchar type, 
+		context* context)
+{
+	if(inode_num < 0) return -1;
+
+	uint_64 dir_size = dir->lower_size |
+                ((uint_64)dir->upper_size << 32);
+
+	/* with utf8 encoding can be no longer than 255 bytes. */
+	if(strlen(file) > 255) return -1;
+
+	/* How much space do we need? */
+	int needed = EXT2_ROUND_B4_UP(8 + strlen(file));
+	/* This is the position of the dirent we are amending */
+	/* OR if not amending, the position of the new dirent */
+	uint pos = 0;
+
+	uint found = 0; /* Did we find a match? */
+
+	struct ext2_dirent current;
+
+	while(pos < dir_size)
+        {
+                _ext2_readdir(&current, pos, dir, context);
+
+		/* Check for match */
+		int available = current.size - 
+			(8 + current.name_length);
+
+		if(available >= needed)
+		{
+			found = 1;
+			break;
+		}
+
+		/* Keep searching. */
+		pos += current.size;
+	}
+
+	if(!found)
+	{
+		/* We couldn't find a suitable match. */
+		/* Create a brand new entry on a new block. */
+		current.size = context->blocksize;
+		current.inode = inode_num;
+		current.name_length = strlen(file);
+		current.type = type;
+                memmove(current.name, file, strlen(file));
+
+		/* Flush to disk */
+		_ext2_write(&current, pos, 8 + strlen(file), group,
+			dir, context);
+
+		/* update the directory size */
+		dir_size += context->blocksize;
+		dir->lower_size = (uint_32)dir_size;
+		dir->upper_size = (uint_32)(dir_size >> 32);
+	} else {
+		/* Allocate the size we need */
+		current.size -= needed;
+		/* Flush to disk */
+		_ext2_write(&current, pos, 8, group, dir, context);
+
+		/* update to our new position */
+		pos += current.size;
+		/* make the new entry */
+		current.size = needed;
+                current.inode = inode_num;
+                current.name_length = strlen(file);
+                current.type = type;
+                memmove(current.name, file, strlen(file));
+	
+		/* Flush to disk */
+		_ext2_write(&current, pos, 8 + strlen(file), 
+				group, dir, context);	
+
+		/* The directory size has not changed. */
+	}
+
+	return 0;
+}
+/* This isn't used anywhere else so lets undefine it */
+#undef EXT2_ROUND_B4_UP
+
+static int ext2_free_dirent(disk_inode* dir, int group,
+		const char* file, context* context)
+{
+	uint_64 dir_size = dir->lower_size |
+		((uint_64)dir->upper_size << 32);
+
+	/* Lets find the directory entry */
+	int found = 0;
+	int last_pos = -1;
+	int curr_pos = 0;
+	struct ext2_dirent previous;
+	struct ext2_dirent current;
+
+	while(curr_pos < dir_size)
+	{
+		_ext2_readdir(&current, curr_pos, dir, context);
+
+		/* did we find it? */
+		if(!strcmp(file, current.name))
+		{
+			found = 1;
+			break;
+		}
+
+		/* Keep searching. */	
+		last_pos = curr_pos;
+		curr_pos += current.size;
+		memmove(&previous, &current, 8);
+	}
+
+	/* did we find it? */
+	if(!found) return -1;
+
+	if(last_pos == -1)
+	{
+		/* This is probably bad but we will do it anyway. */
+		/* We are attempting to remove the 0th entry. */
+
+		/* We just create a null entry in this case. */
+		current.name_length = 0;
+		/* dirent metadata is 8 bytes */
+		if(_ext2_write(&current, 0, 8, group, dir, 
+					context) != 8)
+			return -1;
+
+		/* The 0th directory entry has been removed. */
+		return 0;
+	}
+
+	/* See if they are on the same block */
+	int curr_block = (curr_pos >> context->blockshift);
+	int last_block = (last_pos >> context->blockshift);
+
+	if(curr_block == last_block)
+	{
+		/* This is very simple, just add the sizes */
+		previous.size += current.size;
+		if(_ext2_write(&previous, last_pos, 8, group, dir, 
+					context) != 8)
+			return -1;
+	} else {
+		/* They are on a seam, make a null entry */
+		current.name_length = 0;
+
+		if(_ext2_write(&current, curr_pos, 8, group, dir, 
+					context) != 8)
+			return -1;
+	}
+
+	return -1;
+}
+
+static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
+		int follow, disk_inode* handle, context* context)
 {
 	uint_64 file_size = handle->lower_size | 
 		((uint_64)handle->upper_size << 32);
@@ -1160,6 +1439,21 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 				if(S_ISDIR(new_handle.mode))	
 					return ext2_lookup_rec(path, dst, 
 							&new_handle,context);
+				if(S_ISLNK(new_handle.mode))
+				{
+					char path_buff[EXT2_MAX_PATH];
+					if(_ext2_read(path_buff, 0,
+								EXT2_MAX_PATH,
+								&new_handle,
+								context) < 0)
+						return -1;
+					/* Start new search at root */
+
+					/* TODO: ask kernel to resolve this */
+					return -1;
+				}
+
+				return -1;
 			}
 		}
 
@@ -1201,7 +1495,7 @@ int ext2_mkdir(const char* path, mode_t permission,
 int ext2_rmdir(const char* path, context* context);
 int ext2_read(inode* ino, void* dst, uint start, uint sz,
 		context* context);
-int ext2_write(inode* ino, void* src, uint start, uint sz,
+int ext2_write(inode* ino, const void* src, uint start, uint sz,
 		context* context);
 int ext2_rename(const char* src, const char* dst, context* context);
 int ext2_unlink(const char* file, context* context);
@@ -1213,28 +1507,18 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 
 int ext2_test(context* context)
 {
-	inode* ino = ext2_cache_alloc(context);
-	int ino_num = ext2_lookup("/folder", NULL, context);
-	ext2_read_inode(&ino->ino, ino_num, context);
+	char* str = "This is new content.\n";
+	inode* i = ext2_open("/bin/bash", context);
 
-	char block[context->blocksize];
-	/* Recreate root inode */
-	int x;
-	for(x = 0;;x++)
-	{
-		int lba = ext2_block_address(x, &ino->ino, context);
-		if(!lba) break;
-		context->driver->readblock(block, lba, context->driver);
-		/* Allocate a new block */
-		int new_lba = ext2_find_free_blocks(0, 1, context);
-		context->driver->writeblock(block, new_lba, context->driver);
-		ext2_set_block_address(x, new_lba, 0, &ino->ino, context);
-		printf("%d: %d replaced by %d.\n", x, lba, new_lba);
-	}
+	_ext2_write(str, 0, strlen(str), 0, &i->ino, context);
 
-	/* Write the folder */
-	ext2_write_inode(&ino->ino, ino_num, context);
-	return 0;
+	ext2_close(i, context);
+
+
+	if(1)return 0;
+	ext2_free_inode(0, 0, NULL);
+	ext2_find_free_inode(0, 0, NULL);
+	ext2_write_inode(NULL, 0, NULL);
 }
 
 int ext2_init(uint superblock_address, uint sectsize,
@@ -1351,6 +1635,14 @@ int ext2_init(uint superblock_address, uint sectsize,
 	fs->stat = (void*)ext2_stat;
 	fs->read = (void*)ext2_read;
 	fs->getdents = (void*)ext2_getdents;
+	fs->unlink = (void*)ext2_unlink;
+	fs->rename = (void*)ext2_rename;
+	fs->create = (void*)ext2_create;
+	fs->read = (void*)ext2_read;
+	fs->write = (void*)ext2_write;
+	fs->link = (void*)ext2_link;
+	fs->rmdir = (void*)ext2_rmdir;
+	// fs->symlink = (void*)ext2_symlink;
 
 	return 0;
 }
@@ -1404,6 +1696,7 @@ inode* ext2_open(const char* path, context* context)
 	/* Get the file metadata */
 	int num = ext2_lookup_inode(path, &ino->ino, context);
 	ino->inode_num = num; /* Save the inode number for later */
+	ino->inode_group = (num >> context->inodegroupshift);
 
 	return ino;
 }
@@ -1412,8 +1705,13 @@ void ext2_close(inode* ino, context* context)
 {
 	if(!ino) return;
 	ino->references--;
-	/* Attempt to free the node if possible */
-	ext2_cache_free(ino, context);
+	if(!ino->references)
+	{
+		/* write the node to disk */
+		ext2_write_inode(&ino->ino, ino->inode_num, context);
+		/* Attempt to free the node if possible */
+		ext2_cache_free(ino, context);
+	}
 }
 
 int ext2_stat(inode* ino, struct stat* dst, context* context)
@@ -1442,7 +1740,41 @@ int ext2_stat(inode* ino, struct stat* dst, context* context)
 int ext2_create(const char* path, mode_t permissions, 
 		uid_t uid, gid_t gid, context* context)
 {
-	return -1;
+	/* Get the parent directory */
+	char parent[EXT2_MAX_PATH];
+	if(file_path_parent(path, parent, EXT2_MAX_PATH))
+		return -1;
+	const char* name = path + (strlen(parent) + 1);
+
+	inode* parent_inode = ext2_open(parent, context);
+
+	int new_file = ext2_find_free_inode(
+			parent_inode->inode_group, 0, context);
+	if(new_file < 0) return -1;
+
+	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+				parent_inode->inode_group, name, EXT2_FILE_REG_FILE,
+				context)) return -1;
+
+	ext2_close(parent_inode, context); /* Clean up parent */
+
+	/* Lets create a new inode */
+	disk_inode new_ino;
+	memset(&new_ino, 0, sizeof(disk_inode));
+
+	/* update attributes */
+	new_ino.mode = permissions;
+	new_ino.owner = uid;
+	new_ino.group = new_file >> context->inodegroupshift;
+	new_ino.creation_time = 0;/* TODO: get kernel time */
+	new_ino.modification_time = new_ino.creation_time;
+	new_ino.hard_links = 1; /* Starts with one hard link */
+
+	/* Write the new inode to disk */
+	if(ext2_write_inode(&new_ino, new_file, context))
+		return -1;
+
+	return 0;
 }
 
 int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
@@ -1450,7 +1782,7 @@ int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
 	ino->ino.owner = uid;
 	ino->ino.group = gid;
 
-	/* Results will get written to disk when the file is closed. */
+	/* Results will get written to disk when the file is closed.*/
 	return 0;
 }
 
@@ -1458,7 +1790,7 @@ int ext2_chmod(inode* ino, mode_t mode, context* context)
 {
 	ino->ino.mode = mode;
 
-	/* Results will get written to disk when the file is closed. */
+	/* Results will get written to disk when the file is closed.*/
 	return 0;
 }
 
@@ -1469,12 +1801,77 @@ int ext2_truncate(inode* ino, int sz, context* context)
 
 int ext2_link(const char* file, const char* link, context* context)
 {
-	return -1;
+	/* Get the parent directory */
+	char parent[EXT2_MAX_PATH];
+	if(file_path_parent(link, parent, EXT2_MAX_PATH))
+		return -1;
+	const char* name = link + (strlen(parent) + 1);
+
+	inode* parent_inode = ext2_open(parent, context);
+
+	int new_file = ext2_lookup(file, NULL, context);
+	if(new_file < 0) return -1;
+
+	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+				parent_inode->inode_group, name, EXT2_FILE_REG_FILE,
+				context)) return -1;
+
+	ext2_close(parent_inode, context); /* Clean up parent */
+
+	/* Lets update references */
+	inode* file_ino = ext2_open(link, context);
+	if(!file_ino)
+	{
+		cprintf("ext2: failed to create hard link.\n");
+		cprintf("ext2: file: %s  link: %s.\n",
+				file, link);
+		return -1;
+	}
+	file_ino->ino.hard_links++;
+
+	/* Flush new link to disk */
+	ext2_close(file_ino, context);
+
+	return 0;
 }
 
 int ext2_symlink(const char* file, const char* link, context* context)
 {
-	return -1;
+	/* Get the parent directory */
+	char parent[EXT2_MAX_PATH];
+	if(file_path_parent(link, parent, EXT2_MAX_PATH))
+		return -1;
+	const char* name = link + (strlen(parent) + 1);
+
+	inode* parent_inode = ext2_open(parent, context);
+
+	int new_file = ext2_find_free_inode(
+			parent_inode->inode_group, 0, context);
+	if(new_file < 0) return -1;
+
+	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+				parent_inode->inode_group, name, EXT2_FILE_REG_FILE,
+				context)) return -1;
+
+	ext2_close(parent_inode, context); /* Clean up parent */
+
+	/* Lets write the path */
+	inode* file_ino = ext2_open(link, context);
+	if(!file_ino)
+	{
+		cprintf("ext2: failed to create soft link.\n");
+		cprintf("ext2: file: %s  link: %s.\n",
+				file, link);
+		return -1;
+	}
+	if(ext2_write(file_ino, file, 0, strlen(file) + 1, context)
+			!= strlen(file) + 1)
+		return -1;
+
+	/* Flush new link to disk */
+	ext2_close(file_ino, context);
+
+	return 0;
 }
 
 int ext2_mkdir(const char* path, mode_t permission, 
@@ -1485,7 +1882,8 @@ int ext2_mkdir(const char* path, mode_t permission,
 
 int ext2_rmdir(const char* path, context* context)
 {
-	return -1;
+	/* Same thing as unlink for ext2 */
+	return ext2_unlink(path, context);
 }
 
 int ext2_read(inode* ino, void* dst, uint start, uint sz, 
@@ -1494,21 +1892,57 @@ int ext2_read(inode* ino, void* dst, uint start, uint sz,
 	return _ext2_read(dst, start, sz, &ino->ino, context);
 }
 
-int ext2_write(inode* ino, void* src, uint start, uint sz,
+int ext2_write(inode* ino, const void* src, uint start, uint sz,
 		context* context)
 {
-	_ext2_write(NULL, 0, 0, 0, 0, NULL);
-	return -1;
+	return _ext2_write(src, start, sz, 
+			ino->inode_group, &ino->ino, context);
 }
 
 int ext2_rename(const char* src, const char* dst, context* context)
 {
-	return -1;
+	/**
+	 * TODO: if the src and dst are in the same directory,
+	 * there is a huge performance gain that could be made
+	 * here.
+	 */
+
+	/* Just create a hard link */
+	if(ext2_link(src, dst, context)) return -1;
+	/* Unlink old reference */
+	if(ext2_unlink(src, context)) return -1;
+	return 0;
 }
 
 int ext2_unlink(const char* file, context* context)
 {
-	return -1;
+	char file_name[EXT2_MAX_NAME];
+	if(file_path_name(file, file_name, EXT2_MAX_NAME))
+		return -1;
+
+	/* Get the inode */
+	inode* ino = ext2_open(file, context);
+
+	/* Remove the directory entry */
+	int success = ext2_free_dirent(&ino->ino, ino->inode_group,
+			file_name, context);
+	/* Decrement hard links */
+	ino->ino.hard_links--;
+
+	if(!ino->ino.hard_links)
+	{
+		/* We can completely free this inode */
+		success |= ext2_free_inode(ino->inode_num, 
+				S_ISDIR(ino->ino.mode), context);
+
+		/**
+		 * TODO: all blocks belonging to this inode are
+		 * leaked here.
+		 */
+	}
+
+	ext2_close(ino, context);
+	return success;
 }
 
 int ext2_readdir(inode* dir, int index, struct dirent* dst, 

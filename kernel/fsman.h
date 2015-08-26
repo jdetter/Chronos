@@ -181,7 +181,7 @@ struct FSDriver
          * at position start in the file. Returns the amount of bytes read
          * from the file.
          */ 
-        int (*write)(void* i, void* dst, uint start, uint sz, void* context);
+        int (*write)(void* i, const void* src, uint start, uint sz, void* context);
 
 	/**
 	 * Move file from src to dst. This function can also move
