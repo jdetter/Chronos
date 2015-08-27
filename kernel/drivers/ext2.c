@@ -1523,7 +1523,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 	context->sectsize = sectsize;
 	cache_init(fs->cache, cache_sz, sizeof(inode), 
 			&context->inode_cache);
-	cache_set_check(ext2_inode_cache_check, &context->inode_cache);
+	context->inode_cache.check = ext2_inode_cache_check;
 
 	/* enable read and write for the driver */
 	diskio_setup(driver);

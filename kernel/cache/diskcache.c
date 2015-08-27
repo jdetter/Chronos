@@ -37,13 +37,19 @@ void* disk_cache_reference(uint block, struct FSHardwareDriver* driver)
 #endif
 	
 	if(!block_ptr)
+	{
 		block_ptr = driver->cache.alloc(block, 1, &driver->cache);
+		if(driver->readblock(block_ptr, block, driver) !=
+				driver->blocksize)
+			return NULL;
+	}
 
 	slock_release(&driver->cache_lock);
 
 #ifdef DISK_CACHE_DEBUG
 	if(!block_ptr)
 		cprintf("cache: out of space!\n");
+	else cprintf("cache: block %d added.\n", block);
 #endif
 
 	return block_ptr;
@@ -51,5 +57,10 @@ void* disk_cache_reference(uint block, struct FSHardwareDriver* driver)
 
 int disk_cache_dereference(void* ref, struct FSHardwareDriver* driver)
 {
-	return 0;
+	slock_acquire(&driver->cache_lock);
+
+	int result = driver->cache.dereference(ref, &driver->cache);
+	
+	slock_release(&driver->cache_lock);
+	return result;
 }

@@ -10,27 +10,30 @@ struct cache
 	int slab_shift; /* Quick shift is available for log2(slab)*/
         uint slab_sz; /* How big are the slabs? */
         slock_t lock; /* Lock needed to change the cache */
-	
+
+	/**
+	 * Custom comparison function. Decides what gets compared on a
+	 * search operation. obj is the object in the cache, id is the
+	 * id of the object were searching for.
+	 */	
 	int (*check)(void* obj, int id, struct cache* cache);
 
+	/**
+	 * Sync the object with the underlying system.
+	 */
+	int (*sync)(void* obj, int id, struct cache* cache);
+	
+	/* NOTE: external locking MUST be used with these functions. */
 	/* Backend caching function (for backend use only) */
 	void* (*search)(int id, struct cache* cache);
 	void* (*alloc)(int id, int slabs, struct cache* cache);
-	
+	int (*dereference)(void* ptr, struct cache* cache);
 };
 
 /**
  * Initilize a cache structure. Returns 0 on success, -1 on failure.
  */
 int cache_init(void* cache_area, uint sz, uint data_sz, struct cache* cache);
-
-/**
- * Set the comparison operation. The operation should return 0 if
- * the two objects are equal. Otherwise the function should return
- * a non zero value.
- */
-int cache_set_check(int (*check)(void*, int, struct cache*), 
-                struct cache* cache);
 
 /**
  * Search the cache for any object with the given id. If no such

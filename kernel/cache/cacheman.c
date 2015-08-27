@@ -61,10 +61,12 @@ static int cache_default_check(void* obj, int id, struct cache* cache)
 
 static void* cache_search_nolock(int id, struct cache* cache);
 static void* cache_alloc(int id, int slabs, struct cache* cache);
+static int cache_dereference_nolock(void* ptr, struct cache* cache);
 
 int cache_init(void* cache_area, uint sz, uint data_sz, 
 		struct cache* cache)
 {
+	memset(cache, 0, sizeof(struct cache));
 	uint entries = sz / (sizeof(struct cache_entry) + data_sz);
 	if(entries < 1) return -1;
 
@@ -109,32 +111,11 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 	cache->check = cache_default_check;
 
 	/* Other functions */
+	cache->dereference = cache_dereference_nolock;
 	cache->search = cache_search_nolock;
 	cache->alloc = cache_alloc;
 	
 	return 0;
-}
-
-int cache_set_check(int (*check)(void*, int, struct cache*), 
-		struct cache* cache)
-{
-	if(check)
-	{
-		slock_acquire(&cache->lock);
-		cache->check = check;
-		slock_release(&cache->lock);
-
-#ifdef CACHE_DEBUG
-		cprintf("cache: new check function installed.\n");
-#endif
-		return 0;
-	}
-
-#ifdef CACHE_DEBUG
-	cprintf("cache: check function rejected!\n");
-#endif
-
-	return -1;
 }
 
 static void* cache_alloc(int id, int slabs, struct cache* cache)
@@ -180,33 +161,51 @@ static void* cache_alloc(int id, int slabs, struct cache* cache)
         return result;
 }
 
-int cache_dereference(void* ptr, struct cache* cache)
+static int cache_dereference_nolock(void* ptr, struct cache* cache)
 {
-	slock_acquire(&cache->lock);
-	int result = 0;
-	struct cache_entry* entry = cache->entries;
-	uint val = (uint)ptr - (uint)cache->slabs;
-	/* If shift is available then use it (fast) */
-	if(cache->slab_shift)
-		entry += (uint)(val >> cache->slab_shift);
-	else {
-		/* The division instruction is super slow. */
-		entry += (val / cache->slab_sz);
-	}
+        int result = 0;
+        struct cache_entry* entry = cache->entries;
+        uint val = (uint)ptr - (uint)cache->slabs;
+        /* If shift is available then use it (fast) */
+        if(cache->slab_shift)
+                entry += (uint)(val >> cache->slab_shift);
+        else {
+                /* The division instruction is super slow. */
+                entry += (val / cache->slab_sz);
+        }
 
-	entry->references--;
-	if(entry->references < 0) 
-	{
-		entry->references = 0;
+        entry->references--;
+        if(entry->references <= 0)
+        {
+                entry->references = 0;
 #ifdef CACHE_DEBUG
-		cprintf("cache: object %d fully dereferenced.\n", 
-				entry->id);
+                cprintf("cache: object %d fully dereferenced.\n",
+                                entry->id);
 #endif
+		if(cache->sync)
+		{
+#ifdef CACHE_DEBUG
+			cprintf("cache: syncing data to system.\n");
+			cache->sync(ptr, entry->id, cache);
+#endif
+		} else {
+#ifdef CACHE_DEBUG
+			cprintf("cache: sync is disabled.\n");
+#endif
+		}
 	} else {
 #ifdef CACHE_DEBUG
 		cprintf("cache: object dereferenced: %d\n", entry->id);
 #endif
 	}
+
+	return result;
+}
+
+int cache_dereference(void* ptr, struct cache* cache)
+{
+	slock_acquire(&cache->lock);
+	int result = cache_dereference_nolock(ptr, cache);
 
 	slock_release(&cache->lock);
 	return result;
@@ -214,31 +213,31 @@ int cache_dereference(void* ptr, struct cache* cache)
 
 static void* cache_search_nolock(int id, struct cache* cache)
 {
-        void* result = NULL;
+	void* result = NULL;
 
-        int x;
-        for(x = 0;x < cache->entry_count;x++)
-        {
-                if(!cache->check(cache->entries[x].slab, id, cache))
-                {
-                        result = cache->entries[x].slab;
-                        if(cache->entries[x].references <= 0)
-                                cache->entries[x].references = 1;
-                        else cache->entries[x].references++;
-                        break;
-                }
+	int x;
+	for(x = 0;x < cache->entry_count;x++)
+	{
+		if(!cache->check(cache->entries[x].slab, id, cache))
+		{
+			result = cache->entries[x].slab;
+			if(cache->entries[x].references <= 0)
+				cache->entries[x].references = 1;
+			else cache->entries[x].references++;
+			break;
+		}
 
-                /* Skip over the sequence to save time */
-                if(cache->entries[x].references)
-                        x += cache->entries[x].sequence;
-        }
+		/* Skip over the sequence to save time */
+		if(cache->entries[x].references)
+			x += cache->entries[x].sequence;
+	}
 
 #ifdef CACHE_DEBUG
-        if(result) cprintf("cache: search success.\n");
-        else cprintf("cache: search failure.\n");
+	if(result) cprintf("cache: search success.\n");
+	else cprintf("cache: search failure.\n");
 #endif
 
-        return result;
+	return result;
 }
 
 void* cache_search(int id, struct cache* cache)
