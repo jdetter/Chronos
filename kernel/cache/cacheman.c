@@ -23,7 +23,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #include "cacheman.h"
 
-#define CACHE_DEBUG
+// #define CACHE_DEBUG
 
 struct cache_entry
 {
@@ -59,11 +59,28 @@ static int cache_default_check(void* obj, int id, struct cache* cache)
 	return -1;
 }
 
+static int cache_default_dump(struct cache* cache)
+{
+	int x;
+	for(x = 0;x < cache->entry_count;x++)
+	{
+		if(cache->entries[x].id)
+		{
+			cprintf("%d has %d references.\n",
+				cache->entries[x].id,
+				cache->entries[x].references);
+		}
+	}
+
+	return 0;
+}
+
 static void* cache_search_nolock(int id, struct cache* cache);
 static void* cache_alloc(int id, int slabs, struct cache* cache);
 static int cache_dereference_nolock(void* ptr, struct cache* cache);
 
 int cache_init(void* cache_area, uint sz, uint data_sz, 
+		void* context, struct FSHardwareDriver* driver,
 		struct cache* cache)
 {
 	memset(cache, 0, sizeof(struct cache));
@@ -84,6 +101,8 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 		return -1;
 	}
 	cache->slab_sz = data_sz;
+	cache->context = context;
+	cache->driver = driver;
 	cache->entry_count = entries;
 	cache->slabs = cache_area;
 	cache->entries = (void*)(cache->slabs + sz) 
@@ -114,7 +133,8 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 	cache->dereference = cache_dereference_nolock;
 	cache->search = cache_search_nolock;
 	cache->alloc = cache_alloc;
-	
+	cache->dump = cache_default_dump;
+
 	return 0;
 }
 
@@ -186,8 +206,8 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache)
 		{
 #ifdef CACHE_DEBUG
 			cprintf("cache: syncing data to system.\n");
-			cache->sync(ptr, entry->id, cache);
 #endif
+			cache->sync(ptr, entry->id, cache);
 		} else {
 #ifdef CACHE_DEBUG
 			cprintf("cache: sync is disabled.\n");

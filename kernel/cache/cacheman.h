@@ -10,6 +10,8 @@ struct cache
 	int slab_shift; /* Quick shift is available for log2(slab)*/
         uint slab_sz; /* How big are the slabs? */
         slock_t lock; /* Lock needed to change the cache */
+	void* context; /* Context pointer for use in sync. */
+	struct FSHardwareDriver* driver; /* Driver for use in sync. */
 
 	/**
 	 * Custom comparison function. Decides what gets compared on a
@@ -28,12 +30,14 @@ struct cache
 	void* (*search)(int id, struct cache* cache);
 	void* (*alloc)(int id, int slabs, struct cache* cache);
 	int (*dereference)(void* ptr, struct cache* cache);
+	int (*dump)(struct cache* cache);
 };
 
 /**
  * Initilize a cache structure. Returns 0 on success, -1 on failure.
  */
-int cache_init(void* cache_area, uint sz, uint data_sz, struct cache* cache);
+int cache_init(void* cache_area, uint sz, uint data_sz, void* context,
+	struct FSHardwareDriver* driver, struct cache* cache);
 
 /**
  * Search the cache for any object with the given id. If no such

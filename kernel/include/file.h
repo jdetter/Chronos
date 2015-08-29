@@ -145,34 +145,34 @@ struct old_linux_dirent
  * Make sure the path ends with a slash. This guarentees that the path
  * represents a directory. Returns -1 on failure.
  */
-int file_path_dir(const char* src, char* dst, uint sz);
+int file_path_dir(char* path, uint sz);
 
 /**
  * Makes sure that the path doesn't end with a slash unless src is the root
  * directory. Returns 0 on success.
  */
-int file_path_file(const char* src, char* dst, uint sz);
+int file_path_file(char* file);
 
 /**
  * Returns the parent of src into dst. A maximum of sz bytes will be copied
  * into the destination buffer dst. Does NOT work on relative paths.
  * Returns 0 on success, returns 1 if src has no parent.
  */
-int file_path_parent(const char* src, char* dst, uint sz);
+int file_path_parent(char* path);
 
 /**
  * Find the file's name that this path represents. This also accounts for
  * paths that end in slashes. May not work on relative paths. A maximum
  * of sz bytes are copied into the dst buffer. Always returns 0.
  */
-int file_path_name(const char* src, char* dst, uint sz);
+int file_path_name(char* file);
 
 /**
  * Puts the root of the path into dst. A maximum of sz bytes will be
  * copied. Returns 0 on success, returns -1 if there is no parent 
  * (e.g. the source is "").
  */
-int file_path_root(const char* src, char* dst, uint sz);
+int file_path_root(char* file);
 
 /**
  * Remove the first prefix from the path. This will remove a 

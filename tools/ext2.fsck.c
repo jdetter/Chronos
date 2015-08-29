@@ -12,13 +12,13 @@
 #include "file.h"
 #include "fsman.h"
 #include "ext2.h"
+#include "diskcache.h"
 
 /* Define a memory based fs driver */
 
 int fd;
 
 struct FSDriver fs;
-struct FSHardwareDriver driver;
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -184,10 +184,23 @@ void ls(char* path)
 		} else if(result == 0) break;
 		
 		offset += result;
-		fs.stat(inode, &st, fs.context);
+
+		char file_path[512];
+		strncpy(file_path, path, 512);
+		strncat(file_path, "/", 512);
+		strncat(file_path, dir.d_name, 512);
+		void* file_inode = fs.open(file_path, fs.context);
+
+		if(!file_inode)
+		{
+			printf("Could not open file: %s\n", file_path);
+			continue;
+		}
+		if(fs.stat(file_inode, &st, fs.context)) return;
 		memset(perm_str, 0, 64);
 		get_perm(&st, perm_str);
 		printf("%s %d %s\n", perm_str, (int)st.st_size, dir.d_name);
+		if(fs.close(file_inode, fs.context)) return;
 		
 	}	
 
@@ -203,12 +216,16 @@ int cat(char* path)
 	/* Stat the file */
 	if(fs.stat(inode, &st, fs.context)) return -1;
 
-	char buff[st.st_size + 1];
-	if(fs.read(inode, buff, 0, st.st_size, fs.context) != st.st_size)
-		return -1;
-	buff[st.st_size] = 0;
-
-	puts(buff);
+	int read_size = 4096;
+	int pos = 0;
+	char buff[read_size + 1];
+	buff[read_size] = 0;
+	while(pos < st.st_size)
+	{
+		int read = fs.read(inode, buff, pos, read_size, fs.context);
+		printf("%s", buff);
+		pos += read;
+	}
 
 	fs.close(inode, fs.context);
 	return 0;
@@ -217,6 +234,18 @@ int cat(char* path)
 int touch(char* path)
 {
 	return fs.create(path, 0644, 0, 0, fs.context);
+}
+
+int echo(char* file)
+{
+	char* message = "This is a short message.\n";
+	void* ino = fs.open(file, fs.context);
+	if(!ino)
+		fs.create(file, 0644, 0x0, 0x0, fs.context);
+
+	fs.write(ino, message, 0, strlen(message) + 1, fs.context);
+	fs.close(ino, fs.context);
+	return 0;
 }
 
 int hard_link(char* argument)
@@ -231,6 +260,18 @@ int hard_link(char* argument)
 	}
 
 	return fs.link(arg1, arg2, fs.context);
+}
+
+int fsck_mkdir(char* path)
+{
+	int result = fs.mkdir(path, 0755, 0x0, 0x0, fs.context);
+	if(result) printf("mkdir failure.\n");
+	return result;
+}
+
+int dump(void)
+{
+	return fs.driver.cache.dump(&fs.driver.cache);
 }
 
 int ext2_test(void* context);
@@ -293,10 +334,10 @@ int main(int argc, char** argv)
 	int sectmax = st.st_size / block_size;
 
 	/* Initilize the memory hardware driver */
-	driver.readsect = ata_readsect;
-	driver.writesect = ata_writesect;
-	driver.readblock = ata_readblock;
-	driver.writeblock = ata_writeblock;
+	fs.driver.readsect = ata_readsect;
+	fs.driver.writesect = ata_writesect;
+	fs.driver.readblock = ata_readblock;
+	fs.driver.writeblock = ata_writeblock;
 	int shifter = -1;
 	int block_size_tmp = block_size;
 	while(block_size_tmp)
@@ -304,16 +345,14 @@ int main(int argc, char** argv)
 		block_size_tmp >>= 1;
 		shifter++;
 	}
-	driver.sectsize = block_size;
-	driver.sectshifter = shifter;
-	driver.sectmax = sectmax;
-	driver.valid = 1;
-	driver.context = NULL;
+	fs.driver.sectsize = block_size;
+	fs.driver.sectshifter = shifter;
+	fs.driver.sectmax = sectmax;
+	fs.driver.valid = 1;
+	fs.driver.context = NULL;
 
 	/* Start the driver */
-	ext2_init(start_block, block_size, FS_CACHE_SIZE, &driver, &fs);
-
-	// ext2_test(&fs.context);
+	ext2_init(start_block, block_size, FS_CACHE_SIZE, &fs);
 
 	/* Check for command */
 	if(command)
@@ -334,7 +373,7 @@ int main(int argc, char** argv)
 		fflush(stdout);
 		fgets(comm_buffer, 512, stdin);
 		comm_buffer[strlen(comm_buffer) - 1] = 0;
-		
+
 		if(!strncmp(comm_buffer, "ls", 2))
 		{
 			ls(cwd);
@@ -375,14 +414,23 @@ int main(int argc, char** argv)
 		{
 			puts(cwd);
 		} else if(!strncmp(comm_buffer, "touch ", 6))
-                {
-                        touch(comm_buffer + 6);
+		{
+			touch(comm_buffer + 6);
 		} else if(!strncmp(comm_buffer, "test", 4))
+		{
+			ext2_test(&fs.context);
+		} else if(!strncmp(comm_buffer, "link ", 5))
+		{
+			hard_link(comm_buffer + 5);
+		} else if(!strncmp(comm_buffer, "dump", 4))
+		{
+			dump();
+		} else if(!strncmp(comm_buffer, "echo ", 5))
                 {
-                        ext2_test(&fs.context);
-                } else if(!strncmp(comm_buffer, "link ", 5))
+                        echo(comm_buffer + 5);
+                }else if(!strncmp(comm_buffer, "mkdir ", 6))
                 {
-                        hard_link(comm_buffer + 5);
+                        fsck_mkdir(comm_buffer + 6);
                 }
 	}
 	return 0;

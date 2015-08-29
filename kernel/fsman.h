@@ -17,6 +17,7 @@ struct FSHardwareDriver
 	struct cache cache;
 	slock_t cache_lock; /* Required to use reference and dereference */
 	void* (*reference)(uint block, struct FSHardwareDriver* driver);
+	void* (*addreference)(uint block, struct FSHardwareDriver* driver);
 	int (*dereference)(void* ref, struct FSHardwareDriver* driver);
 	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);  
         int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
@@ -62,7 +63,7 @@ struct FSHardwareDriver
 
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
-#define FS_CACHE_SIZE 16384
+#define FS_CACHE_SIZE 65536
 #define FS_CONTEXT_SIZE 512 /* Size in bytes of an fs context */
 
 /** 
@@ -246,7 +247,7 @@ struct FSDriver
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
-	struct FSHardwareDriver* driver; /* HDriver for this file system*/
+	struct FSHardwareDriver driver; /* HDriver for this file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
 	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
 	uchar cache[FS_CACHE_SIZE]; /* Space for caching files */

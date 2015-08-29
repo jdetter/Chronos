@@ -27,88 +27,71 @@ const char* file_remove_prefix(const char* path)
 	return path;
 }
 
-int file_path_root(const char* path, char* dst, int sz)
+int file_path_root(char* path)
 {
         while(*path == '/') path++;
         /* As long as we aren't at the end, we're at the root now. */
-        if(*path == 0) return -1;
-        /* Copy until the next slash or end of line char */
-        int x;
-        for(x = 0;x < sz - 1 && path[x] != 0 && path[x] != '/';x++)
-                dst[x] = path[x];
-        dst[x] = 0; /* Null terminate */
+	while(*path != '/' && *path) path++;
+	*path = 0;
         return 0;
 }
 
-int file_path_dir(const char* src, char* dst, uint sz)
+int file_path_dir(char* path, uint sz)
 {
-        if(strlen(src) + 1 >= sz)
+        if(strlen(path) + 2 >= sz)
                 return -1;
-        memset(dst, 0, sz);
-
-        int len = _strncpy(dst, src, sz);
-        if(dst[len - 1] != '/')
-                dst[len] = '/';
-        return 0;
-}
-
-int file_path_file(const char* src, char* dst, uint sz)
-{
-        if(strlen(src) == 0) return 1;
-        memset(dst, 0, sz);
-        int len = _strncpy(dst, src, sz);
-        if(!strcmp(dst, "/")) return 0;
-        for(;dst[len  - 1] == '/' && len - 1 >= 0;len--)
-                dst[len - 1] = 0;
-        return 0;
-}
-
-int file_path_parent(const char* src, char* dst, uint sz)
-{
-	memmove(dst, (char*)src, sz);
-
-	/* Delete until we hit a non-slash */
-	int x;
-	for(x = strlen(src) - 1;x >=0; x--)
+	int len = strlen(path);
+        if(path[len - 1] != '/')
 	{
-		if(src[x] != '/') break;
-		dst[x] = 0;
+                path[len] = '/';
+		path[len + 1] = 0;
 	}
 
-	/* Delete until we hit a slash */
-	for(x = strlen(dst) - 1;x >=0; x--)
-        {
-                if(src[x] == '/') break;
-                dst[x] = 0;
-        }
+        return 0;
+}
 
-	/* Check to see if the path is root */
-	if(strlen(dst) == 0) return -1;
+int file_path_file(char* path)
+{
+        if(strlen(path) == 0) return -1;
+        if(!strcmp(path, "/")) return 0;
+	int len = strlen(path) - 1;
+	/* Take all of the slashes off of the end */
+	for(;path[len] == '/';len--)
+		path[len] = 0;
+        return 0;
+}
+
+int file_path_parent(char* path)
+{
+	/* Root has no parent */
+	if(!strcmp(path, "/")) return -1;
+	/* Delete all slashes on the end */
+	if(file_path_file(path)) return -1;
+	int end = strlen(path) - 1;
+	/* Delete until we hit a slash */
+	for(;end > 0 && path[end] != '/' && path[end];end--)
+	{
+		if(end < 0) return -1;
+		path[end] = 0;
+	}
 
 	return 0;
 }
 
-int file_path_name(const char* src, char* dst, uint sz)
+int file_path_name(char* path)
 {
-        /* Move until we hit a non-slash */
-        int x;
-        for(x = strlen(src) - 1;x >=0; x--)
-                if(src[x] != '/') break;
+	int end = strlen(path) - 1;
+	if(end < 0) return -1;
+	if(!strcmp(path, "/")) return 0;
 
-        /* Move until we hit a slash */
-        for(;x >=0; x--)
-                if(src[x] == '/') break;
+	/* skip over slashes */
+	while(end && path[end] == '/') end--;
+	
+	/* skip non slashes */
+	while(end && path[end] != '/' && path[end]) end--;
+	if(path[end] == '/') end++;
+	
+	strncpy(path, path + end, strlen(path));
 
-	/* Clear dst */
-	memset(dst, 0, sz);
-
-	/* Copy until we hit a slash or the end. */
-	int pos;
-	for(pos = 0;pos < strlen(src);pos++, x++)
-	{
-		if(src[x] == '/' || src[x] == 0) break;
-		dst[pos] = src[x];
-	}
-
-        return 0;
+        return file_path_file(path);
 }

@@ -119,7 +119,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
-	context->hdd = driver->driver;
+	context->hdd = &driver->driver;
 	return 0;
 }
 
@@ -177,7 +177,7 @@ int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
         super_block->dblocks = blocks;
         super_block->imap = inode_bitmap;
         super_block->inodes = inodes;
-        write_sect(buffer, start_sector, driver->driver);
+        write_sect(buffer, start_sector, &driver->driver);
 
 	/* Initilize file system */
 	/* TODO: update init here */
