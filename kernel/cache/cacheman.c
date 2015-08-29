@@ -181,11 +181,33 @@ static void* cache_alloc(int id, int slabs, struct cache* cache)
         return result;
 }
 
+static int cache_force_free(void* ptr, struct cache* cache)
+{
+        struct cache_entry* entry = cache->entries;
+        uint val = (uint)ptr - (uint)cache->slabs;
+	if(val > cache->entry_count)
+		return -1;
+        /* If shift is available then use it (fast) */
+        if(cache->slab_shift)
+                entry += (uint)(val >> cache->slab_shift);
+        else {
+                /* The division instruction is super slow. */
+                entry += (val / cache->slab_sz);
+        }
+
+	entry->references = 0;
+	entry->id = 0;
+
+	return 0;
+}
+
 static int cache_dereference_nolock(void* ptr, struct cache* cache)
 {
         int result = 0;
         struct cache_entry* entry = cache->entries;
         uint val = (uint)ptr - (uint)cache->slabs;
+	if(val > cache->entry_count)
+		return -1;
         /* If shift is available then use it (fast) */
         if(cache->slab_shift)
                 entry += (uint)(val >> cache->slab_shift);
@@ -268,6 +290,21 @@ void* cache_search(int id, struct cache* cache)
 	return result;
 }
 
+void* cache_addreference(int id, int slabs, struct cache* cache)
+{
+	void* result = NULL;
+        slock_acquire(&cache->lock);
+        /* First search */
+        if(!(result = cache_search_nolock(id, cache)))
+        {
+                /* Not already cached. */
+                result = cache_alloc(id, slabs, cache);
+		/* Do not populate. */
+        }
+        slock_release(&cache->lock);
+        return result;
+}
+
 void* cache_reference(int id, int slabs, struct cache* cache)
 {
 	void* result = NULL;
@@ -277,6 +314,19 @@ void* cache_reference(int id, int slabs, struct cache* cache)
 	{
 		/* Not already cached. */
 		result = cache_alloc(id, slabs, cache);
+		/* Call the populate function */
+		if(cache->populate)
+		{
+			/* Populate the entry */
+			if(cache->populate(id, cache))
+			{
+				/* The resource is unavailable. */
+				cache_force_free(result, cache);
+				result = NULL;
+			}
+		} else {
+			cprintf("cache: non populate function assigned.\n");
+		}
 	}
 	slock_release(&cache->lock);
 	return result;

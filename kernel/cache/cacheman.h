@@ -24,6 +24,15 @@ struct cache
 	 * Sync the object with the underlying system.
 	 */
 	int (*sync)(void* obj, int id, struct cache* cache);
+
+	/**
+	 * Required populate function. When an object isn't found in the
+	 * cache, this populate function will be called so that the resource
+	 * can be loaded from the underlying system (usually from disk).
+	 * Return 0 on success, otherwise if the resource is unavailable
+	 * or does not exist, return a non 0 integer.
+	 */
+	int (*populate)(int id, struct cache* cache);
 	
 	/* NOTE: external locking MUST be used with these functions. */
 	/* Backend caching function (for backend use only) */
@@ -38,6 +47,13 @@ struct cache
  */
 int cache_init(void* cache_area, uint sz, uint data_sz, void* context,
 	struct FSHardwareDriver* driver, struct cache* cache);
+
+/**
+ * Search for the entry in the cache. If not found, do not
+ * populate the entry but still return a new cache object. If there
+ * is no space available in the cache, NULL is returned.
+ */
+void* cache_addreference(int id, int slabs, struct cache* cache);
 
 /**
  * Search the cache for any object with the given id. If no such

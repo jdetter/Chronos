@@ -2000,6 +2000,12 @@ int ext2_mkdir(const char* path, mode_t permission,
                 return -1;
         }
 	
+	/* Close parent */
+	ext2_close(parent_inode, context);
+
+	/* Close new directory */
+	ext2_close(ino, context);
+	
 	return 0;
 }
 
