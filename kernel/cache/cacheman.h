@@ -14,6 +14,8 @@ struct cache
 	void* context; /* Context pointer for use in sync. */
 	int clock; /* Points to the last entry allocated */
 	char name[64]; /* name of the cache (DEBUG) */
+	uint cache_hits; /* How many times have we gotten a cache hit? */
+	uint cache_miss; /* How many times have we gotten a cache miss? */
 
 	/**
 	 * Custom comparison function. Decides what gets compared on a

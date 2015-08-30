@@ -57,6 +57,7 @@ static int cache_default_check(void* obj, int id, struct cache* cache)
 
 int cache_dump(struct cache* cache)
 {
+	cprintf("%s cache\n", cache->name);
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
@@ -67,6 +68,16 @@ int cache_dump(struct cache* cache)
 				cache->entries[x].references);
 		}
 	}
+
+	float total = cache->cache_hits + cache->cache_miss;
+	cprintf("Cache hits: %d\n", cache->cache_hits);
+	cprintf("Cache miss: %d\n", cache->cache_miss);
+
+	float hit_percentage = (float)(cache->cache_hits) / total;
+	float miss_percentage = (float)(cache->cache_miss) / total;
+	
+	cprintf("Hit %%:     %f%%\n", hit_percentage * 100.00f);
+	cprintf("Miss %%:    %f%%\n", miss_percentage * 100.00f);
 
 	return 0;
 }
@@ -95,6 +106,8 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 #endif
 		return -1;
 	}
+	cache->cache_hits = 0;
+	cache->cache_miss = 0;
 	cache->slab_sz = data_sz;
 	cache->context = context;
 	cache->entry_count = entries;
@@ -134,38 +147,65 @@ static void* cache_alloc(int id, struct cache* cache)
 {
         void* result = NULL;
 
-        int x;
-        for(x = 0;x < cache->entry_count;x++)
+	int start = cache->clock;
+	int pos = start + 1;
+
+	/* Clock allocation algorithm */
+        for(;;)
         {
-                if(!cache->entries[x].references)
+		if(pos >= cache->entry_count) pos = 0;
+                if(!cache->entries[pos].references)
                 {
-			result = cache->entries[x].slab;
-			cache->entries[x].id = id;
-			cache->entries[x].references = 1;
+			result = cache->entries[pos].slab;
 			break;
 		}
-        }
+		pos++;
+		if(pos == start) break;
+	}
+	cache->clock = pos;
 
 #ifdef CACHE_DEBUG
-        if(result) cprintf("%s cache: new object allocated: %d\n", 
+	if(result) cprintf("%s cache: new object allocated: %d\n",
 			cache->name, id);
-        else cprintf("%s cache: not enough room in cache!\n", cache->name);
+	else cprintf("%s cache: not enough room in cache!\n", cache->name);
 #endif
+	if(!result) return NULL;
 
-        return result;
+	/* Are we ejecting something? */
+	if(result && cache->entries[pos].id)
+	{
+		if(cache->sync)
+		{
+#ifdef CACHE_DEBUG
+			cprintf("%s cache: syncing data to system.\n",
+					cache->name);
+#endif
+			cache->sync(result, cache->entries[pos].id, cache);
+		} else {
+#ifdef CACHE_DEBUG
+			cprintf("%s cache: sync is disabled.\n",
+					cache->name);
+#endif
+		}
+	}
+
+	cache->entries[pos].id = id;
+	cache->entries[pos].references = 1;
+
+	return result;
 }
 
 static int cache_force_free(void* ptr, struct cache* cache)
 {
-        struct cache_entry* entry = cache->entries;
-        uint val = (uint)ptr - (uint)cache->slabs;
-        /* If shift is available then use it (fast) */
-        if(cache->slab_shift)
-                entry += (uint)(val >> cache->slab_shift);
-        else {
-                /* The division instruction is super slow. */
-                entry += (val / cache->slab_sz);
-        }
+	struct cache_entry* entry = cache->entries;
+	uint val = (uint)ptr - (uint)cache->slabs;
+	/* If shift is available then use it (fast) */
+	if(cache->slab_shift)
+		entry += (uint)(val >> cache->slab_shift);
+	else {
+		/* The division instruction is super slow. */
+		entry += (val / cache->slab_sz);
+	}
 	if((uint)entry > cache->last_entry)
 		return -1;
 
@@ -178,43 +218,35 @@ static int cache_force_free(void* ptr, struct cache* cache)
 static int cache_dereference_nolock(void* ptr, struct cache* cache)
 {
 	if(!ptr) return -1;
-        int result = 0;
-        struct cache_entry* entry = cache->entries;
-        uint val = (uint)ptr - (uint)cache->slabs;
-        /* If shift is available then use it (fast) */
-        if(cache->slab_shift)
-                entry += (uint)(val >> cache->slab_shift);
-        else {
-                /* The division instruction is super slow. */
-                entry += (val / cache->slab_sz);
-        }
-	if((uint)entry >= cache->last_entry)
+	int result = 0;
+	struct cache_entry* entry = cache->entries;
+	uint val = (uint)ptr - (uint)cache->slabs;
+	/* If shift is available then use it (fast) */
+	if(cache->slab_shift)
+		entry += (uint)(val >> cache->slab_shift);
+	else {
+		/* The division instruction is super slow. */
+		entry += (val / cache->slab_sz);
+	}
+	if((uint)entry > cache->last_entry)
+	{
+#ifdef CACHE_DEBUG
+		cprintf("%s cache: illegal entry dereferenced!\n", cache->name);
+#endif
 		return -1;
-        entry->references--;
-        if(entry->references <= 0)
-        {
-                entry->references = 0;
+	}
+	entry->references--;
+	if(entry->references <= 0)
+	{
+		entry->references = 0;
 #ifdef CACHE_DEBUG
-                cprintf("%s cache: object %d fully dereferenced.\n",
-                                cache->name, entry->id);
+		cprintf("%s cache: object %d fully dereferenced.\n",
+				cache->name, entry->id);
 #endif
-		if(cache->sync)
-		{
-#ifdef CACHE_DEBUG
-			cprintf("%s cache: syncing data to system.\n",
-				cache->name);
-#endif
-			cache->sync(ptr, entry->id, cache);
-		} else {
-#ifdef CACHE_DEBUG
-			cprintf("%s cache: sync is disabled.\n", 
-				cache->name);
-#endif
-		}
 	} else {
 #ifdef CACHE_DEBUG
 		cprintf("%s cache: object dereferenced: %d\n", 
-			cache->name, entry->id);
+				cache->name, entry->id);
 #endif
 	}
 
@@ -266,16 +298,16 @@ void* cache_search(int id, struct cache* cache)
 void* cache_addreference(int id, struct cache* cache)
 {
 	void* result = NULL;
-        slock_acquire(&cache->lock);
-        /* First search */
-        if(!(result = cache_search_nolock(id, cache)))
-        {
-                /* Not already cached. */
-                result = cache_alloc(id, cache);
+	slock_acquire(&cache->lock);
+	/* First search */
+	if(!(result = cache_search_nolock(id, cache)))
+	{
+		/* Not already cached. */
+		result = cache_alloc(id, cache);
 		/* Do not populate. */
-        }
-        slock_release(&cache->lock);
-        return result;
+	}
+	slock_release(&cache->lock);
+	return result;
 }
 
 void* cache_reference(int id, struct cache* cache)
@@ -285,6 +317,7 @@ void* cache_reference(int id, struct cache* cache)
 	/* First search */
 	if(!(result = cache_search_nolock(id, cache)))
 	{
+		cache->cache_miss++;
 		/* Not already cached. */
 		result = cache_alloc(id, cache);
 		/* Call the populate function */
@@ -299,8 +332,10 @@ void* cache_reference(int id, struct cache* cache)
 			}
 		} else {
 			cprintf("%s cache: no populate function assigned.\n",
-				cache->name);
+					cache->name);
 		}
+	} else {
+		cache->cache_hits++;
 	}
 	slock_release(&cache->lock);
 	return result;

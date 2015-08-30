@@ -62,7 +62,7 @@ struct FSHardwareDriver
 
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
-#define FS_CACHE_SIZE 65536
+#define FS_CACHE_SIZE 32768
 #define FS_CONTEXT_SIZE 512 /* Size in bytes of an fs context */
 
 /** 
