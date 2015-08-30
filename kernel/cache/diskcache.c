@@ -24,71 +24,37 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #include "file.h"
 #include "fsman.h"
 
-// #define DISK_CACHE_DEBUG
-
 static int disk_cache_sync(void* obj, int id, struct cache* cache)
 {
-	struct FSHardwareDriver* driver = cache->driver;
+	struct FSHardwareDriver* driver = cache->context;
 	/* Write the block */
 	if(driver->writeblock(obj, id, driver) != driver->blocksize)
 		return -1;
 	return 0;
 }
 
+static int disk_cache_populate(void* block, int id, void* context)
+{
+	struct FSHardwareDriver* driver = context;
+	return (driver->readblock(block, id, driver)) != driver->blocksize;
+}
+
 static void* disk_cache_reference(uint block, struct FSHardwareDriver* driver)
 {
-	slock_acquire(&driver->cache_lock);
-	void* block_ptr = driver->cache.search(block, &driver->cache);
-#ifdef DISK_CACHE_DEBUG
-	if(block_ptr)
-		cprintf("cache: Block %d was found in cache.\n", block);
-	else cprintf("cache: Block %d was not found in cache!\n", block);
-#endif
-	
-	if(!block_ptr)
-	{
-		block_ptr = driver->cache.alloc(block, 1, &driver->cache);
-		if(driver->readblock(block_ptr, block, driver) !=
-				driver->blocksize)
-			return NULL;
-	}
-
-	slock_release(&driver->cache_lock);
-
-#ifdef DISK_CACHE_DEBUG
-	if(!block_ptr)
-		cprintf("cache: out of space!\n");
-	else cprintf("cache: block %d added.\n", block);
-#endif
-
-	return block_ptr;
+	return cache_reference(block, &driver->cache);
 }
 
 static void* disk_cache_addreference(uint block, 
 		struct FSHardwareDriver* driver)
 {
-	slock_acquire(&driver->cache_lock);
-	void* block_ptr = driver->cache.alloc(block, 1, &driver->cache);
-	slock_release(&driver->cache_lock);
-
-#ifdef DISK_CACHE_DEBUG
-	if(!block_ptr)
-		cprintf("cache: out of space!\n");
-	else cprintf("cache: block %d added.\n", block);
-#endif
-
-	memset(block_ptr, 0, driver->blocksize);
+	void* block_ptr = cache_addreference(block, &driver->cache);
+	memset(block_ptr, 0, driver->blocksize); /* Clear the block */
 	return block_ptr;
 }
 
 static int disk_cache_dereference(void* ref, struct FSHardwareDriver* driver)
 {
-	slock_acquire(&driver->cache_lock);
-
-	int result = driver->cache.dereference(ref, &driver->cache);
-
-	slock_release(&driver->cache_lock);
-	return result;
+	return cache_dereference(ref, &driver->cache);
 }
 
 int disk_cache_init(struct FSHardwareDriver* driver)
@@ -99,6 +65,7 @@ int disk_cache_init(struct FSHardwareDriver* driver)
 	driver->addreference = disk_cache_addreference;
 	/* Setup the cache with our sync function */
 	driver->cache.sync = disk_cache_sync;
+	driver->cache.populate = disk_cache_populate;
 
 	return 0;
 }

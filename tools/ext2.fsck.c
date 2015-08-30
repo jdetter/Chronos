@@ -269,9 +269,23 @@ int fsck_mkdir(char* path)
 	return result;
 }
 
+int fsck_unlink(char* path)
+{
+	return fs.unlink(path, fs.context);
+}
+
+int fsck_truncate(char* path)
+{
+	void* ino = fs.open(path, fs.context);
+	fs.truncate(ino, 0, fs.context);
+	fs.close(ino, fs.context);
+
+	return 0;
+}
+
 int dump(void)
 {
-	return fs.driver.cache.dump(&fs.driver.cache);
+	return cache_dump(&fs.driver.cache);
 }
 
 int ext2_test(void* context);
@@ -431,7 +445,13 @@ int main(int argc, char** argv)
                 }else if(!strncmp(comm_buffer, "mkdir ", 6))
                 {
                         fsck_mkdir(comm_buffer + 6);
-                }
+                } else if(!strncmp(comm_buffer, "rm ", 3))
+                {
+                        fsck_unlink(comm_buffer + 3);
+                } else if(!strncmp(comm_buffer, "trunc ", 6))
+		{
+			fsck_truncate(comm_buffer + 6);
+		}
 	}
 	return 0;
 }

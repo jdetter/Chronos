@@ -30,13 +30,13 @@ tools/deps:
 
 .PHONY: tools-deps
 tools-deps: tools/bin tools/deps
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/cacheman.c -o tools/deps/cacheman.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/diskcache.c -o tools/deps/diskcache.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/ext2.c -o tools/deps/ext2.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/stdlock.c -o tools/deps/stdlock.o
 #	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/vsfs.c -o tools/deps/vsfs.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/file.c -o tools/deps/file.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/diskio.c -o tools/deps/diskio.o
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/cacheman.c -o tools/deps/cacheman.o
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/diskcache.c -o tools/deps/diskcache.o
 
 tools/bin/%: tools/%.c
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@.o $< 

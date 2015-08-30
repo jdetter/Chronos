@@ -15,7 +15,6 @@ struct FSHardwareDriver
 	uint blocksize;
 	uint blockshift;
 	struct cache cache;
-	slock_t cache_lock; /* Required to use reference and dereference */
 	void* (*reference)(uint block, struct FSHardwareDriver* driver);
 	void* (*addreference)(uint block, struct FSHardwareDriver* driver);
 	int (*dereference)(void* ref, struct FSHardwareDriver* driver);
