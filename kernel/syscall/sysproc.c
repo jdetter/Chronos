@@ -753,14 +753,14 @@ int sys_chdir(void)
 	if(strlen(dir) < 1) return -1;
 	char dir_path[MAX_PATH_LEN];
 	char tmp_path[MAX_PATH_LEN];
-	memset(dir_path, 0, MAX_PATH_LEN);
-	memset(tmp_path, 0, MAX_PATH_LEN);
-	if(file_path_dir(dir, dir_path, MAX_PATH_LEN))
+	strncpy(dir_path, dir, MAX_PATH_LEN);
+	if(file_path_dir(dir_path, MAX_PATH_LEN))
 		return -1;
 	if(fs_path_resolve(dir_path, tmp_path, MAX_PATH_LEN))
 		return -1;
 	if(strlen(tmp_path) < 1) return -1;
-	if(file_path_dir(tmp_path, dir_path, MAX_PATH_LEN))
+	strncpy(dir_path, tmp_path, MAX_PATH_LEN);
+	if(file_path_file(dir_path))
 		return -1;
 
 	/* See if it exists */

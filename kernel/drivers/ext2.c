@@ -1684,7 +1684,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 		return -1;
 	}
 
-	struct FSHardwareDriver* driver = &fs->driver;
+	struct FSHardwareDriver* driver = fs->driver;
 	fs->valid = 1;
 	fs->type = 0; /* TODO: assign a number to ext2 */
 	memset(fs->context, FS_CONTEXT_SIZE, 0);

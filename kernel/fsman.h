@@ -259,7 +259,7 @@ struct FSDriver
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
-	struct FSHardwareDriver driver; /* HDriver for this file system*/
+	struct FSHardwareDriver* driver; /* HDriver for this file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
 	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
 	uchar cache[FS_CACHE_SIZE]; /* Space for caching files */

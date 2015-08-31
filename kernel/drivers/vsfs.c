@@ -119,7 +119,7 @@ int vsfs_driver_init(struct FSDriver* driver)
 
 	struct vsfs_context* context = 
 		(struct vsfs_context*)driver->context;
-	context->hdd = &driver->driver;
+	context->hdd = driver->driver;
 	return 0;
 }
 
@@ -177,7 +177,7 @@ int vsfs_mkfs(uint blocks, uint bsize, uint inodes,
         super_block->dblocks = blocks;
         super_block->imap = inode_bitmap;
         super_block->inodes = inodes;
-        write_sect(buffer, start_sector, &driver->driver);
+        write_sect(buffer, start_sector, driver->driver);
 
 	/* Initilize file system */
 	/* TODO: update init here */
@@ -700,9 +700,10 @@ int check_inode(uint inode, struct vsfs_context* context)
 int vsfs_unlink(const char* path, struct vsfs_context* context)
 {
   char parent_name[FILE_MAX_PATH];
+  strncpy(parent_name, path, FILE_MAX_PATH);
   vsfs_inode parent;
   int parent_num;
-  if(file_path_parent(path, parent_name, FILE_MAX_PATH))
+  if(file_path_parent(parent_name))
   {
     /* Cannot unlink the root! */
     return -1;
@@ -1120,14 +1121,16 @@ int vsfs_hard_link(const char* new_file, const char* link,
   int link_num = vsfs_lookup(link, &link_inode, context);
   if(link_num == 0) { return 1;}
   char parent[FILE_MAX_PATH];
-  file_path_parent(new_file, parent, FILE_MAX_PATH);
+  strncpy(parent, new_file, FILE_MAX_PATH);
+  file_path_parent(parent);
 
   vsfs_inode parent_inode;
 
   int parent_num = vsfs_lookup(parent, &parent_inode, context);
   if(parent_num == 0) { return 1;}
   char child[124];
-  file_path_name(new_file, child, 124);
+  strncpy(child, new_file, 124);
+  file_path_name(child);
   
   allocate_directent(&parent_inode, child, link_num, context);
 

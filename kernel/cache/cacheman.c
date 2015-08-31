@@ -19,6 +19,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #include "types.h"
 #include "stdlock.h"
 #include "stdlib.h"
+#include "panic.h"
 #endif
 
 #include "cacheman.h"

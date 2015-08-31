@@ -17,6 +17,8 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #else
 
+#include "stdlib.h"
+
 #endif
 
 #include "types.h"

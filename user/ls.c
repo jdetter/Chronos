@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #define __LINUX__
+#define __FILE_NO_FUNC__
 #include "file.h"
 #include "dirent.h"
 

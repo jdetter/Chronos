@@ -3,8 +3,8 @@ TOOLS := boot-sign \
 	boot2-verify \
 	mkvect \
 	ext2.fsck \
-#	mkfs 
-#	fsck 
+	mkfs \
+	fsck 
 
 TOOLS_SOURCE := $(addprefix tools/, $(TOOLS))
 TOOLS_SOURCE := $(addsuffix .c, $(TOOLS_SOURCE))
@@ -20,8 +20,8 @@ TOOLS_DEPS := tools/deps/file.o \
 		tools/deps/diskio.o \
 		tools/deps/ext2.o \
 		tools/deps/diskcache.o \
-		tools/deps/cacheman.o
-#		tools/deps/vsfs.o 
+		tools/deps/cacheman.o \
+		tools/deps/vsfs.o 
 
 tools/bin:
 	mkdir -p tools/bin
@@ -34,7 +34,7 @@ tools-deps: tools/bin tools/deps
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/diskcache.c -o tools/deps/diskcache.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/ext2.c -o tools/deps/ext2.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/stdlock.c -o tools/deps/stdlock.o
-#	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/vsfs.c -o tools/deps/vsfs.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/vsfs.c -o tools/deps/vsfs.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/file.c -o tools/deps/file.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/diskio.c -o tools/deps/diskio.o
 

@@ -1,7 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
-	diskcache \
-	cacheman \
+	cache/diskcache \
+	cache/cacheman \
 	netman \
 	main \
 	proc \
@@ -94,9 +94,9 @@ KERNEL_CFLAGS += -I kernel/include
 # Include driver headers
 KERNEL_CFLAGS += -I kernel/drivers
 # Include kernel headers
-KERNEL_CFLAGS += -I kernel/
-# Include library files
-# KERNEL_CFLAGS += -I lib
+KERNEL_CFLAGS += -I kernel
+# Include cache headers
+KERNEL_CFLAGS += -I kernel/cache
 
 # Don't link the standard library
 KERNEL_LDFLAGS := -nostdlib
@@ -108,7 +108,10 @@ KERNEL_LDFLAGS += --section-start=.text=0xFF000000
 
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 
-BOOT_STAGE2_CFLAGS  := -I kernel/drivers -I kernel/include  -I kernel
+BOOT_STAGE2_CFLAGS  := -I kernel/drivers \
+		-I kernel/include \
+		-I kernel/cache \
+		-I kernel
 BOOT_STAGE2_LDFLAGS := --section-start=.text=0x7E00 --entry=main \
 		--section-start=.data=0xF200 \
 		--section-start=.rodata=0xF600 \

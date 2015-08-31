@@ -122,8 +122,8 @@ struct FSHardwareDriver* ramfs_driver_alloc(uint block_size, uint blocks)
 	context->sectors = (end - start) / block_size;
 	context->bsize = block_size;
 
-	driver->read = ramfs_read;
-	driver->write = ramfs_write;
+	driver->readsect = ramfs_read;
+	driver->writesect = ramfs_write;
 	driver->context = context;
 	driver->valid = 1;
 

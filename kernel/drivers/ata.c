@@ -92,8 +92,8 @@ void ata_init(void)
 	for(x = 0;x < ATA_DRIVER_COUNT;x++)
 	{
 		memset(ata_drivers[x], 0, sizeof(struct FSHardwareDriver));
-		ata_drivers[x]->read = ata_readsect;
-		ata_drivers[x]->write = ata_writesect;
+		ata_drivers[x]->readsect = ata_readsect;
+		ata_drivers[x]->writesect = ata_writesect;
 		/* Assign a context */
 		struct ATADriverContext* context = contexts + x;
 		ata_drivers[x]->context = context;

@@ -93,7 +93,7 @@ void fsman_init(void)
 	
 	/* Create a vsfs instance ontop of the ramfs */
 	vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
-		ramfs_driver->write, ramfs);
+		ramfs_driver->writesect, ramfs);
 	ramfs->type = 0;
 	strncpy(ramfs->mount_point, "/dev/", FILE_MAX_PATH);
 }
@@ -337,7 +337,8 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	memset(tmp_path, 0, FILE_MAX_PATH);
 	if(fs_path_resolve(path, tmp_path, FILE_MAX_PATH))
 		return NULL; /* Invalid path */
-	if(file_path_file(tmp_path, dst_path, FILE_MAX_PATH))
+	strncpy(dst_path, tmp_path, FILE_MAX_PATH);
+	if(file_path_file(dst_path))
 		return NULL;
 
 	/* Find the file system for this path */
@@ -448,7 +449,8 @@ int fs_create(const char* path, uint flags,
 	memset(tmp_path, 0, FILE_MAX_PATH);
 	if(fs_path_resolve(path, tmp_path, FILE_MAX_PATH))
 		return -1; /* bad path */
-	if(file_path_file(tmp_path, dst_path, FILE_MAX_PATH))
+	strncpy(dst_path, tmp_path, FILE_MAX_PATH);
+	if(file_path_file(dst_path))
 		return -1;
 
 	/* Find the file system this file belongs to */
@@ -639,7 +641,8 @@ int fs_unlink(const char* file)
 	char file_tmp[FILE_MAX_PATH];
 	if(fs_path_resolve(file, file_resolved, FILE_MAX_PATH))
 		return -1;
-	if(file_path_file(file_resolved, file_tmp, FILE_MAX_PATH))
+	strncpy(file_tmp, file_resolved, FILE_MAX_PATH);
+	if(file_path_file(file_tmp))
 		return -1;
 
 	struct FSDriver* fs = fs_find_fs(file_tmp);
@@ -710,7 +713,8 @@ int fs_rmdir(const char* path)
 
 	/* Make sure the path doesn't end with a slash */
 	char path_tmp[FILE_MAX_PATH];
-	file_path_file(res_path, path_tmp, FILE_MAX_PATH);
+	strncpy(path_tmp, res_path, FILE_MAX_PATH);
+	file_path_file(path_tmp);
 
 	/* remove the directory */
 	if(fs->rmdir(path_tmp, fs->context))
@@ -734,7 +738,8 @@ int fs_mknod(const char* path, int dev, int dev_type, int perm)
 		return -1;
 	
 	/* Make sure the path doesn't end with a slash */
-        file_path_file(path_tmp, res_path, FILE_MAX_PATH);
+	strncpy(res_path, path_tmp, FILE_MAX_PATH);
+        file_path_file(res_path);
 	
 	/* Create the node if it's supported */
 	if(fs->mknod && fs->mknod(res_path, dev, dev_type, perm, fs->context))

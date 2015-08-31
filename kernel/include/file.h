@@ -141,6 +141,7 @@ struct old_linux_dirent
 
 #endif
 
+#ifndef __FILE_NO_FUNC__
 /**
  * Make sure the path ends with a slash. This guarentees that the path
  * represents a directory. Returns -1 on failure.
@@ -181,5 +182,7 @@ int file_path_root(char* file);
  * string.
  */
 char* file_remove_prefix(const char* path);
+
+#endif
 
 #endif

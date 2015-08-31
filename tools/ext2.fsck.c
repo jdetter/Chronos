@@ -19,6 +19,7 @@
 int fd;
 
 struct FSDriver fs;
+struct FSHardwareDriver driver;
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -284,7 +285,7 @@ int fsck_truncate(char* path)
 
 int dump(void)
 {
-	return cache_dump(&fs.driver.cache);
+	return cache_dump(&fs.driver->cache);
 }
 
 int ext2_test(void* context);
@@ -347,10 +348,11 @@ int main(int argc, char** argv)
 	int sectmax = st.st_size / block_size;
 
 	/* Initilize the memory hardware driver */
-	fs.driver.readsect = ata_readsect;
-	fs.driver.writesect = ata_writesect;
-	fs.driver.readblock = ata_readblock;
-	fs.driver.writeblock = ata_writeblock;
+	fs.driver = &driver;
+	fs.driver->readsect = ata_readsect;
+	fs.driver->writesect = ata_writesect;
+	fs.driver->readblock = ata_readblock;
+	fs.driver->writeblock = ata_writeblock;
 	int shifter = -1;
 	int block_size_tmp = block_size;
 	while(block_size_tmp)
@@ -358,11 +360,11 @@ int main(int argc, char** argv)
 		block_size_tmp >>= 1;
 		shifter++;
 	}
-	fs.driver.sectsize = block_size;
-	fs.driver.sectshifter = shifter;
-	fs.driver.sectmax = sectmax;
-	fs.driver.valid = 1;
-	fs.driver.context = NULL;
+	fs.driver->sectsize = block_size;
+	fs.driver->sectshifter = shifter;
+	fs.driver->sectmax = sectmax;
+	fs.driver->valid = 1;
+	fs.driver->context = NULL;
 
 	/* Start the driver */
 	ext2_init(start_block, block_size, FS_CACHE_SIZE, &fs);
