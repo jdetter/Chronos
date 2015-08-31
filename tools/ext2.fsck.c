@@ -187,7 +187,7 @@ void ls(char* path)
 
 		char file_path[512];
 		strncpy(file_path, path, 512);
-		strncat(file_path, "/", 512);
+		file_path_dir(file_path, 512);
 		strncat(file_path, dir.d_name, 512);
 		void* file_inode = fs.open(file_path, fs.context);
 
@@ -201,7 +201,6 @@ void ls(char* path)
 		get_perm(&st, perm_str);
 		printf("%s %d %s\n", perm_str, (int)st.st_size, dir.d_name);
 		if(fs.close(file_inode, fs.context)) return;
-		
 	}	
 
 	fs.close(inode, fs.context);

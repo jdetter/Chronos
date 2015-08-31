@@ -37,6 +37,18 @@ struct cache
 	 * or does not exist, return a non 0 integer.
 	 */
 	int (*populate)(void* obj, int id, void* context);
+
+	/**
+	 * Optional function to try to help resolve queries. Returns 0
+	 * on a query match, -1 otherwise.
+	 */
+	int (*query)(void* query_obj, void* test_obj, void* c);
+
+	/**
+	 * Optional cleanup function. This is called when a cache object
+	 * is ejected from the cache.
+	 */
+	int (*eject)(void* obj, int id, void* c);
 };
 
 /**
@@ -60,6 +72,15 @@ void* cache_addreference(int id, struct cache* cache);
 void* cache_reference(int id, struct cache* cache);
 
 /**
+ * Search the cache for the given data. This function only works if
+ * the application has defined a query function in the cache structure.
+ * The object returned is a soft link, it should not be freed and it
+ * did not increase the reference cound of the object. If the object
+ * is to be used, you should reference the object.
+ */
+void* cache_query(void* data, struct cache* cache);
+
+/**
  * Free a pointer that was passed by cache_alloc. Returns the amount
  * of references left on that object. The object is only freed if
  * the amount of references left is 0.
@@ -67,8 +88,35 @@ void* cache_reference(int id, struct cache* cache);
 int cache_dereference(void* ptr, struct cache* cache);
 
 /**
+ * Hint to the cache that this entry might be accessed soon. (major
+ * performance increase)
+ */
+void cache_prepare(int id, struct cache* cache);
+
+/**
  * Dump information on the objects currently in the cache.
  */
 int cache_dump(struct cache* cache);
+
+/**
+ * Sync the cache with the underlying system.
+ */
+void cache_sync_all(struct cache* cache);
+
+/**
+ * Sync a specific cache object.
+ */
+int cache_sync(void* ptr, struct cache* cache);
+
+/**
+ * Eliminate and clear all stale entries (reduces performance but
+ * makes it easier to find leaks).
+ */
+int cache_clean(struct cache* cache);
+
+/**
+ * Calculate the minimum cache size needed for the amount of entries.
+ */
+int cache_calc_size(int entries, int entry_size);
 
 #endif

@@ -62,7 +62,8 @@ struct FSHardwareDriver
 
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
-#define FS_CACHE_SIZE 32768
+#define FS_MAX_INODE_CACHE 256 /* Maximum number of entries */
+#define FS_CACHE_SIZE 0x600000
 #define FS_CONTEXT_SIZE 512 /* Size in bytes of an fs context */
 
 /** 
@@ -242,6 +243,18 @@ struct FSDriver
 	 */
 	int (*mknod)(const char* path, uint dev, uint dev_type,
                 uint perm, void* context);
+
+	/**
+	 * Sync all files and data with the storage. This function never
+ 	 * fails.
+	 */
+	void (*sync)(void* context);
+
+	/**
+	 * Sync a single file and its data with the storage. Returns 0
+	 * on success.
+	 */
+	int (*fsync)(void* i, void* context);
 
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */

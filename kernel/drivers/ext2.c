@@ -138,9 +138,11 @@ struct ext2_disk_inode
 
 struct ext2_cache_inode
 {
-	struct ext2_disk_inode ino;
+	struct ext2_disk_inode* ino;
+	void* block; /* The block that contains this inode */
 	uint_32 inode_num;
 	uint_32 inode_group;
+	char path[EXT2_MAX_PATH];
 };
 
 struct ext2_base_superblock
@@ -284,6 +286,10 @@ struct ext2_context
 	/* superblock information */
 	struct ext2_base_superblock base_superblock;
 	struct ext2_extended_base_superblock extended_superblock;
+	/* The block containing the superblock */
+	char* super_block;
+	/* The offset in the block containing the superblock */
+	uint super_offset;
 
 	/* hardware driver */
 	struct FSHardwareDriver* driver;
@@ -405,6 +411,9 @@ static int ext2_alloc_inode(int num, int dir, context* context)
 	table.free_inodes--;
 	if(dir) table.dir_count++;
 
+	/* Update superblock */
+	context->base_superblock.free_inode_count--;
+
 	/* Write the updated table */
 	if(ext2_write_bgdt(block_group, &table, context))
 	{
@@ -448,6 +457,9 @@ static int ext2_free_inode(int num, int dir, context* context)
 	/* Update table metadata */
 	table.free_inodes++;
 	if(dir) table.dir_count--;
+
+	/* Update superblock */
+	context->base_superblock.free_inode_count++;
 
 	/* Write the updated table */
 	if(ext2_write_bgdt(block_group, &table, context))
@@ -563,6 +575,9 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 		return -1;
 	}
 
+	/* Update the superblock */
+	context->base_superblock.free_block_count--;
+
 	context->driver->dereference(block, context->driver);
 
 	return 0;
@@ -608,6 +623,9 @@ static int ext2_free_block(int block_num, context* context)
 		context->driver->dereference(block, context->driver);
 		return -1;
 	}
+
+	/* Update the superblock */
+	context->base_superblock.free_block_count++;
 
 	context->driver->dereference(block, context->driver);
 
@@ -718,7 +736,7 @@ static int ext2_find_free_blocks(int hint,
 	return -1;
 }
 
-static int ext2_read_inode(disk_inode* dst, int num, context* context)
+static int _ext2_read_inode(inode* dst, int num, context* context)
 {
 	char* block;
 	if(num <= 0) return -1;
@@ -739,37 +757,9 @@ static int ext2_read_inode(disk_inode* dst, int num, context* context)
 	/* Read from the inode table */
 	block = context->driver->reference(inode_address, context->driver);
 	if(!block) return -1;
-	disk_inode* ino = (void*)(block + inode_block_offset);
-	memmove(dst, ino, sizeof(disk_inode));
+	dst->block = block;
+	dst->ino = (void*)(block + inode_block_offset);
 
-	context->driver->dereference(block, context->driver);
-	return 0;
-}
-
-static int ext2_write_inode(disk_inode* src, int num, context* context)
-{
-	char* block;
-	if(num <= 0) return -1;
-	int block_group = (num - 1) >> context->inodegroupshift;
-	int local_index = (num - 1) &
-		(context->base_superblock.inodes_per_group - 1);
-
-	struct ext2_block_group_table table;
-	ext2_read_bgdt(block_group, &table, context);
-
-	/* Get the address of the inode */
-	uint inode_offset = local_index << context->inodesizeshift;
-	uint inode_address = table.inode_table +
-		(inode_offset >> context->blockshift);
-	uint inode_block_offset = inode_offset & (context->blocksize - 1);
-
-	/* Read from the inode table */
-	block = context->driver->reference(inode_address, context->driver);
-	if(!block) return -1;
-	disk_inode* ino = (void*)(block + inode_block_offset);
-	memmove(ino, src, sizeof(disk_inode));
-
-	context->driver->dereference(block, context->driver);
 	return 0;
 }
 
@@ -779,15 +769,39 @@ static int ext2_inode_cache_populate(void* obj, int id, void* c)
 	inode* ino = obj;
 	ino->inode_num = id;
 	ino->inode_group = id >> context->inodegroupshift;
-	return ext2_read_inode(&ino->ino, id, c);
+	/* Can't do path from here */
+	memset(ino->path, 0, EXT2_MAX_PATH);
+
+	return _ext2_read_inode(obj, id, c);
+}
+
+static int ext2_inode_cache_eject(void* obj, int id, void* c)
+{
+	context* context = c;
+	inode* ino = obj;
+	if(!ino || !context) return -1;
+
+	context->driver->dereference(ino->block, context->driver);
+	return 0;
 }
 
 static int ext2_inode_cache_sync(void* obj, int id, struct cache* cache)
 {
-	inode* ino = obj;
-	if(!ino) return -1;
+	/* Inodes are automatically synced on block buffer sync */
+	return 0;
+}	
 
-	return ext2_write_inode(&ino->ino, ino->inode_num, cache->context);
+static int ext2_inode_cache_query(void* query_obj, void* test_obj, void* c)
+{
+	inode* query = query_obj;
+	inode* test = test_obj;
+
+	/* If the query object has no path, we can't do anything. */
+	if(strlen(query->path) == 0) return -1;
+
+	if(!strcmp(query->path, test->path))
+		return 0;
+	return -1;	
 }
 
 /**
@@ -1593,31 +1607,27 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 			} else {
 				path = file_remove_prefix(path);
 				/* We have to read this inode */
-				disk_inode new_handle;
-				if(ext2_read_inode(&new_handle, 
-							dir.inode, context))
-					return -1;
-				if(S_ISDIR(new_handle.mode))	
-					return ext2_lookup_rec(path, dst, 
-							follow, &new_handle,
+				inode* new_handle = cache_reference(dir.inode, 
+						&context->inode_cache);
+				int result = -1;
+
+				if(S_ISDIR(new_handle->ino->mode))	
+					result = ext2_lookup_rec(path, dst, 
+							follow, 
+							new_handle->ino,
 							context);
-				if(S_ISLNK(new_handle.mode))
+				else if(S_ISLNK(new_handle->ino->mode))
 				{
-					char path_buff[EXT2_MAX_PATH];
-					if(_ext2_read(path_buff, 0,
-								EXT2_MAX_PATH,
-								&new_handle,
-								context) < 0)
-						return -1;
 					/* Start new search at root */
 
 					/* TODO: ask kernel to resolve this */
-					return -1;
 				}
 
-				return -1;
+				cache_dereference(new_handle, 
+						&context->inode_cache);
+				return result;
 			}
-		}
+		} 	
 
 		pos += dir.size;
 	}
@@ -1628,7 +1638,7 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 static int ext2_lookup(const char* path, struct ext2_dirent* dst, 
 		context* context)
 {
-	return ext2_lookup_rec(path, dst, 1, &context->root->ino, context);
+	return ext2_lookup_rec(path, dst, 1, context->root->ino, context);
 }
 
 inode* ext2_opened(const char* path, context* context);
@@ -1656,14 +1666,12 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 int ext2_fsstat(struct fs_stat* dst, context* context);
 int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 		uint pos, context* context);
+void ext2_sync(context* context);
+int ext2_fsync(inode* ino, context* context);
 
 int ext2_test(context* context)
 {
-	cache_dump(&context->inode_cache);
-
-	/* flush the root */
-	ext2_write_inode(&context->root->ino, context->root->inode_num, context);
-
+	ext2_sync(context);
 	return 0;
 }
 
@@ -1764,12 +1772,16 @@ int ext2_init(uint superblock_address, uint sectsize,
 		context->blockshift;
 
 	/* Setup caches */
-	uint inode_cache_sz = cache_sz >> 2;
+	uint inode_cache_sz = cache_calc_size(FS_MAX_INODE_CACHE, 
+		sizeof(struct ext2_cache_inode));
+	if(inode_cache_sz > cache_sz) return -1;
 	uint inode_cache_start = (uint)fs->cache + cache_sz - inode_cache_sz;
 	cache_init((void*)inode_cache_start, inode_cache_sz, sizeof(inode),
 			context, "inode", &context->inode_cache);
 	context->inode_cache.sync = ext2_inode_cache_sync;
 	context->inode_cache.populate = ext2_inode_cache_populate;
+	context->inode_cache.query = ext2_inode_cache_query;
+	context->inode_cache.eject = ext2_inode_cache_eject;
 
 	uint disk_cache_sz = cache_sz - inode_cache_sz;
 	uint disk_cache_start = (uint)fs->cache;
@@ -1777,13 +1789,21 @@ int ext2_init(uint superblock_address, uint sectsize,
 			driver, "disk", &driver->cache);
 	disk_cache_init(driver);
 
+	/* Setup the superblock context pointer */
+        uint superblock_block = 0;
+	context->super_offset = 0;
+        if(context->blocksize == 512)
+                superblock_block = 2;
+        else if(context->blocksize == 1024)
+		superblock_block = 1;
+	else context->super_offset = 1024;
+
+	context->super_block = context->driver->reference(superblock_block, 
+			context->driver);
+
 	/* Cache the root inode */
 	inode* root = cache_reference(2, &context->inode_cache);
 	if(!root) return -1;
-	root->inode_num = 2;
-	/* For whatever reason the root inode is always 2. */
-	if(ext2_read_inode(&root->ino, 2, context))
-		return -1;
 	context->root = root;
 
 	fs->open = (void*)ext2_open;
@@ -1804,16 +1824,33 @@ int ext2_init(uint superblock_address, uint sectsize,
 	// fs->symlink = (void*)ext2_symlink;
 	fs->mkdir = (void*)ext2_mkdir;
 	fs->truncate = (void*)ext2_truncate;
+	fs->sync = (void*)ext2_sync;
+	fs->fsync = (void*)ext2_fsync;
 
 	return 0;
 }
 
 inode* ext2_open(const char* path, context* context)
 {
+	/* First lets try a query */
+	inode query_node;
+	strncpy(query_node.path, path, EXT2_MAX_PATH);
+	query_node.inode_num = 0;
+	query_node.inode_group = 0;
+	inode* result = cache_query(&query_node, &context->inode_cache);
+	if(result)
+		return cache_reference(result->inode_num, 
+				&context->inode_cache);
+
+	/* We have never seen this node before. */
 	int num = ext2_lookup(path, NULL, context);
 	if(num < 0) return NULL;
 
-	return cache_reference(num, &context->inode_cache);	
+	inode* ino = cache_reference(num, &context->inode_cache);
+	if(!ino) return NULL;
+	if(strlen(ino->path) == 0)
+		strncpy(ino->path, path, EXT2_MAX_PATH);
+	return ino;
 }
 
 int ext2_close(inode* ino, context* context)
@@ -1823,23 +1860,23 @@ int ext2_close(inode* ino, context* context)
 
 int ext2_stat(inode* ino, struct stat* dst, context* context)
 {
-	uint_64 file_size = ino->ino.lower_size |
-		((uint_64)ino->ino.upper_size << 32);
+	uint_64 file_size = ino->ino->lower_size |
+		((uint_64)ino->ino->upper_size << 32);
 
 	memset(dst, 0, sizeof(struct stat));
 	dst->st_dev = 0;
 	dst->st_ino = ino->inode_num;
-	dst->st_mode = ino->ino.mode;
-	dst->st_nlink = ino->ino.hard_links;
-	dst->st_uid = ino->ino.owner;
-	dst->st_gid = ino->ino.group;
+	dst->st_mode = ino->ino->mode;
+	dst->st_nlink = ino->ino->hard_links;
+	dst->st_uid = ino->ino->owner;
+	dst->st_gid = ino->ino->group;
 	dst->st_rdev = 0;
 	dst->st_size = file_size;
 	dst->st_blksize = context->blocksize;
-	dst->st_blocks = ino->ino.sectors;
-	dst->st_atime = ino->ino.last_access_time;
-	dst->st_mtime = ino->ino.modification_time;
-	dst->st_ctime = ino->ino.creation_time;
+	dst->st_blocks = ino->ino->sectors;
+	dst->st_atime = ino->ino->last_access_time;
+	dst->st_mtime = ino->ino->modification_time;
+	dst->st_ctime = ino->ino->creation_time;
 
 	return 0;
 }
@@ -1876,35 +1913,36 @@ int ext2_create(const char* path, mode_t permissions,
 			parent_inode->inode_group, 0, context);
 	if(new_file < 0) return -1;
 
-	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+	if(ext2_alloc_dirent(parent_inode->ino, new_file,
 				parent_inode->inode_group, name, 
 				EXT2_FILE_REG_FILE, context)) return -1;
 
 	ext2_close(parent_inode, context); /* Clean up parent */
 
+	inode* ino = ext2_open(path, context);
+	if(!ino) return -1;
 	/* Lets create a new inode */
-	disk_inode new_ino;
-	memset(&new_ino, 0, sizeof(disk_inode));
+	disk_inode* new_ino = ino->ino;
+	memset(new_ino, 0, sizeof(disk_inode));
 
 	/* update attributes */
-	new_ino.mode = permissions;
-	new_ino.owner = uid;
-	new_ino.group = new_file >> context->inodegroupshift;
-	new_ino.creation_time = 0;/* TODO: get kernel time */
-	new_ino.modification_time = new_ino.creation_time;
-	new_ino.hard_links = 1; /* Starts with one hard link */
+	new_ino->mode = permissions;
+	new_ino->owner = uid;
+	new_ino->group = new_file >> context->inodegroupshift;
+	new_ino->creation_time = 0;/* TODO: get kernel time */
+	new_ino->modification_time = new_ino->creation_time;
+	new_ino->hard_links = 1; /* Starts with one hard link */
 
-	/* Write the new inode to disk */
-	if(ext2_write_inode(&new_ino, new_file, context))
-		return -1;
+	/* Close the child */
+	ext2_close(ino, context);
 
 	return 0;
 }
 
 int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
 {
-	ino->ino.owner = uid;
-	ino->ino.group = gid;
+	ino->ino->owner = uid;
+	ino->ino->group = gid;
 
 	/* Results will get written to disk when the file is closed.*/
 	return 0;
@@ -1912,7 +1950,7 @@ int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
 
 int ext2_chmod(inode* ino, mode_t mode, context* context)
 {
-	ino->ino.mode = mode;
+	ino->ino->mode = mode;
 
 	/* Results will get written to disk when the file is closed.*/
 	return 0;
@@ -1920,7 +1958,7 @@ int ext2_chmod(inode* ino, mode_t mode, context* context)
 
 int ext2_truncate(inode* ino, int sz, context* context)
 {
-	return _ext2_truncate(&ino->ino, sz, context);
+	return _ext2_truncate(ino->ino, sz, context);
 }
 
 int ext2_link(const char* file, const char* link, context* context)
@@ -1938,7 +1976,7 @@ int ext2_link(const char* file, const char* link, context* context)
 	int new_file = ext2_lookup(file, NULL, context);
 	if(new_file < 0) return -1;
 
-	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+	if(ext2_alloc_dirent(parent_inode->ino, new_file,
 				parent_inode->inode_group, name, EXT2_FILE_REG_FILE,
 				context)) return -1;
 
@@ -1953,7 +1991,7 @@ int ext2_link(const char* file, const char* link, context* context)
 				file, link);
 		return -1;
 	}
-	file_ino->ino.hard_links++;
+	file_ino->ino->hard_links++;
 
 	/* Flush new link to disk */
 	ext2_close(file_ino, context);
@@ -1976,7 +2014,7 @@ int ext2_symlink(const char* file, const char* link, context* context)
 			parent_inode->inode_group, 0, context);
 	if(new_file < 0) return -1;
 
-	if(ext2_alloc_dirent(&parent_inode->ino, new_file,
+	if(ext2_alloc_dirent(parent_inode->ino, new_file,
 				parent_inode->inode_group, name, EXT2_FILE_REG_FILE,
 				context)) return -1;
 
@@ -2020,11 +2058,11 @@ int ext2_mkdir(const char* path, mode_t permission,
 	/* Change the permission of the file to be a directory */
 	permission &= ~S_IFMT;
 	permission |= S_IFDIR;
-	ino->ino.mode = permission;
+	ino->ino->mode = permission;
 
 	/* Change ownership */
-	ino->ino.owner = uid;
-	ino->ino.group = gid;
+	ino->ino->owner = uid;
+	ino->ino->group = gid;
 
 	/* Add the basic entries */
 	char parent[EXT2_MAX_PATH];
@@ -2056,7 +2094,7 @@ int ext2_mkdir(const char* path, mode_t permission,
 	}
 
 	/* Create 2 entries */
-	if(ext2_alloc_dirent(&ino->ino, ino->inode_num,
+	if(ext2_alloc_dirent(ino->ino, ino->inode_num,
 				ino->inode_num >> context->inodegroupshift,
 				".", EXT2_FILE_DIR, context))
 	{
@@ -2065,7 +2103,7 @@ int ext2_mkdir(const char* path, mode_t permission,
 		return -1;
 	}
 
-	if(ext2_alloc_dirent(&ino->ino, parent_inode->inode_num,
+	if(ext2_alloc_dirent(ino->ino, parent_inode->inode_num,
 				ino->inode_num >> context->inodegroupshift,
 				"..", EXT2_FILE_DIR, context))
 	{
@@ -2075,7 +2113,7 @@ int ext2_mkdir(const char* path, mode_t permission,
 	}
 
 
-	if(ext2_modify_dirent_type(&parent_inode->ino, file_name, 
+	if(ext2_modify_dirent_type(parent_inode->ino, file_name, 
 				parent_inode->inode_group, EXT2_FILE_DIR, context))
 	{
 		/* Delete the file */
@@ -2101,14 +2139,14 @@ int ext2_rmdir(const char* path, context* context)
 int ext2_read(inode* ino, void* dst, uint start, uint sz, 
 		context* context)
 {
-	return _ext2_read(dst, start, sz, &ino->ino, context);
+	return _ext2_read(dst, start, sz, ino->ino, context);
 }
 
 int ext2_write(inode* ino, const void* src, uint start, uint sz,
 		context* context)
 {
 	return _ext2_write(src, start, sz, 
-			ino->inode_group, &ino->ino, context);
+			ino->inode_group, ino->ino, context);
 }
 
 int ext2_rename(const char* src, const char* dst, context* context)
@@ -2148,16 +2186,16 @@ int ext2_unlink(const char* file, context* context)
 	}
 
 	/* Remove the directory entry */
-	int success = ext2_free_dirent(&parent->ino, parent->inode_group,
+	int success = ext2_free_dirent(parent->ino, parent->inode_group,
 			file_name, context);
 	/* Decrement hard links */
-	ino->ino.hard_links--;
+	ino->ino->hard_links--;
 
-	if(!ino->ino.hard_links)
+	if(!ino->ino->hard_links)
 	{
 		/* We can completely free this inode */
 		success |= ext2_free_inode(ino->inode_num, 
-				S_ISDIR(ino->ino.mode), context);
+				S_ISDIR(ino->ino->mode), context);
 
 		/**
 		 * TODO: all blocks belonging to this inode are
@@ -2173,8 +2211,8 @@ int ext2_unlink(const char* file, context* context)
 int ext2_readdir(inode* dir, int index, struct dirent* dst, 
 		context* context)
 {
-	uint_64 file_size = dir->ino.lower_size |
-		((uint_64)dir->ino.upper_size << 32);
+	uint_64 file_size = dir->ino->lower_size |
+		((uint_64)dir->ino->upper_size << 32);
 
 	struct ext2_dirent diren;
 
@@ -2182,7 +2220,7 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 	int pos;
 	for(x = 0, pos = 0;x < index + 1 && pos < file_size;x++)
 	{
-		if(_ext2_readdir(&diren, pos, &dir->ino, context))
+		if(_ext2_readdir(&diren, pos, dir->ino, context))
 			return -1;
 
 		if(x == index)
@@ -2206,8 +2244,8 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count, 
 		uint pos, context* context)
 {
-	uint_64 file_size = dir->ino.lower_size |
-		((uint_64)dir->ino.upper_size << 32);
+	uint_64 file_size = dir->ino->lower_size |
+		((uint_64)dir->ino->upper_size << 32);
 
 	if(pos >= file_size) return 0; /* End of directory */
 
@@ -2218,7 +2256,7 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 	for(x = 0;x < count && pos + bytes_read < file_size;x++)
 	{
 		if(_ext2_readdir(&diren, pos + bytes_read, 
-					&dir->ino, context))
+					dir->ino, context))
 			return -1;
 
 		/* convert ext2 dirent to dirent */
@@ -2228,10 +2266,58 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 		dst_arr[x].d_reclen = sizeof(struct dirent);
 		strncpy(dst_arr[x].d_name, diren.name, FILE_MAX_NAME);
 
+		/**
+		 * This file will no doubt be accessed soon, so we
+		 * are going to inform the cache that it should
+		 * keep the inode reference warm.
+		 */
+		inode* prepare = cache_reference(diren.inode, 
+				&context->inode_cache);
+
+		if(prepare)
+		{
+			if(!strlen(prepare->path))
+			{
+				strncpy(prepare->path, 
+						dir->path, EXT2_MAX_PATH);
+				if(!file_path_dir(prepare->path, 
+							EXT2_MAX_PATH))
+				{
+					strncat(prepare->path, diren.name,
+							EXT2_MAX_PATH);	
+				} else memset(prepare->path, 
+						0, EXT2_MAX_PATH);
+			}
+			cache_dereference(prepare, &context->inode_cache);
+		}
+
 		bytes_read += diren.size;
 	}
 
 	return bytes_read;
+}
+
+void ext2_sync(context* context)
+{
+	/* Sync the superblock */
+	char* super_buffer = context->super_block + context->super_offset;
+
+	memmove(&context->base_superblock, super_buffer, 
+			sizeof(struct ext2_base_superblock));
+	if(context->base_superblock.major_version >= 1)
+	{
+		memmove(&context->extended_superblock, super_buffer
+				+ sizeof(struct ext2_base_superblock),
+				sizeof(struct ext2_extended_base_superblock));
+	}
+
+	/* Sync the data blocks */
+	cache_sync_all(&context->driver->cache);
+}
+
+int ext2_fsync(inode* ino, context* context)
+{
+	return cache_sync(ino, &context->inode_cache);
 }
 
 int ext2_fsstat(struct fs_stat* dst, context* context)
