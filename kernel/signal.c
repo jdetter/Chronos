@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Functions for handling signaling processes.
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "stdarg.h"

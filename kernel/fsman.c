@@ -1,3 +1,10 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Chronos's file system manager. This handles all of the file system
+ * operations.
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdlock.h"
@@ -165,7 +172,6 @@ int fs_path_resolve(const char* path, char* dst, uint sz)
 	{
 		switch(path[path_pos])
 		{
-			/* Implement later */
 			case '.':
 				dst[dst_pos] = '.';
 				dots++;

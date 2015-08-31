@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Virtual memory functions for 80*86
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "asm.h"

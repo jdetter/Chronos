@@ -1,3 +1,9 @@
+/**
+ * Authors: John Detter <john@detter.com>, Max Strange <mbstrange@wisc.edu>
+ *
+ * Functions for handling processes.
+ */
+
 #include "types.h"
 #include "file.h"
 #include "elf.h"

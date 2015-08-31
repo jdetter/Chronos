@@ -20,7 +20,7 @@ TOOLS_DEPS := tools/deps/file.o \
 		tools/deps/diskio.o \
 		tools/deps/ext2.o \
 		tools/deps/diskcache.o \
-		tools/deps/cacheman.o \
+		tools/deps/cache.o \
 		tools/deps/vsfs.o 
 
 tools/bin:
@@ -30,7 +30,7 @@ tools/deps:
 
 .PHONY: tools-deps
 tools-deps: tools/bin tools/deps
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/cacheman.c -o tools/deps/cacheman.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/cache.c -o tools/deps/cache.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/cache/diskcache.c -o tools/deps/diskcache.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/drivers/ext2.c -o tools/deps/ext2.o
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c -m32 kernel/stdlock.c -o tools/deps/stdlock.o

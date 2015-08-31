@@ -1,3 +1,10 @@
+/**
+ * Author: Amber Arnold <alarnold2@wisc.edu>
+ *
+ * Circular buffer (pipe) implementation. Used for process
+ * communication
+ */
+
 #include "types.h"
 #include "stdarg.h"
 #include "stdlib.h"

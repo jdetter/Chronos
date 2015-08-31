@@ -1,3 +1,10 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Page directory functions.
+ *
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "file.h"

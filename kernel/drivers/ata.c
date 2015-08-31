@@ -1,3 +1,13 @@
+/**
+ * Author: Max Strange <mbstrange@wisc.edu>
+ * 
+ * Maintainers:
+ *  + John Detter <john@detter.com>
+ *
+ * ATA Programmed IO mode driver.
+ *
+ */
+
 #include "types.h"
 #include "stdlock.h"
 #include "file.h"

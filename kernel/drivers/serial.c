@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Driver for Serial connections.
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdlock.h"

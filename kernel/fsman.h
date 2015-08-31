@@ -4,7 +4,7 @@
 #define FS_HARDWARE_CONTEXT_SIZE 64
 
 /* Some dependant headers */
-#include "cacheman.h"
+#include "cache.h"
 
 struct FSHardwareDriver
 {

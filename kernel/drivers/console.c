@@ -1,3 +1,10 @@
+/**
+ * Author: Amber Arnold <alarnold2@wisc.edu>
+ * 
+ * Functions for printing characters to a terminal screen.
+ *
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "stdarg.h"

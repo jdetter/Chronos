@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Functions for reading and writing to specific locations on a hard disk.
+ */
+
 #ifdef __LINUX__
 #include <stdlib.h>
 #include <sys/stat.h>

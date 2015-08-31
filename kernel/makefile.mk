@@ -1,7 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
 	cache/diskcache \
-	cache/cacheman \
+	cache/cache \
 	netman \
 	main \
 	proc \

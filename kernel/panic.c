@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Kernel debugging / output functions.
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdlock.h"

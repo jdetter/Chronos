@@ -1,3 +1,9 @@
+/**
+ * Author: Amber Arnold <alarnold2@wisc.edu> 
+ *
+ * A standard lock library implementation.
+ */
+
 #include "types.h"
 #include "stdlock.h"
 #include "x86.h"

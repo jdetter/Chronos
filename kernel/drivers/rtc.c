@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Driver for the Real Time Clock.
+ */
+
 #include "types.h"
 #include "cmos.h"
 #include "stdlib.h"

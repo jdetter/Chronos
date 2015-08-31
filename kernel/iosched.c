@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * IO Scheduler.
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdarg.h"

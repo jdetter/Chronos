@@ -1,3 +1,10 @@
+/**
+ * Author: Amber Arnold <alarnold2@wisc.edu>
+ *
+ * Keyboard driver.
+ *
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "panic.h"

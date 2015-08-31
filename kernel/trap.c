@@ -1,3 +1,11 @@
+/**
+ * Authors: 
+ *  + John Detter <john@detter.com>
+ *  + Amber Arnold <alarnold2@wisc.edu>
+ *
+ * Trap handling functions.
+ */
+
 #include "types.h"
 #include "idt.h"
 #include "trap.h"

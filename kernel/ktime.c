@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Kernel time keeper.
+ */
+
 #include "types.h"
 #include "stdlock.h"
 #include "stdarg.h"

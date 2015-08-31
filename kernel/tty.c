@@ -1,3 +1,12 @@
+/**
+ * Authors:
+ *  + John Detter <john@detter.com>
+ *  + Mike Chargo <mike.chargo@sbcglobal.net>
+ *
+ * TeleTYpe (TTY) implementation.
+ *
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdlock.h"

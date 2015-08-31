@@ -1,3 +1,10 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * This is Chronos's device manager. Devman detects devices on boot and
+ * assigns them drivers and nodes on /dev.
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "file.h"

@@ -1,3 +1,12 @@
+/**
+ * Authors: 
+ *  + Mike Chargo <mike.chargo@sbcglobal.net> 
+ *  + Andrea Myles <andrea-myles@uiowa.edu> 
+ *  + John Detter <john@detter.com>
+ * 
+ * Basic set of standard library functions.
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "stdarg.h"

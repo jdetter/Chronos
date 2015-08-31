@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Virtual memory manager (page allocator).
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "cpu.h"

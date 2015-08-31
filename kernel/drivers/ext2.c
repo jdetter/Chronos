@@ -1,3 +1,9 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Driver for the EXT2 file system.
+ */
+
 #ifdef __LINUX__
 
 #include <stdlib.h>
@@ -61,7 +67,7 @@ int log2_linux(uint value)
 #include "fsman.h"
 #include "ext2.h"
 #include "diskio.h"
-#include "cacheman.h"
+#include "cache.h"
 #include "diskcache.h"
 
 #define EXT2_DIRECT_COUNT 12

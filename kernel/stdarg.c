@@ -1,3 +1,10 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Functions for handling variable argument lists. This will
+ * eventually be replaced by all macros.
+ */
+
 #include "types.h"
 #include "x86.h"
 #include "stdarg.h"

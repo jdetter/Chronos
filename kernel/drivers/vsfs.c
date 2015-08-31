@@ -1,5 +1,10 @@
 /**
- * Very simple file system driver.
+ * Author: Max Strange <mbstrange@wisc.edu>
+ * 
+ * Maintainers:
+ *  + John Detter <john@detter.com>
+ * 
+ * An implementation of a simple Unix-like file system.
  */
 
 #ifndef __LINUX__ 

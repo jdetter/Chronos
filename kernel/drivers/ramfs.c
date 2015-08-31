@@ -1,3 +1,12 @@
+/**
+ * Author: John Detter <john@detter.com>
+ *
+ * Memory driver for file systems. This allows file systems
+ * to exist only in memory. This is used for directories
+ * like /dev that don't need persistence (they are recreated
+ * every time the system is booted).
+ */
+
 #include "types.h"
 #include "file.h"
 #include "stdlock.h"
