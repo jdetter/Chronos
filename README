@@ -6,17 +6,29 @@ information on this project, check us out at http://www.chronos.systems.
 
 Contributors
 ============
-A lot of people have put in a lot of time to make this project possible. I have
-tried to note in header files who has done what work. This list of contributors
-may not be entirely complete, but we would like to give special thanks to:
+A lot of people have put in a lot of hard work to make this project possible. 
+I have tried to note in header files who has done what work. This list of 
+contributors may not be complete, but we would like to give special thanks to 
+the following people:
 
  - Amber Arnold
  - Max Strange
  - Mike Chargo
  - Andrea Myles
 
+If you want to learn more about the people behind this project, check out
+our about us webpage: http://www.chronos.systems/about_us.html
+
+Building Chronos
+================
+In order to build Chronos, a special toolchain needs to be used. This will
+be provided as soon as possible.
+
 Open Source License
 ===================
 We have licensed this software using the General Public License v2 (GPLv2).
 
-
+Donations
+=========
+Please consider a donation. Even a 5 dollar donation can keep our servers
+runnning for over a month. Check out our donations page: http://chronos.systems/involved.html. We appreciate your donation!
