@@ -1705,7 +1705,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 	diskio_setup(context->driver);
 
 	/* Read the superblock */
-	uint superblock_start = (superblock_address * sectsize) + 0x1000;
+	uint superblock_start = (superblock_address * sectsize) + 1024;
 	char super_buffer[1024];
 	if(driver->read(super_buffer, superblock_start, 
 			1024, driver) != 1024)
