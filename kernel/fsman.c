@@ -99,8 +99,8 @@ void fsman_init(void)
 	vsfs_driver_init(ramfs);
 	
 	/* Create a vsfs instance ontop of the ramfs */
-	vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
-		ramfs_driver->writesect, ramfs);
+	//vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
+	//	ramfs_driver->writesect, ramfs);
 	ramfs->type = 0;
 	strncpy(ramfs->mount_point, "/dev/", FILE_MAX_PATH);
 }

@@ -6,10 +6,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define TEXT_MAX (512 * 58)
-#define DATA_MAX (512 * 2)
-#define RODATA_MAX (512 * 2)
-#define BSS_MAX (512 * 2)
+#define TEXT_MAX (512 * 128)
+#define DATA_MAX (512 * 4)
+#define RODATA_MAX (512 * 4)
+#define BSS_MAX (512 * 4)
 
 int main(int argc, char** argv)
 {

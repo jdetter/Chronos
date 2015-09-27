@@ -19,6 +19,7 @@
 *.img
 *.vdi
 fs/
+tmp/
 kernel/idt.S
 *.sym
 

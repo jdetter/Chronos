@@ -63,7 +63,6 @@ struct FSHardwareDriver
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
 #define FS_MAX_INODE_CACHE 256 /* Maximum number of entries */
-#define FS_CACHE_SIZE 0x600000
 #define FS_CONTEXT_SIZE 512 /* Size in bytes of an fs context */
 
 /** 
@@ -262,7 +261,8 @@ struct FSDriver
 	struct FSHardwareDriver* driver; /* HDriver for this file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
 	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
-	uchar cache[FS_CACHE_SIZE]; /* Space for caching files */
+	uchar* cache; /* Pointer into the disk cache */
+	uint cache_sz; /* How big is the cache in bytes? */
 };
 
 /**

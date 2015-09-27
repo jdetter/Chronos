@@ -47,6 +47,7 @@ KERNEL_DRIVERS := \
 	serial \
 	console \
         vsfs \
+        ext2 \
 	ramfs \
 	cmos \
 	rtc \
@@ -112,10 +113,27 @@ BOOT_STAGE2_CFLAGS  := -I kernel/drivers \
 		-I kernel/include \
 		-I kernel/cache \
 		-I kernel
+
 BOOT_STAGE2_LDFLAGS := --section-start=.text=0x7E00 --entry=main \
-		--section-start=.data=0xF200 \
-		--section-start=.rodata=0xF600 \
-		--section-start=.bss=0xFA00
+                --section-start=.data=0x17E00 \
+                --section-start=.rodata=0x18600 \
+                --section-start=.bss=0x18e00
+
+# These should reflect the above sector counts
+BOOT_STAGE2_TEXT_START := 0
+BOOT_STAGE2_TEXT_SZ := 128
+
+# How many sectors do our data sections get?
+BOOT_STAGE2_SECT_COUNT := 4
+
+# Where do each of the simple sections start on disk?
+BOOT_STAGE2_DATA_START := 128
+BOOT_STAGE2_RODATA_START := 132
+BOOT_STAGE2_BSS_START := 136
+
+# How many sectors does stage 2 take up?
+BOOT_STAGE2_SECTORS := 140
+
 
 .PHONY: kernel-symbols
 kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
@@ -135,16 +153,16 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 
 kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/stdarg.o kernel/drivers/vsfs.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o
+	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/stdarg.o kernel/drivers/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/cache/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(CROSS_OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	
 	$(CROSS_OBJCOPY) -O binary -j .bss kernel/boot/boot-stage2.o kernel/boot/boot-stage2.bss
 	./tools/bin/boot2-verify
-	dd if=kernel/boot/boot-stage2.text of=kernel/boot/boot-stage2.img bs=512 count=58 seek=0
-	dd if=kernel/boot/boot-stage2.data of=kernel/boot/boot-stage2.img bs=512 count=2 seek=58
-	dd if=kernel/boot/boot-stage2.rodata of=kernel/boot/boot-stage2.img bs=512 count=2 seek=60
-	dd if=kernel/boot/boot-stage2.bss of=kernel/boot/boot-stage2.img bs=512 count=2 seek=62
+	dd if=kernel/boot/boot-stage2.text of=kernel/boot/boot-stage2.img bs=512 count=$(BOOT_STAGE2_TEXT_SZ) seek=0
+	dd if=kernel/boot/boot-stage2.data of=kernel/boot/boot-stage2.img bs=512 count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_DATA_START)
+	dd if=kernel/boot/boot-stage2.rodata of=kernel/boot/boot-stage2.img bs=512 count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_RODATA_START)
+	dd if=kernel/boot/boot-stage2.bss of=kernel/boot/boot-stage2.img bs=512 count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_BSS_START)
 
 kernel/boot/ata-read.o:
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) -I kernel/include -Os -c -o kernel/boot/ata-read.o kernel/boot/ata-read.c

@@ -13,7 +13,7 @@
 #include "stdmem.h"
 #include "console.h"
 #include "keyboard.h"
-#include "vsfs.h"
+#include "ext2.h"
 #include "tty.h"
 #include "pipe.h"
 #include "proc.h"
@@ -38,9 +38,16 @@ char* kernel_path = "/boot/chronos.elf";
 char* checking_elf = "Chronos is ready to be loaded.\n";
 char* kernel_loaded = "Chronos has been loaded.\n";
 int serial = 0;
+char* ok = "[ OK ]\n";
+char* fail = "[FAIL]\n";
+
+#define EXT2_SUPER 141 /* Where does the file system start? */
+#define EXT2_SECT_SIZE 512
+#define DISK_CACHE_SZ 0x100000
 
 extern pgdir* k_pgdir;
 extern struct FSHardwareDriver* ata_drivers[];
+struct FSDriver fs;
 
 int main(void)
 {
@@ -54,42 +61,54 @@ int main(void)
 
 	cprintf("Initilizing virtual memory...\t\t\t\t\t\t");
 	setup_boot2_pgdir();
-	cprintf("[ OK ]\n");
+	cprintf(ok);
 
 	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
 	__enable_paging__(k_pgdir);
-	cprintf("[ OK ]\n");
+	cprintf(ok);
 
 	cprintf("Starting ata driver...\t\t\t\t\t\t\t");
 	ata_init();
-	cprintf("[ OK ]\n");
+	if(!ata_drivers[0]->valid)
+	{
+		cprintf(fail);
+		panic("No disk drive attached!\n");
+	}
+	cprintf(ok);
 
 	cprintf("Kernel path: ");
 	cprintf(kernel_path);
 	cprintf("\n");
 
-	struct vsfs_context context;
-	cprintf("Starting VSFS driver...\t\t\t\t\t\t\t");
-	uchar fake_cache[512];
-	context.hdd = ata_drivers[0];
-	if(vsfs_init(64, 0, 512, 512, fake_cache, &context)) panic("[FAIL]\n");
-	cprintf("[ OK ]\n");
+	cprintf("Starting EXT2 driver...\t\t\t\t\t\t\t");
+	/* Initilize the file system driver */
+	fs.valid = 1;
+	fs.type = 1; /* EXT2 type here */
+	fs.driver = ata_drivers[0];
+	fs.cache = (uchar*)KVM_DISK_S;
+	fs.cache_sz = DISK_CACHE_SZ;
+	if(ext2_init(EXT2_SUPER, EXT2_SECT_SIZE, DISK_CACHE_SZ, &fs))
+		panic(fail);
+		
+	cprintf(ok);
 
-	vsfs_inode chronos_image;
-	int inonum;
-	if((inonum = vsfs_lookup(kernel_path, &chronos_image, &context)) == 0)
-		panic(no_image);
+	cprintf("Locating kernel...\t\t\t\t\t\t\t");
+	void* chronos_inode;
+	chronos_inode = fs.open(kernel_path, fs.context);
+	if(!chronos_inode)
+		panic(fail);
+	cprintf(ok);
 
 	/* Sniff to see if it looks right. */
 	uchar elf_buffer[512];
-	vsfs_read(&chronos_image, elf_buffer, 0, 512, &context);
+	fs.read(chronos_inode, elf_buffer, 0, 512, fs.context);
 	char elf_buff[] = ELF_MAGIC;
 	if(memcmp(elf_buffer, elf_buff, 4))
                 panic(invalid);
 
 	/* Load the entire elf header. */
 	struct elf32_header elf;
-	vsfs_read(&chronos_image, &elf, 0, sizeof(struct elf32_header), &context);
+	fs.read(chronos_inode, &elf, 0, sizeof(struct elf32_header), fs.context);
 	/* Check class */
 	if(elf.exe_class != 1) panic("Bad class");	
 	if(elf.version != 1) panic("Bad version");
@@ -98,9 +117,6 @@ int main(void)
 	if(elf.e_version != 1) panic("Bad ISA version");	
 
 	uint elf_entry = elf.e_entry;
-	//if(elf_entry != (uint)kernel) 
-	//	panic("Wrong entry point: 0x%x", elf_entry);	
-
 	cprintf(checking_elf);
 
 	int x;
@@ -108,9 +124,9 @@ int main(void)
 	{
 		int header_loc = elf.e_phoff + (x * elf.e_phentsize);
 		struct elf32_program_header curr_header;
-		vsfs_read(&chronos_image, &curr_header, header_loc, 
+		fs.read(chronos_inode, &curr_header, header_loc, 
 			sizeof(struct elf32_program_header), 
-			&context);
+			fs.context);
 		/* Skip null program headers */
 		if(curr_header.type == ELF_PH_TYPE_NULL) continue;
 		
@@ -133,8 +149,8 @@ int main(void)
 			/* zero this region */
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */
-			vsfs_read(&chronos_image, hd_addr, offset,
-				file_sz, &context);
+			fs.read(chronos_inode, hd_addr, offset,
+				file_sz, fs.context);
 			/* By default, this section is rwx. */
 		}
 	}
@@ -193,7 +209,10 @@ void setup_boot2_pgdir(void)
 	dir_mappages(0x0, PGSIZE, k_pgdir, 0);
 
 	/* Map pages for the kernel binary */
-	mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
+	// mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
+	
+	/* Map in some of the disk caching space */
+	mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 0);
 
 	/* Directly map video memory */
 	dir_mappages(CONSOLE_COLOR_BASE_ORIG, 

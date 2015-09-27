@@ -107,6 +107,8 @@ void ata_init(void)
 		/* Assign a context */
 		struct ATADriverContext* context = contexts + x;
 		ata_drivers[x]->context = context;
+		ata_drivers[x]->sectsize = 512;
+		ata_drivers[x]->sectshifter = 9;
 
 		switch(x)
 		{

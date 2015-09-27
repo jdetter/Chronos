@@ -20,6 +20,8 @@ int fd;
 
 struct FSDriver fs;
 struct FSHardwareDriver driver;
+#define FS_CACHE_SZ 0x100000
+uchar fs_cache[FS_CACHE_SZ];
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -365,9 +367,10 @@ int main(int argc, char** argv)
 	fs.driver->sectmax = sectmax;
 	fs.driver->valid = 1;
 	fs.driver->context = NULL;
+	fs.cache = fs_cache;
 
 	/* Start the driver */
-	ext2_init(start_block, block_size, FS_CACHE_SIZE, &fs);
+	ext2_init(start_block, block_size, FS_CACHE_SZ, &fs);
 
 	/* Check for command */
 	if(command)

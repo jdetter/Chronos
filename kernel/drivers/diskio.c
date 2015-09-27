@@ -33,7 +33,7 @@ static int disk_read(void* dst, uint start, uint sz,
 	char sector[sectsize];
 
 	/* Do the first sector */
-	if(driver->readsect(sector, startsect, driver) != sectsize)
+	if(driver->readsect(sector, startsect, driver))
 		return -1;
 	
 	uint bytes = sectsize - (start & mask);
@@ -61,8 +61,8 @@ static int disk_read(void* dst, uint start, uint sz,
 		int sect;
 		for(sect = 0;sect < middlesectors;sect++)
 		{
-			if(driver->readsect(dst_c + bytes, sect, driver) 
-					!= sectsize)
+			if(driver->readsect(dst_c + bytes, 
+					sect + startsect, driver))
 				return -1;
 			else bytes += sectsize;
 		}
@@ -72,7 +72,7 @@ static int disk_read(void* dst, uint start, uint sz,
 	if(bytes == sz) return sz;
 
 	/* Read the last sector */
-	if(driver->readsect(sector, endsect, driver) != sectsize)
+	if(driver->readsect(sector, endsect, driver))
 		return -1;
 
 	memmove(dst_c + bytes, sector, (start + sz) & mask);

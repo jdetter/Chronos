@@ -8,7 +8,7 @@
 /** Kernel virtual memory map
  *
  * Build last modified: alpha-0.2
- * Maintainer: John Detter <jdetter@wisc.edu>
+ * Maintainer: John Detter <jdetter@chronos.systems>
  * 
  * 
  * 0xFFFFF000 Virtual memory space top (NO PAE) 
@@ -107,7 +107,9 @@
 
 #define VM_MAX		0xFFFFFFFF /* Maximum possible address */
 
-#define KVM_KERN_E      0xFFFFF000 /* Kernel binary ends */
+#define KVM_DISK_E      0xFFFFF000 /* End of disk caching space */
+#define KVM_DISK_S	0xFFA00000 /* Start of the disk caching space */
+#define KVM_KERN_E      0xFF9FFFFF /* Kernel binary ends */
 #define KVM_KERN_S      0xFF000000 /* Kernel binary starts*/
 
 #define KVM_KSTACK_G1   0xFEFFF000 /* Kernel stack upper guard page */

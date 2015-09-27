@@ -6,6 +6,7 @@ CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
 CROSS_AS=$(TOOL_DIR)/$(TARGET)gcc
 CROSS_OBJCOPY=$(TOOL_DIR)/$(TARGET)objcopy
 TARGET_SYSROOT=../sysroot
+USER=$(shell whoami)
 
 # use host to configure the tools
 CC=gcc
@@ -31,9 +32,11 @@ BUILD_CFLAGS += -fno-stack-protector
 
 BUILD_ASFLAGS += $(BUILD_CFLAGS)
 
-FS_TYPE := vsfs.img
-FS_DD_BS := 1024
-FS_DD_COUNT := 2048
+# Create a 128MB Hard drive
+FS_TYPE := ext2.img
+FS_DD_BS := 4096
+FS_DD_COUNT := 32768
+FS_START := 141
 
 .PHONY: all
 all: chronos.img
@@ -43,14 +46,16 @@ include tools/makefile.mk
 include kernel/makefile.mk
 include user/makefile.mk
 
+
+
 chronos.img: kernel/boot/boot-stage1.img \
 		kernel/boot/boot-stage2.img \
 		$(FS_TYPE)
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
-	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=64
+	dd if=kernel/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
+	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
 
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
@@ -66,9 +71,35 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
 ext2.img:
+	echo "Super user privileges are needed for loop mounting..."
+	sudo echo ""
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
-	mkfs.ext2 ./ext2.img 
-	
+# Create the file system
+	echo "yes" | mkfs.ext2 ./ext2.img
+	rm -rf tmp
+	mkdir -p tmp
+	sudo mount -o loop ./ext2.img ./tmp
+	sudo chown -R $(USER):$(USER) tmp
+	cp -R $(TARGET_SYSROOT)/* ./tmp
+	sudo umount ./tmp
+	rm -rf tmp
+
+ext2-grub.img:
+	echo "Super user privileges are needed for loop mounting..."
+	sudo echo ""
+	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
+# Create the partition table
+	printf "n\n\n\n\n\nw\n" | fdisk -b 512 ext2.img
+# Create the file system
+	echo "yes" | mkfs.ext2 -E offset=1048576 ./ext2.img
+	rm -rf tmp
+	mkdir -p tmp
+	sudo mount -o loop,offset=1048576 ./ext2.img ./tmp
+	sudo chown -R $(USER):$(USER) tmp
+	cp -R $(TARGET_SYSROOT)/* ./tmp
+	sudo umount ./tmp
+	rm -rf tmp
+	sudo grub-install ./ext2.img
 
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img
@@ -115,4 +146,4 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img

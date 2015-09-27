@@ -1693,8 +1693,8 @@ int ext2_init(uint superblock_address, uint sectsize,
 	struct FSHardwareDriver* driver = fs->driver;
 	fs->valid = 1;
 	fs->type = 0; /* TODO: assign a number to ext2 */
-	memset(fs->context, FS_CONTEXT_SIZE, 0);
-	memset(fs->cache, FS_CACHE_SIZE, 0);
+	memset(fs->context, 0, FS_CONTEXT_SIZE);
+	memset(fs->cache, 0, fs->cache_sz);
 
 	context* context = (void*)fs->context;
 	context->driver = driver;
@@ -1705,8 +1705,10 @@ int ext2_init(uint superblock_address, uint sectsize,
 	diskio_setup(context->driver);
 
 	/* Read the superblock */
+	uint superblock_start = (superblock_address * sectsize) + 0x1000;
 	char super_buffer[1024];
-	if(driver->read(super_buffer, 1024, 1024, driver) != 1024)
+	if(driver->read(super_buffer, superblock_start, 
+			1024, driver) != 1024)
 		return -1;
 	struct ext2_base_superblock* base = (void*) super_buffer;
 	struct ext2_extended_base_superblock* extended_base =

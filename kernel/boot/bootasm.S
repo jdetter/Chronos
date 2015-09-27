@@ -26,7 +26,7 @@
 #define KEYBOARD_SCROLL_NUM  	0x1
 #define KEYBOARD_SCROLL_CAPS 	0x2
 
-#define STAGE2_FINAL_SECT 	63
+#define STAGE2_FINAL_SECT 	140
 
 .globl ata_readsect
 .globl ata_init
