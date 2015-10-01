@@ -28,7 +28,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 static int disk_cache_sync(void* obj, int id, struct cache* cache)
 {
-	struct FSHardwareDriver* driver = cache->context;
+	struct FSDriver* driver = cache->context;
 	/* Write the block */
 	if(driver->writeblock(obj, id, driver) != driver->blocksize)
 		return -1;
@@ -37,11 +37,11 @@ static int disk_cache_sync(void* obj, int id, struct cache* cache)
 
 static int disk_cache_populate(void* block, int id, void* context)
 {
-	struct FSHardwareDriver* driver = context;
+	struct FSDriver* driver = context;
 	return (driver->readblock(block, id, driver)) != driver->blocksize;
 }
 
-static void* disk_cache_reference(uint block, struct FSHardwareDriver* driver)
+static void* disk_cache_reference(uint block, struct FSDriver* driver)
 {
 	return cache_reference(block, &driver->cache);
 }

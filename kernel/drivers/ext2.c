@@ -1,5 +1,5 @@
 /**
- * Author: John Detter <john@detter.com>
+ * Author: John Detter <jdetter@chronos.systems>
  *
  * Driver for the EXT2 file system.
  */

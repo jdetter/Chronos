@@ -12,14 +12,10 @@ struct FSHardwareDriver
 	uint sectmax;
 	uint sectshifter;
 	uint sectsize;
-	uint blocksize;
-	uint blockshift;
 	struct cache cache;
 	void* (*reference)(uint block, struct FSHardwareDriver* driver);
 	void* (*addreference)(uint block, struct FSHardwareDriver* driver);
 	int (*dereference)(void* ref, struct FSHardwareDriver* driver);
-	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);  
-        int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
 	int (*readsect)(void* dst, uint sect, struct FSHardwareDriver* driver); 
 	int (*writesect)(void* src, uint sect, struct FSHardwareDriver* driver);
 	int (*read)(void* dst, uint start, uint sz,
@@ -29,10 +25,6 @@ struct FSHardwareDriver
 	int (*readsects)(void* dst, uint sectstart, uint sectcount,
                 struct FSHardwareDriver* driver);
         int (*writesects)(void* src, uint sectstart, uint sectcount,
-                struct FSHardwareDriver* driver);
-	int (*readblocks)(void* dst, uint startblock, uint count,
-                struct FSHardwareDriver* driver);
-        int (*writeblocks)(void* src, uint startblock, uint count,
                 struct FSHardwareDriver* driver);
 	void* context; /* Pointer to driver specified context */
 };
@@ -261,8 +253,18 @@ struct FSDriver
 	struct FSHardwareDriver* driver; /* HDriver for this file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
 	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
-	uchar* cache; /* Pointer into the disk cache */
-	uint cache_sz; /* How big is the cache in bytes? */
+	uchar* inode_cache; /* Pointer into the inode cache */
+	uint inode_cache_sz; /* How big is the cache in bytes? */
+
+        uint blocksize; /* What is the block size of this fs? */
+        uint blockshift; /* Turn a block address into an id */
+	/* Read and write block functions */
+	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);
+        int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
+	int (*readblocks)(void* dst, uint startblock, uint count,
+                struct FSHardwareDriver* driver);
+        int (*writeblocks)(void* src, uint startblock, uint count,
+                struct FSHardwareDriver* driver);
 };
 
 /**
