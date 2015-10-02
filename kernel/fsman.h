@@ -13,9 +13,6 @@ struct FSHardwareDriver
 	uint sectshifter;
 	uint sectsize;
 	struct cache cache;
-	void* (*reference)(uint block, struct FSHardwareDriver* driver);
-	void* (*addreference)(uint block, struct FSHardwareDriver* driver);
-	int (*dereference)(void* ref, struct FSHardwareDriver* driver);
 	int (*readsect)(void* dst, uint sect, struct FSHardwareDriver* driver); 
 	int (*writesect)(void* src, uint sect, struct FSHardwareDriver* driver);
 	int (*read)(void* dst, uint start, uint sz,
@@ -255,16 +252,21 @@ struct FSDriver
 	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
 	uchar* inode_cache; /* Pointer into the inode cache */
 	uint inode_cache_sz; /* How big is the cache in bytes? */
+	uint bpp; /* How many fs blocks fit onto a page? */
 
         uint blocksize; /* What is the block size of this fs? */
         uint blockshift; /* Turn a block address into an id */
 	/* Read and write block functions */
-	int (*readblock)(void* dst, uint block, struct FSHardwareDriver* driver);
-        int (*writeblock)(void* src, uint block,struct FSHardwareDriver* driver);
+	int (*readblock)(void* dst, uint block, struct FSDriver* driver);
+        int (*writeblock)(void* src, uint block,struct FSDriver* driver);
 	int (*readblocks)(void* dst, uint startblock, uint count,
                 struct FSHardwareDriver* driver);
         int (*writeblocks)(void* src, uint startblock, uint count,
                 struct FSHardwareDriver* driver);
+
+        void* (*reference)(uint block, struct FSDriver* driver);
+        void* (*addreference)(uint block, struct FSDriver* driver);
+        int (*dereference)(void* ref, struct FSDriver* driver);
 };
 
 /**

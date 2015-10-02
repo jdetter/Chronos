@@ -21,6 +21,7 @@ int fd;
 struct FSDriver fs;
 struct FSHardwareDriver driver;
 #define FS_CACHE_SZ 0x100000
+#define PGSIZE 4096
 uchar fs_cache[FS_CACHE_SZ];
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
@@ -61,7 +62,7 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
         return driver->sectsize;
 }
 
-int ata_readblock(void* dst, uint block, struct FSHardwareDriver* driver)
+int ext2_readblock(void* dst, uint block, struct FSDriver* driver)
 {
         if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
                         driver->blocksize * block)
@@ -80,7 +81,7 @@ int ata_readblock(void* dst, uint block, struct FSHardwareDriver* driver)
         return driver->blocksize;
 }
 
-int ata_writeblock(void* src, uint block, struct FSHardwareDriver* driver)
+int ext2_writeblock(void* src, uint block, struct FSDriver* driver)
 {
         if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
                         driver->blocksize * block)
@@ -353,8 +354,8 @@ int main(int argc, char** argv)
 	fs.driver = &driver;
 	fs.driver->readsect = ata_readsect;
 	fs.driver->writesect = ata_writesect;
-	fs.driver->readblock = ata_readblock;
-	fs.driver->writeblock = ata_writeblock;
+	fs.readblock = ext2_readblock;
+	fs.writeblock = ext2_writeblock;
 	int shifter = -1;
 	int block_size_tmp = block_size;
 	while(block_size_tmp)
@@ -367,7 +368,12 @@ int main(int argc, char** argv)
 	fs.driver->sectmax = sectmax;
 	fs.driver->valid = 1;
 	fs.driver->context = NULL;
-	fs.cache = fs_cache;
+	if(cache_init(fs_cache, FS_CACHE_SZ, PGSIZE,
+		"Disk Cache", &fs.driver->cache))
+	{
+		printf("Failed to initilize cache!\n");
+		return -1;
+	}
 
 	/* Start the driver */
 	ext2_init(start_block, block_size, FS_CACHE_SZ, &fs);

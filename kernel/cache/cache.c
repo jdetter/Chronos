@@ -66,19 +66,18 @@ int cache_calc_size(int entries, int entry_size)
 		+ (entries * sizeof(struct cache_entry));
 }
 
-void* cache_query(void* data, struct cache* cache)
+void* cache_query(void* data, struct cache* cache, void* context)
 {
 	if(!data || !cache->query) return NULL;
 
-	slock_init(&cache->lock);
-        void* result = NULL;
+	slock_acquire(&cache->lock);
+	void* result = NULL;
 
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
 		if(!cache->entries[x].id) continue;
-		if(!cache->query(data, cache->entries[x].slab, 
-					cache->context))
+		if(!cache->query(data, cache->entries[x].slab, context))
 		{
 			result = cache->entries[x].slab;
 			break;
@@ -135,7 +134,7 @@ static void* cache_search_nolock(int id, struct cache* cache);
 static int cache_dereference_nolock(void* ptr, struct cache* cache);
 
 int cache_init(void* cache_area, uint sz, uint data_sz, 
-		void* context, char* name, struct cache* cache)
+		char* name, struct cache* cache)
 {
 	memset(cache, 0, sizeof(struct cache));
 	uint entries = sz / (sizeof(struct cache_entry) + data_sz);
@@ -158,7 +157,6 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 	cache->cache_hits = 0;
 	cache->cache_miss = 0;
 	cache->slab_sz = data_sz;
-	cache->context = context;
 	cache->entry_count = entries;
 	cache->slabs = cache_area;
 	cache->clock = 0;
@@ -192,14 +190,14 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 	return 0;
 }
 
-void cache_prepare(int id, struct cache* cache)
+void cache_prepare(int id, struct cache* cache, void* context)
 {
-	void* slab =  cache_reference(id, cache);
+	void* slab =  cache_reference(id, cache, context);
 	if(!slab) return;
 	cache_dereference(slab, cache);
 }
 
-static void* cache_alloc(int id, struct cache* cache)
+static void* cache_alloc(int id, struct cache* cache, void* context)
 {
 	void* result = NULL;
 
@@ -241,7 +239,8 @@ static void* cache_alloc(int id, struct cache* cache)
 			cprintf("%s cache: syncing data to system.\n",
 					cache->name);
 #endif
-			if(cache->sync(result, cache->entries[pos].id, cache))
+			if(cache->sync(result, cache->entries[pos].id, cache, 
+						context))
 			{
 #ifdef CACHE_DEBUG
 				cprintf("%s cache: SYNC FAILED!\n",
@@ -380,7 +379,7 @@ void* cache_search(int id, struct cache* cache)
 	return result;
 }
 
-void* cache_addreference(int id, struct cache* cache)
+void* cache_addreference(int id, struct cache* cache, void* context)
 {
 	void* result = NULL;
 	slock_acquire(&cache->lock);
@@ -388,14 +387,14 @@ void* cache_addreference(int id, struct cache* cache)
 	if(!(result = cache_search_nolock(id, cache)))
 	{
 		/* Not already cached. */
-		result = cache_alloc(id, cache);
+		result = cache_alloc(id, cache, context);
 		/* Do not populate. */
 	}
 	slock_release(&cache->lock);
 	return result;
 }
 
-void* cache_reference(int id, struct cache* cache)
+void* cache_reference(int id, struct cache* cache, void* context)
 {
 	void* result = NULL;
 	slock_acquire(&cache->lock);
@@ -404,12 +403,12 @@ void* cache_reference(int id, struct cache* cache)
 	{
 		cache->cache_miss++;
 		/* Not already cached. */
-		result = cache_alloc(id, cache);
+		result = cache_alloc(id, cache, context);
 		/* Call the populate function */
 		if(cache->populate)
 		{
 			/* Populate the entry */
-			if(cache->populate(result, id, cache->context))
+			if(cache->populate(result, id, context))
 			{
 				/* The resource is unavailable. */
 				cache_force_free(result, cache);
@@ -426,18 +425,19 @@ void* cache_reference(int id, struct cache* cache)
 	return result;
 }	
 
-void cache_sync_all(struct cache* cache)
+void cache_sync_all(struct cache* cache, void* context)
 {
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
 		if(cache->entries[x].id)
 			cache->sync(cache->entries[x].slab,
-					cache->entries[x].id, cache);
+					cache->entries[x].id, 
+					cache, context);
 	}
 }
 
-int cache_sync(void* ptr, struct cache* cache)
+int cache_sync(void* ptr, struct cache* cache, void* context)
 {
 	if(!ptr) return -1;
 	struct cache_entry* entry = cache->entries;
@@ -458,10 +458,10 @@ int cache_sync(void* ptr, struct cache* cache)
 		return -1;
 	}
 
-	return cache->sync(entry->slab, entry->id, cache);
+	return cache->sync(entry->slab, entry->id, cache, context);
 }
 
-int cache_clean(struct cache* cache)
+int cache_clean(struct cache* cache, void* context)
 {
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
@@ -471,7 +471,8 @@ int cache_clean(struct cache* cache)
 			if(cache->sync)
 			{
 				if(cache->sync(cache->entries[x].slab, 
-							cache->entries[x].id, cache))
+							cache->entries[x].id, 
+							cache, context))
 					return -1;
 			} else {
 				cprintf("%s cache: no sync function found!\n",

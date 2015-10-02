@@ -1,3 +1,8 @@
+/**
+ * Authors: John Detter <jdetter@chronos.systems>
+ * 		Randy Amundson <randy@chronos.systems>
+ */
+
 #ifdef __LINUX__
 #include <stdlib.h>
 #include <string.h>
@@ -26,48 +31,57 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #include "file.h"
 #include "fsman.h"
 
-static int disk_cache_sync(void* obj, int id, struct cache* cache)
+static int disk_cache_sync(void* obj, int block_id, 
+		struct cache* cache, void* context)
 {
-	struct FSDriver* driver = cache->context;
+	struct FSDriver* driver = context;
 	/* Write the block */
-	if(driver->writeblock(obj, id, driver) != driver->blocksize)
+	if(driver->writeblock(obj, block_id, driver) 
+			!= driver->blocksize)
 		return -1;
 	return 0;
 }
 
-static int disk_cache_populate(void* block, int id, void* context)
+static int disk_cache_populate(void* block, int block_id, void* context)
 {
 	struct FSDriver* driver = context;
-	return (driver->readblock(block, id, driver)) != driver->blocksize;
+	return (driver->readblock(block, block_id, driver)) 
+		!= driver->blocksize;
 }
 
-static void* disk_cache_reference(uint block, struct FSDriver* driver)
+static void* disk_cache_reference(uint block_id, struct FSDriver* driver)
 {
-	return cache_reference(block, &driver->cache);
+	return cache_reference(block_id, &driver->driver->cache, driver);
 }
 
-static void* disk_cache_addreference(uint block, 
-		struct FSHardwareDriver* driver)
+static void* disk_cache_addreference(uint block_id, 
+		struct FSDriver* driver)
 {
-	void* block_ptr = cache_addreference(block, &driver->cache);
+	void* block_ptr = cache_addreference(block_id, 
+		&driver->driver->cache, driver);
 	memset(block_ptr, 0, driver->blocksize); /* Clear the block */
 	return block_ptr;
 }
 
-static int disk_cache_dereference(void* ref, struct FSHardwareDriver* driver)
+static int disk_cache_dereference(void* ref, struct FSDriver* driver)
 {
-	return cache_dereference(ref, &driver->cache);
+	return cache_dereference(ref, &driver->driver->cache);
 }
 
-int disk_cache_init(struct FSHardwareDriver* driver)
+int disk_cache_hardware_init(struct FSHardwareDriver* driver, 
+		void* cache, uint sz)
+{
+	driver->cache.populate = disk_cache_populate;
+	driver->cache.sync = disk_cache_sync;
+	return 0;
+}
+
+int disk_cache_init(struct FSDriver* driver)
 {
 	/* First, setup the driver */
 	driver->reference = disk_cache_reference;
 	driver->dereference = disk_cache_dereference;
 	driver->addreference = disk_cache_addreference;
-	/* Setup the cache with our sync function */
-	driver->cache.sync = disk_cache_sync;
-	driver->cache.populate = disk_cache_populate;
 
 	return 0;
 }

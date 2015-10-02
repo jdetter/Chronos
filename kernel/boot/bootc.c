@@ -85,10 +85,10 @@ int main(void)
 	fs.valid = 1;
 	fs.type = 1; /* EXT2 type here */
 	fs.driver = ata_drivers[0];
-	fs.cache = (uchar*)KVM_DISK_S;
-	fs.cache_sz = DISK_CACHE_SZ;
-	if(ext2_init(EXT2_SUPER, EXT2_SECT_SIZE, DISK_CACHE_SZ, &fs))
-		panic(fail);
+	//fs.cache = (uchar*)KVM_DISK_S;
+	//fs.cache_sz = DISK_CACHE_SZ;
+	//if(ext2_init(EXT2_SUPER, EXT2_SECT_SIZE, DISK_CACHE_SZ, &fs))
+	//	panic(fail);
 		
 	cprintf(ok);
 

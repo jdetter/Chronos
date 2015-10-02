@@ -332,13 +332,13 @@ static int ext2_write_bgdt(int group,
 	offset &= context->blocksize - 1;
 
 	/* Read the block group */
-	block = context->driver->reference(block_group_addr, context->driver);
+	block = context->fs->reference(block_group_addr, context->fs);
 	if(!block) return -1;
 	struct ext2_block_group_table* table = (void*)(block + offset);
 	memmove(table, src, sizeof(struct ext2_block_group_table));
 
 	/* we're done with the block */
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return 0;
 }
@@ -353,12 +353,12 @@ static int ext2_read_bgdt(int group,
 	offset &= context->blocksize - 1;
 
 	/* Read the block group */
-	block = context->driver->reference(block_group_addr, context->driver);
+	block = context->fs->reference(block_group_addr, context->fs);
 	if(!block) return -1;
 	struct ext2_block_group_table* table = (void*)(block + offset);
 	memmove(dst, table, 1 << context->grouptableshift);
 	/* dereference the block */
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return 0;
 }
@@ -396,20 +396,20 @@ static int ext2_alloc_inode(int num, int dir, context* context)
 	if(ext2_read_bgdt(block_group, &table, context))
 		return -1;
 
-	block = context->driver->reference(table.inode_bitmap_address,
-			context->driver);
+	block = context->fs->reference(table.inode_bitmap_address,
+			context->fs);
 	if(!block) return -1; /* cache failed */
 
 	/* Make sure this inode is not already allocated */
 	if(ext2_get_bit(block, local_index, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1; /* Already allocated */
 	}
 	/* Set the bit */
 	if(ext2_set_bit(block, local_index, 1, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -423,11 +423,11 @@ static int ext2_alloc_inode(int num, int dir, context* context)
 	/* Write the updated table */
 	if(ext2_write_bgdt(block_group, &table, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 	return 0;
 }
 
@@ -444,19 +444,19 @@ static int ext2_free_inode(int num, int dir, context* context)
 		return -1;
 
 	/* Read the bitmap */
-	block = context->driver->reference(table.inode_bitmap_address,
-			context->driver);
+	block = context->fs->reference(table.inode_bitmap_address,
+			context->fs);
 	if(!block) return -1;
 	/* Make sure this inode is allocated */
 	if(!ext2_get_bit(block, local_index, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1; /* not allocated */
 	}
 	/* Clear the bit */
 	if(ext2_set_bit(block, local_index, 0, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -470,11 +470,11 @@ static int ext2_free_inode(int num, int dir, context* context)
 	/* Write the updated table */
 	if(ext2_write_bgdt(block_group, &table, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 	return 0;
 }
 
@@ -488,8 +488,8 @@ static int ext2_find_free_inode_rec(int group, int dir, context* context)
 		return -1;
 
 	/* Read the bitmap */
-	block = context->driver->reference(table.inode_bitmap_address,
-			context->driver);
+	block = context->fs->reference(table.inode_bitmap_address,
+			context->fs);
 	if(!block) return -1;
 
 	int x = 0;
@@ -508,7 +508,7 @@ static int ext2_find_free_inode_rec(int group, int dir, context* context)
 
 	if(!found) 
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -517,11 +517,11 @@ static int ext2_find_free_inode_rec(int group, int dir, context* context)
 	/* allocate this inode */
 	if(ext2_alloc_inode(ino_num, dir, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1; /* Couldn't be allocated? */
 	}
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return ino_num;
 }
@@ -555,21 +555,21 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 		return -1;
 
 	/* Is the block free? */
-	block = context->driver->reference(table.block_bitmap_address, 
-			context->driver);
+	block = context->fs->reference(table.block_bitmap_address, 
+			context->fs);
 	if(!block) return -1;
 
 	/* Is the block already allocated? */
 	if(ext2_get_bit(block, blockid, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1; /* Already allocated!*/
 	}
 
 	/* Set the bit */
 	if(ext2_set_bit(block, blockid, 1, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -577,14 +577,14 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 	table.free_blocks--;
 	if(ext2_write_bgdt(block_group, &table, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
 	/* Update the superblock */
 	context->base_superblock.free_block_count--;
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return 0;
 }
@@ -604,21 +604,21 @@ static int ext2_free_block(int block_num, context* context)
 		return -1;
 
 	/* Load the bitmap table */
-	block = context->driver->reference(table.block_bitmap_address, 
-			context->driver);
+	block = context->fs->reference(table.block_bitmap_address, 
+			context->fs);
 	if(!block) return -1;
 
 	/* Is the block allocated? */
 	if(!ext2_get_bit(block, blockid, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1; /* Already free */
 	}
 
 	/* Unset the bit */
 	if(ext2_set_bit(block, blockid, 0, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -626,14 +626,14 @@ static int ext2_free_block(int block_num, context* context)
 	table.free_blocks++;
 	if(ext2_write_bgdt(group, &table, context))
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
 	/* Update the superblock */
 	context->base_superblock.free_block_count++;
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return 0;
 }
@@ -650,8 +650,8 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	if(ext2_read_bgdt(group, &table, context))
 		return -1;
 
-	block = context->driver->reference(table.block_bitmap_address,
-			context->driver);
+	block = context->fs->reference(table.block_bitmap_address,
+			context->fs);
 	if(!block) return -1;
 
 	int sequence = 0; /* How many free in a row have we found? */
@@ -694,7 +694,7 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	/* Could we find enough blocks? */
 	if(sequence != contiguous) 
 	{
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		return -1;
 	}
 
@@ -703,13 +703,13 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	{
 		if(ext2_alloc_block(group, range_start + x, context))
 		{
-			context->driver->dereference(block, context->driver);
+			context->fs->dereference(block, context->fs);
 			return -1;
 		}
 	}
 
 
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return range_start + group_start;
 }
@@ -761,7 +761,7 @@ static int _ext2_read_inode(inode* dst, int num, context* context)
 	uint inode_block_offset = inode_offset & (context->blocksize - 1);
 
 	/* Read from the inode table */
-	block = context->driver->reference(inode_address, context->driver);
+	block = context->fs->reference(inode_address, context->fs);
 	if(!block) return -1;
 	dst->block = block;
 	dst->ino = (void*)(block + inode_block_offset);
@@ -787,7 +787,7 @@ static int ext2_inode_cache_eject(void* obj, int id, void* c)
 	inode* ino = obj;
 	if(!ino || !context) return -1;
 
-	context->driver->dereference(ino->block, context->driver);
+	context->fs->dereference(ino->block, context->fs);
 	return 0;
 }
 
@@ -826,11 +826,11 @@ static int ext2_block_address(int index, disk_inode* ino,
 	/* Indirect */
 	if(index < 1 << context->indirectshift)
 	{
-		i_block = context->driver->reference(ino->indirect, 
-				context->driver);
+		i_block = context->fs->reference(ino->indirect, 
+				context->fs);
 		if(!i_block) return -1;
 		address = i_block[index];
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 		return address;
 	}
 
@@ -843,16 +843,16 @@ static int ext2_block_address(int index, disk_inode* ino,
 			& (context->addrs_per_block - 1);
 		int lower = index & (context->addrs_per_block - 1);
 
-		i_block = context->driver->reference(ino->dindirect, 
-				context->driver);
+		i_block = context->fs->reference(ino->dindirect, 
+				context->fs);
 		if(!i_block) return -1;
 		int indirect = i_block[upper];
-		context->driver->dereference(i_block, context->driver);
-		i_block = context->driver->reference(indirect, 
-				context->driver);
+		context->fs->dereference(i_block, context->fs);
+		i_block = context->fs->reference(indirect, 
+				context->fs);
 		if(!i_block) return -1;
 		address = i_block[lower];
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 		return address;
 	}
 
@@ -869,20 +869,20 @@ static int ext2_block_address(int index, disk_inode* ino,
 			& (context->addrs_per_block - 1);
 		int lower = index & (context->addrs_per_block - 1);
 
-		i_block = context->driver->reference(ino->tindirect,
-				context->driver);
+		i_block = context->fs->reference(ino->tindirect,
+				context->fs);
 		if(!i_block) return -1;
 		int dindirect = i_block[upper];
-		context->driver->dereference(i_block, context->driver);
-		i_block = context->driver->reference(dindirect,
-				context->driver);
+		context->fs->dereference(i_block, context->fs);
+		i_block = context->fs->reference(dindirect,
+				context->fs);
 		if(!i_block) return -1;
 		int indirect = i_block[middle];
-		context->driver->dereference(i_block, context->driver);
-		i_block = context->driver->reference(indirect,
-				context->driver);
+		context->fs->dereference(i_block, context->fs);
+		i_block = context->fs->reference(indirect,
+				context->fs);
 		address = i_block[lower];
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 		return address;
 	}
 
@@ -920,20 +920,20 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 				return -1;
 			/* update inode */
 			ino->indirect = indirect;
-			i_block = context->driver->addreference(indirect, 
-					context->driver);
+			i_block = context->fs->addreference(indirect, 
+					context->fs);
 			if(!i_block) return -1;
 
 			/* zero the block*/
 			memset(i_block, 0, context->blocksize);
 		} else {
-			i_block = context->driver->reference(indirect,
-					context->driver);
+			i_block = context->fs->reference(indirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
 		i_block[index] = val;
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 		return 0;
 	}
 
@@ -954,14 +954,14 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 
 			/* update inode pointer */
 			ino->dindirect = dindirect;
-			i_block = context->driver->addreference(dindirect,
-					context->driver);
+			i_block = context->fs->addreference(dindirect,
+					context->fs);
 			if(!i_block) return -1;
 			/* zero the block*/
 			memset(i_block, 0, context->blocksize);
 		} else {
-			i_block = context->driver->reference(dindirect,
-					context->driver);
+			i_block = context->fs->reference(dindirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
@@ -979,31 +979,31 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 					context);
 			if(indirect < 0)
 			{
-				context->driver->dereference(i_block, 
-						context->driver);
+				context->fs->dereference(i_block, 
+						context->fs);
 				return -1;
 			}
 			/* update the block*/
 			i_block[upper] = indirect;
-			context->driver->dereference(i_block, context->driver);
+			context->fs->dereference(i_block, context->fs);
 
 			/* get new cache block */
-			i_block = context->driver->addreference(indirect,
-					context->driver);
+			i_block = context->fs->addreference(indirect,
+					context->fs);
 			if(!i_block) return -1;
 
 			/* zero the block*/
 			memset(i_block, 0, context->blocksize);
 		} else {
-			context->driver->dereference(i_block, context->driver);
-			i_block = context->driver->reference(indirect,
-					context->driver);
+			context->fs->dereference(i_block, context->fs);
+			i_block = context->fs->reference(indirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
 		i_block[lower] = val;
 		/* update indirect */
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 		return 0;
 
 	}
@@ -1034,15 +1034,15 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 			/* update inode */
 			ino->tindirect = tindirect;
 
-			i_block = context->driver->addreference(tindirect,
-					context->driver);
+			i_block = context->fs->addreference(tindirect,
+					context->fs);
 			if(!i_block) return -1;
 
 			/* zero the block*/
 			memset(i_block, 0, context->blocksize);
 		} else {
-			i_block = context->driver->reference(tindirect,
-					context->driver);
+			i_block = context->fs->reference(tindirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
@@ -1055,21 +1055,21 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 					context);
 			if(dindirect < 0)
 			{
-				context->driver->dereference(i_block, 
-						context->driver);
+				context->fs->dereference(i_block, 
+						context->fs);
 				return -1;
 			}
 
 			i_block[upper] = dindirect;
-			context->driver->dereference(i_block, context->driver);
-			i_block = context->driver->addreference(dindirect,
-					context->driver);
+			context->fs->dereference(i_block, context->fs);
+			i_block = context->fs->addreference(dindirect,
+					context->fs);
 			if(!i_block) return -1;
 			memset(i_block, 0, context->blocksize);
 		} else {
-			context->driver->dereference(i_block, context->driver);
-			i_block = context->driver->reference(dindirect,
-					context->driver);
+			context->fs->dereference(i_block, context->fs);
+			i_block = context->fs->reference(dindirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
@@ -1084,28 +1084,28 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 			if(indirect < 0)
 			{
 				/* No more free blocks */
-				context->driver->dereference(i_block, 
-						context->driver);
+				context->fs->dereference(i_block, 
+						context->fs);
 				return -1;
 			}
 
 			/* zero the block*/
 			i_block[middle] = indirect;
-			context->driver->dereference(i_block, context->driver);
-			i_block = context->driver->addreference(indirect,
-					context->driver);
+			context->fs->dereference(i_block, context->fs);
+			i_block = context->fs->addreference(indirect,
+					context->fs);
 			if(!i_block) return -1;
 			memset(i_block, 0, context->blocksize);
 		} else {
-			context->driver->dereference(i_block, context->driver);
-			i_block = context->driver->reference(indirect,
-					context->driver);
+			context->fs->dereference(i_block, context->fs);
+			i_block = context->fs->reference(indirect,
+					context->fs);
 			if(!i_block) return -1;
 		}
 
 		i_block[lower] = val;
 		/* write back the block */
-		context->driver->dereference(i_block, context->driver);
+		context->fs->dereference(i_block, context->fs);
 
 		return 0;
 	}
@@ -1133,13 +1133,13 @@ static int _ext2_read(void* dst, uint start, uint sz,
 
 	/* read the first block */
 	int lba = ext2_block_address(start_index, ino, context);
-	block = context->driver->reference(lba, context->driver);
+	block = context->fs->reference(lba, context->fs);
 	if(!block) return -1;
 
 	read = context->blocksize - (start & (context->blocksize - 1));
 	if(read > sz) read = sz;
 	memmove(dst, block + (start & (context->blocksize - 1)), read);
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 	if(read == sz) return sz;
 	bytes += read;
 
@@ -1148,10 +1148,10 @@ static int _ext2_read(void* dst, uint start, uint sz,
 	for(;x < end_index;x++)
 	{
 		lba = ext2_block_address(x, ino, context);
-		block = context->driver->reference(lba, context->driver);
+		block = context->fs->reference(lba, context->fs);
 		if(!block) return -1;
 		memmove(dst_c + bytes, block, context->blocksize);
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		bytes += context->blocksize;
 	}
 
@@ -1160,10 +1160,10 @@ static int _ext2_read(void* dst, uint start, uint sz,
 
 	/* read final block */
 	lba = ext2_block_address(x, ino, context);
-	block = context->driver->reference(lba, context->driver);
+	block = context->fs->reference(lba, context->fs);
 	if(!block) return -1;
 	memmove(dst_c + bytes, block, sz - bytes);
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	return sz;
 }
@@ -1219,25 +1219,25 @@ static int _ext2_write(const void* src, uint start, uint sz,
 			/* Contents should be copied */
 
 			/* Read data from old location */
-			char* old_location = context->driver->reference(lba,
-					context->driver);
+			char* old_location = context->fs->reference(lba,
+					context->fs);
 			if(!old_location) return -1;
-			char* new_location = context->driver->addreference(
+			char* new_location = context->fs->addreference(
 					sequence_start + x,
-					context->driver);
+					context->fs);
 			if(!new_location)
 			{
-				context->driver->dereference(old_location,
-						context->driver);
+				context->fs->dereference(old_location,
+						context->fs);
 				return -1;
 			}
 
 			/* Copy to new location */
 			memmove(new_location, old_location, context->blocksize);
-			context->driver->dereference(new_location, 
-					context->driver);
-			context->driver->dereference(old_location,
-					context->driver);
+			context->fs->dereference(new_location, 
+					context->fs);
+			context->fs->dereference(old_location,
+					context->fs);
 		}
 
 		/* Install new lba */
@@ -1262,16 +1262,16 @@ static int _ext2_write(const void* src, uint start, uint sz,
 
 	if(write != context->blocksize)
 	{
-		block = context->driver->reference(lba, context->driver);
+		block = context->fs->reference(lba, context->fs);
 		if(!block) return -1;
 	} else {
-		block = context->driver->addreference(lba, context->driver);
+		block = context->fs->addreference(lba, context->fs);
 		if(!block) return -1;
 	}
 
 	memmove(block + (start & (context->blocksize - 1)), src, write);
 	/* Now we can write the block back to disk */
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 	if(write == sz) return sz;
 	bytes += write;
 
@@ -1280,10 +1280,10 @@ static int _ext2_write(const void* src, uint start, uint sz,
 	for(;x < end_index;x++)
 	{
 		lba = ext2_block_address(x, ino, context);
-		block = context->driver->addreference(lba, context->driver);
+		block = context->fs->addreference(lba, context->fs);
 		if(!block) return -1;
 		memmove(block, src_c + bytes, context->blocksize);
-		context->driver->dereference(block, context->driver);
+		context->fs->dereference(block, context->fs);
 		bytes += context->blocksize;
 	}
 
@@ -1294,15 +1294,15 @@ static int _ext2_write(const void* src, uint start, uint sz,
 	/* read final block */
 	if(sz - bytes == context->blocksize)
 	{
-		block = context->driver->reference(lba, context->driver);
+		block = context->fs->reference(lba, context->fs);
 		if(!block) return -1;
 	} else {
-		block = context->driver->addreference(lba, context->driver);
+		block = context->fs->addreference(lba, context->fs);
 		if(!block) return -1;
 	}
 
 	memmove(block, src_c + bytes, sz - bytes);
-	context->driver->dereference(block, context->driver);
+	context->fs->dereference(block, context->fs);
 
 	/* The inode will get flushed when it is written to disk. */
 
@@ -1614,7 +1614,8 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 				path = file_remove_prefix(path);
 				/* We have to read this inode */
 				inode* new_handle = cache_reference(dir.inode, 
-						&context->inode_cache);
+						&context->inode_cache,
+						context->fs);
 				int result = -1;
 
 				if(S_ISDIR(new_handle->ino->mode))	
@@ -1694,7 +1695,7 @@ int ext2_init(uint superblock_address, uint sectsize,
 	fs->valid = 1;
 	fs->type = 0; /* TODO: assign a number to ext2 */
 	memset(fs->context, 0, FS_CONTEXT_SIZE);
-	memset(fs->cache, 0, fs->cache_sz);
+	// memset(fs->cache, 0, fs->cache_sz);
 
 	context* context = (void*)fs->context;
 	context->driver = driver;
@@ -1757,8 +1758,8 @@ int ext2_init(uint superblock_address, uint sectsize,
 		context->grouptableaddr = 2;
 	if(context->indirectshift < 0) return -1;
 	/* set the driver block size and shift */
-	driver->blocksize = context->blocksize;
-	driver->blockshift = context->blockshift;
+	fs->blocksize = context->blocksize;
+	fs->blockshift = context->blockshift;
 
 	if(context->revision == 1)
 	{
@@ -1780,10 +1781,10 @@ int ext2_init(uint superblock_address, uint sectsize,
 		context->blockshift;
 
 	/* Setup caches */
-	uint inode_cache_sz = cache_calc_size(FS_MAX_INODE_CACHE, 
+	/*uint inode_cache_sz = cache_calc_size(FS_MAX_INODE_CACHE, 
 		sizeof(struct ext2_cache_inode));
 	if(inode_cache_sz > cache_sz) return -1;
-	uint inode_cache_start = (uint)fs->cache + cache_sz - inode_cache_sz;
+	uint inode_cache_start = (uint)fs->driver->cache + cache_sz - inode_cache_sz;
 	cache_init((void*)inode_cache_start, inode_cache_sz, sizeof(inode),
 			context, "inode", &context->inode_cache);
 	context->inode_cache.sync = ext2_inode_cache_sync;
@@ -1793,24 +1794,33 @@ int ext2_init(uint superblock_address, uint sectsize,
 
 	uint disk_cache_sz = cache_sz - inode_cache_sz;
 	uint disk_cache_start = (uint)fs->cache;
-	cache_init((void*)disk_cache_start, disk_cache_sz, context->blocksize,
-			driver, "disk", &driver->cache);
-	disk_cache_init(driver);
+	cache_init((void*)disk_cache_start, disk_cache_sz, PGSIZE,
+			driver, "disk", &driver->cache); */
+	// disk_cache_init(driver);
+	/* TODO: fix this caching situation */
+
+	if(0)
+	{
+		ext2_inode_cache_sync(NULL, 0, NULL);
+		ext2_inode_cache_populate(NULL, 0, NULL);
+		ext2_inode_cache_query(NULL, 0, NULL);
+		ext2_inode_cache_eject(NULL, 0, NULL);
+	}
 
 	/* Setup the superblock context pointer */
-        uint superblock_block = 0;
+	uint superblock_block = 0;
 	context->super_offset = 0;
-        if(context->blocksize == 512)
-                superblock_block = 2;
-        else if(context->blocksize == 1024)
+	if(context->blocksize == 512)
+		superblock_block = 2;
+	else if(context->blocksize == 1024)
 		superblock_block = 1;
 	else context->super_offset = 1024;
 
-	context->super_block = context->driver->reference(superblock_block, 
-			context->driver);
+	context->super_block = context->fs->reference(superblock_block, 
+			context->fs);
 
 	/* Cache the root inode */
-	inode* root = cache_reference(2, &context->inode_cache);
+	inode* root = cache_reference(2, &context->inode_cache, context->fs);
 	if(!root) return -1;
 	context->root = root;
 
@@ -1845,16 +1855,18 @@ inode* ext2_open(const char* path, context* context)
 	strncpy(query_node.path, path, EXT2_MAX_PATH);
 	query_node.inode_num = 0;
 	query_node.inode_group = 0;
-	inode* result = cache_query(&query_node, &context->inode_cache);
+	inode* result = cache_query(&query_node, 
+		&context->inode_cache, context->fs);
 	if(result)
 		return cache_reference(result->inode_num, 
-				&context->inode_cache);
+				&context->inode_cache, context->fs);
 
 	/* We have never seen this node before. */
 	int num = ext2_lookup(path, NULL, context);
 	if(num < 0) return NULL;
 
-	inode* ino = cache_reference(num, &context->inode_cache);
+	inode* ino = cache_reference(num, 
+		&context->inode_cache, context->fs);
 	if(!ino) return NULL;
 	if(strlen(ino->path) == 0)
 		strncpy(ino->path, path, EXT2_MAX_PATH);
@@ -2280,7 +2292,8 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 		 * keep the inode reference warm.
 		 */
 		inode* prepare = cache_reference(diren.inode, 
-				&context->inode_cache);
+				&context->inode_cache,
+				context->fs);
 
 		if(prepare)
 		{
@@ -2320,12 +2333,12 @@ void ext2_sync(context* context)
 	}
 
 	/* Sync the data blocks */
-	cache_sync_all(&context->driver->cache);
+	cache_sync_all(&context->driver->cache, context->fs);
 }
 
 int ext2_fsync(inode* ino, context* context)
 {
-	return cache_sync(ino, &context->inode_cache);
+	return cache_sync(ino, &context->inode_cache, context->fs);
 }
 
 int ext2_fsstat(struct fs_stat* dst, context* context)

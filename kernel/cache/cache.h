@@ -11,7 +11,6 @@ struct cache
 	int slab_shift; /* Quick shift is available for log2(slab)*/
         uint slab_sz; /* How big are the slabs? */
         slock_t lock; /* Lock needed to change the cache */
-	void* context; /* Context pointer for use in sync. */
 	int clock; /* Points to the last entry allocated */
 	char name[64]; /* name of the cache (DEBUG) */
 	uint cache_hits; /* How many times have we gotten a cache hit? */
@@ -27,7 +26,7 @@ struct cache
 	/**
 	 * Sync the object with the underlying system.
 	 */
-	int (*sync)(void* obj, int id, struct cache* cache);
+	int (*sync)(void* obj, int id, struct cache* cache, void* context);
 
 	/**
 	 * Required populate function. When an object isn't found in the
@@ -42,7 +41,7 @@ struct cache
 	 * Optional function to try to help resolve queries. Returns 0
 	 * on a query match, -1 otherwise.
 	 */
-	int (*query)(void* query_obj, void* test_obj, void* c);
+	int (*query)(void* query_obj, void* test_obj, void* context);
 
 	/**
 	 * Optional cleanup function. This is called when a cache object
@@ -54,22 +53,25 @@ struct cache
 /**
  * Initilize a cache structure. Returns 0 on success, -1 on failure.
  */
-int cache_init(void* cache_area, uint sz, uint data_sz, void* context,
-	char* name, struct cache* cache);
+int cache_init(void* cache_area, uint sz, uint data_sz,
+		char* name, struct cache* cache);
 
 /**
  * Search for the entry in the cache. If not found, do not
- * populate the entry but still return a new cache object. If there
+ * populate the entry but still return a new cache object. Context
+ * is the context of the underlying storage element. If there
  * is no space available in the cache, NULL is returned.
  */
-void* cache_addreference(int id, struct cache* cache);
+void* cache_addreference(int id, struct cache* cache, void* context);
 
 /**
  * Search the cache for any object with the given id. If no such
  * object is found, a new cache object is generated and returned.
- * If there is no space in the cache left, NULL is returned.
+ * If the object needs to be populated, context is the context of
+ * the underlying storage. If there is no space in the cache left, 
+ * NULL is returned.
  */
-void* cache_reference(int id, struct cache* cache);
+void* cache_reference(int id, struct cache* cache, void* context);
 
 /**
  * Search the cache for the given data. This function only works if
@@ -78,7 +80,7 @@ void* cache_reference(int id, struct cache* cache);
  * did not increase the reference cound of the object. If the object
  * is to be used, you should reference the object.
  */
-void* cache_query(void* data, struct cache* cache);
+void* cache_query(void* data, struct cache* cache, void* context);
 
 /**
  * Free a pointer that was passed by cache_alloc. Returns the amount
@@ -89,9 +91,10 @@ int cache_dereference(void* ptr, struct cache* cache);
 
 /**
  * Hint to the cache that this entry might be accessed soon. (major
- * performance increase)
+ * performance increase). Context is the context of the underlying
+ * storage system.
  */
-void cache_prepare(int id, struct cache* cache);
+void cache_prepare(int id, struct cache* cache, void* context);
 
 /**
  * Dump information on the objects currently in the cache.
@@ -101,18 +104,18 @@ int cache_dump(struct cache* cache);
 /**
  * Sync the cache with the underlying system.
  */
-void cache_sync_all(struct cache* cache);
+void cache_sync_all(struct cache* cache, void* context);
 
 /**
  * Sync a specific cache object.
  */
-int cache_sync(void* ptr, struct cache* cache);
+int cache_sync(void* ptr, struct cache* cache, void* context);
 
 /**
  * Eliminate and clear all stale entries (reduces performance but
  * makes it easier to find leaks).
  */
-int cache_clean(struct cache* cache);
+int cache_clean(struct cache* cache, void* context);
 
 /**
  * Calculate the minimum cache size needed for the amount of entries.
