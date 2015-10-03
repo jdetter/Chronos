@@ -35,7 +35,7 @@ struct cache_entry
 	int id; /* A unique identifier that can be used for search.*/
 	int references;	/* How many hard pointers are there? */
 	void* slab; /* A pointer to the data that goes with this entry. */
-	int unused; /* Keep 2 byte alignment */
+	int valid; /* has this entry ever been assigned?  */
 };
 
 static int cache_default_check(void* obj, int id, struct cache* cache,
@@ -77,7 +77,7 @@ void* cache_query(void* data, struct cache* cache, void* context)
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
-		if(!cache->entries[x].id) continue;
+		if(!cache->entries[x].valid) continue;
 		if(!cache->query(data, cache->entries[x].slab, context))
 		{
 			result = cache->entries[x].slab;
@@ -103,7 +103,7 @@ int cache_dump(struct cache* cache)
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
-		if(cache->entries[x].id)
+		if(cache->entries[x].valid)
 		{
 			if(cache->entries[x].references)
 				allocated++;
@@ -232,7 +232,7 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 	if(!result) return NULL;
 
 	/* Are we ejecting something? */
-	if(cache->entries[pos].id)
+	if(cache->entries[pos].valid)
 	{
 		if(cache->sync)
 		{
@@ -267,6 +267,7 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 		}
 	}
 
+	cache->entries[pos].valid = 1;
 	cache->entries[pos].id = id;
 	cache->entries[pos].references = 1;
 
@@ -289,6 +290,7 @@ static int cache_force_free(void* ptr, struct cache* cache)
 
 	entry->references = 0;
 	entry->id = 0;
+	entry->valid = 0;
 
 	return 0;
 }
@@ -303,6 +305,7 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache)
 
 		return -1;
 	}
+
 	int result = 0;
 	struct cache_entry* entry = cache->entries;
 	uint val = (uint)ptr - (uint)cache->slabs;
@@ -320,6 +323,14 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache)
 #endif
 		return -1;
 	}
+
+	if(!entry->valid)
+	{
+		cprintf("%s cache: invalid entry dereferen"
+			"ced! (valid == 0)\n", cache->name);
+		return -1;
+	}
+
 	entry->references--;
 	if(entry->references <= 0)
 	{
@@ -354,6 +365,7 @@ static void* cache_search_nolock(int id, struct cache* cache, void* context)
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
+		if(!cache->entries[x].valid) continue;
 		if(!cache->check(cache->entries[x].slab, id, cache, context))
 		{
 			result = cache->entries[x].slab;
@@ -431,7 +443,7 @@ void cache_sync_all(struct cache* cache, void* context)
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
-		if(cache->entries[x].id)
+		if(cache->entries[x].valid)
 			cache->sync(cache->entries[x].slab,
 					cache->entries[x].id, 
 					cache, context);
@@ -467,7 +479,7 @@ int cache_clean(struct cache* cache, void* context)
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
-		if(!cache->entries[x].references && cache->entries[x].id)
+		if(!cache->entries[x].references && cache->entries[x].valid)
 		{
 			if(cache->sync)
 			{
@@ -481,6 +493,8 @@ int cache_clean(struct cache* cache, void* context)
 			}
 
 			cache->entries[x].id = 0;
+			cache->entries[x].valid = 0;
+			cache->entries[x].references = 0;
 		}
 	}
 

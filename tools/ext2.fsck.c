@@ -24,8 +24,8 @@ struct FSHardwareDriver driver;
 #define FS_CACHE_SZ 0x100000
 #define FS_INODE_SZ 0x10000
 #define PGSIZE 4096
-uchar fs_cache[FS_CACHE_SZ];
-uchar inode_cache[FS_INODE_SZ];
+uchar fs_cache[FS_CACHE_SZ] __attribute__((aligned(0x1000)));
+uchar inode_cache[FS_INODE_SZ] __attribute__((aligned(0x1000)));
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -101,6 +101,34 @@ int ext2_writeblock(void* src, uint block, struct FSDriver* driver)
         }
 
 	return 0;
+}
+
+int ext2_readblocks(void* dst, uint block, uint count, 
+	struct FSDriver* driver)
+{
+	char* dst_c = dst;
+	int x;
+	for(x = 0;x < count;x++)
+	{
+		if(ext2_readblock(dst_c, block + x, driver))
+			return -1;
+		dst_c += driver->driver->sectsize;
+	}
+	return 0;
+}
+
+int ext2_writeblocks(void* src, uint block, uint count, 
+        struct FSDriver* driver)
+{
+        char* src_c = src;
+        int x;
+        for(x = 0;x < count;x++)
+        {
+                if(ext2_writeblock(src_c, block + x, driver))
+                        return -1;
+                src_c += driver->driver->sectsize;
+        }
+        return 0;
 }
 
 void get_perm(struct stat* st, char* dst)
@@ -361,9 +389,9 @@ int main(int argc, char** argv)
 	driver.readsects = NULL;
 	driver.writesects = NULL;
 	driver.context = NULL;
-	fs.readblocks = NULL;
+	fs.readblocks = ext2_readblocks;
 	fs.readblock = ext2_readblock;
-	fs.writeblocks = NULL;
+	fs.writeblocks = ext2_writeblocks;
 	fs.writeblock = ext2_writeblock;
 	fs.start = start_block;
 	int shifter = -1;
@@ -386,6 +414,8 @@ int main(int argc, char** argv)
 		printf("Failed to initilize cache!\n");
 		return -1;
 	}
+	
+	disk_cache_hardware_init(fs.driver);
 
 	/* Start the driver */
 	if(ext2_init(block_size, inode_cache, FS_INODE_SZ, &fs))

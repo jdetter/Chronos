@@ -61,6 +61,7 @@ int log2_linux(uint value)
 
 #endif
 
+#include "x86.h"
 #include "file.h"
 #include "stdlock.h"
 #define NO_DEFINE_INODE
@@ -771,23 +772,24 @@ static int _ext2_read_inode(inode* dst, int num, context* context)
 
 static int ext2_inode_cache_populate(void* obj, int id, void* c)
 {
-	context* context = c;
+	struct FSDriver* driver = c;
+	context* context = (void*)driver->context;
 	inode* ino = obj;
 	ino->inode_num = id;
 	ino->inode_group = id >> context->inodegroupshift;
 	/* Can't do path from here */
 	memset(ino->path, 0, EXT2_MAX_PATH);
 
-	return _ext2_read_inode(obj, id, c);
+	return _ext2_read_inode(obj, id, context);
 }
 
 static int ext2_inode_cache_eject(void* obj, int id, void* c)
 {
-	context* context = c;
+	struct FSDriver* fs = c;
 	inode* ino = obj;
-	if(!ino || !context) return -1;
+	if(!ino || !c) return -1;
 
-	context->fs->dereference(ino->block, context->fs);
+	fs->dereference(ino->block, fs);
 	return 0;
 }
 
@@ -1729,6 +1731,7 @@ int ext2_init(uint sectsize, void* inode_cache, uint cache_sz,
 	context->sectsize = driver->sectsize;
 	context->blocksize = 1024 << base->block_size_shift;
 	context->blockshift = base->block_size_shift + 10;
+	fs->bpp = PGSIZE >> context->blockshift;
 	context->firstgroup = 1024 >> context->blockshift;
 	context->addrs_per_block = context->blocksize >> 2;
 	context->indirectshift = log2(context->addrs_per_block);
@@ -1780,7 +1783,7 @@ int ext2_init(uint sectsize, void* inode_cache, uint cache_sz,
 
 	/* Setup the inode cache */
 	if(cache_init(inode_cache, cache_sz, sizeof(struct ext2_cache_inode),
-			"EXT2 Inode cache", &context->inode_cache))
+			"EXT2 Inode", &context->inode_cache))
 		return -1;
 
 	/* Setup the cache helper functions */
