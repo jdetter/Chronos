@@ -21,7 +21,7 @@ struct cache
 	 * search operation. obj is the object in the cache, id is the
 	 * id of the object were searching for.
 	 */	
-	int (*check)(void* obj, int id, struct cache* cache);
+	int (*check)(void* obj, int id, struct cache* cache, void* context);
 
 	/**
 	 * Sync the object with the underlying system.
@@ -47,7 +47,7 @@ struct cache
 	 * Optional cleanup function. This is called when a cache object
 	 * is ejected from the cache.
 	 */
-	int (*eject)(void* obj, int id, void* c);
+	int (*eject)(void* obj, int id, void* context);
 };
 
 /**

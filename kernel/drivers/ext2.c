@@ -791,7 +791,8 @@ static int ext2_inode_cache_eject(void* obj, int id, void* c)
 	return 0;
 }
 
-static int ext2_inode_cache_sync(void* obj, int id, struct cache* cache)
+static int ext2_inode_cache_sync(void* obj, int id, struct cache* cache,
+		void* context)
 {
 	/* Inodes are automatically synced on block buffer sync */
 	return 0;
@@ -1682,8 +1683,8 @@ int ext2_test(context* context)
 	return 0;
 }
 
-int ext2_init(uint superblock_address, uint sectsize,
-		uint cache_sz, struct FSDriver* fs)
+int ext2_init(uint sectsize, void* inode_cache, uint cache_sz, 
+		struct FSDriver* fs)
 {
 	if(sizeof(context) > FS_CONTEXT_SIZE)
 	{
@@ -1695,21 +1696,18 @@ int ext2_init(uint superblock_address, uint sectsize,
 	fs->valid = 1;
 	fs->type = 0; /* TODO: assign a number to ext2 */
 	memset(fs->context, 0, FS_CONTEXT_SIZE);
-	// memset(fs->cache, 0, fs->cache_sz);
+	memset(inode_cache, 0, cache_sz);
 
 	context* context = (void*)fs->context;
 	context->driver = driver;
 	context->fs = fs;
 	context->sectsize = sectsize;
 
-	/* enable read and write for the driver */
-	diskio_setup(context->driver);
-
 	/* Read the superblock */
-	uint superblock_start = (superblock_address * sectsize) + 1024;
+	uint superblock_start = 1024;
 	char super_buffer[1024];
-	if(driver->read(super_buffer, superblock_start, 
-			1024, driver) != 1024)
+	if(fs->disk_read(super_buffer, superblock_start, 
+			1024, fs) != 1024)
 		return -1;
 	struct ext2_base_superblock* base = (void*) super_buffer;
 	struct ext2_extended_base_superblock* extended_base =
@@ -1780,32 +1778,20 @@ int ext2_init(uint superblock_address, uint sectsize,
 			context->inodesizeshift) >> 
 		context->blockshift;
 
-	/* Setup caches */
-	/*uint inode_cache_sz = cache_calc_size(FS_MAX_INODE_CACHE, 
-		sizeof(struct ext2_cache_inode));
-	if(inode_cache_sz > cache_sz) return -1;
-	uint inode_cache_start = (uint)fs->driver->cache + cache_sz - inode_cache_sz;
-	cache_init((void*)inode_cache_start, inode_cache_sz, sizeof(inode),
-			context, "inode", &context->inode_cache);
+	/* Setup the inode cache */
+	if(cache_init(inode_cache, cache_sz, sizeof(struct ext2_cache_inode),
+			"EXT2 Inode cache", &context->inode_cache))
+		return -1;
+
+	/* Setup the cache helper functions */
 	context->inode_cache.sync = ext2_inode_cache_sync;
 	context->inode_cache.populate = ext2_inode_cache_populate;
 	context->inode_cache.query = ext2_inode_cache_query;
 	context->inode_cache.eject = ext2_inode_cache_eject;
 
-	uint disk_cache_sz = cache_sz - inode_cache_sz;
-	uint disk_cache_start = (uint)fs->cache;
-	cache_init((void*)disk_cache_start, disk_cache_sz, PGSIZE,
-			driver, "disk", &driver->cache); */
-	// disk_cache_init(driver);
-	/* TODO: fix this caching situation */
-
-	if(0)
-	{
-		ext2_inode_cache_sync(NULL, 0, NULL);
-		ext2_inode_cache_populate(NULL, 0, NULL);
-		ext2_inode_cache_query(NULL, 0, NULL);
-		ext2_inode_cache_eject(NULL, 0, NULL);
-	}
+	/* Enable the fs driver to do disk caching functions */
+	if(disk_cache_init(context->fs))
+		return -1;
 
 	/* Setup the superblock context pointer */
 	uint superblock_block = 0;

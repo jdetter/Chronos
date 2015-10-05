@@ -19,11 +19,12 @@
 #include "fsman.h"
 
 static int disk_read(void* dst, uint start, uint sz, 
-		struct FSHardwareDriver* driver)
+		struct FSDriver* driver)
 {
+	start += (driver->start << driver->driver->sectshifter);
 	if(sz == 0) return 0;
-	uint shifter = driver->sectshifter;
-	uint sectsize = driver->sectsize;
+	uint shifter = driver->driver->sectshifter;
+	uint sectsize = driver->driver->sectsize;
 	uint mask = sectsize - 1;
 	char* dst_c = dst;
 
@@ -33,7 +34,7 @@ static int disk_read(void* dst, uint start, uint sz,
 	char sector[sectsize];
 
 	/* Do the first sector */
-	if(driver->readsect(sector, startsect, driver))
+	if(driver->driver->readsect(sector, startsect, driver->driver))
 		return -1;
 	
 	uint bytes = sectsize - (start & mask);
@@ -47,11 +48,11 @@ static int disk_read(void* dst, uint start, uint sz,
 	int middlesectors = endsect - startsect - 1;
 
 	/* Check for writesects support */
-	if(driver->writesects)
+	if(driver->driver->writesects)
 	{
 		/* Much faster option */
-		int result = driver->readsects(dst_c + bytes, 
-				startsect +1, middlesectors, driver);
+		int result = driver->driver->readsects(dst_c + bytes, 
+				startsect +1, middlesectors, driver->driver);
 		/* Check for success */
 		if(result != sectsize * middlesectors) return -1;
 		/* increment bytes */
@@ -61,8 +62,8 @@ static int disk_read(void* dst, uint start, uint sz,
 		int sect;
 		for(sect = 0;sect < middlesectors;sect++)
 		{
-			if(driver->readsect(dst_c + bytes, 
-					sect + startsect, driver))
+			if(driver->driver->readsect(dst_c + bytes, 
+					sect + startsect, driver->driver))
 				return -1;
 			else bytes += sectsize;
 		}
@@ -72,7 +73,7 @@ static int disk_read(void* dst, uint start, uint sz,
 	if(bytes == sz) return sz;
 
 	/* Read the last sector */
-	if(driver->readsect(sector, endsect, driver))
+	if(driver->driver->readsect(sector, endsect, driver->driver))
 		return -1;
 
 	memmove(dst_c + bytes, sector, (start + sz) & mask);
@@ -81,14 +82,88 @@ static int disk_read(void* dst, uint start, uint sz,
 }
 
 static int disk_write(void* src, uint start, uint sz, 
-		struct FSHardwareDriver* driver)
+		struct FSDriver* driver)
 {
         
         return 0;
 }
 
-void diskio_setup(struct FSHardwareDriver* driver)
+static int disk_read_blocks(void* dst, uint block_start, uint block_count,
+		struct FSDriver* driver)
 {
-	driver->read = disk_read;
-	driver->write = disk_write;
+	struct FSHardwareDriver* disk = driver->driver;
+	char* dst_c = dst;
+
+        uint sect_shift = disk->sectshifter;
+        uint block_shift = driver->blockshift;
+        if(sect_shift > block_shift) return -1;
+        uint sector_count = block_count << (block_shift - sect_shift);
+        uint start_read = driver->start + (block_start << block_shift);
+
+        /* Check for multi sector read support */
+        if(!disk->readsects)
+        {
+                /* Does this driver support any type of read? */
+                if(!disk->readsect) return -1;
+                int x;
+                for(x = 0;x < sector_count;x++)
+                {
+                        if(disk->readsect(dst_c, start_read + x, disk))
+                                return -1;
+                        dst_c += disk->sectsize;
+                }
+
+                return 0; 
+        } else return disk->readsects(dst, start_read, sector_count, disk);
+}
+
+static int disk_read_block(void* dst, uint block, struct FSDriver* driver)
+{
+        return disk_read_blocks(dst, block, 1, driver);
+}
+
+static int disk_write_blocks(void* src, uint block_start, uint block_count,
+                struct FSDriver* driver)
+{
+	struct FSHardwareDriver* disk = driver->driver;
+        char* src_c = src;
+
+        uint sect_shift = disk->sectshifter;
+        uint block_shift = driver->blockshift;
+        if(sect_shift > block_shift) return -1;
+        uint sector_count = block_count << (block_shift - sect_shift);
+        uint start_write = driver->start + (block_start << block_shift);
+
+        /* Check for multi sector read support */
+        if(!disk->writesects)
+        {
+                /* Does this driver support any type of read? */
+                if(!disk->writesect) return -1;
+                int x;
+                for(x = 0;x < sector_count;x++)
+                {
+                        if(disk->writesect(src_c, start_write + x, disk))
+                                return -1;
+                        src_c += disk->sectsize;
+                }
+
+                return 0;
+        } else return disk->writesects(src, start_write, sector_count, disk);
+}
+
+static int disk_write_block(void* src, uint block, struct FSDriver* driver)
+{
+        return disk_write_blocks(src, block, 1, driver);
+}
+
+void diskio_setup(struct FSDriver* driver)
+{
+	driver->disk_read = disk_read;
+	driver->disk_write = disk_write;
+
+	driver->readblock = disk_read_block;
+	driver->readblocks = disk_read_blocks;
+
+	driver->writeblock = disk_write_block;
+	driver->writeblocks = disk_write_blocks;
 }

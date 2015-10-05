@@ -28,7 +28,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #include "cache.h"
 
-// #define CACHE_DEBUG
+#define CACHE_DEBUG
 
 struct cache_entry
 {
@@ -38,7 +38,8 @@ struct cache_entry
 	int unused; /* Keep 2 byte alignment */
 };
 
-static int cache_default_check(void* obj, int id, struct cache* cache)
+static int cache_default_check(void* obj, int id, struct cache* cache,
+		void* context)
 {
 	struct cache_entry* entry = cache->entries;
 
@@ -130,7 +131,7 @@ int cache_dump(struct cache* cache)
 	return 0;
 }
 
-static void* cache_search_nolock(int id, struct cache* cache);
+static void* cache_search_nolock(int id, struct cache* cache, void* context);
 static int cache_dereference_nolock(void* ptr, struct cache* cache);
 
 int cache_init(void* cache_area, uint sz, uint data_sz, 
@@ -231,7 +232,7 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 	if(!result) return NULL;
 
 	/* Are we ejecting something? */
-	if(result && cache->entries[pos].id)
+	if(cache->entries[pos].id)
 	{
 		if(cache->sync)
 		{
@@ -346,14 +347,14 @@ int cache_dereference(void* ptr, struct cache* cache)
 	return result;
 }
 
-static void* cache_search_nolock(int id, struct cache* cache)
+static void* cache_search_nolock(int id, struct cache* cache, void* context)
 {
 	void* result = NULL;
 
 	int x;
 	for(x = 0;x < cache->entry_count;x++)
 	{
-		if(!cache->check(cache->entries[x].slab, id, cache))
+		if(!cache->check(cache->entries[x].slab, id, cache, context))
 		{
 			result = cache->entries[x].slab;
 			if(cache->entries[x].references <= 0)
@@ -371,10 +372,10 @@ static void* cache_search_nolock(int id, struct cache* cache)
 	return result;
 }
 
-void* cache_search(int id, struct cache* cache)
+void* cache_search(int id, struct cache* cache, void* context)
 {
 	slock_acquire(&cache->lock);
-	void* result = cache_search_nolock(id, cache);
+	void* result = cache_search_nolock(id, cache, context);
 	slock_release(&cache->lock);
 	return result;
 }
@@ -384,7 +385,7 @@ void* cache_addreference(int id, struct cache* cache, void* context)
 	void* result = NULL;
 	slock_acquire(&cache->lock);
 	/* First search */
-	if(!(result = cache_search_nolock(id, cache)))
+	if(!(result = cache_search_nolock(id, cache, context)))
 	{
 		/* Not already cached. */
 		result = cache_alloc(id, cache, context);
@@ -399,7 +400,7 @@ void* cache_reference(int id, struct cache* cache, void* context)
 	void* result = NULL;
 	slock_acquire(&cache->lock);
 	/* First search */
-	if(!(result = cache_search_nolock(id, cache)))
+	if(!(result = cache_search_nolock(id, cache, context)))
 	{
 		cache->cache_miss++;
 		/* Not already cached. */

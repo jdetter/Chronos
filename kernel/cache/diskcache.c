@@ -35,23 +35,23 @@ static int disk_cache_sync(void* obj, int block_id,
 		struct cache* cache, void* context)
 {
 	struct FSDriver* driver = context;
-	/* Write the block */
-	if(driver->writeblock(obj, block_id, driver) 
+	/* Write the blocks */
+	if(driver->writeblocks(obj, block_id, driver) 
 			!= driver->blocksize)
 		return -1;
 	return 0;
 }
 
-static int disk_cache_populate(void* block, int block_id, void* context)
+static int disk_cache_populate(void* blocks, int block_id, void* context)
 {
 	struct FSDriver* driver = context;
-	return (driver->readblock(block, block_id, driver)) 
+	return (driver->readblocks(blocks, block_id, driver)) 
 		!= driver->blocksize;
 }
 
-static void* disk_cache_reference(uint block_id, struct FSDriver* driver)
+static void* disk_cache_reference(uint block_id, uint bpp, struct FSDriver* driver)
 {
-	return cache_reference(block_id, &driver->driver->cache, driver);
+  return cache_reference(block_id & (~driver->bpp-1), &driver->driver->cache, driver);
 }
 
 static void* disk_cache_addreference(uint block_id, 

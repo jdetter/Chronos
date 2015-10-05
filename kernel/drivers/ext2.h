@@ -4,7 +4,7 @@
 /**
  * Initilize the ext2 file system driver with the given parameters.
  */
-extern int ext2_init(uint superblock_address, uint sect_size,
-                uint cache_sz, struct FSDriver* fs);
+extern int ext2_init(uint sect_size, void* icache, uint cache_sz, 
+		struct FSDriver* fs);
 
 #endif

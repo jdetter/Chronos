@@ -13,6 +13,7 @@
 #include "fsman.h"
 #include "ext2.h"
 #include "diskcache.h"
+#include "diskio.h"
 
 /* Define a memory based fs driver */
 
@@ -21,8 +22,10 @@ int fd;
 struct FSDriver fs;
 struct FSHardwareDriver driver;
 #define FS_CACHE_SZ 0x100000
+#define FS_INODE_SZ 0x10000
 #define PGSIZE 4096
 uchar fs_cache[FS_CACHE_SZ];
+uchar inode_cache[FS_INODE_SZ];
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -40,7 +43,7 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
                 exit(1);
         }
 
-        return driver->sectsize;
+	return 0;
 }
 
 int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
@@ -59,7 +62,7 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
                 exit(1);
         }
 
-        return driver->sectsize;
+	return 0;
 }
 
 int ext2_readblock(void* dst, uint block, struct FSDriver* driver)
@@ -78,7 +81,7 @@ int ext2_readblock(void* dst, uint block, struct FSDriver* driver)
                 exit(1);
         }
 
-        return driver->blocksize;
+	return 0;
 }
 
 int ext2_writeblock(void* src, uint block, struct FSDriver* driver)
@@ -86,18 +89,18 @@ int ext2_writeblock(void* src, uint block, struct FSDriver* driver)
         if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
                         driver->blocksize * block)
         {
-                printf("Sector write seek failure: %d\n",
+                printf("Block write seek failure: %d\n",
                         driver->blocksize * block);
                 exit(1);
         }
 
         if(write(fd, src, driver->blocksize) != driver->blocksize)
         {
-                printf("Sector write failure.\n");
+                printf("Block write failure.\n");
                 exit(1);
         }
 
-        return driver->blocksize;
+	return 0;
 }
 
 void get_perm(struct stat* st, char* dst)
@@ -352,10 +355,17 @@ int main(int argc, char** argv)
 
 	/* Initilize the memory hardware driver */
 	fs.driver = &driver;
+	diskio_setup(&fs);
 	fs.driver->readsect = ata_readsect;
 	fs.driver->writesect = ata_writesect;
+	driver.readsects = NULL;
+	driver.writesects = NULL;
+	driver.context = NULL;
+	fs.readblocks = NULL;
 	fs.readblock = ext2_readblock;
+	fs.writeblocks = NULL;
 	fs.writeblock = ext2_writeblock;
+	fs.start = start_block;
 	int shifter = -1;
 	int block_size_tmp = block_size;
 	while(block_size_tmp)
@@ -368,6 +378,8 @@ int main(int argc, char** argv)
 	fs.driver->sectmax = sectmax;
 	fs.driver->valid = 1;
 	fs.driver->context = NULL;
+
+	/* Initilize the disk cache */
 	if(cache_init(fs_cache, FS_CACHE_SZ, PGSIZE,
 		"Disk Cache", &fs.driver->cache))
 	{
@@ -376,7 +388,11 @@ int main(int argc, char** argv)
 	}
 
 	/* Start the driver */
-	ext2_init(start_block, block_size, FS_CACHE_SZ, &fs);
+	if(ext2_init(block_size, inode_cache, FS_INODE_SZ, &fs))
+	{
+		printf("Failed to initilize ext2 driver!\n");
+		return -1;
+	}
 
 	/* Check for command */
 	if(command)
