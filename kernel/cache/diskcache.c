@@ -39,13 +39,13 @@ static int disk_cache_sync(void* obj, int block_id,
 	return driver->writeblocks(obj, block_id, driver->bpp, driver);
 }
 
-static int disk_cache_populate(void* block, int block_id, void* context)
+static int disk_cache_populate(void* blocks, int block_id, void* context)
 {
 	struct FSDriver* driver = context;
 	return driver->readblocks(block, block_id, driver->bpp,  driver);
 }
 
-static void* disk_cache_reference(uint block_id, struct FSDriver* driver)
+static void* disk_cache_reference(uint block_id, uint bpp, struct FSDriver* driver)
 {
 	/* Save the original requested block_id */
 	uint block_id_start = block_id;
