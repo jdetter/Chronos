@@ -25,6 +25,8 @@
 #include "pipe.h"
 #include "proc.h"
 
+// #define KEY_DEBUG
+
 extern struct proc* rproc;
 struct tty ttys[MAX_TTYS];
 static struct tty* active = NULL;
@@ -517,6 +519,9 @@ void tty_set_color(tty_t t, uchar color)
 
 void tty_delete_char(tty_t t)
 {
+#ifdef KEY_DEBUG
+	cprintf("kbd: deleting character...\n");
+#endif
 	char serial_back[] = {0x08, ' ', 0x08};
 	switch(t->type)
 	{
@@ -543,6 +548,9 @@ void tty_delete_char(tty_t t)
 
 void tty_clear_input(tty_t t)
 {
+#ifdef KEY_DEBUG
+	cprintf("kbd: Input line cleared.\n");
+#endif
 	slock_acquire(&t->key_lock);
 	memset(&t->kbd_line, 0, sizeof(struct kbd_buff));
 	memset(&t->keyboard, 0, sizeof(struct kbd_buff));
@@ -579,7 +587,9 @@ void tty_handle_keyboard_interrupt(void)
 		if(!c) break; /* no more characters */
 		/* Got character. */
 
-		//cprintf("Got character: %c\n", c);
+#ifdef KEY_DEBUG
+		cprintf("Got character: %c\n", c);
+#endif
 		/* Preprocess the input (canonical mode only!) */
 		uchar canon = active->term.c_lflag & ICANON;
 		//cprintf("Canonical mode: %d\n", canon);
@@ -611,7 +621,10 @@ void tty_handle_keyboard_interrupt(void)
 			/* Check for delete character */
 			if(c == 0x7F || c == 0x08)
 			{
-				if(tty_keyboard_delete(active))
+#ifdef KEY_DEBUG
+				cprintf("kbd: received delete char.\n");
+#endif
+				if(!tty_keyboard_delete(active))
 				{
 					tty_delete_char(active);
 					continue;
@@ -622,7 +635,9 @@ void tty_handle_keyboard_interrupt(void)
 				if(active->kbd_line.key_nls)
 				{
 					/* A line delimiter was written */
-					//cprintf("Signaled.\n");
+#ifdef KEY_DEBUG
+					cprintf("kbd: process signaled.\n");
+#endif
 					signal_keyboard_io(active);
 				}
 			}
@@ -639,9 +654,13 @@ void tty_handle_keyboard_interrupt(void)
 			signal_keyboard_io(active);
 
 		}
-		// cprintf("NLS in line buffer: %d\n", active->kbd_line.key_nls);
-		// cprintf("Line buffer: %s\n", active->kbd_line.buffer +
-		//		active->kbd_line.key_read);
+
+#ifdef KEY_DEBUG
+		cprintf("kbd: NLS in line buffer: %d\n", 
+			active->kbd_line.key_nls);
+		cprintf("kbd: Line buffer: %s\n", active->kbd_line.buffer +
+				active->kbd_line.key_read);
+#endif
 	} while(1);
 
 

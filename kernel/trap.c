@@ -90,7 +90,7 @@ void trap_handler(struct trap_frame* tf)
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
 			handled = 1;
 			break;
-			cprintf("Keyboard interrupt.\n");
+			// cprintf("Keyboard interrupt.\n");
 			/* Keyboard interrupt */
 			tty_handle_keyboard_interrupt();	
 			pic_eoi(INT_PIC_TIMER_CODE);

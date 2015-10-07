@@ -34,11 +34,11 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	#define BUFF_SIZE 512
+#define BUFF_SIZE 512
 	struct stat st;
-	fstat(fileDescript, &st);
+	if(fstat(fileDescript, &st)) return -1;
 	int fileLength = st.st_size;
-	
+
 	/* reset seek */
 	lseek(fileDescript, 0, SEEK_SET);
 	char buffer[BUFF_SIZE];
@@ -49,7 +49,8 @@ int main(int argc, char** argv)
 		if(left > BUFF_SIZE - 1) left = BUFF_SIZE - 1;
 		read(fileDescript, buffer, left);
 		buffer[BUFF_SIZE - 1] = 0;
-		printf(buffer);
+		if(write(1, buffer, left) != left)
+			return -1;
 		i += left;
 	}
 

@@ -754,8 +754,8 @@ int sys_chdir(void)
 	char dir_path[MAX_PATH_LEN];
 	char tmp_path[MAX_PATH_LEN];
 	strncpy(dir_path, dir, MAX_PATH_LEN);
-	if(file_path_dir(dir_path, MAX_PATH_LEN))
-		return -1;
+	//if(file_path_dir(dir_path, MAX_PATH_LEN))
+	//	return -1;
 	if(fs_path_resolve(dir_path, tmp_path, MAX_PATH_LEN))
 		return -1;
 	if(strlen(tmp_path) < 1) return -1;
@@ -775,8 +775,12 @@ int sys_chdir(void)
 		fs_close(i);
 		return -1;
 	}
-
 	fs_close(i);
+
+	/* Make it a directory now */
+	if(file_path_dir(dir_path, MAX_PATH_LEN))
+		return -1;
+
 	/* Everything is ok. */
 	memmove(rproc->cwd, dir_path, MAX_PATH_LEN);
 	return 0;
