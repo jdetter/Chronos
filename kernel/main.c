@@ -36,7 +36,6 @@ extern uint k_stack;
 /* Entry point for the kernel */
 int main(void)
 {
-	panic("Chronos is booting!\n");
 	/* Lets make sure that tty0 gets configured properly. */
 	setup_kvm();
 	cprintf("Welcome to the Chronos kernel!\n");
@@ -120,9 +119,9 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 
 	/* Populate the device folder */
-	cprintf("Populating the dev folder...\t\t\t\t\t\t");
-	dev_populate();
-	cprintf("[ OK ]\n");
+	//cprintf("Populating the dev folder...\t\t\t\t\t\t");
+	//dev_populate();
+	//cprintf("[ OK ]\n");
 
 	/* Enable PIT */
         cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");

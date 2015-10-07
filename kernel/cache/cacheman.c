@@ -1,5 +1,3 @@
-#ifndef __LINUX__
-
 #include "types.h"
 #include "stdlock.h"
 #include "file.h"
@@ -12,8 +10,6 @@
 #include "vm.h"
 #include "panic.h"
 #include "x86.h"
-
-#endif
 
 
 /**

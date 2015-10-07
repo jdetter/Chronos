@@ -21,6 +21,7 @@
 #include "panic.h"
 #include "diskio.h"
 #include "diskcache.h"
+#include "cacheman.h"
 
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
@@ -69,6 +70,9 @@ int main(void)
 	__enable_paging__(k_pgdir);
 	cprintf(ok);
 
+	/* Initilize the cache manager */
+	cman_init();
+
 	cprintf("Starting ata driver...\t\t\t\t\t\t\t");
 	ata_init();
 	if(!ata_drivers[0]->valid)
@@ -92,8 +96,9 @@ int main(void)
 	fs.start = EXT2_SUPER;
 	
 	/* Setup the cache */
-	uint cache_sz = KVM_DISK_E - KVM_DISK_S - EXT2_INODE_CACHE_SZ;
-	if(cache_init((void*)KVM_DISK_S, cache_sz, PGSIZE,
+	uint cache_sz = ATA_CACHE_SZ;
+	void* disk_cache = cman_alloc(cache_sz);
+	if(cache_init(disk_cache, cache_sz, PGSIZE,
 		"EXT2 Disk", &ata_drivers[0]->cache))
 	{
 		panic(fail);

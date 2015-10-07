@@ -23,6 +23,8 @@
 #include "ramfs.h"
 #include "panic.h"
 #include "ext2.h"
+#include "diskio.h"
+#include "diskcache.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -75,6 +77,9 @@ void fsman_init(void)
 	/* Assign a root file system */
 	struct FSDriver* ext2 = fs_alloc();
 	ext2->driver = ata;
+	diskio_setup(ext2);
+	ext2->start = 2048;
+	disk_cache_init(ext2);
 	
 	/* Set our vsfs as the root file system. */
 	ext2_init(ext2);
@@ -87,6 +92,8 @@ void fsman_init(void)
 	/* TODO: update init */
 	// vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
 	//	vsfs->cache, vsfs->context);
+
+	return; /* NO RAMFS FOR NOW */
 
 	/* make sure there is a dev folder */
 	ext2->mkdir("/dev", 

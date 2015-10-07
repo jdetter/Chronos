@@ -7,7 +7,7 @@
 #include "cache.h"
 
 /* Some cache tunables */
-#define ATA_CACHE_SZ 0x100000 /* HDD cache sz per drive */
+#define ATA_CACHE_SZ 0x30000 /* HDD cache sz per drive */
 #define FS_INODE_CACHE_SZ 0x10000 /* Per file system cache */
 
 struct FSHardwareDriver
