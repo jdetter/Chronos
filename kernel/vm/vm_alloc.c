@@ -127,6 +127,7 @@ void vm_add_pages(uint start, uint end, pgdir* dir)
 
 void vm_add_page(uint pg, pgdir* dir)
 {
+	/* Should we ignore this page? */
         int x;
         for(x = 0;x < VM_IGNORE_TABLE_COUNT;x++)
         {

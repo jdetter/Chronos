@@ -19,6 +19,8 @@
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
+#include "diskio.h"
+#include "diskcache.h"
 
 /**
  * Stage 2 of the boot loader. This code must load the kernel from disk 
@@ -35,15 +37,15 @@ char* invalid = "Chronos.elf is invalid!\n";
 char* panic_str = "Boot strap is panicked.";
 
 char* kernel_path = "/boot/chronos.elf";
-char* checking_elf = "Chronos is ready to be loaded.\n";
 char* kernel_loaded = "Chronos has been loaded.\n";
 int serial = 0;
 char* ok = "[ OK ]\n";
 char* fail = "[FAIL]\n";
 
-#define EXT2_SUPER 141 /* Where does the file system start? */
+#define PG_SHIFT 12
+#define EXT2_SUPER 2048 /* Where does the file system start? */
 #define EXT2_SECT_SIZE 512
-#define DISK_CACHE_SZ 0x100000
+#define EXT2_INODE_CACHE_SZ 0x10000
 
 extern pgdir* k_pgdir;
 extern struct FSHardwareDriver* ata_drivers[];
@@ -81,15 +83,29 @@ int main(void)
 	cprintf("\n");
 
 	cprintf("Starting EXT2 driver...\t\t\t\t\t\t\t");
+	diskio_setup(&fs);
+	
 	/* Initilize the file system driver */
 	fs.valid = 1;
 	fs.type = 1; /* EXT2 type here */
 	fs.driver = ata_drivers[0];
-	//fs.cache = (uchar*)KVM_DISK_S;
-	//fs.cache_sz = DISK_CACHE_SZ;
-	//if(ext2_init(EXT2_SUPER, EXT2_SECT_SIZE, DISK_CACHE_SZ, &fs))
-	//	panic(fail);
-		
+	fs.start = EXT2_SUPER;
+	
+	/* Setup the cache */
+	uint cache_sz = KVM_DISK_E - KVM_DISK_S - EXT2_INODE_CACHE_SZ;
+	if(cache_init((void*)KVM_DISK_S, cache_sz, PGSIZE,
+		"EXT2 Disk", &ata_drivers[0]->cache))
+	{
+		panic(fail);
+	}
+	disk_cache_init(&fs);
+	disk_cache_hardware_init(fs.driver);
+	
+	/* Start the driver */
+	if(ext2_init(512, ((char*)KVM_DISK_S) + cache_sz,
+		EXT2_INODE_CACHE_SZ, &fs))
+		panic(fail);
+
 	cprintf(ok);
 
 	cprintf("Locating kernel...\t\t\t\t\t\t\t");
@@ -100,11 +116,12 @@ int main(void)
 	cprintf(ok);
 
 	/* Sniff to see if it looks right. */
+	cprintf("Checking kernel sanity...\t\t\t\t\t\t");
 	uchar elf_buffer[512];
 	fs.read(chronos_inode, elf_buffer, 0, 512, fs.context);
 	char elf_buff[] = ELF_MAGIC;
 	if(memcmp(elf_buffer, elf_buff, 4))
-                panic(invalid);
+                panic(fail);
 
 	/* Load the entire elf header. */
 	struct elf32_header elf;
@@ -112,12 +129,20 @@ int main(void)
 	/* Check class */
 	if(elf.exe_class != 1) panic("Bad class");	
 	if(elf.version != 1) panic("Bad version");
-	if(elf.e_type != ELF_E_TYPE_EXECUTABLE) panic("Bad type");	
-	if(elf.e_machine != ELF_E_MACHINE_x86) panic("Bad ISA");	
+	if(elf.e_type != ELF_E_TYPE_EXECUTABLE) panic("Bad type");
+	if(elf.e_machine != ELF_E_MACHINE_x86) panic("Bad ISA");
 	if(elf.e_version != 1) panic("Bad ISA version");	
 
+	/* Check size requirements */
+	struct stat st;
+	if(fs.stat(chronos_inode, &st, fs.context))
+		panic(fail);
+
+	if(st.st_size > KVM_KERN_E - KVM_KERN_S)
+		panic(fail);
+
 	uint elf_entry = elf.e_entry;
-	cprintf(checking_elf);
+	cprintf(ok);
 
 	int x;
 	for(x = 0;x < elf.e_phnum;x++)
@@ -146,6 +171,9 @@ int main(void)
 			uint offset = curr_header.offset;
 			uint file_sz = curr_header.file_sz;
 			uint mem_sz = curr_header.mem_sz;
+			uint needed_sz = PGROUNDUP(mem_sz);
+			/* map some pages in for this space */
+			mappages((uint)hd_addr, needed_sz, k_pgdir, 0);
 			/* zero this region */
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */

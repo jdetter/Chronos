@@ -19,6 +19,7 @@
 #include "stdarg.h"
 #include "stdlib.h"
 #include "fsman.h"
+#include "diskcache.h"
 
 #define PRIMARY_ATA_BASE 0x1F0 /* Base port for primary controller */
 #define SECONDARY_ATA_BASE 0x170 /* Base port for secondary controller */
@@ -106,9 +107,14 @@ void ata_init(void)
 		ata_drivers[x]->writesect = ata_writesect;
 		/* Assign a context */
 		struct ATADriverContext* context = contexts + x;
+		/* Setup some basic function pointers */
+		disk_cache_hardware_init(ata_drivers[x]);
 		ata_drivers[x]->context = context;
 		ata_drivers[x]->sectsize = 512;
+		/* TODO: Get the sector size */
 		ata_drivers[x]->sectshifter = 9;
+		/* TODO: calculate the last sector */
+		ata_drivers[x]->sectmax = (uint)-1;
 
 		switch(x)
 		{

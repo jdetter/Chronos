@@ -135,7 +135,7 @@
 #define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */
 #define KVM_HARDWARE_S  0xFD000000 /* Start of hardware mappings */
 
-#define KVM_BOOT2_E	0x0000FDFF /* Start of the second boot stage binary */
+#define KVM_BOOT2_E	0x00019600 /* Start of the second boot stage binary */
 #define KVM_BOOT2_S	0x00007E00 /* Start of the second boot stage binary */
 
 #define KVM_KPGDIR      0x00001000 /* The kernel page directory */

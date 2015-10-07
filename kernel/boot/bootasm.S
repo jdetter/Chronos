@@ -26,7 +26,7 @@
 #define KEYBOARD_SCROLL_NUM  	0x1
 #define KEYBOARD_SCROLL_CAPS 	0x2
 
-#define STAGE2_FINAL_SECT 	140
+#define STAGE2_FINAL_SECT 	(1 + 140)
 
 .globl ata_readsect
 .globl ata_init
@@ -44,72 +44,6 @@ start:
 	movw	%ax, %es # Extra Segment
 	movw	%ax, %ds # Data Segment
 	movl	$0x7c00, %esp
-
-# Get the memory map
-	jmp A20_STEP1
-	
-	movl $0x500, %edi
-	call do_e820
-
-	/* Clear the next entry (NULL terminate) */
-	movl $0x00, %es:0x00(%di)	
-	movl $0x00, %es:0x04(%di)	
-	movl $0x00, %es:0x08(%di)	
-	movl $0x00, %es:0x12(%di)	
-	
-	jmp A20_STEP1
-
-do_e820:
-	xorl %ebp, %ebp
-	xorw %bp, %bp
-	movl $0x0534D4150, %edx
-	movl $0xe820, %eax
-	movl $1, %es:20(%di)
-	movl $24, %ecx
-	int  $0x15
-	jc   e820_failed
-	movl $0x0534D4150, %edx
-	cmpl %edx, %eax
-	jne  e820_failed
-	test %ebx, %ebx
-	je   e820_failed
-	jmp  e820_jmpin
-
-e820lp:
-	movl $0xe820, %eax
-	movl $1, %es:20(%di)
-	movl $24, %ecx
-	int  $0x15
-	jc   e820f
-	movl $0x0534D4150, %edx  
-
-e820_jmpin:
-	jcxz e820_skipent
-	cmpb  $20, %cl
-	jbe  e820_notext
-	testb $1, %es:20(%di)
-	je   e820_skipent
-
-e820_notext:
-	movl %es:8(%di), %ecx
-	orl  %es:12(%di), %ecx
-	jz   e820_skipent
-	incw %bp
-	addw $24, %di
-
-e820_skipent:
-	test %ebx, %ebx
-	jne  e820lp
-
-e820f:
-	xorl %eax, %eax 			# clear high 16 bits of eax
-	movw %bp, %ax  			# put return value in eax
-	clc            			# clear the carry bit
-	ret            			# return with success
-
-e820_failed:
-	stc            			# set the carry bit
-	ret
 
 A20_STEP1:
         inb     $KEYBOARD_COMM, %al

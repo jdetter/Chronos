@@ -36,13 +36,12 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 FS_TYPE := ext2.img
 FS_DD_BS := 4096
 FS_DD_COUNT := 32768
-FS_START := 141
+FS_START := 2048
 
 .PHONY: all
 all: chronos.img
 
 include tools/makefile.mk
-# include lib/makefile.mk
 include kernel/makefile.mk
 include user/makefile.mk
 
@@ -70,7 +69,7 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	./tools/bin/mkfs -i 8192 -s 134217728 -r fs $(FS_TYPE)
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
-ext2.img:
+ext2.img: kernel/chronos.o $(USER_BUILD)
 	echo "Super user privileges are needed for loop mounting..."
 	sudo echo ""
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
@@ -81,6 +80,10 @@ ext2.img:
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp
+	mkdir -p ./tmp/bin
+	cp -R ./user/bin/* ./tmp/bin/
+	mkdir -p ./tmp/boot
+	cp ./kernel/chronos.o ./tmp/boot/chronos.elf
 	sudo umount ./tmp
 	rm -rf tmp
 
