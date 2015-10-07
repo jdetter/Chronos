@@ -12,7 +12,7 @@
 
 int main(int argc, char** argv)
 {
-	printf("*** Boot Sign Utility ***\n");
+	printf("*************** Boot Sign Utility ***************\n");
 	off_t size;
 	int fd;
 	if(argc!=2){
@@ -44,6 +44,8 @@ int main(int argc, char** argv)
 		printf("Size: %d bytes\n", (int)size);
 		return 1;
 	}
+
+	printf("Boot signature complete.\n");
 	close(fd);
 	return 0;
 }

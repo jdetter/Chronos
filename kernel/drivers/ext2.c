@@ -70,6 +70,7 @@ int log2_linux(uint value)
 #include "diskio.h"
 #include "cache.h"
 #include "diskcache.h"
+#include "cacheman.h"
 
 #define EXT2_DIRECT_COUNT 12
 
@@ -1689,14 +1690,16 @@ int ext2_test(context* context)
 	return 0;
 }
 
-int ext2_init(uint sectsize, void* inode_cache, uint cache_sz, 
-		struct FSDriver* fs)
+int ext2_init(struct FSDriver* fs)
 {
 	if(sizeof(context) > FS_CONTEXT_SIZE)
 	{
 		cprintf("ext2: not enough context space.\n");
 		return -1;
 	}
+
+	uint cache_sz = FS_INODE_CACHE_SZ;
+	void* inode_cache = cman_alloc(FS_INODE_CACHE_SZ);
 
 	struct FSHardwareDriver* driver = fs->driver;
 	fs->valid = 1;
@@ -1707,7 +1710,7 @@ int ext2_init(uint sectsize, void* inode_cache, uint cache_sz,
 	context* context = (void*)fs->context;
 	context->driver = driver;
 	context->fs = fs;
-	context->sectsize = sectsize;
+	context->sectsize = driver->sectsize;
 
 	/* Read the superblock */
 	uint superblock_start = 1024;

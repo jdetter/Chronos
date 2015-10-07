@@ -22,6 +22,7 @@
 #include "proc.h"
 #include "ramfs.h"
 #include "panic.h"
+#include "ext2.h"
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -71,16 +72,16 @@ void fsman_init(void)
 		}
 	if(ata == NULL) panic("No ata driver available.\n");
 
-	/* Assign hardware driver */
-	struct FSDriver* vsfs = fs_alloc();
-	vsfs->driver = ata;
+	/* Assign a root file system */
+	struct FSDriver* ext2 = fs_alloc();
+	ext2->driver = ata;
 	
 	/* Set our vsfs as the root file system. */
-	vsfs_driver_init(vsfs);
-	vsfs->valid = 1;
-	vsfs->type = 0;
-	vsfs->driver = ata;
-	strncpy(vsfs->mount_point, "/", FILE_MAX_PATH);
+	ext2_init(ext2);
+	ext2->valid = 1;
+	ext2->type = 0;
+	ext2->driver = ata;
+	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
 
 	/* Initilize the file system */
 	/* TODO: update init */
@@ -88,9 +89,9 @@ void fsman_init(void)
 	//	vsfs->cache, vsfs->context);
 
 	/* make sure there is a dev folder */
-	vsfs->mkdir("/dev", 
+	ext2->mkdir("/dev", 
 		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR | S_IFDIR,
-		0x0, 0x0, vsfs->context);
+		0x0, 0x0, ext2->context);
 
 	/* Create a ramfs instance */
 	struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(512, 1024);

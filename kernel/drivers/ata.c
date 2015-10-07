@@ -107,8 +107,6 @@ void ata_init(void)
 		ata_drivers[x]->writesect = ata_writesect;
 		/* Assign a context */
 		struct ATADriverContext* context = contexts + x;
-		/* Setup some basic function pointers */
-		disk_cache_hardware_init(ata_drivers[x]);
 		ata_drivers[x]->context = context;
 		ata_drivers[x]->sectsize = 512;
 		/* TODO: Get the sector size */

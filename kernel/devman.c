@@ -25,6 +25,8 @@
 #include "pic.h"
 #include "ramfs.h"
 #include "device.h"
+#include "cacheman.h"
+#include "diskcache.h"
 
 extern pgdir* k_pgdir;
 extern uint video_mode;
@@ -135,10 +137,20 @@ int dev_init()
 		if(ata_drivers[x]->valid != 1) continue;
 		/* Valid ata driver */
 		driver = dev_alloc();
-		driver->type = DEV_TTY;
+		driver->type = DEV_DISK;
 		ata_io_setup(&driver->io_driver, ata_drivers[x]);
 		snprintf(driver->node,
 			FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
+
+		void* disk_cache = cman_alloc(ATA_CACHE_SZ);
+		/* Initilize the cache for this disk */
+		if(cache_init(disk_cache, ATA_CACHE_SZ, PGSIZE, 
+			"", &ata_drivers[x]->cache))
+			cprintf("Cache init for disk failed!\n");
+		/* Set a real name for the cache */
+		snprintf(ata_drivers[x]->cache.name, CACHE_DEBUG_NAME_LEN,
+			"ATA DRIVE %d", (x + 1));
+		disk_cache_hardware_init(ata_drivers[x]);
 	}
 
 	/* Bring up ramfs */

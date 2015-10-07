@@ -1,5 +1,7 @@
-#ifndef _CACHEMAN_H_
-#define _CACHEMAN_H_
+#ifndef _CACHE_H_
+#define _CACHE_H_
+
+#define CACHE_DEBUG_NAME_LEN 64
 
 struct cache
 {
@@ -12,7 +14,7 @@ struct cache
         uint slab_sz; /* How big are the slabs? */
         slock_t lock; /* Lock needed to change the cache */
 	int clock; /* Points to the last entry allocated */
-	char name[64]; /* name of the cache (DEBUG) */
+	char name[CACHE_DEBUG_NAME_LEN]; /* name of the cache (DEBUG) */
 	uint cache_hits; /* How many times have we gotten a cache hit? */
 	uint cache_miss; /* How many times have we gotten a cache miss? */
 

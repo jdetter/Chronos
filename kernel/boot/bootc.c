@@ -102,8 +102,7 @@ int main(void)
 	disk_cache_hardware_init(fs.driver);
 	
 	/* Start the driver */
-	if(ext2_init(512, ((char*)KVM_DISK_S) + cache_sz,
-		EXT2_INODE_CACHE_SZ, &fs))
+	if(ext2_init(&fs))
 		panic(fail);
 
 	cprintf(ok);

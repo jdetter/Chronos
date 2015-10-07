@@ -23,6 +23,7 @@
 #include "trap.h"
 #include "netman.h"
 #include "signal.h"
+#include "cacheman.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -98,6 +99,10 @@ void main_stack(void)
 	/* Initilize keyboard driver */
 	cprintf("Initilizing keyboard driver...\t\t\t\t\t\t");
 	kbd_init();
+	cprintf("[ OK ]\n");
+
+	cprintf("Initilizing caches...\t\t\t\t\t\t\t");
+	cman_init();
 	cprintf("[ OK ]\n");
 
 	/* Detect devices */

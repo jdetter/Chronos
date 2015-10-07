@@ -1,6 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
 	cache/diskcache \
+	cache/cacheman \
 	cache/cache \
 	netman \
 	main \
@@ -153,7 +154,7 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 
 kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/stdarg.o kernel/drivers/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/cache/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o
+	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/stdarg.o kernel/drivers/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/cache/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(CROSS_OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	

@@ -15,18 +15,21 @@
 #include "diskcache.h"
 #include "diskio.h"
 
+#include "cacheman.c"
+
 /* Define a memory based fs driver */
 
 // #define DEBUG
 int fd;
 
+uint cache_end;
+uint cache_start;
+
 struct FSDriver fs;
 struct FSHardwareDriver driver;
-#define FS_CACHE_SZ 0x100000
-#define FS_INODE_SZ 0x100000
 #define PGSIZE 4096
-uchar fs_cache[FS_CACHE_SZ] __attribute__((aligned(0x1000)));
-uchar inode_cache[FS_INODE_SZ] __attribute__((aligned(0x1000)));
+#define CACHE_SZ 0x10000000
+uchar cman_cache[CACHE_SZ] __attribute__((aligned(0x1000)));
 
 int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver)
 {
@@ -315,6 +318,8 @@ int main(int argc, char** argv)
 	}
 	/* Calculate the last valid sector */
 	int sectmax = st.st_size / block_size;
+	cache_start = (uint)cman_cache;
+	cache_end = (uint)cman_cache + CACHE_SZ;
 
 	/* Initilize the memory hardware driver */
 	fs.driver = &driver;
