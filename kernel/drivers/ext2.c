@@ -552,7 +552,7 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 	if(ext2_read_bgdt(block_group, &table, context))
 		return -1;
 	/* Dont allow blocks to be allocated that point to metadata */
-	if(blockid < table.inode_table + context->inodeblocks)
+	if(blockid < context->inodeblocks)
 		return -1;
 
 	/* Is the block free? */
@@ -643,8 +643,8 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 		context* context)
 {
 	struct ext2_block_group_table table;
-	int group_start = (group << context->blockspergroup) 
-		+ context->firstgroupstart;
+	int group_start = (group << context->blockspergroupshift) +
+		context->firstgroupstart;
 	char* block;
 
 	/* Read the table descriptor */
@@ -658,9 +658,11 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	int sequence = 0; /* How many free in a row have we found? */
 	int range_start = -1;
 
+	uint inode_table_sz = (context->inodeblocks) >> context->blockshift;
 	/* We are starting the search just after the end of the metadata. */
-	int x = (table.inode_table + context->inodeblocks) 
-		& (context->blockspergroup - 1);
+	uint meta = (table.inode_table 
+		+ inode_table_sz) - group_start;
+	int x = meta;
 	for(;x < context->blockspergroup;x++)
 	{
 		/* Are there any free blocks in this byte? */
@@ -702,7 +704,8 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	/* Allocate the range */
 	for(x = 0;x < sequence;x++)
 	{
-		if(ext2_alloc_block(group, range_start + x, context))
+		if(ext2_alloc_block(group, range_start + x,
+				 context))
 		{
 			context->fs->dereference(block, context->fs);
 			return -1;
@@ -753,7 +756,8 @@ static int _ext2_read_inode(inode* dst, int num, context* context)
 		(context->base_superblock.inodes_per_group - 1);
 
 	struct ext2_block_group_table table;
-	ext2_read_bgdt(block_group, &table, context);
+	if(ext2_read_bgdt(block_group, &table, context))
+		return -1;
 
 	/* Get the address of the inode */
 	uint inode_offset = local_index << context->inodesizeshift;

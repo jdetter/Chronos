@@ -28,7 +28,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #include "cache.h"
 
-#define CACHE_DEBUG
+// #define CACHE_DEBUG
 
 struct cache_entry
 {
@@ -258,7 +258,7 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 
 		/* Eject functionality is optional. */
 		if(cache->eject && cache->eject(result, 
-					cache->entries[pos].id, cache))
+					cache->entries[pos].id, context))
 		{
 #ifdef CACHE_DEBUG
 			cprintf("%s cache: EJECT FAILED!\n",

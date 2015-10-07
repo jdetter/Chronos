@@ -17,13 +17,27 @@ sudo mount -o loop,offset=$MOUNT_START $VT_HD_NAME -t ext2 mnt
 sudo chown -R $USERNAME:$USERNAME ./mnt
 
 cd mnt
+
+# Create a lot of files
+mkdir files
+cd files
 touch file{1..1000}.txt
+cd ..
 
-mkdir directory
-cd directory
+# create /bin/bash
+mkdir bin
+cd bin
 cp /bin/bash .
-cd ../..
+cd ..
 
+# create a file with contents
+mkdir content
+cd content
+cp /usr/include/curses.h .
+cd ..
+
+
+cd ..
 sleep 1
 sudo umount ./mnt
 rmdir mnt

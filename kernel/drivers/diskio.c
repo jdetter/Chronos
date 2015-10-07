@@ -97,8 +97,9 @@ static int disk_read_blocks(void* dst, uint block_start, uint block_count,
         uint sect_shift = disk->sectshifter;
         uint block_shift = driver->blockshift;
         if(sect_shift > block_shift) return -1;
+	uint block_to_sector = block_shift - sect_shift;
         uint sector_count = block_count << (block_shift - sect_shift);
-        uint start_read = driver->start + (block_start << block_shift);
+        uint start_read = driver->start + (block_start << block_to_sector);
 
         /* Check for multi sector read support */
         if(!disk->readsects)
@@ -131,8 +132,9 @@ static int disk_write_blocks(void* src, uint block_start, uint block_count,
         uint sect_shift = disk->sectshifter;
         uint block_shift = driver->blockshift;
         if(sect_shift > block_shift) return -1;
+	uint block_to_sector = block_shift - sect_shift;
         uint sector_count = block_count << (block_shift - sect_shift);
-        uint start_write = driver->start + (block_start << block_shift);
+        uint start_write = driver->start + (block_start << block_to_sector);
 
         /* Check for multi sector read support */
         if(!disk->writesects)

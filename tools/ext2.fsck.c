@@ -17,12 +17,13 @@
 
 /* Define a memory based fs driver */
 
+// #define DEBUG
 int fd;
 
 struct FSDriver fs;
 struct FSHardwareDriver driver;
 #define FS_CACHE_SZ 0x100000
-#define FS_INODE_SZ 0x10000
+#define FS_INODE_SZ 0x100000
 #define PGSIZE 4096
 uchar fs_cache[FS_CACHE_SZ] __attribute__((aligned(0x1000)));
 uchar inode_cache[FS_INODE_SZ] __attribute__((aligned(0x1000)));
@@ -63,72 +64,6 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
         }
 
 	return 0;
-}
-
-int ext2_readblock(void* dst, uint block, struct FSDriver* driver)
-{
-        if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
-                        driver->blocksize * block)
-        {
-                printf("Block seek failure: %d\n",
-                        driver->blocksize * block);
-                exit(1);
-        }
-
-        if(read(fd, dst, driver->blocksize) != driver->blocksize)
-        {
-                printf("Block read failure.\n");
-                exit(1);
-        }
-
-	return 0;
-}
-
-int ext2_writeblock(void* src, uint block, struct FSDriver* driver)
-{
-        if(lseek(fd, driver->blocksize * block, SEEK_SET) !=
-                        driver->blocksize * block)
-        {
-                printf("Block write seek failure: %d\n",
-                        driver->blocksize * block);
-                exit(1);
-        }
-
-        if(write(fd, src, driver->blocksize) != driver->blocksize)
-        {
-                printf("Block write failure.\n");
-                exit(1);
-        }
-
-	return 0;
-}
-
-int ext2_readblocks(void* dst, uint block, uint count, 
-	struct FSDriver* driver)
-{
-	char* dst_c = dst;
-	int x;
-	for(x = 0;x < count;x++)
-	{
-		if(ext2_readblock(dst_c, block + x, driver))
-			return -1;
-		dst_c += driver->driver->sectsize;
-	}
-	return 0;
-}
-
-int ext2_writeblocks(void* src, uint block, uint count, 
-        struct FSDriver* driver)
-{
-        char* src_c = src;
-        int x;
-        for(x = 0;x < count;x++)
-        {
-                if(ext2_writeblock(src_c, block + x, driver))
-                        return -1;
-                src_c += driver->driver->sectsize;
-        }
-        return 0;
 }
 
 void get_perm(struct stat* st, char* dst)
@@ -257,7 +192,7 @@ int cat(char* path)
 	while(pos < st.st_size)
 	{
 		int read = fs.read(inode, buff, pos, read_size, fs.context);
-		printf("%s", buff);
+		if(write(1, buff, read) != read) return -1;
 		pos += read;
 	}
 
@@ -383,17 +318,13 @@ int main(int argc, char** argv)
 
 	/* Initilize the memory hardware driver */
 	fs.driver = &driver;
+	fs.start = start_block;
 	diskio_setup(&fs);
 	fs.driver->readsect = ata_readsect;
 	fs.driver->writesect = ata_writesect;
-	driver.readsects = NULL;
-	driver.writesects = NULL;
+	fs.driver->writesects = NULL;
+	fs.driver->readsects = NULL;
 	driver.context = NULL;
-	fs.readblocks = ext2_readblocks;
-	fs.readblock = ext2_readblock;
-	fs.writeblocks = ext2_writeblocks;
-	fs.writeblock = ext2_writeblock;
-	fs.start = start_block;
 	int shifter = -1;
 	int block_size_tmp = block_size;
 	while(block_size_tmp)
@@ -416,6 +347,7 @@ int main(int argc, char** argv)
 	}
 	
 	disk_cache_hardware_init(fs.driver);
+	disk_cache_init(&fs);
 
 	/* Start the driver */
 	if(ext2_init(block_size, inode_cache, FS_INODE_SZ, &fs))
@@ -507,6 +439,9 @@ int main(int argc, char** argv)
                 } else if(!strncmp(comm_buffer, "trunc ", 6))
 		{
 			fsck_truncate(comm_buffer + 6);
+                } else if(!strncmp(comm_buffer, "sync", 4))
+		{
+			fs.sync(fs.context);
 		}
 	}
 	return 0;
