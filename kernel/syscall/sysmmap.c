@@ -88,16 +88,19 @@ int sys_mmap(void)
         if(syscall_get_int(&fd, 4)) return -1;
         if(syscall_get_int((int*) &offset, 5)) return -1;
 
-	return (int)mmap(hint, sz, protection, flags, fd, offset);
+	slock_acquire(&ptable_lock);
+	void* ret = mmap(hint, sz, protection, flags, fd, offset);
+	slock_release(&ptable_lock);
+
+	return (int)ret;
 }
 
+/** MUST HAVE PTABLE LOCK! */
 void* mmap(void* hint, uint sz, int protection, 
 	int flags, int fd, off_t offset)
 {
 	/* Acquire locks */
-	slock_acquire(&ptable_lock);
 	slock_acquire(&rproc->mem_lock);
-	
 	uint pagestart = 0;
 
 	if(flags & MAP_FIXED)
@@ -133,6 +136,5 @@ void* mmap(void* hint, uint sz, int protection,
 
 	/* Release locks */
 	slock_release(&rproc->mem_lock);
-	slock_release(&ptable_lock);
         return (void*)pagestart;
 }

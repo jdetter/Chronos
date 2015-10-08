@@ -30,15 +30,6 @@ uchar syscall_get_long(long* dst, uint arg_num);
 uchar syscall_get_short(short* dst, uint arg_num);
 
 /**
- * Take the buffer from the user stack and put it into dst. sz_user
- * specifies the amount of byes to copy from the user stack. sz_kern
- * specifies the size of the destination buffer. arg specifies which
- * position the argument is at on the stack. Returns 0 on success,
- * 1 otherwise.
- */
-uchar syscall_get_buffer(void* dst, uint sz_user, uint sz_kern, uint arg);
-
-/**
  * Get a string from a user stack and put it into dst. A maximum amount
  * of sz_kern bytes will be copied. arg_num specifies the argument
  * position on the stack.
@@ -165,7 +156,13 @@ int sys_vfork(void);
 int sys_select(void);
 int sys_alarm(void);
 
+int sys_sigaction(void);
+int sys_sigprocmask(void);
+int sys_sigpending(void);
+int sys_signal(void);
+int sys_sigsuspend(void);
+
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_alarm /* System call with the greatest value*/
+#define SYS_MAX SYS_sigsuspend /* System call with the greatest value*/
 
 #endif

@@ -216,6 +216,8 @@ uint load_binary(const char* path, struct proc* p)
 	uint elf_end = 0;
         uint elf_entry = elf.e_entry;
 
+	uint code_start = (int)-1;
+	uint code_end = 0;
 	int x;
         for(x = 0;x < elf.e_phnum;x++)
         {
@@ -249,6 +251,15 @@ uint load_binary(const char* path, struct proc* p)
 				elf_end = (uint)hd_addr + mem_sz;
                         /* zero this region */
                         memset(hd_addr, 0, mem_sz);
+
+			/* Is this a new start? */
+			if((uint)hd_addr < code_start)
+				code_start = (uint)hd_addr;
+
+			/* Is this a new end? */
+			if((uint)(hd_addr + mem_sz) > code_end)
+				code_end = (uint)(hd_addr + mem_sz);
+
                         /* Load the section */
                         fs_read(process_file, hd_addr, file_sz, offset);
                         /* By default, this section is rwx. */
@@ -257,6 +268,8 @@ uint load_binary(const char* path, struct proc* p)
 
 	/* Set the entry point of the program */
 	p->entry_point = elf_entry;
+	p->code_start = code_start;
+	p->code_end = code_end;
 	fs_close(process_file);
 
 	return elf_end;

@@ -85,6 +85,35 @@ void trap_handler(struct trap_frame* tf)
 	int handled = 0;
 	int user_problem = 0;
 
+	/**
+	 * A couple of quick optimizations:
+	 *  + Clock interrupt is the most common interrupt
+	 *  + System call is very common interrupt
+	 *  + signal handling shouldn't handle in switch
+	 */
+
+	handled = 1;
+	if(trap == TRAP_SC)
+	{
+		strncpy(fault_string, "System Call", 64);
+		syscall_ret = syscall_handler((uint*)tf->esp);
+		rproc->tf->eax = syscall_ret;
+	} else if(trap == INT_PIC_TIMER)
+	{
+		rproc->user_ticks++;
+		k_ticks++;
+		pic_eoi(INT_PIC_TIMER_CODE);
+		yield();
+	} else if(tf->eip == SIG_MAGIC && rproc->sig_handling)
+	{
+		/* We're done handling this signal! */
+		sig_cleanup();
+		rproc->sig_handling = 0;
+	} else handled = 0; /* Its not any of the above optimizations */
+
+	if(handled) goto TRAP_DONE;
+
+
 	switch(trap)
 	{
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
@@ -159,8 +188,8 @@ void trap_handler(struct trap_frame* tf)
 		case TRAP_PF:
 			if(trap_pf(__get_cr2__())){
 				tty_printf(rproc->t, "%s: Seg Fault: 0x%x\n",
-				rproc->name, 
-				__get_cr2__());
+						rproc->name, 
+						__get_cr2__());
 				_exit(1);
 			}else{
 				handled = 1;
@@ -184,40 +213,25 @@ void trap_handler(struct trap_frame* tf)
 		case TRAP_XM:
 			strncpy(fault_string, "SIMD Exception", 64);
 			break;
-		case TRAP_SC:
-			strncpy(fault_string, "System Call", 64);
-			syscall_ret = syscall_handler((uint*)tf->esp);
-			rproc->tf->eax = syscall_ret;
-			//cprintf("System call done.\n");
-			//yield();
-			handled = 1;
-			break;
-		case INT_PIC_TIMER: /* Time quantum has expired. */
-			//cprintf("Timer interrupt!\n");
-			/* This is the result of using up a user tick */
-			rproc->user_ticks++;
-			k_ticks++;
-			pic_eoi(INT_PIC_TIMER_CODE);
-			yield();
-			handled = 1;
-			break;
 		default:
 			cprintf("Interrupt number: %d\n", trap);
 			strncpy(fault_string, "Invalid interrupt.", 64);
 	}
 
-        if(!handled)
-        {
-                cprintf("%s: 0x%x", fault_string, tf->error);
+TRAP_DONE:
+
+	if(!handled)
+	{
+		cprintf("%s: 0x%x", fault_string, tf->error);
 
 		if(user_problem && rproc)
 		{
 			_exit(1);
 		} else for(;;);
-        }
+	}
 
 	/* Do we have any signals waiting? */
-	if(rproc->sig_queue)
+	if(rproc->sig_queue && !rproc->sig_handling)
 	{
 		slock_acquire(&ptable_lock);
 		sig_handle();

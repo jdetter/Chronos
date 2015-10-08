@@ -182,152 +182,6 @@ int sys_wait(void)
 	return waitpid(-1, status, 0);
 }
 
-/* int exec(const char* path, const char** argv) */
-int sys_exec(void)
-{
-	const char* path;
-	const char** argv;
-
-	if(syscall_get_str_ptr(&path, 0)) return -1;;
-	if(syscall_get_buffer_ptrs((uchar***)&argv, 1)) return -1;
-
-	char cwd_tmp[MAX_PATH_LEN];
-	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
-	/* Does the binary look ok? */
-	if(check_binary(path))
-	{
-		/* see if it is available in /bin */
-		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(check_binary(path))
-		{
-			/* It really doesn't exist. */
-			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
-			return -1;
-		}
-	}
-
-	uchar setuid = 0;
-	uchar setgid = 0;
-	/* Check for setuid and setgid */
-	inode i = fs_open(path, O_RDONLY, 0x0, 0x0, 0x0);
-	if(!i) return -1;
-	struct stat st;
-	if(fs_stat(i, &st)) return -1;
-	if(st.st_mode & S_ISUID)
-		setuid = 1;
-	if(st.st_mode & S_ISGID)
-		setuid = 1;
-	fs_close(i);
-
-	/* Create a copy of the path */
-	char program_path[MAX_PATH_LEN];
-	memset(program_path, 0, MAX_PATH_LEN);
-	strncpy(program_path, path, MAX_PATH_LEN);
-	/* acquire ptable lock */
-	slock_acquire(&ptable_lock);
-
-	/* Create argument array */
-	char* args[MAX_ARG];
-	memset(args, 0, MAX_ARG * sizeof(char*));
-
-	/* Make sure the swap stack is empty */
-	vm_clear_swap_stack(rproc->pgdir);
-
-	/* Create a temporary stack and map it to our swap stack */
-	uint stack_start = palloc();
-	mappage(stack_start, SVM_KSTACK_S, rproc->pgdir, 1, 0);
-	uchar* tmp_stack = (uchar*)SVM_KSTACK_S + PGSIZE;
-	uint uvm_stack = PGROUNDUP(UVM_TOP);
-	/* copy arguments */
-	int x;
-	for(x = 0;argv[x];x++)
-	{
-		uint str_len = strlen(argv[x]) + 1;
-		tmp_stack -= str_len;
-		uvm_stack -= str_len;
-		memmove(tmp_stack, (char*)argv[x], str_len);
-		args[x] = (char*)uvm_stack;
-	}
-
-	/* Copy argument array */
-	tmp_stack -= MAX_ARG * sizeof(char*);
-	uvm_stack -= MAX_ARG * sizeof(char*);
-	memmove(tmp_stack, args, MAX_ARG * sizeof(char*));
-	uint arg_arr_ptr = uvm_stack;
-	int arg_count = x;
-
-	/* Push argv */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = arg_arr_ptr;
-
-	/* push argc */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = (uint)arg_count;
-
-	/* Add bogus return address */
-	tmp_stack -= 4;
-	uvm_stack -= 4;
-	*((uint*)tmp_stack) = 0xFFFFFFFF;
-
-	/* Free user memory */
-	vm_free_uvm(rproc->pgdir);
-
-	/* Invalidate the TLB */
-	switch_uvm(rproc);
-
-	/* load the binary if possible. */
-	uint load_result = load_binary(program_path, rproc);
-	if(load_result == 0)
-	{
-		pfree(stack_start);
-		memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
-		slock_release(&ptable_lock);
-		return -1;
-	}
-
-	/* Change name */
-	strncpy(rproc->name, program_path, FILE_MAX_PATH);
-
-	/* Map the new stack in */
-	mappage(stack_start, PGROUNDUP(UVM_TOP) - PGSIZE,
-			rproc->pgdir, 1, 0);
-	/* Unmap the swap stack */
-	vm_clear_swap_stack(rproc->pgdir);
-
-	/* We now have the esp and ebp. */
-	rproc->tf->esp = uvm_stack;
-	rproc->tf->ebp = rproc->tf->esp;
-
-	/* Set eip to correct entry point */
-	rproc->tf->eip = rproc->entry_point;
-
-	/* Adjust heap start and end */
-	rproc->heap_start = PGROUNDUP(load_result);
-	rproc->heap_end = rproc->heap_start;
-
-	/* restore cwd */
-	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
-
-	/* change permission if needed */
-	if(setuid)
-		rproc->euid = st.st_uid;
-	if(setgid)
-		rproc->egid = st.st_gid;
-
-	/* Reset all ticks */
-	rproc->user_ticks = 0;
-	rproc->kernel_ticks = 0;
-	
-	/* Set mmap area start */
-	rproc->mmap_start = PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
-
-	/* Release the ptable lock */
-	slock_release(&ptable_lock);
-
-	return 0;
-}
 
 int sys_execvp(void)
 {
@@ -555,7 +409,6 @@ int execve(const char* path, char* const argv[], char* const envp[])
 
 	/* unset signal stack info */
 	rproc->sig_stack_start = 0;
-	rproc->sig_stack_end = 0;
 	sig_clear(rproc);
 	
 	/* Set mmap area start */
@@ -571,51 +424,6 @@ int execve(const char* path, char* const argv[], char* const envp[])
 int sys_getpid(void)
 {
 	return rproc->pid;
-}
-
-int sys_kill(void)
-{
-	pid_t pid;
-	int sig;
-
-	if(syscall_get_int(&pid, 0)) return -1;
-	if(syscall_get_int(&sig, 1)) return -1;
-
-	slock_acquire(&ptable_lock);
-
-	if(pid > 0)
-	{
-		struct proc* p = get_proc_pid(pid);
-		if(!p) goto bad;
-		if(sig_proc(p, sig))
-			goto bad;
-	} else if(pid == 0)
-	{
-		int x;
-		for(x = 0;x < PTABLE_SIZE;x++)
-		{
-			/* Send the signal to the group */
-			if(ptable[x].state && ptable[x].pgid == rproc->pgid)
-				sig_proc(ptable + x, sig);
-		}
-	} else if(pid == -1)
-	{
-		/* Send to all process that we have permission to */
-		
-	} else {
-		/* Send to process -pid*/
-		pid = -pid;
-		struct proc* p = get_proc_pid(pid);
-                if(!p) goto bad;
-                if(sig_proc(p, sig))
-                        goto bad;
-	}
-
-	slock_release(&ptable_lock);
-	return 0;
-bad:
-	slock_release(&ptable_lock);
-	return -1;
 }
 
 int sys_exit(void)
@@ -653,7 +461,7 @@ int sys_exit(void)
 void _exit(int return_code)
 {
 	rproc->sys_esp = (uint*)&return_code;	
-	sys__exit(); /* Will not return */
+	sys_exit(); /* Will not return */
 	panic("_exit returned.\n");
 }
 
@@ -795,7 +603,7 @@ int sys_getcwd(void)
 	if(syscall_get_int((int*)&sz, 1)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 0)) return -1;
 	strncpy(dst, rproc->cwd, sz);
-	return sz;
+	return (int)dst;
 }
 
 /* clock_t times(struct tms* buf) */

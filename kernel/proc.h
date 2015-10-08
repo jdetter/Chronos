@@ -1,6 +1,10 @@
 #ifndef _PROC_H_
 #define _PROC_H_
 
+/* Dependant headers */
+#include "signal.h"
+#include "trap.h"
+
 /* The amount of processes in the ptable */
 #define PTABLE_SIZE	50
 #define MAX_PROC_NAME 	0x20
@@ -43,6 +47,7 @@ struct file_descriptor
 #define PROC_ZOMBIE 	0x06 /* Process called exit. (needs parent wait) */
 #define PROC_KILLED 	0x07 /* Process recieved kill signal. */
 #define PROC_STOPPED 	0x08 /* Process recieved stop signal. */
+#define PROC_SIGNAL 	0x09 /* Process is waiting to receive a signal */
 
 /* Blocked reasons */
 #define PROC_BLOCKED_NONE 0x00 /* The process is not blocked */
@@ -79,17 +84,6 @@ struct proc
 	
 	uint state; /* The state of the process */
 	
-	/**
-	 * Security note: The kernel should never try to access memory that
-	 * is outside of:
-	 *     ->   stack_end <= x < stack_start
-	 *     ->   mmap_end <= x < mmap_start
-	 *     ->   heap_end > x >= heap_start
-	 *
-	 * Accesses outside of these ranges could cause page faults or other
-	 * types of faults.
-	 */
-
 	slock_t mem_lock;	
 	/* Stack start will be greater than stack end */
 	uint stack_start; /* The high memory, start of the stack */
@@ -102,6 +96,10 @@ struct proc
 	uint mmap_start; /* Start of the mmap area */
 	uint mmap_end; /* end of the mmap area */
 
+	/* mmap area grows down towards heap */
+	uint code_start; /* Start of the code area */
+	uint code_end; /* end of the code area */
+
 	uchar block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */
 	uint b_condition_signal; /* The condition ticket number. */
@@ -111,10 +109,14 @@ struct proc
 	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
 	int io_recieved; /* The actual amount of bytes recieved. */
 	uint sleep_time; /* The time when the sleep ends */
-	struct signal_t* sig_queue; /* Signal queue*/
-	void (*signal_handler)(int sig_num); /* Optional signal handler. */
+
+	/** SIGNAL stuff */
+	uint sig_handling; /* Are we handling a signal right now? */
+	struct signal_t* sig_queue; /* Signal queue */
+	struct trap_frame sig_saved; /* Saved registers while handling sig */
+	struct sigaction sigactions[SIG_COUNT];
 	uint sig_stack_start; /* The start of the signal stack (higher) */
-	uint sig_stack_end; /* The end of the signal stack (lower) */
+	sigset_t sig_suspend_mask; /* The suspended mask */
 
 	uchar orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */

@@ -25,7 +25,8 @@
 #include "pipe.h"
 #include "proc.h"
 
-// #define KEY_DEBUG
+//#define KEY_DEBUG
+//#define DEBUG
 
 extern struct proc* rproc;
 struct tty ttys[MAX_TTYS];
@@ -83,6 +84,10 @@ int tty_io_write(void* src, uint start_write, uint sz, void* context)
 
 int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 {
+#ifdef DEBUG
+	cprintf("tty: ioctl called: %d 0x%x\n", (int)request, (int)request);
+#endif
+
 	uint i = (uint)arg;
 	int* ip = (int*)arg;
 	struct winsize* windowp = arg;
@@ -94,24 +99,24 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 	switch(request)
 	{
 		case TCGETS:
-			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
+			if(ioctl_arg_ok(arg, sizeof(struct termios)))
 				return -1;
 			memmove(arg, &t->term, sizeof(struct termios));
 			break;
 		case TCSETSF:
-			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
+			if(ioctl_arg_ok(arg, sizeof(struct termios)))
                                 return -1;
 			/* Clear the input buffer */
 			tty_clear_input(t);
 			break;
 		case TCSETSW:
 		case TCSETS:
-			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
+			if(ioctl_arg_ok(arg, sizeof(struct termios)))
                                 return -1;
 			memmove(&t->term, arg, sizeof(struct termios));
 			break;
                 case TCGETA:
-                        if(!ioctl_arg_ok(arg, sizeof(struct termio)))
+                        if(ioctl_arg_ok(arg, sizeof(struct termio)))
 				return -1;
 			/* do settings */
 			t->term.c_iflag = termiop->c_iflag;
@@ -123,7 +128,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 
 			break;
 		case TCSETAF:
-			if(!ioctl_arg_ok(arg, sizeof(struct termio)))
+			if(ioctl_arg_ok(arg, sizeof(struct termio)))
 				return -1;
 			tty_clear_input(t);
 			/* do settings */
@@ -136,7 +141,7 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			break;
 		case TCSETAW:
 		case TCSETA:
-			if(!ioctl_arg_ok(arg, sizeof(struct termio)))
+			if(ioctl_arg_ok(arg, sizeof(struct termio)))
 				return -1;
 			/* do settings */
 			t->term.c_iflag = termiop->c_iflag;
@@ -147,14 +152,14 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 			memmove(&t->term.c_cc, termiop->c_cc, NCCS);
 			break;
 		case TIOCGLCKTRMIOS:
-			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
+			if(ioctl_arg_ok(arg, sizeof(struct termios)))
                                 return -1;
 			if(t->termios_locked)
 				memset(termiosp, 0xFF,sizeof(struct termios));
 			else memset(termiosp, 0x00, sizeof(struct termios));
 			break;
 		case TIOCSLCKTRMIOS:
-			if(!ioctl_arg_ok(arg, sizeof(struct termios)))
+			if(ioctl_arg_ok(arg, sizeof(struct termios)))
                                 return -1;
 			if(termiosp->c_iflag) /* new value is locked */
 				t->termios_locked = 1;
@@ -256,6 +261,10 @@ int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 					" 0x%x\n", request);
 			return -1;
 	}
+
+#ifdef DEBUG
+	cprintf("tty: ioctl successful!\n");
+#endif
 	return 0;	
 }
 
@@ -625,10 +634,8 @@ void tty_handle_keyboard_interrupt(void)
 				cprintf("kbd: received delete char.\n");
 #endif
 				if(!tty_keyboard_delete(active))
-				{
 					tty_delete_char(active);
-					continue;
-				}
+				continue;
 			} else {
 				/* Write to the current line */
 				tty_keyboard_write_buff(&active->kbd_line, c);
@@ -726,7 +733,13 @@ char tty_keyboard_delete(tty_t t)
 	struct kbd_buff* keyboard = &t->kbd_line;
 	/* Check for empty */
 	if(keyboard->key_write == keyboard->key_read && 
-			!keyboard->key_full) return -1;
+			!keyboard->key_full) 
+	{
+#ifdef KEY_DEBUG
+		cprintf("kbd: Tried to delete but buff is empty.\n");
+#endif
+		return -1;
+	}
 
 	/* Delete the character at the last position */
 	if(keyboard->key_write == 0)

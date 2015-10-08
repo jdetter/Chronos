@@ -14,6 +14,7 @@ KERNEL_OBJECTS := \
 	kcond \
 	syscall/syscall \
 	syscall/sysnet \
+	syscall/syssig \
 	syscall/sysproc \
 	syscall/sysfile \
 	syscall/sysutil \

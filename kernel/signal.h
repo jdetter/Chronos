@@ -9,6 +9,7 @@
 #define SIG_DEFAULT_GUARD 2 /* Default number of signal guard pages. */
 #define SIG_DEFAULT_STACK 5 /* Default number of signal stack pages. */
 /* Signal bounds checking */
+#define SIG_COUNT 32 /* How many signals are there? (0 - 31)*/
 #define SIG_FIRST 1  /* SIGHUP */
 #define SIG_LAST  31 /* SIGSYS */
 
@@ -25,11 +26,9 @@
 struct signal_t
 {
 	uchar allocated; /* Whether or not this entry is allocated. */
-	uchar type; /* Type of signal */
 	uchar default_action; /* Default action */
 	uchar catchable; /* Can this signal be caught? */
-	uint handling; /* Are we handling this right now? */
-	struct trap_frame handle_frame; /* Saved state information */
+	int signum; /* The number of the signal */
 
 	/**
 	 * If this signal is part of a queue, this is a pointer to the next
@@ -37,6 +36,19 @@ struct signal_t
 	 */
 	struct signal_t* next;
 };
+
+struct siginfo_t;
+
+struct sigaction {
+  int         sa_flags;
+  sigset_t    sa_mask;
+  union {
+    void (*sigaction)(int);
+    void (*siginfoaction)(int, struct siginfo_t *, void *);
+  } handlers;
+};
+
+struct proc;
 
 /**
  * Initilize signals

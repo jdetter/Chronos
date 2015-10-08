@@ -25,11 +25,13 @@ extern slock_t ptable_lock; /* Process table lock */
 extern struct proc ptable[]; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
+//  #define DEBUG
+
 int (*syscall_table[])(void) = {
 	NULL, /* There is no system call 0 */
 	sys_fork,
 	sys_wait,
-	sys_exec,
+	NULL, // sys_exec,
 	sys_exit,
 	sys_open,
 	sys_close,
@@ -108,27 +110,109 @@ int (*syscall_table[])(void) = {
 	sys_setresgid,
 	sys_vfork,
 	sys_select,
-	sys_alarm
+	sys_alarm,
+	NULL,
+
+	sys_sigaction,
+	sys_sigprocmask,
+	sys_sigpending,
+	sys_signal,
+	sys_sigsuspend
 };
 
-/* int isatty(int fd); */
-int sys_isatty(void)
-{
-	int fd;
-	if(syscall_get_int(&fd, 0)) return 1;
+char* syscall_table_names[] = {
+	NULL, /* There is no system call 0 */
+	"fork",
+	"wait",
+	"exec",
+	"exit",
+	"open",
+	"close",
+	"read",
+	"write",
+	"lseek",
+	"mmap",
+	"chdir",
+	"getcwd",
+	"create",
+	"mkdir",
+	"rmdir",
+	"unlink",
+	"mv",
+	"fstat",
+	"wait_s",
+	"wait_t",
+	"signal_cv",
+	"readdir",
+	"pipe",
+	"dup",
+	"dup2",
+	"proc_dump",
+	NULL,// sys_tty_mode,
+	NULL,// sys_tty_screen,
+	NULL,// sys_tty_cursor,
+	"brk",
+	"sbrk",
+	"chmod",
+	"chown",
+	"mprotect",
+	"_exit",
+	"execve",
+	"getpid",
+	"isatty", /* Specific to newlib */
+	"kill",
+	"link",
+	"stat",
+	"times",
+	"gettimeofday",
+	"waitpid",
+	"create", /* sys_creat == sys_create */
+	"getuid",
+	"setuid",
+	"getgid",
+	"setgid",
+	"gettid",
+	"getppid",
+	"munmap",
+	"getdents",
+	"getegid",
+	"geteuid",
+	"ioctl",
+	"access",
+	"ttyname",
+	"fpathconf",
+	"pathconf",
+	"sleep",
+	"umask",
+	"lstat",
+	"fchown",
+	"fchmod",
+	"gethostname",
+	"execl",
+	"utime",
+	"utimes",
+	"fcntl",
+	"sysconf",
+	"ftruncate",
+	"execvp",
+	"getpgid",
+	"getresuid",
+	"getresgid",
+	"setresuid",
+	"setpgid",
+	"setresgid",
+	"vfork",
+	"select",
+	"alarm",
+        "seteuid",
+        "sigaction",
+        "sigprocmask",
+        "sigpending",
+        "signal",
+        "sigsuspend"
 
-	if(fd < 0 || fd > MAX_FILES) return 1;
+};
 
-	int x;
-	for(x = 0;x < MAX_TTYS;x++)
-	{
-		tty_t t = tty_find(x);
-		if(t->driver == rproc->file_descriptors[fd].device)
-			return 1;
-	}
-	
-	return 0;
-}
 
 int syscall_handler(uint* esp)
 {
@@ -139,8 +223,6 @@ int syscall_handler(uint* esp)
 	if(syscall_get_int(&syscall_number, 0)) return 1;
 	esp += 2;
 	rproc->sys_esp = esp;
-
-	// cprintf("%s: Syscall: 0x%x\n", rproc->name, syscall_number);
 
 	if(syscall_number > SYS_MAX || syscall_number < SYS_MIN)
 	{
@@ -155,11 +237,42 @@ int syscall_handler(uint* esp)
 			syscall_number);
 		return -1;
 	}
+
+#ifdef DEBUG
+	if(syscall_table_names[syscall_number])
+		cprintf("syscall: %s\n", 
+			syscall_table_names[syscall_number]);
+		else cprintf("syscall: no information for this syscall.\n");
+#endif
+
 	return_value = syscall_table[syscall_number]();
+
+#ifdef DEBUG
+	cprintf("syscall: return value: %d\n", return_value);
+#endif
 
 	// cprintf("syscall return value: 0x%x\n", return_value);
 
 	return return_value; /* Syscall successfully handled. */
+}
+
+/* int isatty(int fd); */
+int sys_isatty(void)
+{
+        int fd;
+        if(syscall_get_int(&fd, 0)) return 1;
+
+        if(fd < 0 || fd > MAX_FILES) return 1;
+
+        int x;
+        for(x = 0;x < MAX_TTYS;x++)
+        {
+                tty_t t = tty_find(x);
+                if(t->driver == rproc->file_descriptors[fd].device)
+                        return 1;
+        }
+
+        return 0;
 }
 
 /* int wait_s(struct cond* c, struct slock* lock) */

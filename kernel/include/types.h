@@ -35,6 +35,8 @@ typedef signed int mode_t;
 typedef signed int pid_t; /* Process ID */
 typedef signed int clock_t;
 
+typedef unsigned long sigset_t; /* Signal set */
+
 /* NULL */
 #define NULL ((void*)0)
 

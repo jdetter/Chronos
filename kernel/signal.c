@@ -111,6 +111,12 @@ void sig_init(void)
 static void sig_queue(struct proc* p, struct signal_t* sig)
 {
 	struct signal_t* ptr = p->sig_queue;
+	if(!ptr)
+	{
+		p->sig_queue = sig;
+		return;
+	}
+
 	if(sig->catchable) /* Add to the end */
 	{
 		while(ptr->next) ptr = ptr->next;
@@ -148,7 +154,7 @@ int sig_proc(struct proc* p, int sig)
 	if(!signal) return -1;
 
 	/* Setup signal */
-	signal->type = sig;
+	signal->signum = sig;
 	signal->default_action = default_actions[sig];
 	signal->next = NULL;
 
@@ -169,10 +175,11 @@ int sig_proc(struct proc* p, int sig)
 int sig_cleanup(void)
 {
 	/* Check to make sure there was a signal to cleanup */
-	if(!rproc->sig_queue && rproc->sig_queue->handling) return -1;
+	if(!rproc->sig_queue || !rproc->sig_handling) return -1;
 	
 	/* Restore trap frame */
-	memmove(rproc->tf, &rproc->sig_queue->handle_frame, 
+	memmove(rproc->k_stack - sizeof(struct trap_frame), 
+		&rproc->sig_saved, 
 		sizeof(struct trap_frame));
 	sig_dequeue(rproc);
 	return 0;
@@ -188,7 +195,8 @@ int sig_handle(void)
 	push_cli();
 
 	struct signal_t* sig = rproc->sig_queue;
-	void (*sig_handler)(int sig_num) = rproc->signal_handler;
+	void (*sig_handler)(int sig_num) = 
+		rproc->sigactions[sig->signum].handlers.sigaction;
 	uchar caught = 0; /* Did we catch the signal? */
 	uchar terminated = 0; /* Did we get terminated? */
 	uchar stopped = 0; /* Did we get stopped? */
@@ -237,15 +245,14 @@ int sig_handle(void)
 			break;
 	}
 
-	/* Signals are not catchable right now */
-	caught = 0;
-	terminated = 1;
-
 	if(caught)
 	{
 		/* Do we have a signal stack? */
 		if(!rproc->sig_stack_start)
 		{
+			/* TODO: probably don't use mmap here, this will */
+			/*        change in the future.                  */
+
 			/* Allocate a signal stack */
 			int pages = SIG_DEFAULT_STACK + SIG_DEFAULT_GUARD;
 			uint end = (uint)mmap(NULL, 
@@ -261,15 +268,19 @@ int sig_handle(void)
 				end += PGSIZE;
 			}
 
-			/* Set start and end */
+			/* Set sig stack start */
 			rproc->sig_stack_start = end + 
 				(SIG_DEFAULT_STACK * PGSIZE);
-			rproc->sig_stack_end = end;
 		}
 
-		/* Save the current trap frame */
-		memmove(&sig->handle_frame, rproc->tf, 
-			sizeof(struct trap_frame));
+		/* Save the current trap frame if we need to */
+		if(!rproc->sig_handling)
+		{
+			/* We weren't handling a signal until now */
+			memmove(&rproc->sig_saved, 
+				rproc->k_stack - sizeof(struct trap_frame),
+				sizeof(struct trap_frame));
+		}
 
 		uint stack = rproc->sig_stack_start;
 		
@@ -278,7 +289,7 @@ int sig_handle(void)
 
 		/* Push argument (sig) */
 		stack -= sizeof(int);
-		vm_memmove((void*)stack, &sig->type, sizeof(int),
+		vm_memmove((void*)stack, &sig->signum, sizeof(int),
 				rproc->pgdir, rproc->pgdir);
 
 		/* (safely) Push our magic return value */
@@ -291,20 +302,24 @@ int sig_handle(void)
 		rproc->tf->esp = stack;
 
 		/* We are now actively handling this signal */
-		sig->handling = 1;
+		rproc->sig_handling = 1;
 	}
+
+	pop_cli(); 
 
 	/* Check to see if we need to dump the core */
 	if(core)
 	{
 		/* Dump memory for gdb analysis */
+		cprintf("CORE DUMPED: %s\n", rproc->name);
+		slock_release(&ptable_lock);
+		_exit(1);
 	}
-
-	pop_cli();
 
 	/* If we got stopped, we will enter scheduler. */
 	if(stopped)
 	{
+		rproc->state = PROC_STOPPED;
 		sig_dequeue(rproc);
 		yield_withlock();
 	}
