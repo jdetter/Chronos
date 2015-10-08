@@ -169,6 +169,9 @@ int sig_proc(struct proc* p, int sig)
 			&& p->state == PROC_STOPPED)
 		p->state = PROC_RUNNABLE;
 
+	if(p->state == PROC_SIGNAL)
+		p->state = PROC_RUNNABLE;
+
 	return 0;
 }
 
