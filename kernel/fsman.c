@@ -26,6 +26,8 @@
 #include "diskio.h"
 #include "diskcache.h"
 
+#define DEBUG
+
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
  * acquired first. If the locks are not acquired in the correct order, it
@@ -381,10 +383,15 @@ inode fs_open(const char* path, uint flags, uint permissions,
 				return itable + x;
 			}
 		}
+
+		/**
+		 * If we got here, its open in the FSDriver but we
+		 * don't have any record of it in our cache.
+		 */
 	}
 
 	/* Try creating the file first */
-	if(flags & O_CREATE)
+	if(flags & O_CREAT && !inp)
 		if(fs->create(fs_path, permissions, uid, gid, fs->context))
 			return NULL; /* Permission denied */
 
@@ -393,14 +400,16 @@ inode fs_open(const char* path, uint flags, uint permissions,
 		return NULL; /* No more inodes are available */
 	i->fs = fs;
 
-	i->inode_ptr = fs->open(fs_path, fs->context);
-	if(i->inode_ptr == NULL)
+	if(!inp) inp = fs->open(fs_path, fs->context);
+	i->inode_ptr = inp;
+
+	if(inp == NULL)
 	{
 #ifdef CACHE_WATCH
-        if(rproc) cprintf("INODE ACCESS DENIED: %s process: %s pid: %d\n",
-                                i->name, rproc->name, rproc->pid);
-        else cprintf("INODE ACCESS DENIED: %s process: KERNEL\n",
-                                i->name);
+		if(rproc) cprintf("INODE ACCESS DENIED: %s process: %s pid: %d\n",
+				i->name, rproc->name, rproc->pid);
+		else cprintf("INODE ACCESS DENIED: %s process: KERNEL\n",
+				i->name);
 #endif
 		fs_free_inode(i);
 		return NULL; /* Permission denied */
@@ -416,10 +425,10 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	fs_get_name(dst_path, i->name, FILE_MAX_NAME);
 
 #ifdef CACHE_WATCH
-        if(rproc) cprintf("FILE OPENED: %s process: %s pid: %d\n",
-                                i->name, rproc->name, rproc->pid);
-        else cprintf("FILE OPENED: %s process: KERNEL\n",
-                                i->name);
+	if(rproc) cprintf("FILE OPENED: %s process: %s pid: %d\n",
+			i->name, rproc->name, rproc->pid);
+	else cprintf("FILE OPENED: %s process: KERNEL\n",
+			i->name);
 #endif
 
 	return i;
@@ -432,15 +441,15 @@ int fs_close(inode i)
 	if(i->references == 0)
 	{ 
 		int close_result = i->fs->close(i->inode_ptr, 
-			i->fs->context);
+				i->fs->context);
 		fs_free_inode(i);
 		return close_result;
 	} else {
 #ifdef CACHE_WATCH
-        if(rproc) cprintf("INODE DEREFERENCED: %s process: %s pid: %d\n",
-                                i->name, rproc->name, rproc->pid);
-        else cprintf("INODE DEREFERENCED: %s process: KERNEL\n",
-                                i->name);
+		if(rproc) cprintf("INODE DEREFERENCED: %s process: %s pid: %d\n",
+				i->name, rproc->name, rproc->pid);
+		else cprintf("INODE DEREFERENCED: %s process: KERNEL\n",
+				i->name);
 #endif
 	}
 	return 0;
@@ -477,7 +486,7 @@ int fs_create(const char* path, uint flags,
 
 	/* Create the file with the driver */
 	if(fs->create(fs_path, 
-                permissions, uid, gid, fs->context))
+				permissions, uid, gid, fs->context))
 		return -1;
 	return 0;
 }
@@ -488,7 +497,7 @@ int fs_chown(const char* path, uint uid, uint gid)
 	if(!i) return -1;
 
 	int result = i->fs->chown(i->inode_ptr,
-                uid, gid, i->fs->context);
+			uid, gid, i->fs->context);
 
 	/* Close the inode */
 	fs_close(i);
@@ -499,16 +508,16 @@ int fs_chown(const char* path, uint uid, uint gid)
 int fs_chmod(const char* path, ushort permission)
 {
 	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
-        if(!i) return -1;
+	if(!i) return -1;
 	/* Dont allow the type to change */
 	permission &= ~S_IFMT;
 
 	/* This is file system specific */
 	int result = i->fs->chmod(i->inode_ptr, 
-		permission, i->fs->context);
+			permission, i->fs->context);
 
 	/* Close the inode */
-        fs_close(i);
+	fs_close(i);
 
 	return result;
 }
@@ -521,7 +530,7 @@ int fs_sync(inode i)
 int fs_truncate(inode i, int sz)
 {
 	int result = i->fs->truncate(i->inode_ptr, 
-		sz, i->fs->context);
+			sz, i->fs->context);
 	if(result < 0) return -1;
 	else i->st.st_size = result;
 	return result;
@@ -536,9 +545,9 @@ int fs_link(const char* oldpath, const char* newpath)
 
 int fs_symlink(const char* file, const char* link)
 {
-        //int result = i->fs->symlink(i->inode_ptr,
-        //        file, link, i->fs->context);
-        return 0;
+	//int result = i->fs->symlink(i->inode_ptr,
+	//        file, link, i->fs->context);
+	return 0;
 }
 
 inode fs_mkdir(const char* path, uint flags, 
@@ -549,10 +558,10 @@ inode fs_mkdir(const char* path, uint flags,
 	int result = fs_path_resolve(path, dst_path, FILE_MAX_PATH);
 	if(result)
 		return NULL; /* Bad path */
-	
+
 	/* Find the file system */
 	struct FSDriver* fs = fs_find_fs(dst_path);
-	
+
 	char fs_path[FILE_MAX_PATH];
 	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
 		return NULL;
@@ -569,14 +578,14 @@ inode fs_mkdir(const char* path, uint flags,
 	if(i == NULL) return NULL; /* Out of free inodes */
 	i->inode_ptr = dir;
 
-        /* Parse the inode structure */
-        struct stat st;
-        fs->stat(dir, &st, fs->context);
+	/* Parse the inode structure */
+	struct stat st;
+	fs->stat(dir, &st, fs->context);
 	memmove(&i->st, &st, sizeof(struct stat));
 
-        i->file_pos = 0;
-        i->references = 1;
-        fs_get_name(i->name, fs_path, FILE_MAX_NAME);
+	i->file_pos = 0;
+	i->references = 1;
+	fs_get_name(i->name, fs_path, FILE_MAX_NAME);
 
 	return i;
 }
@@ -591,13 +600,13 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 
 int fs_write(inode i, void* src, uint sz, uint start)
 {
-        int bytes = i->fs->write(i->inode_ptr,
-                src, start, sz, i->fs->context);
-        /* Check for read error */
-        if(bytes < 0) return -1;
+	int bytes = i->fs->write(i->inode_ptr,
+			src, start, sz, i->fs->context);
+	/* Check for read error */
+	if(bytes < 0) return -1;
 
-        /* Update our file position */
-        i->file_pos += bytes;
+	/* Update our file position */
+	i->file_pos += bytes;
 
 	/* The file properties may have changed */
 	fs_sync_inode(i);
@@ -620,7 +629,7 @@ int fs_rename(const char* src, const char* dst)
 		return -1; /** Bad src path */
 	if(fs_path_resolve(dst, dst_resolved, FILE_MAX_PATH))
 		return -1; /* Bad dst path */
-	
+
 	struct FSDriver* src_fs = fs_find_fs(src_resolved);
 	struct FSDriver* dst_fs = fs_find_fs(dst_resolved);
 
@@ -681,37 +690,37 @@ int fs_mount(const char* device, const char* point)
 void fs_fsstat(void)
 {
 	/*
-	struct fs_stat fss;
-	int x;
-	for(x = 0;x < FS_TABLE_MAX;x++)
-	{
-		struct FSDriver* fs = fstable + x;
-		if(!fs->valid) continue;
-	
-		fs->fsstat(&fss, &fs->context);
-		tty_print_string(rproc->t, "Mount point: %s\n", 
-			fs->mount_point);
-		tty_print_string(rproc->t, 
-			"Free cache inodes: %d\n", fss.cache_free);
-		tty_print_string(rproc->t, 
-			"Allocated cache inodes: %d\n", fss.cache_allocated);
-		tty_print_string(rproc->t, 
-			"Free disk inodes: %d\n", fss.inodes_available);
-		tty_print_string(rproc->t, 
-			"Allocated disk inodes: %d\n", fss.inodes_allocated);
-		tty_print_string(rproc->t, 
-			"Free disk blocks: %d\n", fss.blocks_available);
-		tty_print_string(rproc->t, 
-			"Allocated disk blocks: %d\n", fss.blocks_allocated);
-		if(fss.blocks_allocated == 0 ||
-			fss.blocks_available == 0) continue;
-		tty_print_string(rproc->t, "Free space:      %dK\n", 
-			(fss.blocks_available / 2));
-		tty_print_string(rproc->t, "Allocated space: %dK\n", 
-			(fss.blocks_allocated / 2));
-		tty_print_string(rproc->t, "\n");
-	}
-	*/
+	   struct fs_stat fss;
+	   int x;
+	   for(x = 0;x < FS_TABLE_MAX;x++)
+	   {
+	   struct FSDriver* fs = fstable + x;
+	   if(!fs->valid) continue;
+
+	   fs->fsstat(&fss, &fs->context);
+	   tty_print_string(rproc->t, "Mount point: %s\n", 
+	   fs->mount_point);
+	   tty_print_string(rproc->t, 
+	   "Free cache inodes: %d\n", fss.cache_free);
+	   tty_print_string(rproc->t, 
+	   "Allocated cache inodes: %d\n", fss.cache_allocated);
+	   tty_print_string(rproc->t, 
+	   "Free disk inodes: %d\n", fss.inodes_available);
+	   tty_print_string(rproc->t, 
+	   "Allocated disk inodes: %d\n", fss.inodes_allocated);
+	   tty_print_string(rproc->t, 
+	   "Free disk blocks: %d\n", fss.blocks_available);
+	   tty_print_string(rproc->t, 
+	   "Allocated disk blocks: %d\n", fss.blocks_allocated);
+	   if(fss.blocks_allocated == 0 ||
+	   fss.blocks_available == 0) continue;
+	   tty_print_string(rproc->t, "Free space:      %dK\n", 
+	   (fss.blocks_available / 2));
+	   tty_print_string(rproc->t, "Allocated space: %dK\n", 
+	   (fss.blocks_allocated / 2));
+	   tty_print_string(rproc->t, "\n");
+	   }
+	 */
 }
 
 int fs_rmdir(const char* path)
@@ -740,21 +749,21 @@ int fs_mknod(const char* path, int dev, int dev_type, int perm)
 {
 	char res_path[FILE_MAX_PATH];
 	if(fs_path_resolve(path, res_path, FILE_MAX_PATH))
-                return -1; /* Bad path */
+		return -1; /* Bad path */
 
 	/* Get the file system for the path */
-        struct FSDriver* fs = fs_find_fs(res_path);
-        if(!fs) return -1; /* Bad path */
+	struct FSDriver* fs = fs_find_fs(res_path);
+	if(!fs) return -1; /* Bad path */
 
 	/* Get the file system path */
-        char path_tmp[FILE_MAX_PATH];
+	char path_tmp[FILE_MAX_PATH];
 	if(fs_get_path(fs, res_path, path_tmp, FILE_MAX_PATH))
 		return -1;
-	
+
 	/* Make sure the path doesn't end with a slash */
 	strncpy(res_path, path_tmp, FILE_MAX_PATH);
-        file_path_file(res_path);
-	
+	file_path_file(res_path);
+
 	/* Create the node if it's supported */
 	if(fs->mknod && fs->mknod(res_path, dev, dev_type, perm, fs->context))
 		return -1;

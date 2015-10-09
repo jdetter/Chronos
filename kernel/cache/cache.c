@@ -27,8 +27,13 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #endif
 
 #include "cache.h"
+#define CACHE_DEBUG
+//#define CACHE_DEBUG_VER
 
-// #define CACHE_DEBUG
+#ifdef __BOOT_2__
+#undef CACHE_DEBUG
+#undef CACHE_DEBUG_VER
+#endif
 
 struct cache_entry
 {
@@ -36,6 +41,8 @@ struct cache_entry
 	int references;	/* How many hard pointers are there? */
 	void* slab; /* A pointer to the data that goes with this entry. */
 	int valid; /* has this entry ever been assigned?  */
+	int clobber; /* Whether or not to eject right after deallocation. */
+	int unused[3]; /* Keep boundary */
 };
 
 static int cache_default_check(void* obj, int id, struct cache* cache,
@@ -81,13 +88,18 @@ void* cache_query(void* data, struct cache* cache, void* context)
 		if(!cache->query(data, cache->entries[x].slab, context))
 		{
 			result = cache->entries[x].slab;
+
+			/* There is now a new reference to this data */
+			if(cache->entries[x].references <= 0)
+				cache->entries[x].references = 1;
+			else cache->entries[x].references++;
 			break;
 		}
 	}
 
 	slock_release(&cache->lock);
 
-#ifdef CACHE_DEBUG
+#ifdef CACHE_DEBUG_VER
 	if(result) cprintf("%s cache: query success.\n", cache->name);
 	else cprintf("%s cache: query failure.\n", cache->name);
 #endif
@@ -132,7 +144,8 @@ int cache_dump(struct cache* cache)
 }
 
 static void* cache_search_nolock(int id, struct cache* cache, void* context);
-static int cache_dereference_nolock(void* ptr, struct cache* cache);
+static int cache_dereference_nolock(void* ptr, 
+		struct cache* cache, void* context);
 
 int cache_init(void* cache_area, uint sz, uint data_sz, 
 		char* name, struct cache* cache)
@@ -195,7 +208,7 @@ void cache_prepare(int id, struct cache* cache, void* context)
 {
 	void* slab =  cache_reference(id, cache, context);
 	if(!slab) return;
-	cache_dereference(slab, cache);
+	cache_dereference(slab, cache, context);
 }
 
 static void* cache_alloc(int id, struct cache* cache, void* context)
@@ -236,7 +249,7 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 	{
 		if(cache->sync)
 		{
-#ifdef CACHE_DEBUG
+#ifdef CACHE_DEBUG_VER
 			cprintf("%s cache: syncing data to system.\n",
 					cache->name);
 #endif
@@ -295,7 +308,49 @@ static int cache_force_free(void* ptr, struct cache* cache)
 	return 0;
 }
 
-static int cache_dereference_nolock(void* ptr, struct cache* cache)
+int cache_count_refs(void* ptr, struct cache* cache)
+{
+        struct cache_entry* entry = cache->entries;
+        uint val = (uint)ptr - (uint)cache->slabs;
+        /* If shift is available then use it (fast) */
+        if(cache->slab_shift)
+                entry += (uint)(val >> cache->slab_shift);
+        else {
+                /* The division instruction is super slow. */
+                entry += (val / cache->slab_sz);
+        }
+
+        if((uint)entry > cache->last_entry)
+                return -1;
+        if(!entry->valid)
+                return -1;
+
+	return entry->references;
+}
+
+int cache_set_clobber(void* ptr, struct cache* cache)
+{
+        struct cache_entry* entry = cache->entries;
+        uint val = (uint)ptr - (uint)cache->slabs;
+        /* If shift is available then use it (fast) */
+        if(cache->slab_shift)
+                entry += (uint)(val >> cache->slab_shift);
+        else {
+                /* The division instruction is super slow. */
+                entry += (val / cache->slab_sz);
+        }
+
+        if((uint)entry > cache->last_entry)
+                return -1;
+        if(!entry->valid)
+                return -1;
+
+	entry->clobber = 1;
+	return 0;
+}
+
+static int cache_dereference_nolock(void* ptr, struct cache* cache, 
+		void* context)
 {
 	if(!ptr) 
 	{
@@ -326,21 +381,74 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache)
 
 	if(!entry->valid)
 	{
+#ifdef CACHE_DEBUG
 		cprintf("%s cache: invalid entry dereferen"
-			"ced! (valid == 0)\n", cache->name);
+				"ced! (valid == 0)\n", cache->name);
+#endif
 		return -1;
 	}
 
 	entry->references--;
+
+#ifdef CACHE_DEBUG
+	cprintf("%s cache: references for %d: %d\n", cache->name,
+		entry->id, entry->references);
+#endif
+
 	if(entry->references <= 0)
 	{
 		entry->references = 0;
-#ifdef CACHE_DEBUG
+#ifdef CACHE_DEBUG_VER
 		cprintf("%s cache: object %d fully dereferenced.\n",
 				cache->name, entry->id);
 #endif
-	} else {
+
+		if(entry->clobber)
+		{
+			if(cache->sync)
+			{
+#ifdef CACHE_DEBUG_VER
+				cprintf("%s cache: syncing data to system.\n",
+						cache->name);
+#endif
+				if(cache->sync(ptr, 
+							entry->id, 
+							cache,
+							context))
+				{
 #ifdef CACHE_DEBUG
+					cprintf("%s cache: SYNC FAILED!\n",
+							cache->name);
+#endif
+				}
+
+			} else {
+#ifdef CACHE_DEBUG
+				cprintf("%s cache: sync is disabled.\n",
+						cache->name);
+#endif
+			}
+
+			/* Eject functionality is optional. */
+			if(cache->eject && cache->eject(ptr,
+						entry->id, 
+						context))
+			{
+#ifdef CACHE_DEBUG
+				cprintf("%s cache: EJECT FAILED!\n",
+						cache->name);
+#endif
+			}
+#ifdef CACHE_DEBUG
+			cprintf("%s cache: object %d clobbered.\n",
+					cache->name, entry->id);
+#endif
+
+			entry->valid = 0;
+                        entry->id = 0;
+		}
+	} else {
+#ifdef CACHE_DEBUG_VER
 		cprintf("%s cache: object dereferenced: %d\n", 
 				cache->name, entry->id);
 #endif
@@ -349,10 +457,10 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache)
 	return result;
 }
 
-int cache_dereference(void* ptr, struct cache* cache)
+int cache_dereference(void* ptr, struct cache* cache, void* context)
 {
 	slock_acquire(&cache->lock);
-	int result = cache_dereference_nolock(ptr, cache);
+	int result = cache_dereference_nolock(ptr, cache, context);
 
 	slock_release(&cache->lock);
 	return result;
@@ -376,7 +484,7 @@ static void* cache_search_nolock(int id, struct cache* cache, void* context)
 		}
 	}
 
-#ifdef CACHE_DEBUG
+#ifdef CACHE_DEBUG_VER
 	if(result) cprintf("%s cache: search success.\n", cache->name);
 	else cprintf("%s cache: search failure.\n", cache->name);
 #endif
@@ -428,12 +536,20 @@ void* cache_reference(int id, struct cache* cache, void* context)
 				result = NULL;
 			}
 		} else {
+#ifdef CACHE_DEBUG
 			cprintf("%s cache: no populate function assigned.\n",
 					cache->name);
+#endif
 		}
 	} else {
 		cache->cache_hits++;
 	}
+
+#ifdef CACHE_DEBUG
+	cprintf("%s cache: references for %d: %d\n", cache->name, id,
+		cache_count_refs(result, cache));
+#endif
+
 	slock_release(&cache->lock);
 	return result;
 }	

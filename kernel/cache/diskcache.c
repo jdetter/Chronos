@@ -83,7 +83,7 @@ static int disk_cache_dereference(void* ref, struct FSDriver* driver)
 	char* ref_c = ref;
 	ref_c = (char*)((uint)ref_c & ~(PGSIZE - 1));
 
-	return cache_dereference(ref_c, &driver->driver->cache);
+	return cache_dereference(ref_c, &driver->driver->cache, driver);
 }
 
 int disk_cache_hardware_init(struct FSHardwareDriver* driver)

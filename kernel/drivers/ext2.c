@@ -78,7 +78,7 @@ int log2_linux(uint value)
 #define EXT2_MAX_NAME FILE_MAX_NAME
 #define EXT2_MAX_PATH_SEGS 32
 
-// #define DEBUG
+#define DEBUG
 #ifdef __BOOT_2__
 #undef DEBUG
 #endif
@@ -1644,7 +1644,8 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 				}
 
 				cache_dereference(new_handle, 
-						&context->inode_cache);
+						&context->inode_cache,
+						&context->fs);
 				return result;
 			}
 		} 	
@@ -1867,8 +1868,7 @@ inode* ext2_opened(const char* path, context* context)
 	else cprintf("NO\n");
 #endif
         if(result)
-                return cache_reference(result->inode_num,
-                                &context->inode_cache, context->fs);
+                return result;
 	return NULL;
 }
 
@@ -1912,7 +1912,8 @@ int ext2_close(inode* ino, context* context)
 #ifdef DEBUG
 	cprintf("ext2: closing file: %s\n", ino->path);
 #endif
-	return cache_dereference(ino, &context->inode_cache);
+	return cache_dereference(ino, &context->inode_cache, 
+		context->fs);
 }
 
 int ext2_stat(inode* ino, struct stat* dst, context* context)
@@ -1957,7 +1958,7 @@ int ext2_create(const char* path, mode_t permissions,
 	if(file)
 	{
 		ext2_close(file, context);
-		return -1;
+		return 0; /* Return no error */
 	}
 
 	/* Make sure this is just a normal file */
@@ -2269,6 +2270,10 @@ int ext2_rename(const char* src, const char* dst, context* context)
 
 int ext2_unlink(const char* file, context* context)
 {
+#ifdef DEBUG
+	cprintf("ext2: unlinking file: %s\n", file);
+#endif
+
 	char parent_path[EXT2_MAX_NAME];
 	strncpy(parent_path, file, EXT2_MAX_NAME);
 	if(file_path_parent(parent_path))
@@ -2284,13 +2289,38 @@ int ext2_unlink(const char* file, context* context)
 
 	if(!ino || !parent)
 	{
+#ifdef DEBUG
+		cprintf("ext2: could not remove file!\n");
+#endif
+
 		if(ino) ext2_close(ino, context);
 		if(parent) ext2_close(parent, context);
+		return -1;
+	}
+
+	int refs =  cache_count_refs(ino, &context->inode_cache);
+	/* There must be only one reference to this file! */
+	if(refs != 1)
+	{
+#ifdef DEBUG
+		cprintf("ext2: too many references to file! %d\n", refs);
+#endif
+		return -1;
+
 	}
 
 	/* Remove the directory entry */
 	int success = ext2_free_dirent(parent->ino, parent->inode_group,
 			file_name, context);
+
+	if(success) 
+	{
+#ifdef DEBUG
+		cprintf("ext2: could not free dirent!\n");
+#endif
+		return -1;
+	}
+
 	/* Decrement hard links */
 	ino->ino->hard_links--;
 
@@ -2304,6 +2334,15 @@ int ext2_unlink(const char* file, context* context)
 		 * TODO: all blocks belonging to this inode are
 		 * leaked here.
 		 */
+		
+		/* Clear the inode and set clobber */
+		if(cache_set_clobber(ino, &context->inode_cache))
+		{
+#ifdef DEBUG
+			cprintf("ext2: clobber failed!\n");
+#endif
+		}
+		memset(ino, 0, sizeof(inode));
 	}
 
 	ext2_close(ino, context);
@@ -2392,7 +2431,8 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 				} else memset(prepare->path, 
 						0, EXT2_MAX_PATH);
 			}
-			cache_dereference(prepare, &context->inode_cache);
+			cache_dereference(prepare, &context->inode_cache, 
+				context->fs);
 		}
 
 		bytes_read += diren.size;

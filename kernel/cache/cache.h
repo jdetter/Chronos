@@ -85,11 +85,25 @@ void* cache_reference(int id, struct cache* cache, void* context);
 void* cache_query(void* data, struct cache* cache, void* context);
 
 /**
+ * When the given reference is fully dereferenced, it will be removed
+ * from the cache immediatly. Eject will be called if needed. Returns
+ * 0 on success, -1 otherwise.
+ */
+int cache_set_clobber(void* ptr, struct cache* cache);
+
+/**
+ * Check the amount of references there are to a element in the
+ * cache. Returns the amount of references that are pointing to
+ * the element. Returns -1 on failure.
+ */
+int cache_count_refs(void* ptr, struct cache* cache);
+
+/**
  * Free a pointer that was passed by cache_alloc. Returns the amount
  * of references left on that object. The object is only freed if
  * the amount of references left is 0.
  */
-int cache_dereference(void* ptr, struct cache* cache);
+int cache_dereference(void* ptr, struct cache* cache, void* context);
 
 /**
  * Hint to the cache that this entry might be accessed soon. (major
