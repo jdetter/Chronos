@@ -53,7 +53,8 @@ KERNEL_DRIVERS := \
 	ramfs \
 	cmos \
 	rtc \
-	diskio
+	diskio \
+	raid
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
