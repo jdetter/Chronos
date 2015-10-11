@@ -38,6 +38,10 @@ void iosched_check(void)
 	{
 		/* Clock update */
 		ktime_update();
+
+		/* Temporary: sync file system every second */
+		fs_sync();
+		//cprintf("File system synced.\n");
 	}
 
 	iosched_check_sleep();

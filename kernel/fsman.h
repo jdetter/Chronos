@@ -244,6 +244,12 @@ struct FSDriver
 	 */
 	int (*fsync)(void* i, void* context);
 
+	/**
+	 * Run FSCK on this file system. Returns 0 if the file system
+	 * is ready to mount, nonzero otherwise.
+	 */
+	int (*fsck)(void* context);
+
 	/* Locals for the driver */
 	uchar valid; /* Whether or not this entry is valid. */
 	uint type; /* Type of file system */
@@ -398,6 +404,11 @@ int fs_mknod(const char* path, int dev, int dev_type, int perm);
  * Truncate a file to a specific length. Returns 0 on success.
  */
 int fs_truncate(inode i, int sz);
+
+/**
+ * Sync all file system data to disk. Return 0 on success.
+ */
+int fs_sync(void);
 
 /**
  * Get rid of the macro declaration.

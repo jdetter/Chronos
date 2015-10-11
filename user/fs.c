@@ -1,10 +1,12 @@
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 
-char* path = "/file.txt";
+char* path = "file.txt";
 
 int create_file(void)
 {
@@ -26,64 +28,57 @@ int massive_file(void)
 	if(fd < 0)
 		return -1;
 
-	char buffer[sizeof(int) * 128];
+	int buffer[128];
+	int iterations = 0x10000;
 
-	/* Should end up with 64MB file */
-	int iterations = 0x10000000;
 	int x;
-	for(x = 0;;)
+	for(x = 0;x < iterations;x++)
 	{
 		int y;
-		for(y = 0;y < 128;y++)
-		{
-			int val = x & ~(128 - 1);
-			buffer[val] = x;
-			x++;
-		}
+                for(y = 0;y < 128;y++)
+			buffer[y] = x;
 
-		if(write(fd, buffer, sizeof(int) * 128) != sizeof(int) * 128)
+		if(write(fd, buffer, 128 * sizeof(int)) != 128 * sizeof(int))
 		{
-			printf("Write failure!\n");
+			printf("Write failure! %d\n", x);
+			close(fd);
 			return -1;
 		}
-
-		if(x >= iterations) break;
 	}
 
 	lseek(fd, 0, SEEK_SET);
-	/* Check work */
-        for(x = 0;;)
-        {
-		if(read(fd, buffer, sizeof(int) * 128) != sizeof(int) * 128)
-                {
-                        printf("Read failure!\n");
-                        return -1;
-                }
+	for(x = 0;x < iterations;x++)
+	{
+		if(read(fd, buffer, 128 * sizeof(int)) != 128 * sizeof(int))
+		{
+			printf("Read failure! %d\n", x);
+			close(fd);
+			return -1;
+		}
 
-                int y;
-                for(y = 0;y < 128;y++)
-                {
-                        int val = x & ~(128 - 1);
-                        if(buffer[val] != x)
+		int y;
+		for(y = 0;y < 128;y++)
+		{
+			if(x != buffer[y])
 			{
-				printf("Was expecing: %d, got %d\n", 
-					x, buffer[val]);
+				printf("Mismatch failure! %d\n", x);
+				close(fd);
 				return -1;
 			}
-                        x++;
-                }
+		}
+	}
 
-                if(x >= iterations) break;
-        }	
-
+	close(fd);
 	return 0;
 }
 
 void test(int (*function)(void), char* message)
 {
 	printf("%s", message);
+	fflush(stdout);
 	if(function()) printf("[FAIL]\n");
 	else printf("[ OK ]\n");
+	fflush(stdout);
 	
 }
 
@@ -91,7 +86,7 @@ int main(int argc, char** argv)
 {
 	test(create_file,  "Creating file...\t\t\t\t\t\t\t");
 	test(remove_file,  "Deleting file...\t\t\t\t\t\t\t");
-	test(massive_file, "Massive file...\t\t\t\t\t\t\t");
+	test(massive_file, "Massive file...\t\t\t\t\t\t\t\t");
 
 	return 0;
 }

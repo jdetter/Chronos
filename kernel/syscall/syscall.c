@@ -25,7 +25,7 @@ extern slock_t ptable_lock; /* Process table lock */
 extern struct proc ptable[]; /* The process table */
 extern struct proc* rproc; /* The currently running process */
 
-//  #define DEBUG
+#define DEBUG
 
 int (*syscall_table[])(void) = {
 	NULL, /* There is no system call 0 */

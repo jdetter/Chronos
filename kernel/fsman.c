@@ -85,9 +85,9 @@ void fsman_init(void)
 	
 	/* Set our vsfs as the root file system. */
 	ext2_init(ext2);
+	ext2->fsck(ext2->context);
 	ext2->valid = 1;
 	ext2->type = 0;
-	ext2->driver = ata;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
 
 	/* Initilize the file system */
@@ -522,8 +522,18 @@ int fs_chmod(const char* path, ushort permission)
 	return result;
 }
 
-int fs_sync(inode i)
+int fs_sync(void)
 {
+	int x;
+	for(x = 0;x < FS_TABLE_MAX;x++)
+	{
+		if(fstable[x].valid)
+		{
+			if(fstable[x].sync)
+				fstable[x].sync(fstable[x].context);
+		}
+	}
+
 	return 0;
 }
 

@@ -27,7 +27,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #endif
 
 #include "cache.h"
-#define CACHE_DEBUG
+// #define CACHE_DEBUG
 //#define CACHE_DEBUG_VER
 
 #ifdef __BOOT_2__

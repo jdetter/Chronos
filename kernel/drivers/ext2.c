@@ -78,9 +78,11 @@ int log2_linux(uint value)
 #define EXT2_MAX_NAME FILE_MAX_NAME
 #define EXT2_MAX_PATH_SEGS 32
 
-#define DEBUG
+// #define DEBUG
+#define DEBUG_FSCK
 #ifdef __BOOT_2__
 #undef DEBUG
+#undef DEBUG_FSCK
 #endif
 
 /* Define some very basic types */
@@ -317,7 +319,6 @@ struct ext2_context
 	int blocksize; /* The size of data blocks */
 	int blockshift; /* The size of data blocks */
 	int sectsize; /* The size of sectors on disk */
-	int firstgroup; /* Block id of the first block group */
 	int addrs_per_block; /* How many LBAs are in a block? */
 	int indirectshift; /* shift for one level of indirection */
 	int grouptableaddr; /* in which block is the bgdt? */
@@ -550,7 +551,8 @@ static int ext2_find_free_inode(int hint, int dir, context* context)
 	return -1;
 }
 
-static int ext2_alloc_block(int block_group, int blockid, context* context)
+static int ext2_alloc_block_old(int block_group, 
+	int blockid, context* context)
 {
 	char* block;
 	/* Get the block group descriptor table */
@@ -594,6 +596,69 @@ static int ext2_alloc_block(int block_group, int blockid, context* context)
 	context->fs->dereference(block, context->fs);
 
 	return 0;
+}
+
+static int ext2_alloc_block(uint block_num, context* context)
+{
+        char* block = NULL;
+	int block_group = (block_num - context->firstgroupstart)
+		>> context->blockspergroupshift;
+
+	/* Is this a valid block group? */
+	if(block_group < 0 || block_group > context->groupcount)
+		return -1;
+
+        /* Get the block group descriptor table */
+        struct ext2_block_group_table table;
+        if(ext2_read_bgdt(block_group, &table, context))
+                return -1;
+
+	/* Calculate meta size */
+	uint group_start = (block_group 
+		<< context->blockspergroupshift)
+		+ context->firstgroupstart;
+	uint group_end = group_start + (1 << context->blockspergroupshift);
+	uint meta_last = table.inode_table + 1 + context->inodeblocks;
+	uint block_id = block_num - group_start;
+
+	/* Dont allow blocks in the meta to be allocated */
+	if(block_num < meta_last) return -1;
+	/* Does this block address make sense? */
+	if(block_num > group_end) return -1;
+
+        /* Is the block free? */
+        block = context->fs->reference(table.block_bitmap_address,
+                        context->fs);
+        if(!block) return -1;
+
+        /* Is the block already allocated? */
+        if(ext2_get_bit(block, block_id, context))
+        {
+                context->fs->dereference(block, context->fs);
+                return -1; /* Already allocated!*/
+        }
+
+        /* Set the bit */
+        if(ext2_set_bit(block, block_id, 1, context))
+        {
+                context->fs->dereference(block, context->fs);
+                return -1;
+        }
+
+        /* update block group table metadata (free blocks - 1)*/
+        table.free_blocks--;
+        if(ext2_write_bgdt(block_group, &table, context))
+        {
+                context->fs->dereference(block, context->fs);
+                return -1;
+        }
+
+        /* Update the superblock */
+        context->base_superblock.free_block_count--;
+
+        context->fs->dereference(block, context->fs);
+
+        return 0;
 }
 
 static int ext2_free_block(int block_num, context* context)
@@ -672,8 +737,7 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	for(;x < context->blockspergroup;x++)
 	{
 		/* Are there any free blocks in this byte? */
-		if(!(x & 7) /* Is this a new byte? */
-				&& block[x & ~7] == 0xFF)
+		if(!(x & 7) && block[x >> 3] == 0xFF)
 		{
 			/* This byte is completely allocated */
 			x += 8;
@@ -710,7 +774,7 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	/* Allocate the range */
 	for(x = 0;x < sequence;x++)
 	{
-		if(ext2_alloc_block(group, range_start + x,
+		if(ext2_alloc_block_old(group, range_start + x,
 				 context))
 		{
 			context->fs->dereference(block, context->fs);
@@ -741,7 +805,7 @@ static int ext2_find_free_blocks(int hint,
 	{
 		if(x == hint) continue;
 
-		result = ext2_find_free_blocks_rec(hint, contiguous, context);
+		result = ext2_find_free_blocks_rec(x, contiguous, context);
 		if(result > 0) return result;
 	}
 
@@ -1214,7 +1278,7 @@ static int _ext2_write(const void* src, uint start, uint sz,
 	/* We need to add blocks where were about to write */
 
 	int start_alloc = start >> context->blockshift;
-	int end_alloc = (start + sz) >> context->blockshift;
+	int end_alloc = (start + sz - 1) >> context->blockshift;
 
 	/* Ask for a contiguous sequence of blocks in our group */
 	int sequence_start = ext2_find_free_blocks(group_hint, 
@@ -1662,6 +1726,138 @@ static int ext2_lookup(const char* path, struct ext2_dirent* dst,
 	return ext2_lookup_rec(path, dst, 1, context->root->ino, context);
 }
 
+static int ext2_block_is_allocted(uint block_num, context* context)
+{
+	int allocated = 0;
+
+	if(ext2_alloc_block(block_num, context))
+	{
+		allocated = 1;
+	} else {
+		allocated = 0;
+		ext2_free_block(block_num, context);
+	}
+
+	return allocated;
+}
+
+#ifdef DEBUG_FSCK
+static int ext2_print_block_bitmap(int group, context* context)
+{
+	char* block;
+	struct ext2_block_group_table table;
+        if(ext2_read_bgdt(group, &table, context))
+                return -1;
+
+	block = context->fs->reference(table.block_bitmap_address,
+                        context->fs);
+	int x;
+	for(x = 0;x < context->blockspergroup;x++)
+	{
+		if((x & (64 - 1)) == 0)
+			cprintf("\n0x%x:", x);
+
+		if(ext2_get_bit(block, x, context))
+			cprintf("1");
+		else cprintf("0");
+	}
+	
+	cprintf("\n");
+
+	return 0;
+}
+
+static int ext2_print_inode_bitmap(int group, context* context)
+{
+        char* block;
+        struct ext2_block_group_table table;
+        if(ext2_read_bgdt(group, &table, context))
+                return -1;
+
+        block = context->fs->reference(table.inode_bitmap_address,
+                        context->fs);
+        int x;
+        for(x = 0;x < context->base_superblock.inodes_per_group;x++)
+        {
+                if((x & (64 - 1)) == 0)
+                        cprintf("\n0x%x:", x);
+
+                if(ext2_get_bit(block, x, context))
+                        cprintf("1");
+                else cprintf("0");
+        }
+
+	cprintf("\n");
+
+        return 0;
+}
+#endif
+
+static int ext2_fsck_file(inode* ino, context* context)
+{
+	/* Check to make sure all blocks are allocated */
+	uint_64 file_size = ino->ino->lower_size |
+                ((uint_64)ino->ino->upper_size << 32);
+	uint_64 pos;
+	int failure = 0;
+	for(pos = 0;pos < file_size;pos += context->blocksize)
+	{
+		uint index = (pos >> context->blockshift);
+		uint block = ext2_block_address(index, ino->ino, context);
+
+		if(!ext2_block_is_allocted(block, context))
+		{
+			failure = 1;
+#ifdef DEBUG_FSCK
+			cprintf("ext2: Block %d is in use by file %s "
+					"but not allocated.\n",
+					block, ino->path);
+#endif
+		}
+	}
+
+	return failure;
+}
+
+static int ext2_fsck_dir(inode* ino, context* context)
+{
+	uint pos = 0;
+	uint failure = 0;
+
+	while(1)
+	{
+		struct dirent dir;
+		int res = context->fs->getdents(ino, &dir, 1, pos, context);
+		if(res <= 0) break;
+		pos += res;
+
+		if(!strcmp(dir.d_name, ".")) continue;
+		if(!strcmp(dir.d_name, "..")) continue;
+		if(!strcmp(dir.d_name, "")) continue;
+
+		char name_buff[FILE_MAX_NAME];
+		strncpy(name_buff, ino->path, FILE_MAX_NAME);
+		if(file_path_dir(name_buff, FILE_MAX_NAME)) continue;
+		strncat(name_buff, dir.d_name, FILE_MAX_NAME);
+
+		inode* subfile = context->fs->open(name_buff, context);
+		if(!subfile) continue;
+		if(ext2_fsck_file(subfile, context))
+			failure = 1;
+
+		/* Is this file a directory? */
+		struct stat st;
+		context->fs->stat(subfile, &st, context);
+
+		if(S_ISDIR(st.st_mode))
+			failure |= ext2_fsck_dir(subfile, context);
+
+		context->fs->close(subfile, context);
+	}
+
+	return failure;
+}
+
 inode* ext2_opened(const char* path, context* context);
 inode* ext2_open(const char* path, context* context);
 int ext2_close(inode* ino, context* context);
@@ -1689,6 +1885,7 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 		uint pos, context* context);
 void ext2_sync(context* context);
 int ext2_fsync(inode* ino, context* context);
+int ext2_fsck(context* context);
 
 int ext2_test(context* context)
 {
@@ -1722,7 +1919,7 @@ int ext2_init(struct FSDriver* fs)
 	uint superblock_start = 1024;
 	char super_buffer[1024];
 	if(fs->disk_read(super_buffer, superblock_start, 
-			1024, fs) != 1024)
+				1024, fs) != 1024)
 		return -1;
 	struct ext2_base_superblock* base = (void*) super_buffer;
 	struct ext2_extended_base_superblock* extended_base =
@@ -1745,7 +1942,6 @@ int ext2_init(struct FSDriver* fs)
 	context->blocksize = 1024 << base->block_size_shift;
 	context->blockshift = base->block_size_shift + 10;
 	fs->bpp = PGSIZE >> context->blockshift;
-	context->firstgroup = 1024 >> context->blockshift;
 	context->addrs_per_block = context->blocksize >> 2;
 	context->indirectshift = log2(context->addrs_per_block);
 	context->blockspergroup = base->blocks_per_group;
@@ -1766,10 +1962,16 @@ int ext2_init(struct FSDriver* fs)
 		return -1;
 	}
 	context->grouptableaddr = 1; /* 2048, 4096, 8192, ...*/
-	if(context->blocksize == 512 )
+	context->firstgroupstart = 0;
+	if(context->blocksize == 512)
+	{
 		context->grouptableaddr = 4;
-	else if(context->blocksize == 1024)
+		context->firstgroupstart = 2;
+	}else if(context->blocksize == 1024)
+	{
 		context->grouptableaddr = 2;
+		context->firstgroupstart = 1;
+	}
 	if(context->indirectshift < 0) return -1;
 	/* set the driver block size and shift */
 	fs->blocksize = context->blocksize;
@@ -1796,7 +1998,7 @@ int ext2_init(struct FSDriver* fs)
 
 	/* Setup the inode cache */
 	if(cache_init(inode_cache, cache_sz, sizeof(struct ext2_cache_inode),
-			"EXT2 Inode", &context->inode_cache))
+				"EXT2 Inode", &context->inode_cache))
 		return -1;
 
 	/* Setup the cache helper functions */
@@ -1824,6 +2026,7 @@ int ext2_init(struct FSDriver* fs)
 	/* Cache the root inode */
 	inode* root = cache_reference(2, &context->inode_cache, context->fs);
 	if(!root) return -1;
+	strncpy(root->path, "/", FILE_MAX_PATH);
 	context->root = root;
 
 	fs->opened = (void*)ext2_opened;
@@ -1847,6 +2050,7 @@ int ext2_init(struct FSDriver* fs)
 	fs->truncate = (void*)ext2_truncate;
 	fs->sync = (void*)ext2_sync;
 	fs->fsync = (void*)ext2_fsync;
+	fs->fsck = (void*)ext2_fsck;
 
 	return 0;
 }
@@ -1857,18 +2061,18 @@ inode* ext2_opened(const char* path, context* context)
 	cprintf("ext2: is file %s already opened? ", path);
 #endif
 	/* First lets try a query */
-        inode query_node;
-        strncpy(query_node.path, path, EXT2_MAX_PATH);
-        query_node.inode_num = 0;
-        query_node.inode_group = 0;
-        inode* result = cache_query(&query_node,
-                &context->inode_cache, context->fs);
+	inode query_node;
+	strncpy(query_node.path, path, EXT2_MAX_PATH);
+	query_node.inode_num = 0;
+	query_node.inode_group = 0;
+	inode* result = cache_query(&query_node,
+			&context->inode_cache, context->fs);
 #ifdef DEBUG
 	if(result) cprintf("YES\n");
 	else cprintf("NO\n");
 #endif
-        if(result)
-                return result;
+	if(result)
+		return result;
 	return NULL;
 }
 
@@ -1892,7 +2096,7 @@ inode* ext2_open(const char* path, context* context)
 	if(num < 0) return NULL;
 
 	inode* ino = cache_reference(num, 
-		&context->inode_cache, context->fs);
+			&context->inode_cache, context->fs);
 #ifdef DEBUG
 	if(!ino) cprintf("ext2: WARNING: Inode cache full!\n");
 #endif
@@ -1913,7 +2117,7 @@ int ext2_close(inode* ino, context* context)
 	cprintf("ext2: closing file: %s\n", ino->path);
 #endif
 	return cache_dereference(ino, &context->inode_cache, 
-		context->fs);
+			context->fs);
 }
 
 int ext2_stat(inode* ino, struct stat* dst, context* context)
@@ -2334,7 +2538,7 @@ int ext2_unlink(const char* file, context* context)
 		 * TODO: all blocks belonging to this inode are
 		 * leaked here.
 		 */
-		
+
 		/* Clear the inode and set clobber */
 		if(cache_set_clobber(ino, &context->inode_cache))
 		{
@@ -2404,6 +2608,7 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 		/* convert ext2 dirent to dirent */
 		memset(dst_arr + x, 0, sizeof(struct dirent));
 		dst_arr[x].d_ino = diren.inode;
+		dst_arr[x].d_type = 0;
 		dst_arr[x].d_off = pos + bytes_read + diren.size;
 		dst_arr[x].d_reclen = sizeof(struct dirent);
 		strncpy(dst_arr[x].d_name, diren.name, FILE_MAX_NAME);
@@ -2432,7 +2637,7 @@ int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
 						0, EXT2_MAX_PATH);
 			}
 			cache_dereference(prepare, &context->inode_cache, 
-				context->fs);
+					context->fs);
 		}
 
 		bytes_read += diren.size;
@@ -2467,4 +2672,57 @@ int ext2_fsync(inode* ino, context* context)
 int ext2_fsstat(struct fs_stat* dst, context* context)
 {
 	return -1;
+}
+
+int ext2_fsck(context* context)
+{
+	int result;
+#ifdef DEBUG_FSCK
+	cprintf("+----------------------------------------------------+\n");
+	cprintf("+---------- Starting EXT2 File System FSCK ----------+\n");
+	cprintf("+----------------------------------------------------+\n");
+#endif
+
+	result = ext2_fsck_dir(context->root, context);
+
+#ifdef DEBUG_FSCK
+        cprintf("+----------------------------------------------------+\n");
+        cprintf("+------------------- Inode Bitmap -------------------+\n");
+        cprintf("+----------------------------------------------------+\n");
+
+        if(result)
+        {
+                int x;
+                for(x = 0;x < context->groupcount;x++)
+                {
+                        cprintf("Inode group %d: \n", x);
+                        ext2_print_inode_bitmap(x, context);
+                }
+        }
+
+        cprintf("+----------------------------------------------------+\n");
+        cprintf("+------------------- Block Bitmap -------------------+\n");
+        cprintf("+----------------------------------------------------+\n");
+
+        if(result)
+        {
+                int x;
+                for(x = 0;x < context->groupcount;x++)
+                {
+                        cprintf("Block group %d: \n", x);
+                        ext2_print_block_bitmap(x, context);
+                }
+        }
+
+#endif
+
+#ifdef DEBUG_FSCK
+	cprintf("+----------------------------------------------------+\n");
+	cprintf("+------------ FSCK Ended with result: %d ", result);
+	if(result < 0) cprintf("-----------+\n");
+	else cprintf("-------------+\n");
+	cprintf("+----------------------------------------------------+\n");
+#endif
+
+	return result;
 }
