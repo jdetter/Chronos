@@ -85,7 +85,7 @@ void fsman_init(void)
 	
 	/* Set our vsfs as the root file system. */
 	ext2_init(ext2);
-	ext2->fsck(ext2->context);
+	// ext2->fsck(ext2->context);
 	ext2->valid = 1;
 	ext2->type = 0;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
