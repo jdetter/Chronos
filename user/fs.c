@@ -72,6 +72,22 @@ int massive_file(void)
 	return 0;
 }
 
+int mkdir_test(void)
+{
+	unlink(path);
+	if(mkdir(path, 0777))
+	{
+		printf("Couldn't create directory\n");
+		return -1;
+	}
+	if(unlink(path))
+	{
+		printf("Couldn't remove directory!\n");
+		return -1;
+	}
+	return 0;
+}
+
 void test(int (*function)(void), char* message)
 {
 	printf("%s", message);
@@ -86,6 +102,7 @@ int main(int argc, char** argv)
 {
 	test(create_file,  "Creating file...\t\t\t\t\t\t\t");
 	test(remove_file,  "Deleting file...\t\t\t\t\t\t\t");
+	test(mkdir_test,   "Make Directory...\t\t\t\t\t\t\t\t");
 	test(massive_file, "Massive file...\t\t\t\t\t\t\t\t");
 
 	return 0;

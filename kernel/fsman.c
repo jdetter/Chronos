@@ -560,44 +560,26 @@ int fs_symlink(const char* file, const char* link)
 	return 0;
 }
 
-inode fs_mkdir(const char* path, uint flags, 
+int fs_mkdir(const char* path, uint flags, 
 		uint permissions, uint uid, uint gid)
 {
 	/* First resolve the path */
 	char dst_path[FILE_MAX_PATH];
 	int result = fs_path_resolve(path, dst_path, FILE_MAX_PATH);
 	if(result)
-		return NULL; /* Bad path */
+		return -1; /* Bad path */
 
 	/* Find the file system */
 	struct FSDriver* fs = fs_find_fs(dst_path);
 
 	char fs_path[FILE_MAX_PATH];
 	if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
-		return NULL;
+		return -1;
 
 	/* Try to create the directory */
 	if(fs->mkdir(fs_path, permissions, uid, gid, fs->context))
-		return NULL;
-	void* dir = fs->open(fs_path, fs->context);
-	if(dir == NULL)
-		return NULL; /* Bad path*/
-
-	/* Create the inode */
-	inode i = fs_find_inode();
-	if(i == NULL) return NULL; /* Out of free inodes */
-	i->inode_ptr = dir;
-
-	/* Parse the inode structure */
-	struct stat st;
-	fs->stat(dir, &st, fs->context);
-	memmove(&i->st, &st, sizeof(struct stat));
-
-	i->file_pos = 0;
-	i->references = 1;
-	fs_get_name(i->name, fs_path, FILE_MAX_NAME);
-
-	return i;
+		return -1;
+	return 0;
 }
 
 int fs_read(inode i, void* dst, uint sz, uint start)

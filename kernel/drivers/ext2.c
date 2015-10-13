@@ -2482,6 +2482,8 @@ int ext2_unlink(const char* file, context* context)
 	strncpy(parent_path, file, EXT2_MAX_NAME);
 	if(file_path_parent(parent_path))
 		return -1;
+	if(file_path_file(parent_path))
+		return -1;
 	char file_name[EXT2_MAX_NAME];
 	strncpy(file_name, file, EXT2_MAX_NAME);
 	if(file_path_name(file_name))

@@ -136,6 +136,7 @@ int main(int argc, char** argv)
 
 			if(S_ISREG(file_dir.st_mode) 
 				|| S_ISLNK(file_dir.st_mode)){
+				close(fd);
 				int removed = unlink(argv[j]);
 				if(removed == -1){
 					if(user_input){
