@@ -32,6 +32,7 @@ void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
 void __kernel_jmp__(uint entry);
 void __enable_paging__(uint* pgdir);
+void __enforce_kernel_readonly__(void);
 
 char* no_image = "Chronos.elf not found!\n";
 char* invalid = "Chronos.elf is invalid!\n";
@@ -68,6 +69,10 @@ int main(void)
 
 	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
 	__enable_paging__(k_pgdir);
+	cprintf(ok);
+
+	cprintf("Enforcing kernel readonly...\t\t\t\t\t\t");
+	__enforce_kernel_readonly__();
 	cprintf(ok);
 
 	/* Initilize the cache manager */
@@ -183,7 +188,14 @@ int main(void)
 			/* Load the section */
 			fs.read(chronos_inode, hd_addr, offset,
 				file_sz, fs.context);
-			/* By default, this section is rwx. */
+
+			/* Should this section be read only? */
+			if(!(curr_header.flags & ELF_PH_FLAG_W))
+			{
+				pgsreadonly((uint)hd_addr, 
+					(uint)hd_addr + needed_sz,
+					k_pgdir, 0);
+			}
 		}
 	}
 

@@ -1,3 +1,4 @@
+
 #include "types.h"
 #include "stdlock.h"
 #include "file.h"
@@ -815,6 +816,8 @@ int sys_sysconf(void)
 	long result = -1;
 	switch(name)
 	{
+		_SC_ARG_MAX: /* Maximum arguments for execve */
+			result = 64;
 
 		default:
 			cprintf("kernel: no such limit: %d\n", name);

@@ -294,6 +294,19 @@ uint pgreadonly(uint virt, pgdir* dir, uchar user)
 	return PGROUNDDOWN(page);
 }
 
+uint pgsreadonly(uint virt_start, uint virt_end, pgdir* dir, uchar user)
+{
+	virt_start = PGROUNDDOWN(virt_start);
+	virt_end = PGROUNDUP(virt_end);
+
+	uint addr = virt_start;
+	for(;addr < virt_end;addr += PGSIZE)
+		if(pgreadonly(addr, dir, user) == 0)
+			return -1;
+
+	return 0;
+}
+
 uint vm_memmove(void* dst, const void* src, uint sz, 
 		pgdir* dst_pgdir, pgdir* src_pgdir)
 {
@@ -366,8 +379,11 @@ void vm_copy_kvm(pgdir* dir)
 	for(x = UVM_KVM_S;x < PGROUNDDOWN(UVM_KVM_E); x+= PGSIZE)
 	{
 		uint page = findpg(x, 0, k_pgdir, 0);
+		uint flags = findpgflags(x, k_pgdir);
 		if(!page) continue;
 		mappage(page, x, dir, 0, 0);
+		if(!(flags & PGTBL_RW))
+			pgreadonly(x, dir, 0);
 	}
 
 	vm_pop_pgdir(save);

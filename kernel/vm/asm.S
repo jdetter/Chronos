@@ -3,6 +3,20 @@
 #include "vm.h"
 #include "x86.h"
 
+.globl __enforce_kernel_readonly__
+__enforce_kernel_readonly__:
+	pushl	%ebp
+	movl	%esp, %ebp
+
+	movl	%cr0, %eax
+	orl	$CR0_WP, %eax
+	movl	%eax, %cr0
+
+	movl	%ebp, %esp
+	popl	%ebp
+
+	ret
+
 /* __enable_paging__(uint* pgdir)*/
 #define CR0_PGENABLE (1<<31)
 .globl __enable_paging__
@@ -56,6 +70,12 @@ __check_interrupt__:
 .globl __get_cr2__
 __get_cr2__:
         movl    %cr2, %eax
+        ret
+
+# uint __get_cr0__(void)
+.globl __get_cr0__
+__get_cr0__:
+        movl    %cr0, %eax
         ret
 
 .globl __get_cr3__

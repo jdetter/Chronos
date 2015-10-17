@@ -338,6 +338,12 @@ uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags);
 uint pgreadonly(uint virt, pgdir* dir, uchar user);
 
 /**
+ * Set the range of pages from virt_start to virt_end to read only.
+ * returns 0 on success, 1 on failure.
+ */
+uint pgsreadonly(uint virt_start, uint virt_end, pgdir* dir, uchar user);
+
+/**
  * Free all pages in the page table and free the directory itself.
  */
 void freepgdir(pgdir* dir);

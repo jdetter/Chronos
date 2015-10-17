@@ -611,7 +611,7 @@ int sys_times(void)
 {
 	struct tms* buf;
 	/* buf is allowed to be null */
-	if(syscall_get_int((int*)buf, 0)) return -1;
+	if(syscall_get_int((int*)&buf, 0)) return -1;
 	if(buf && syscall_get_buffer_ptr((void**)&buf, sizeof(struct tms), 0))
 		return -1;
 

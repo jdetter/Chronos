@@ -27,6 +27,7 @@
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
+uint __get_cr0__(void);
 
 extern struct rtc_t k_time;
 extern struct proc* init_proc;
