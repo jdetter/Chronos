@@ -167,10 +167,18 @@ struct proc* spawn_tty(tty_t t)
 	return p;
 }
 
-uchar check_binary(const char* path)
+uchar check_binary_path(const char* path)
 {
-        inode process_file = fs_open(path, 0, 0, 0, 0);
-        if(process_file == NULL) return 1;
+	inode* ino = fs_open(path, O_RDONLY, 0, 0);
+	if(!ino) return -1;
+	uchar result = check_binary_inode(ino);
+	fs_close(ino);
+	return result;
+}
+
+uchar check_binary_inode(inode* ino)
+{
+	if(!ino) return -1;
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
@@ -188,33 +196,66 @@ uchar check_binary(const char* path)
         if(elf.e_machine != ELF_E_MACHINE_x86) return 1;
         if(elf.e_version != 1) return 1;
 
-	fs_close(process_file);
-
 	return 0;
 }
 
-uint load_binary(const char* path, struct proc* p)
+uint load_binary_path(const char* path, struct proc* p)
 {
-	inode process_file = fs_open(path, 0, 0, 0, 0);
-        if(process_file == NULL)
-		panic("Cannot find process executable.");
+	inode* ino = fs_open(path, O_RDONLY, 0644, p->uid, p->gid);
+	if(!ino) return 0;
+	uint result = load_binary(inode, p);
+	fs_close(ino);
+	return result;
+}
+
+
+uint load_binary_inode(inode* ino, struct proc* p)
+{
+	if(!ino || !p) return 0;
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
         fs_read(process_file, elf_buffer, 4, 0);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4))
-                panic("Elf magic is wrong");
+	{
+                cprintf("kernel: Elf magic is wrong\n");
+		return 0;
+	}
 
 	/* Load the entire elf header. */
         struct elf32_header elf;
         fs_read(process_file, &elf, sizeof(struct elf32_header), 0);
         /* Check class */
-        if(elf.exe_class != 1) panic("Binary not executable");
-        if(elf.version != 1) panic("Binary wrong ELF version");
-        if(elf.e_type != ELF_E_TYPE_EXECUTABLE) panic("Binary wrong exe type");
-        if(elf.e_machine != ELF_E_MACHINE_x86) panic("Binary wrong ISA");
-        if(elf.e_version != 1) panic("Binary wrong machine version");
+        if(elf.exe_class != 1) 
+	{
+		cprintf("Binary not executable");
+		return 0;
+	}
+
+        if(elf.version != 1) 
+	{
+		cprintf("Binary wrong ELF version");
+		return 0;
+	}
+
+        if(elf.e_type != ELF_E_TYPE_EXECUTABLE) 
+	{
+		cprintf("Binary wrong exe type");
+		return 0;
+	}
+
+        if(elf.e_machine != ELF_E_MACHINE_x86) 
+	{
+		cprintf("Binary wrong ISA");
+		return 0;
+	}
+
+        if(elf.e_version != 1) 
+	{
+		cprintf("Binary wrong machine version");
+		return 0;
+	}
 
 	uint elf_end = 0;
         uint elf_entry = elf.e_entry;
@@ -265,7 +306,15 @@ uint load_binary(const char* path, struct proc* p)
 
                         /* Load the section */
                         fs_read(process_file, hd_addr, file_sz, offset);
-                        /* By default, this section is rwx. */
+
+			/* Should this section be read only? */
+			if(!(curr_header.flags & ELF_PH_FLAG_W))
+			{
+				pgsreadonly((uint)hd_addr, 
+					(uint)hd_addr + mem_sz,
+					p->pgdir, 0);
+
+			}
                 }
         }
 
@@ -273,7 +322,6 @@ uint load_binary(const char* path, struct proc* p)
 	p->entry_point = elf_entry;
 	p->code_start = code_start;
 	p->code_end = code_end;
-	fs_close(process_file);
 
 	return elf_end;
 }

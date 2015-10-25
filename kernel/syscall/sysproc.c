@@ -243,12 +243,13 @@ int execve(const char* path, char* const argv[], char* const envp[])
 
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
+
 	/* Does the binary look ok? */
-	if(check_binary(path))
+	if(check_binary_path(path))
 	{
 		/* see if it is available in /bin */
 		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(check_binary(path))
+		if(check_binary_path(path))
 		{
 			/* It really doesn't exist. */
 			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);

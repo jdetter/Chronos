@@ -24,7 +24,8 @@
 #include "x86.h"
 #include "panic.h"
 
-struct ramfs_context {
+struct ramfs_context 
+{
 	uchar allocated; /* Whether or not this context is in use. */
 	uint start_addr; /* Address of first sector (safety)*/
 	uint end_addr; /* Last address (safety) */
