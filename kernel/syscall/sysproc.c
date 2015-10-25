@@ -363,7 +363,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	switch_uvm(rproc);
 
 	/* load the binary if possible. */
-	uint load_result = load_binary(program_path, rproc);
+	uint load_result = load_binary_path(program_path, rproc);
 	if(load_result == 0)
 	{
 		memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
@@ -571,8 +571,8 @@ int sys_chdir(void)
 	char dir_path[MAX_PATH_LEN];
 	char tmp_path[MAX_PATH_LEN];
 	strncpy(dir_path, dir, MAX_PATH_LEN);
-	//if(file_path_dir(dir_path, MAX_PATH_LEN))
-	//	return -1;
+	if(file_path_dir(dir_path, MAX_PATH_LEN))
+		return -1;
 	if(fs_path_resolve(dir_path, tmp_path, MAX_PATH_LEN))
 		return -1;
 	if(strlen(tmp_path) < 1) return -1;

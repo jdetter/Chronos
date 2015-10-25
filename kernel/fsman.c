@@ -162,10 +162,13 @@ int fs_add_inode_reference(struct inode_t* i)
 	return 0;
 }
 
+
+
 /**
  * Simplify the given path so that it doesn't contain any . or ..s
  * also check to make sure that the path is valid. Returns 1 if the
- * path has grammar errors. Returns 0 on success.
+ * path has grammar errors. Returns 0 on success. The resulting
+ * path will not end with a slash unless it is the root '/'
  */
 int fs_path_resolve(const char* path, char* dst, uint sz)
 {

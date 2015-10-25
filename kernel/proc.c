@@ -153,12 +153,12 @@ struct proc* spawn_tty(tty_t t)
         p->tf->esp = (uint)ustack;
 
 	/* Load the binary */
-	uint end = load_binary("/bin/init", p);
+	uint end = load_binary_path("/bin/init", p);
 	p->heap_start = PGROUNDUP(end);
 	p->heap_end = p->heap_start;
 
 	/* Set the mmap area start */
-	rproc->mmap_end = rproc->mmap_start = 
+	p->mmap_end = p->mmap_start = 
 		PGROUNDUP(UVM_TOP) - UVM_MIN_STACK;
 
 	p->state = PROC_READY;
@@ -169,26 +169,26 @@ struct proc* spawn_tty(tty_t t)
 
 uchar check_binary_path(const char* path)
 {
-	inode* ino = fs_open(path, O_RDONLY, 0, 0);
+	inode ino = fs_open(path, O_RDONLY, 0644, 0, 0);
 	if(!ino) return -1;
 	uchar result = check_binary_inode(ino);
 	fs_close(ino);
 	return result;
 }
 
-uchar check_binary_inode(inode* ino)
+uchar check_binary_inode(inode ino)
 {
 	if(!ino) return -1;
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
-        fs_read(process_file, elf_buffer, 4, 0);
+        fs_read(ino, elf_buffer, 4, 0);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4)) return 1;
 
         /* Load the entire elf header. */
         struct elf32_header elf;
-        fs_read(process_file, &elf, sizeof(struct elf32_header), 0);
+        fs_read(ino, &elf, sizeof(struct elf32_header), 0);
         /* Check class */
         if(elf.exe_class != 1) return 1;
         if(elf.version != 1) return 1;
@@ -201,21 +201,21 @@ uchar check_binary_inode(inode* ino)
 
 uint load_binary_path(const char* path, struct proc* p)
 {
-	inode* ino = fs_open(path, O_RDONLY, 0644, p->uid, p->gid);
+	inode ino = fs_open(path, O_RDONLY, 0644, p->uid, p->gid);
 	if(!ino) return 0;
-	uint result = load_binary(inode, p);
+	uint result = load_binary_inode(ino, p);
 	fs_close(ino);
 	return result;
 }
 
 
-uint load_binary_inode(inode* ino, struct proc* p)
+uint load_binary_inode(inode ino, struct proc* p)
 {
 	if(!ino || !p) return 0;
 
         /* Sniff to see if it looks right. */
         uchar elf_buffer[4];
-        fs_read(process_file, elf_buffer, 4, 0);
+        fs_read(ino, elf_buffer, 4, 0);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4))
 	{
@@ -225,7 +225,7 @@ uint load_binary_inode(inode* ino, struct proc* p)
 
 	/* Load the entire elf header. */
         struct elf32_header elf;
-        fs_read(process_file, &elf, sizeof(struct elf32_header), 0);
+        fs_read(ino, &elf, sizeof(struct elf32_header), 0);
         /* Check class */
         if(elf.exe_class != 1) 
 	{
@@ -267,7 +267,7 @@ uint load_binary_inode(inode* ino, struct proc* p)
         {
                 int header_loc = elf.e_phoff + (x * elf.e_phentsize);
                 struct elf32_program_header curr_header;
-                fs_read(process_file, &curr_header,
+                fs_read(ino, &curr_header,
                         sizeof(struct elf32_program_header),
                         header_loc);
                 /* Skip null program headers */
@@ -305,14 +305,14 @@ uint load_binary_inode(inode* ino, struct proc* p)
 				code_end = (uint)(hd_addr + mem_sz);
 
                         /* Load the section */
-                        fs_read(process_file, hd_addr, file_sz, offset);
+                        fs_read(ino, hd_addr, file_sz, offset);
 
 			/* Should this section be read only? */
 			if(!(curr_header.flags & ELF_PH_FLAG_W))
 			{
 				pgsreadonly((uint)hd_addr, 
 					(uint)hd_addr + mem_sz,
-					p->pgdir, 0);
+					p->pgdir, 1);
 
 			}
                 }

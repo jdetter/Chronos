@@ -44,7 +44,7 @@ void toupper(char* str)
 	}
 }
 
-uint strncpy(char* dst, const char* src, uint sz)
+char* strncpy(char* dst, const char* src, uint sz)
 {
 	int x;
 	for(x=0; x<sz; x++) /* iterates through source until reaches max memory size */
@@ -56,7 +56,7 @@ uint strncpy(char* dst, const char* src, uint sz)
 		}
 	}
 	dst[sz-1]=0; /* ensures last element is null char */
-	return x; /* returns number of bytes */
+	return dst; /* returns number of bytes */
 }
 
 uint strncat(char* str1, char* str2, uint sz)

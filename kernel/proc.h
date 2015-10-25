@@ -163,7 +163,7 @@ uchar check_binary_path(const char* path);
  * Check to see if a file is an executable. Returns 0 if the file
  * is an ELF executable, non zero otherwise.
  */
-uchar check_binary_inode(const char* path);
+uchar check_binary_inode(inode ino);
 
 /**
  * Load the binary with a given path into the address space of process p. 
@@ -177,7 +177,7 @@ uint load_binary_path(const char* path, struct proc* p);
  * file is left open after the operation is complete. Returns the end
  * of the binary in memory on sucess, otherwise returns 0.
  */
-uint load_binary_inode(const char* path, struct proc* p);
+uint load_binary_inode(inode ino, struct proc* p);
 
 /**
  * Returns a pointer with the process id pid. If there is no such process,
