@@ -686,6 +686,15 @@ int sys_getegid(void){
         return rproc->egid;
 }
 
+/* int setegid(gid_t gid) */
+int sys_setegid(void)
+{
+	gid_t g;
+	if(syscall_get_int((int*)&g, 0)) return -1;
+	rproc->egid = g;
+	return 0;
+}
+
 /* int setgid(gid_t gid)*/
 int sys_setgid(void){
 	uint id;

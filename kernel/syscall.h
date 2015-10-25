@@ -155,14 +155,14 @@ int sys_setresgid(void);
 int sys_vfork(void);
 int sys_select(void);
 int sys_alarm(void);
-
 int sys_sigaction(void);
 int sys_sigprocmask(void);
 int sys_sigpending(void);
 int sys_signal(void);
 int sys_sigsuspend(void);
+int sys_setegid(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_sigsuspend /* System call with the greatest value*/
+#define SYS_MAX SYS_setegid /* System call with the greatest value*/
 
 #endif

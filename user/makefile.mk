@@ -33,8 +33,9 @@ USER_TARGETS := \
 	ls \
 	rm \
 	mkdir \
-	syscall-test \
 	opendir-test
+
+#	syscall-test \
 
 # stat
 
@@ -70,8 +71,8 @@ USER_BUILD := kernel/file.o kernel/stdlock.o user/syscall.o user/bin $(USER_BINA
 	
 user/bin: 
 	mkdir -p user/bin
-	cp kernel/include/stdlock.h user/bin/
 	cp kernel/include/file.h user/bin/
+	cp kernel/include/stdlock.h user/bin/
 
 user-symbols: $(USER_SYMBOLS)
 

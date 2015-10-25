@@ -70,7 +70,7 @@ struct dirent
  * file descriptor fd. Returns the number of bytes read on success, 0
  * on end of diretory and -1 on error.
  */
-int getdents(int fd, void* dp, int count);
+int getdents(int fd, void* dp, unsigned int count);
 
 /**
  * Open a diretory for reading.

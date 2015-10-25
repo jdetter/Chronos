@@ -93,6 +93,7 @@
 #define SYS_sigpending	0x56
 #define SYS_signal	0x57
 #define SYS_sigsuspend	0x58
+#define SYS_setegid	0x59
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);

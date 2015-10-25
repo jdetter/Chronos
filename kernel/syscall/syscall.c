@@ -117,7 +117,8 @@ int (*syscall_table[])(void) = {
 	sys_sigprocmask,
 	sys_sigpending,
 	sys_signal,
-	sys_sigsuspend
+	sys_sigsuspend,
+	sys_setegid
 };
 
 char* syscall_table_names[] = {
@@ -209,7 +210,8 @@ char* syscall_table_names[] = {
         "sigprocmask",
         "sigpending",
         "signal",
-        "sigsuspend"
+        "sigsuspend",
+        "setegid"
 
 };
 

@@ -73,7 +73,6 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	echo "Super user privileges are needed for loop mounting..."
 	sudo echo ""
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
-# Create the file system
 	echo "yes" | mkfs.ext2 ./ext2.img
 	rm -rf tmp
 	mkdir -p tmp
