@@ -5,11 +5,14 @@
  *
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "x86.h"
 #include "file.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "fsman.h"

@@ -4,7 +4,7 @@
  * Driver for the 80*86 Programmable Interval Timer.
  */
 
-#include "types.h"
+#include "kern/types.h"
 #include "x86.h"
 #include "pic.h"
 

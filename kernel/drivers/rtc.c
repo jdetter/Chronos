@@ -4,9 +4,13 @@
  * Driver for the Real Time Clock.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "cmos.h"
-#include "stdlib.h"
 #include "stdlock.h"
 #include "rtc.h"
 #include "panic.h"

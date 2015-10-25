@@ -4,7 +4,11 @@
  * IO Scheduler.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "file.h"
 #include "stdarg.h"
 #include "stdlock.h"
@@ -15,7 +19,6 @@
 #include "pipe.h"
 #include "proc.h"
 #include "panic.h"
-#include "stdlib.h"
 #include "cmos.h"
 #include "rtc.h"
 #include "ktime.h"

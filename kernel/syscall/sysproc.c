@@ -1,4 +1,13 @@
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/times.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "syscall.h"
 #include "file.h"
 #include "stdlock.h"
@@ -9,7 +18,6 @@
 #include "proc.h"
 #include "x86.h"
 #include "chronos.h"
-#include "stdlib.h"
 #include "vm.h"
 #include "trap.h"
 #include "panic.h"
@@ -745,7 +753,7 @@ int sys_getresgid(void){
 }
 
 /* pid_t getsid(pid_t pid) */
-int getsid(void){
+int sys_getsid(void){
 	pid_t pid;
 	syscall_get_int((int*)&pid, 0);
 
@@ -759,7 +767,7 @@ int getsid(void){
 	return -1;
 }
 
-int setsid(void){
+int sys_setsid(void){
 	if(rproc->sid == rproc->pid)
 		return -1; /* Already session leader */
 	rproc->sid = rproc->pid;
@@ -893,7 +901,7 @@ int sys_setresgid(void){
 
 }
 /* int setreuid(uid_t ruid, uid_t euid)*/
-int setreuid(void){
+int sys_setreuid(void){
 	uid_t ruid;
 	uid_t euid;
 	if(syscall_get_int((int*)&ruid, 0)) return -1;
@@ -934,7 +942,7 @@ int setreuid(void){
 }
 
 /*int setregid(gid_t rgid, gid_t egid);*/
-int setregid(void){
+int sys_setregid(void){
 	uid_t rgid;
 	uid_t egid;
 	if(syscall_get_int((int*)&rgid, 0)) return -1;

@@ -4,11 +4,12 @@
  * Functions for printing characters to a terminal screen.
  *
  */
+#include <stdlib.h>
+#include <string.h>
 
-#include "types.h"
+#include "kern/types.h"
 #include "x86.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "console.h"
 
 #define MAX_NUM 15

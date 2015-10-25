@@ -1,6 +1,8 @@
-#include "types.h"
+#include <string.h>
+#include <stdlib.h>
+
+#include "kern/types.h"
 #include "stdlock.h"
-#include "stdlib.h"
 #include "cpu.h"
 #include "x86.h"
 #include "pic.h"

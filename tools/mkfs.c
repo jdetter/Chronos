@@ -5,10 +5,9 @@
  */
 
 #define __LINUX_DEFS__
-#include "types.h"
+#include "kern/types.h"
 #undef NULL
 
-#include <types.h>
 #include <sys/types.h>
 #include "file.h"
 #include "stdlock.h"

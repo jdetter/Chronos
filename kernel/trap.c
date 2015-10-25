@@ -6,7 +6,12 @@
  * Trap handling functions.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "idt.h"
 #include "trap.h"
 #include "file.h"
@@ -18,7 +23,6 @@
 #include "pic.h"
 #include "pit.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "syscall.h"
 #include "tty.h"
 #include "fsman.h"
@@ -187,7 +191,7 @@ void trap_handler(struct trap_frame* tf)
 			break;
 		case TRAP_PF:
 			if(trap_pf(__get_cr2__())){
-				tty_printf(rproc->t, "%s: Seg Fault: 0x%x\n",
+				cprintf("%s: Seg Fault: 0x%x\n",
 						rproc->name, 
 						__get_cr2__());
 				_exit(1);

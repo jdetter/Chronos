@@ -1,4 +1,4 @@
-#include "types.h"
+#include "kern/types.h"
 #include "syscall.h"
 
 /**

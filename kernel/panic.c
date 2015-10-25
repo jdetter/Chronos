@@ -4,13 +4,16 @@
  * Kernel debugging / output functions.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "tty.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "console.h"
 
 extern uint video_mode;
@@ -57,7 +60,7 @@ void cprintf(char* fmt, ...)
                         {
                                 /* Print in decimal */
                                 char buffer[32];
-                                itoa(*((int*)argument), buffer, 32, 10);
+                                kitoa(*((int*)argument), buffer, 32, 10);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);
@@ -66,7 +69,7 @@ void cprintf(char* fmt, ...)
                         {
                                 /* Print in hex */
                                 char buffer[32];
-                                itoa(*((int*)argument), buffer, 32, 16);
+                                kitoa(*((int*)argument), buffer, 32, 16);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);
@@ -88,7 +91,7 @@ void cprintf(char* fmt, ...)
                         {
                                 /* Print in binary */
                                 char buffer[128];
-                                itoa(*((int*)argument), buffer, 32, 2);
+                                kitoa(*((int*)argument), buffer, 32, 2);
                                 uint y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);

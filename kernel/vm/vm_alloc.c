@@ -4,13 +4,16 @@
  * Virtual memory manager (page allocator).
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "x86.h"
 #include "cpu.h"
 #include "file.h"
 #include "stdlock.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "devman.h"
 #include "fsman.h"
 #include "tty.h"

@@ -145,11 +145,6 @@ void tty_disable(tty_t t);
 void tty_putc(tty_t t, char c);
 
 /**
- * Print the formatted string at the current cursor position.
- */
-void tty_printf(tty_t t, char* fmt, ...);
-
-/**
  * Print the entire video memory to the screen (graphic mode only).
  */
 void tty_print_screen(tty_t t, char* buffer);

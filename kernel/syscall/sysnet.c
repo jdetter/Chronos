@@ -1,4 +1,8 @@
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdlock.h"
 #include "file.h"
 #include "syscall.h"
@@ -6,7 +10,6 @@
 #include "fsman.h"
 #include "netman.h"
 #include "syscall.h"
-#include "stdlib.h"
 #include "chronos.h"
 #include "pipe.h"
 #include "tty.h"

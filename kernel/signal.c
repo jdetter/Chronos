@@ -4,10 +4,17 @@
  * Functions for handling signaling processes.
  */
 
-#include "types.h"
+#include <sys/types.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
+#include "kern/signal.h"
 #include "x86.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "stdlock.h"
 #include "trap.h"
 #include "file.h"
@@ -20,7 +27,8 @@
 #include "vm.h"
 #include "cpu.h"
 #include "chronos.h"
-#include "signal.h"
+
+#include <signal.h>
 
 extern struct proc* rproc;
 extern struct proc ptable;
@@ -62,6 +70,9 @@ static int default_actions[] =
 	SIGDEFAULT_TERM,	/* 30 = SIGPWR */
 	SIGDEFAULT_CORE 	/* 31 = SIGSYS */	
 };
+
+void* mmap(void* hint, uint sz, int protection,
+        int flags, int fd, off_t offset);
 
 /* Signal table */
 static struct signal_t sigtable[MAX_SIGNAL];
@@ -199,7 +210,7 @@ int sig_handle(void)
 
 	struct signal_t* sig = rproc->sig_queue;
 	void (*sig_handler)(int sig_num) = 
-		rproc->sigactions[sig->signum].handlers.sigaction;
+		rproc->sigactions[sig->signum].sa_handler;
 	uchar caught = 0; /* Did we catch the signal? */
 	uchar terminated = 0; /* Did we get terminated? */
 	uchar stopped = 0; /* Did we get stopped? */

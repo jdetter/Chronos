@@ -10,12 +10,14 @@
 #include <string.h>
 #include <dirent.h>
 #else
-#include "stdlib.h"
+#include <string.h>
+#include <stdlib.h>
+#include "kern/stdlib.h"
 #endif
 
 #include "file.h"
 #include "stdlock.h"
-#include "types.h"
+#include "kern/types.h"
 #include "fsman.h"
 
 static int disk_read(void* dst, uint start, uint sz, 

@@ -1,16 +1,19 @@
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "x86.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "elf.h"
-#include "stdarg.h"
+#include "kern/stdarg.h"
 #include "serial.h"
-#include "stdlib.h"
 #include "fsman.h"
 #include "ata.h"
 #include "stdlib.h"
-#include "stdmem.h"
 #include "console.h"
 #include "keyboard.h"
 #include "ext2.h"
@@ -216,7 +219,7 @@ void cprintf(char* fmt, ...)
 	char buffer[128];
 	va_list list;
 	va_start(&list, (void**)&fmt);
-	va_snprintf(buffer, 128, &list, fmt);
+	//vasnprintf(buffer, 128, &list);
 	if(serial)
 	{
 		serial_write(buffer, strlen(buffer));

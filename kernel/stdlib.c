@@ -7,10 +7,9 @@
  * Basic set of standard library functions.
  */
 
-#include "types.h"
+#include "kern/types.h"
+#include "kern/stdarg.h"
 #include "x86.h"
-#include "stdarg.h"
-#include "stdlib.h"
 
 uint strlen(const char* str)
 {
@@ -230,7 +229,7 @@ float atof(char* str)
 	return 0;
 }
 
-void itoa(int val_signed, char* dst_c, uint sz, uint radix)
+void kitoa(int val_signed, char* dst_c, uint sz, uint radix)
 {
 	char dst[128];
 	memset(dst, 0, 128);
@@ -300,7 +299,7 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
                         {
                                 char num_buff[64];
                                 int val = (int)va_arg(list, arg);
-                                itoa(val, num_buff, 64, 10);
+                                kitoa(val, num_buff, 64, 10);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
                                         dst[dst_index + num_pos] =
@@ -311,7 +310,7 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
                         {
                                 char num_buff[64];
                                 int val = (int)va_arg(list, arg);
-                                itoa(val, num_buff, 64, 16);
+                                kitoa(val, num_buff, 64, 16);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
                                         dst[dst_index + num_pos] =

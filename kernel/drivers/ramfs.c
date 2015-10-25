@@ -7,11 +7,13 @@
  * every time the system is booted).
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
 #include "file.h"
 #include "stdlock.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "devman.h"
 #include "fsman.h"
 #include "tty.h"

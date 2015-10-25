@@ -1,6 +1,8 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
+#include <sys/types.h>
+
 #undef FILE_MAX_PATH
 #define FILE_MAX_PATH	256
 #undef FILE_MAX_NAME

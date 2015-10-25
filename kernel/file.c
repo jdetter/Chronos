@@ -11,9 +11,12 @@ typedef unsigned long ulong;
 #define _strncpy(dst, src, sz) strlen(strncpy(dst, src, sz))
 
 #else
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #define _strncpy strncpy
 #endif
 

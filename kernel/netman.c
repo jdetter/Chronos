@@ -1,5 +1,8 @@
-#include "types.h"
-#include "stdlib.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "netman.h"
 
 char hostname[HOSTNAME_LEN];

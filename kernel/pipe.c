@@ -5,9 +5,12 @@
  * communication
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "stdlock.h"
 #include "pipe.h"
 #include "file.h"

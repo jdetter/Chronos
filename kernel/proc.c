@@ -4,7 +4,11 @@
  * Functions for handling processes.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "file.h"
 #include "elf.h"
 #include "stdlock.h"
@@ -18,7 +22,6 @@
 #include "trap.h"
 #include "panic.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "x86.h"
 #include "syscall.h"
 #include "chronos.h"

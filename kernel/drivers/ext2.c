@@ -54,9 +54,12 @@ int log2_linux(uint value)
 
 #else
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "panic.h"
 
 #endif

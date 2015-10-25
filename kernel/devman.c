@@ -5,7 +5,12 @@
  * assigns them drivers and nodes on /dev.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "x86.h"
 #include "file.h"
 #include "stdlock.h"

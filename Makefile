@@ -78,12 +78,16 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	mkdir -p tmp
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
-	cp -R $(TARGET_SYSROOT)/* ./tmp
+	cp -R $(TARGET_SYSROOT)/* ./tmp/
+	cp ./sysskel/* ./tmp/
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/
 	mkdir -p ./tmp/boot
 	cp ./kernel/chronos.o ./tmp/boot/chronos.elf
-	sudo umount ./tmp
+	cd tmp
+	sync
+	cd ..
+	sudo umount -l ./tmp
 	rm -rf tmp
 
 ext2-grub.img:

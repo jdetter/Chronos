@@ -5,11 +5,13 @@
  * eventually be replaced by all macros.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
+#include "kern/stdarg.h"
 #include "x86.h"
-#include "stdarg.h"
-#include "stdlib.h"
-#include "stdmem.h"
 
 void va_start(va_list* list, void** first_arg)
 {

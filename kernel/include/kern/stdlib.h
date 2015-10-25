@@ -1,3 +1,5 @@
+#include "kern/types.h"
+
 #ifndef _STDLIB_H_
 #define _STDLIB_H_
 
@@ -6,7 +8,6 @@
 #define B4_ROUNDDOWN(addr)	((uint)addr) & ~(3)
 
 /* Dependant headers */
-#include "types.h"
 #include "stdarg.h"
 
 /**
@@ -79,12 +80,6 @@ int atoi(char* str, int radix);
 float atof(char* str);
 
 /**
- * Convert an integer to a string. This function will not modify more than sz
- * bytes of dst_c and will return a null terminated string.
- */
-void itoa(int val_signed, char* dst_c, uint sz, uint radix);
-
-/**
  * See printf function. This does the same thing except with a va_args list.
  */
 int va_snprintf(char* dst, uint sz, va_list* list, char* fmt);
@@ -108,15 +103,26 @@ int trim(char* str);
  */
 int ascii_char(char c);
 
+#endif
+
+#ifndef _KERN_STDLIB_H_
+#define _KERN_STDLIB_H_
+
 /**
- * Convert a bcd coded byte into its binary equivalent.
+ * Convert an integer to a string. This function will not modify more than sz
+ * bytes of dst_c and will return a null terminated string.
  */
-uchar bcdtobin(uchar val);
+void kitoa(int val_signed, char* dst_c, uint sz, uint radix);
 
 /**
  * Calculate the log base 2 of a number. Returns -1 if the
  * number is not a power of 2 (there is a remainder).
  */
 int log2(uint val);
+
+/**
+ * Convert a bcd coded byte into its binary equivalent.
+ */
+uchar bcdtobin(uchar val);
 
 #endif

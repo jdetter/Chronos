@@ -1,5 +1,10 @@
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
-#include "types.h"
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdlock.h"
 #include "file.h"
 #include "devman.h"
@@ -7,7 +12,6 @@
 #include "tty.h"
 #include "pipe.h"
 #include "syscall.h"
-#include "stdlib.h"
 #include "chronos.h"
 #include "proc.h"
 #include "panic.h"
@@ -546,7 +550,7 @@ int sys_fchmod(void)
 	mode_t mode;
 
 	if(syscall_get_int(&fd, 0)) return -1;
-	if(syscall_get_int(&mode, 1)) return -1;
+	if(syscall_get_int((int*)&mode, 1)) return -1;
 
 	if(fd < 0) return -1;
 	if(fd >= MAX_FILES) return -1;
@@ -569,8 +573,8 @@ int sys_fchown(void)
 	gid_t group;
 
 	if(syscall_get_int(&fd, 0)) return -1;
-	if(syscall_get_short(&owner, 1)) return -1;
-	if(syscall_get_short(&group, 2)) return -1;
+	if(syscall_get_short((short*)&owner, 1)) return -1;
+	if(syscall_get_short((short*)&group, 2)) return -1;
 
 	if(fd < 0) return -1;
 	if(fd >= MAX_FILES) return -1;

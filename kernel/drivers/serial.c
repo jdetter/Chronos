@@ -4,7 +4,7 @@
  * Driver for Serial connections.
  */
 
-#include "types.h"
+#include "kern/types.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"

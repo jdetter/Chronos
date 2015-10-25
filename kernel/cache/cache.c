@@ -3,7 +3,8 @@
  */
 
 #ifdef __LINUX__
-#include "types.h"
+#include <sys/types.h>
+#include "kern/types.h"
 #include "stdlock.h"
 
 #include <stdlib.h>
@@ -20,9 +21,11 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #define log2(val) log2_linux(val)
 #else
-#include "types.h"
+#include <string.h>
+#include <stdlib.h>
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "stdlock.h"
-#include "stdlib.h"
 #include "panic.h"
 #endif
 

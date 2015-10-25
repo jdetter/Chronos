@@ -1,10 +1,13 @@
-#include "types.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "file.h"
 #include "pic.h"
 #include "pit.h"
 #include "stdarg.h"
-#include "stdlib.h"
-#include "stdmem.h"
 #include "stdlock.h"
 #include "fsman.h"
 #include "devman.h"

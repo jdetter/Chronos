@@ -5,7 +5,7 @@
  *
  */
 
-#include "types.h"
+#include "kern/types.h"
 #include "x86.h"
 #include "panic.h"
 #include "pic.h"

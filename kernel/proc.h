@@ -2,7 +2,8 @@
 #define _PROC_H_
 
 /* Dependant headers */
-#include "signal.h"
+#include <signal.h>
+#include "kern/signal.h"
 #include "trap.h"
 
 /* The amount of processes in the ptable */

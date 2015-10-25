@@ -1,5 +1,5 @@
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#ifndef _KERN_TYPES_H_
+#define _KERN_TYPES_H_
 
 /**
  * Because this file is always the first include in every
@@ -24,30 +24,30 @@ typedef unsigned long long int uint_64;
 #ifndef __LINUX__
 /* Types that conflict with the Linux definitions*/
 
-typedef unsigned int off_t; /* Used to represent file offsets */
-typedef unsigned int size_t; /* Used to represent the size of an object. */
-typedef signed short uid_t; /* User id*/
-typedef signed short gid_t; /* Group id*/
+// typedef unsigned int off_t; /* Used to represent file offsets */
+// typedef unsigned int size_t; /* Used to represent the size of an object. */
+// typedef signed short uid_t; /* User id*/
+// typedef signed short gid_t; /* Group id*/
 
 /* File permissions */
-typedef signed int mode_t;
+// typedef signed int mode_t;
 
-typedef signed int pid_t; /* Process ID */
-typedef signed int clock_t;
+// typedef signed int pid_t; /* Process ID */
+// typedef signed int clock_t;
 
-typedef unsigned long sigset_t; /* Signal set */
+// typedef unsigned long sigset_t; /* Signal set */
 
 /* NULL */
-#define NULL ((void*)0)
+// #define NULL ((void*)0)
 
 /* Some POSIX definitions: */
-typedef uint_16 dev_t;
+/*typedef uint_16 dev_t;
 typedef uint_16 ino_t;
 typedef uint_16 nlink_t;
 typedef unsigned int blksize_t;
 typedef unsigned int blkcnt_t;
 typedef signed int time_t;
-typedef signed int suseconds_t;
+typedef signed int suseconds_t; */
 
 #endif
 

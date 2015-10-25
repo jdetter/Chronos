@@ -48,13 +48,14 @@ KERNEL_DRIVERS := \
 	pit \
 	serial \
 	console \
-        vsfs \
         ext2 \
 	ramfs \
 	cmos \
 	rtc \
 	diskio \
 	raid
+
+#        vsfs 
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))

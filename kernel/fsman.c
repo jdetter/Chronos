@@ -5,17 +5,19 @@
  * operations.
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "fsman.h"
-#include "stdlock.h"
 #include "vsfs.h"
 #include "ata.h"
 #include "panic.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "pipe.h"
 #include "tty.h"
 #include "chronos.h"
@@ -172,7 +174,7 @@ int fs_path_resolve(const char* path, char* dst, uint sz)
 	int dst_pos = 0;
 	memset(dst, 0, sz);
 	if(path[0] != '/')
-		dst_pos = strncpy(dst, rproc->cwd, sz);
+		dst_pos = strlen(strncpy(dst, rproc->cwd, sz));
 	int dots = 0;
 	int slashes = 0;
 	for(path_pos = 0; 

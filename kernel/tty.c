@@ -7,7 +7,10 @@
  *
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
@@ -16,7 +19,6 @@
 #include "serial.h"
 #include "console.h"
 #include "stdarg.h"
-#include "stdmem.h"
 #include "stdlib.h"
 #include "keyboard.h"
 #include "iosched.h"
@@ -437,29 +439,6 @@ void tty_scroll(tty_t t)
 	}
 	memset(buffer + x * bpr, 0, bpr);
 	tty_print_screen(t, t->buffer);
-}
-
-void tty_printf(tty_t t, char* fmt, ...)
-{
-	va_list list;
-	va_start(&list, (void**)&fmt);
-	char buffer[1024];
-	memset(buffer, 0, 1024);
-	va_snprintf(buffer, 1024, &list, fmt);
-	if(t->type==TTY_TYPE_COLOR||t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_SERIAL)
-	{
-		int i;
-		for(i=0; i <strlen(buffer); i++)
-		{
-			tty_putc(t, buffer[i]);
-		}
-	}
-	else
-	{
-		panic("TTY invalid graphics mode");
-	}
-
-	va_end(&list);
 }
 
 void tty_print_screen(tty_t t, char* buffer)

@@ -4,7 +4,11 @@
  * Virtual memory functions for 80*86
  */
 
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include <kern/stdlib.h>
 #include "x86.h"
 #include "asm.h"
 #include "file.h"
@@ -18,7 +22,6 @@
 #include "proc.h"
 #include "vm.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "panic.h"
 #include "console.h"
 

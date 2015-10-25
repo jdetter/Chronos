@@ -22,11 +22,13 @@ int log2_linux(uint value); /* defined in ext2.c*/
 
 #else
 
-#include "stdlib.h"
+#include <stdlib.h>
+#include <string.h>
+#include "kern/stdlib.h"
 
 #endif
 
-#include "types.h"
+#include "kern/types.h"
 #include "x86.h"
 #include "stdlock.h"
 #include "file.h"

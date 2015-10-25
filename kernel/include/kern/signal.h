@@ -1,5 +1,7 @@
-#ifndef _SIGNAL_H_
-#define _SIGNAL_H_
+#ifndef _KERN_SIGNAL_H_
+#define _KERN_SIGNAL_H_
+
+#include <signal.h>
 
 #define MAX_SIGNAL 64 /* Size of the signal table */
 
@@ -25,27 +27,16 @@
 
 struct signal_t
 {
-	uchar allocated; /* Whether or not this entry is allocated. */
-	uchar default_action; /* Default action */
-	uchar catchable; /* Can this signal be caught? */
-	int signum; /* The number of the signal */
+        uchar allocated; /* Whether or not this entry is allocated. */
+        uchar default_action; /* Default action */
+        uchar catchable; /* Can this signal be caught? */
+        int signum; /* The number of the signal */
 
-	/**
-	 * If this signal is part of a queue, this is a pointer to the next
-	 * signal in the queue.
-	 */
-	struct signal_t* next;
-};
-
-struct siginfo_t;
-
-struct sigaction {
-  int         sa_flags;
-  sigset_t    sa_mask;
-  union {
-    void (*sigaction)(int);
-    void (*siginfoaction)(int, struct siginfo_t *, void *);
-  } handlers;
+        /**
+         * If this signal is part of a queue, this is a pointer to the next
+         * signal in the queue.
+         */
+        struct signal_t* next;
 };
 
 struct proc;

@@ -1,4 +1,4 @@
-#include "types.h"
+#include "kern/types.h"
 #include "stdlock.h"
 #include "file.h"
 #include "syscall.h"
@@ -14,6 +14,9 @@
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
+
+void* mmap(void* hint, uint sz, int protection,
+        int flags, int fd, off_t offset);
 
 static void* mmap_find_space(uint sz)
 {

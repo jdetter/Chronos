@@ -1,4 +1,9 @@
-#include "types.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "kern/types.h"
+#include "kern/stdlib.h"
+#include "stdlock.h"
 #include "x86.h"
 #include "stdlock.h"
 #include "file.h"
@@ -9,12 +14,10 @@
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
-#include "stdlock.h"
 #include "vsfs.h"
 #include "tty.h"
 #include "elf.h"
 #include "stdarg.h"
-#include "stdlib.h"
 #include "syscall.h"
 #include "serial.h"
 #include "trap.h"

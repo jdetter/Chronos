@@ -1,4 +1,4 @@
-#include "types.h"
+#include "kern/types.h"
 #include "stdlock.h"
 #include "file.h"
 #include "syscall.h"

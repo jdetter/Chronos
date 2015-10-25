@@ -1,10 +1,10 @@
 TOOLS := boot-sign \
 	disk-part \
 	boot2-verify \
-	mkvect \
-	mkfs \
-	fsck 
-#	ext2.fsck \
+	mkvect 
+#	fsck 
+#	ext2.fsck 
+#	mkfs 
 
 TOOLS_SOURCE := $(addprefix tools/, $(TOOLS))
 TOOLS_SOURCE := $(addsuffix .c, $(TOOLS_SOURCE))
@@ -13,7 +13,9 @@ TOOLS_BINARIES := $(addprefix tools/bin/, $(TOOLS))
 TOOLS_CLEAN := tools/bin/ tools/deps/
 
 TOOLS_CFLAGS := -D__LINUX__ \
-		-I tools/include
+		-I kernel \
+		-I kernel/include \
+		-I kernel/cache
 
 TOOLS_DEPS := tools/deps/file.o \
 		tools/deps/stdlock.o \
