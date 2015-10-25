@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
@@ -9,7 +10,6 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "elf.h"
-#include "kern/stdarg.h"
 #include "serial.h"
 #include "fsman.h"
 #include "ata.h"
@@ -218,8 +218,8 @@ void cprintf(char* fmt, ...)
 {
 	char buffer[128];
 	va_list list;
-	va_start(&list, (void**)&fmt);
-	//vasnprintf(buffer, 128, &list);
+	va_start(list, fmt);
+	vsnprintf(buffer, 128, fmt, list);
 	if(serial)
 	{
 		serial_write(buffer, strlen(buffer));
@@ -227,7 +227,7 @@ void cprintf(char* fmt, ...)
 		/* Not going to bother with this */
 	}
 
-	va_end(&list);
+	va_end(list);
 }
 
 void panic(char* fmt, ...)

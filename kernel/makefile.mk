@@ -28,7 +28,6 @@ KERNEL_OBJECTS := \
 	ktime \
 	signal \
 	stdlock \
-	stdarg \
 	file \
 	stdlib \
 	ioctl
@@ -162,7 +161,7 @@ kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) 
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_2__ -c -o kernel/boot/ext2.o kernel/drivers/ext2.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_2__ -c -o kernel/boot/cache.o kernel/cache/cache.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/stdarg.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
+	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/vm/vm_alloc.o kernel/vm/asm.o kernel/cpu.o kernel/vm/pgdir.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(CROSS_OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	

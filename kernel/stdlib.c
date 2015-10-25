@@ -7,8 +7,10 @@
  * Basic set of standard library functions.
  */
 
+#include <stdarg.h>
+#include <sys/types.h>
+
 #include "kern/types.h"
-#include "kern/stdarg.h"
 #include "x86.h"
 
 uint strlen(const char* str)
@@ -277,10 +279,8 @@ void kitoa(int val_signed, char* dst_c, uint sz, uint radix)
 	dst_c[sz - 1] = 0;
 }
 
-int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
+int vsnprintf(char* dst, size_t sz, const char* fmt, va_list list)
 {
-	int arg = 1;
-	
         int fmt_index = 0;
         int dst_index = 0;
         for(;dst_index < sz;fmt_index++, dst_index++)
@@ -298,7 +298,7 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
                         } else if(fmt[fmt_index + 1] == 'd')
                         {
                                 char num_buff[64];
-                                int val = (int)va_arg(list, arg);
+                                int val = va_arg(list, int);
                                 kitoa(val, num_buff, 64, 10);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
@@ -309,7 +309,7 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
 				|| fmt[fmt_index + 1] == 'p')
                         {
                                 char num_buff[64];
-                                int val = (int)va_arg(list, arg);
+                                int val = va_arg(list, int);
                                 kitoa(val, num_buff, 64, 16);
                                 int num_pos;
                                 for(num_pos = 0;num_buff[num_pos];num_pos++)
@@ -318,11 +318,11 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
                                 dst_index += num_pos - 1;
                         } else if(fmt[fmt_index + 1] == 'c')
 			{
-				char c = (int)va_arg(list, arg);
+				char c = (char)va_arg(list, int);
 				dst[dst_index] = c;
 			} else if(fmt[fmt_index + 1] == 's')
 			{
-				char* s = (char*)va_arg(list, arg);
+				char* s = va_arg(list, char*);
                                 int s_len = strncat(dst, s, sz);
 				dst_index = s_len - 1;
 			} else {
@@ -332,7 +332,6 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
 				dst_index++;
                         }
 
-			arg++;
 			fmt_index++;
                 } else dst[dst_index] = fmt[fmt_index];
         }
@@ -344,9 +343,9 @@ int va_snprintf(char* dst, uint sz, va_list* list, char* fmt)
 int snprintf(char* dst, uint sz, char* fmt, ...)
 {
 	va_list list;
-	va_start(&list, (void**)&fmt);
-        int result =  va_snprintf(dst, sz, &list, fmt);
-	va_end(&list);
+	va_start(list, fmt);
+        int result =  vsnprintf(dst, sz, list, fmt);
+	va_end(list);
 
 	return result;
 }
