@@ -4,6 +4,8 @@
 #define FS_HARDWARE_CONTEXT_SIZE 64
 
 /* Some dependant headers */
+#include <sys/stat.h>
+#include <dirent.h>
 #include "cache.h"
 
 /* Some cache tunables */

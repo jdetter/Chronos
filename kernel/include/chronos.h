@@ -234,30 +234,30 @@ int __chronos_syscall(int num, ...);
 /**
  * Flag options for use in open. (Linux Compliant)
  */
-#define O_RDONLY  00000000  /* Open for reading */
-#define O_WRONLY  00000001  /* Open for writing */
-#define O_RDWR    00000002  /* Open for reading and writing */
-#define O_CREATE  00000100  /* If the file has not been created, create it. */
-#define O_CREAT   O_CREATE  /* Linux compatibility flag */
-#define O_EXCL    00000200  /* Fail if this call doesn't create a file. */
-#define O_NOCTTY  00000400  /* Do not allow the tty to become the proc's tty  */
-#define O_TRUNC   00001000 /* Once the file is opened, truncate the contents. */
-#define O_APPEND  00002000  /* Start writing to the end of the file. */
-#define O_NONBLOCK 0004000  /* Open the file in non blocking mode. */
-#define O_NDELAY  O_NONBLOC /* Linux Compatibility */
-#define O_SYNC    04010000  /* Don't return until metadata is pushed to disk  */
-#define O_FSYNC   O_SYNC    /* Linux compatibility. */
-#define O_ASYNC   00020000  /* Enables signal-driven io. */
-#define O_LARGEFILE 00100000/* Allow files to be represented with off64_t */
-#define O_DIR     00200000  /* Fail to open the file unless it is a directory. */
-#define O_DIRECTORY O_DIR   /* Linux compatibility */
-#define O_NOFOLLOW 00400000 /* If the path is a symlink, fail to open.  */
-#define O_CLOEXEC  02000000 /* Close this file descriptor on a call to exec */
-#define O_DIRECT   00040000 /* Minimize cache effects on the io from this file */
-#define O_NOATIME  01000000 /* Do not change access time when file is opened. */
-#define O_PATH    010000000 /* Only use the fd to represent a path */
-#define O_DSYNC   0010000   /* Write operations on the file complete immediatly*/
-#define O_TMPFILE 020200000 /* Open the directory and create a tmp file */
+// #define O_RDONLY  00000000  /* Open for reading */
+// #define O_WRONLY  00000001  /* Open for writing */
+// #define O_RDWR    00000002  /* Open for reading and writing */
+// #define O_CREATE  00000100  /* If the file has not been created, create it. */
+// #define O_CREAT   O_CREATE  /* Linux compatibility flag */
+// #define O_EXCL    00000200  /* Fail if this call doesn't create a file. */
+// #define O_NOCTTY  00000400  /* Do not allow the tty to become the proc's tty  */
+// #define O_TRUNC   00001000 /* Once the file is opened, truncate the contents. */
+// #define O_APPEND  00002000  /* Start writing to the end of the file. */
+// #define O_NONBLOCK 0004000  /* Open the file in non blocking mode. */
+// #define O_NDELAY  O_NONBLOC /* Linux Compatibility */
+// #define O_SYNC    04010000  /* Don't return until metadata is pushed to disk  */
+// #define O_FSYNC   O_SYNC    /* Linux compatibility. */
+// #define O_ASYNC   00020000  /* Enables signal-driven io. */
+// #define O_LARGEFILE 00100000/* Allow files to be represented with off64_t */
+// #define O_DIR     00200000  /* Fail to open the file unless it is a directory. */
+// #define O_DIRECTORY O_DIR   /* Linux compatibility */
+// #define O_NOFOLLOW 00400000 /* If the path is a symlink, fail to open.  */
+// #define O_CLOEXEC  02000000 /* Close this file descriptor on a call to exec */
+// #define O_DIRECT   00040000 /* Minimize cache effects on the io from this file */
+// #define O_NOATIME  01000000 /* Do not change access time when file is opened. */
+// #define O_PATH    010000000 /* Only use the fd to represent a path */
+//#define O_DSYNC   0010000   /* Write operations on the file complete immediatly*/
+// #define O_TMPFILE 020200000 /* Open the directory and create a tmp file */
 
 #define MAX_ARG		0x20
 

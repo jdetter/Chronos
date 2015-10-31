@@ -1,6 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
 	signal-test \
+	compile-test \
 	fs \
 	kill-test \
 	malloc-test \

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/fcntl.h>
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
@@ -57,23 +58,24 @@ int sys_open(void)
 		return -1;
 	}
 
-
+#ifdef O_PATH
 	if(flags & O_PATH)
 	{
 		strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
 		rproc->file_descriptors[fd].type = FD_TYPE_PATH;
 		return -1;
 	}
+#endif
 
 	int created = 0;
-	if(flags & O_CREATE)
+	if(flags & O_CREAT)
 	{
 		if(syscall_get_int((int*)&mode, 2)) return -1;
 		created = fs_create(path, flags, mode, rproc->uid, rproc->gid);
 	}
 
 	/* Check for O_EXCL */
-	if(flags & O_CREATE && flags & O_EXCL && !created)
+	if(flags & O_CREAT && flags & O_EXCL && !created)
 		return -1;
 
 	rproc->file_descriptors[fd].type = FD_TYPE_FILE;

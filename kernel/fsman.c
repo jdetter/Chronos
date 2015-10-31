@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fcntl.h>
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
