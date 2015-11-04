@@ -115,7 +115,7 @@ struct proc
 	uint sig_handling; /* Are we handling a signal right now? */
 	struct signal_t* sig_queue; /* Signal queue */
 	struct trap_frame sig_saved; /* Saved registers while handling sig */
-	struct sigaction sigactions[SIG_COUNT];
+	struct sigaction sigactions[NSIG];
 	uint sig_stack_start; /* The start of the signal stack (higher) */
 	sigset_t sig_suspend_mask; /* The suspended mask */
 

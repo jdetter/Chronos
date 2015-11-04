@@ -21,6 +21,12 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	if(signal(SIGINT, SIG_IGN) != SIG_IGN)
+	{
+		printf("Could not ignore signal!\n");
+		return -1;
+	}
+
 	if(kill(getpid(), SIGINT))
 	{
 		printf("Couldn't call kill!\n");

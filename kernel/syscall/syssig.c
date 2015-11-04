@@ -37,7 +37,7 @@ int sys_sigaction(void)
 			sizeof(struct sigaction), 2))
 		return -1;
 
-	if(signum < SIG_FIRST || signum > SIG_LAST)
+	if(signum < 0 || signum >= NSIG)
 		return -1;
 
 	slock_acquire(&ptable_lock);
@@ -71,19 +71,35 @@ int sys_signal(void)
 
 	if(syscall_get_int(&signum, 0))
 		return -1;
-	if(syscall_get_buffer_ptr((void**)&act,
-				sizeof(struct sigaction), 1))
+
+	if(syscall_get_int((int*)&act, 1))
 		return -1;
 
-	if(signum < SIG_FIRST || signum > SIG_LAST)
+	if(act != (struct sigaction*)SIG_IGN 
+		&& act != (struct sigaction*)SIG_DFL 
+		&& act != (struct sigaction*)SIG_ERR)
+	{
+		if(syscall_get_buffer_ptr((void**)&act,
+					sizeof(struct sigaction), 1))
+			return -1;
+	}
+
+	if(signum < 0 || signum >= NSIG)
 		return -1;
 
 	slock_acquire(&ptable_lock);
-	memmove(&rproc->sigactions[signum],
-			act, sizeof(struct sigaction));
+	if(act == (struct sigaction*)SIG_IGN 
+                || act == (struct sigaction*)SIG_DFL 
+                || act == (struct sigaction*)SIG_ERR)
+	{
+		rproc->sigactions[signum].sa_handler = (void*)act;
+	} else {
+		memmove(&rproc->sigactions[signum],
+				act, sizeof(struct sigaction));
+	}
 	slock_release(&ptable_lock);
 
-	return 0;
+	return (int)act;
 }
 
 int sys_sigsuspend(void)
@@ -91,7 +107,7 @@ int sys_sigsuspend(void)
 	sigset_t set;
 
 	if(syscall_get_int((int*)&set, 0))
-                return -1;
+		return -1;
 
 	slock_acquire(&ptable_lock);
 

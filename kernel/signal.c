@@ -35,47 +35,13 @@ extern struct proc ptable;
 extern slock_t ptable_lock;
 
 /* Signal default action table */
-static int default_actions[] =
-{
-	SIGDEFAULT_KPANIC, 	/* 0 = invalid signal */
-	SIGDEFAULT_TERM,	/* 1 = SIGHUP */
-	SIGDEFAULT_TERM,	/* 2 = SIGINT */
-	SIGDEFAULT_CORE,	/* 3 = SIGQUIT */
-	SIGDEFAULT_CORE,	/* 4 = SIGILL */
-	SIGDEFAULT_CORE,	/* 5 = SIGTRAP */
-	SIGDEFAULT_CORE,	/* 6 = SIGABRT */
-	SIGDEFAULT_CORE,	/* 7 = SIGBUS */
-	SIGDEFAULT_CORE,	/* 8 = SIGFPE */
-	SIGDEFAULT_TERM,	/* 9 = SIGKILL */
-	SIGDEFAULT_TERM,	/* 10 = SIGUSR1 */
-	SIGDEFAULT_CORE,	/* 11 = SIGSEGV */
-	SIGDEFAULT_TERM,	/* 12 = SIGUSR2 */
-	SIGDEFAULT_TERM,	/* 13 = SIGPIPE */
-	SIGDEFAULT_TERM,	/* 14 = SIGALRM */
-	SIGDEFAULT_TERM,	/* 15 = SIGTERM */
-	SIGDEFAULT_TERM,	/* 16 = SIGSTKFLT */
-	SIGDEFAULT_IGN, 	/* 17 = SIGCHLD */
-	SIGDEFAULT_CONT,	/* 18 = SIGCONT */
-	SIGDEFAULT_STOP,	/* 19 = SIGSTOP */
-	SIGDEFAULT_STOP,	/* 20 = SIGTSTP */
-	SIGDEFAULT_STOP,	/* 21 = SIGTTIN */
-	SIGDEFAULT_STOP,	/* 22 = SIGTTOU */
-	SIGDEFAULT_IGN, 	/* 23 = SIGURG */
-	SIGDEFAULT_CORE,	/* 24 = SIGXCPU */
-	SIGDEFAULT_CORE,	/* 25 = SIGXFSZ */
-	SIGDEFAULT_TERM,	/* 26 = SIGVTALRM */
-	SIGDEFAULT_TERM,	/* 27 = SIGPROF */
-	SIGDEFAULT_IGN, 	/* 28 = SIGWINCH */
-	SIGDEFAULT_TERM,	/* 29 = SIGIO */
-	SIGDEFAULT_TERM,	/* 30 = SIGPWR */
-	SIGDEFAULT_CORE 	/* 31 = SIGSYS */	
-};
+static int default_actions[NSIG];
 
 void* mmap(void* hint, uint sz, int protection,
         int flags, int fd, off_t offset);
 
 /* Signal table */
-static struct signal_t sigtable[MAX_SIGNAL];
+static struct signal_t sigtable[SIG_TABLE_SZ];
 static slock_t sigtable_lock;
 
 static struct signal_t* sig_alloc(void)
@@ -84,7 +50,7 @@ static struct signal_t* sig_alloc(void)
 	
 	struct signal_t* sig = NULL;
 	int x;
-	for(x = 0;x < MAX_SIGNAL;x++)
+	for(x = 0;x < NSIG;x++)
 	{
 		if(!sigtable[x].allocated)
 		{
@@ -107,7 +73,7 @@ static void sig_free(struct signal_t* sig)
 {
 	slock_acquire(&sigtable_lock);
 	if(!sig) panic("kernel: tried to free NULL signal.\n");
-	if(sig < sigtable || sig >= sigtable + MAX_SIGNAL)
+	if(sig < sigtable || sig >= sigtable + NSIG)
 		panic("kernel: tried to free invalid signal.\n");
 	sig->allocated = 0;
 	slock_release(&sigtable_lock);
@@ -116,7 +82,39 @@ static void sig_free(struct signal_t* sig)
 void sig_init(void)
 {
 	slock_init(&sigtable_lock);
-	memset(sigtable, 0, sizeof(struct signal_t) * MAX_SIGNAL);
+	memset(sigtable, 0, sizeof(struct signal_t) * NSIG);
+
+	int x;
+	for(x = 0;x < NSIG;x++)
+		default_actions[x] = SIGDEFAULT_KPANIC;
+
+	default_actions[SIGHUP]   = SIGDEFAULT_TERM;
+	default_actions[SIGINT]   = SIGDEFAULT_TERM;
+	default_actions[SIGQUIT]  = SIGDEFAULT_CORE;
+	default_actions[SIGILL]   = SIGDEFAULT_CORE;
+	default_actions[SIGTRAP]  = SIGDEFAULT_CORE;
+	default_actions[SIGIOT]   = SIGDEFAULT_TERM;
+	default_actions[SIGABRT]  = SIGDEFAULT_CORE;
+	default_actions[SIGEMT]   = SIGDEFAULT_TERM;
+	default_actions[SIGFPE]   = SIGDEFAULT_CORE;
+	default_actions[SIGKILL]  = SIGDEFAULT_TERM;
+	default_actions[SIGBUS]   = SIGDEFAULT_CORE;
+	default_actions[SIGSEGV]  = SIGDEFAULT_CORE;
+	default_actions[SIGSYS]   = SIGDEFAULT_CORE;
+	default_actions[SIGPIPE]  = SIGDEFAULT_TERM;
+	default_actions[SIGALRM]  = SIGDEFAULT_TERM;
+	default_actions[SIGTERM]  = SIGDEFAULT_TERM;
+	default_actions[SIGURG]   = SIGDEFAULT_IGN;
+	default_actions[SIGSTOP]  = SIGDEFAULT_STOP;
+	default_actions[SIGTSTP]  = SIGDEFAULT_STOP;
+	default_actions[SIGCONT]  = SIGDEFAULT_CONT;
+	default_actions[SIGCHLD]  = SIGDEFAULT_IGN;
+	default_actions[SIGTTIN]  = SIGDEFAULT_STOP;
+	default_actions[SIGTTOU]  = SIGDEFAULT_STOP;
+	default_actions[SIGIO]    = SIGDEFAULT_TERM;
+	default_actions[SIGWINCH] = SIGDEFAULT_IGN;
+	default_actions[SIGUSR1]  = SIGDEFAULT_TERM;
+	default_actions[SIGUSR2]  = SIGDEFAULT_TERM;
 }
 
 static void sig_queue(struct proc* p, struct signal_t* sig)
@@ -156,7 +154,7 @@ int sig_clear(struct proc* p)
 
 int sig_proc(struct proc* p, int sig)
 {
-	if(sig < SIG_FIRST || sig > SIG_LAST)
+	if(sig < 0 || sig >= NSIG)
 		return -1;
 	if(!p) return -1;
 
@@ -190,11 +188,11 @@ int sig_cleanup(void)
 {
 	/* Check to make sure there was a signal to cleanup */
 	if(!rproc->sig_queue || !rproc->sig_handling) return -1;
-	
+
 	/* Restore trap frame */
 	memmove(rproc->k_stack - sizeof(struct trap_frame), 
-		&rproc->sig_saved, 
-		sizeof(struct trap_frame));
+			&rproc->sig_saved, 
+			sizeof(struct trap_frame));
 	sig_dequeue(rproc);
 	return 0;
 }
@@ -208,6 +206,7 @@ int sig_handle(void)
 	/* Not sure if interrupts will mess this up but better be sure */
 	push_cli();
 
+	/* Get the signal from the top of the queue */
 	struct signal_t* sig = rproc->sig_queue;
 	void (*sig_handler)(int sig_num) = 
 		rproc->sigactions[sig->signum].sa_handler;
@@ -215,6 +214,11 @@ int sig_handle(void)
 	uchar terminated = 0; /* Did we get terminated? */
 	uchar stopped = 0; /* Did we get stopped? */
 	uchar core = 0; /* Should we dump the core? */
+	uchar ignored = 0; /* Was the default action caught and ignored? */
+
+	/* Does the user want us to use the default action? */
+	if(rproc->sigactions[sig->signum].sa_handler == SIG_DFL)
+		sig->catchable = 0; /* Make signal uncatchable */
 
 	switch(rproc->sig_queue->default_action)
 	{
@@ -222,7 +226,7 @@ int sig_handle(void)
 			panic("kernel: Invalid signal handled!\n");
 			break;
 		case SIGDEFAULT_TERM:
-			if(sig->catchable && sig_handler)
+			if(sig->catchable)
 			{
 				caught = 1;
 			} else {
@@ -230,7 +234,7 @@ int sig_handle(void)
 			}
 			break;
 		case SIGDEFAULT_CORE:
-			if(sig->catchable && sig_handler)
+			if(sig->catchable)
 			{
 				caught = 1;
 			} else { 
@@ -238,7 +242,7 @@ int sig_handle(void)
 			}
 			break;
 		case SIGDEFAULT_STOP:
-			if(sig->catchable && sig_handler)
+			if(sig->catchable)
 			{
 				caught = 1;
 			} else {
@@ -246,19 +250,32 @@ int sig_handle(void)
 			}
 			break;
 		case SIGDEFAULT_CONT:
-			if(sig->catchable && sig_handler)
+			if(sig->catchable)
 			{
 				caught = 1;
 			}
 			break;
 		case SIGDEFAULT_IGN:
-			if(sig->catchable && sig_handler)
+			if(sig->catchable)
 			{
 				caught = 1;
 			}
 			break;
 	}
 
+	/** 
+	 * If the user wants this signal to be ignored, ignore it. 
+	 * EXCEPTIONS: if we are terminated, dumped or stopped then
+	 * we must continue with the default action.
+	 */
+	if(rproc->sigactions[sig->signum].sa_handler == SIG_IGN)
+	{
+		if(!terminated && !stopped && !core)
+			ignored = 1;
+		caught = 0;
+	}
+
+	/* Were we able to catch the signal? */
 	if(caught)
 	{
 		/* Do we have a signal stack? */
@@ -270,9 +287,9 @@ int sig_handle(void)
 			/* Allocate a signal stack */
 			int pages = SIG_DEFAULT_STACK + SIG_DEFAULT_GUARD;
 			uint end = (uint)mmap(NULL, 
-				pages * PGSIZE, 
-				PROT_WRITE | PROT_READ,
-				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+					pages * PGSIZE, 
+					PROT_WRITE | PROT_READ,
+					MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 
 			/* Unmap all guard pages */
 			int x;
@@ -292,12 +309,12 @@ int sig_handle(void)
 		{
 			/* We weren't handling a signal until now */
 			memmove(&rproc->sig_saved, 
-				rproc->k_stack - sizeof(struct trap_frame),
-				sizeof(struct trap_frame));
+					rproc->k_stack - sizeof(struct trap_frame),
+					sizeof(struct trap_frame));
 		}
 
 		uint stack = rproc->sig_stack_start;
-		
+
 		/* set the return address to the sig handler */
 		rproc->tf->eip = (uint)sig_handler;
 
@@ -337,14 +354,17 @@ int sig_handle(void)
 		sig_dequeue(rproc);
 		yield_withlock();
 	}
-        
+
 	/* Check to see if we got terminated */
-        if(terminated)
-        {
+	if(terminated)
+	{
 		cprintf("Process killed: %s\n", rproc->name);
 		slock_release(&ptable_lock);
-                _exit(1);
-        }
+		_exit(1);
+	}
+
+	if(ignored)
+		sig_dequeue(rproc);
 
 	return 0;
 }

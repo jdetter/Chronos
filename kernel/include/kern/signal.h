@@ -3,17 +3,13 @@
 
 #include <signal.h>
 
-#define MAX_SIGNAL 64 /* Size of the signal table */
-
                       /* SIG */
 #define SIG_MAGIC 0x00000516
 
 #define SIG_DEFAULT_GUARD 2 /* Default number of signal guard pages. */
 #define SIG_DEFAULT_STACK 5 /* Default number of signal stack pages. */
 /* Signal bounds checking */
-#define SIG_COUNT 32 /* How many signals are there? (0 - 31)*/
-#define SIG_FIRST 1  /* SIGHUP */
-#define SIG_LAST  31 /* SIGSYS */
+#define SIG_TABLE_SZ 128
 
 /**
  * Default signal actions.

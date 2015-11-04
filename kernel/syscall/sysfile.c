@@ -17,6 +17,8 @@
 #include "proc.h"
 #include "panic.h"
 
+#define DEBUG
+
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 
@@ -58,6 +60,10 @@ int sys_open(void)
 		return -1;
 	}
 
+#ifdef DEBUG
+	cprintf("%s: opening file %s\n", rproc->name, path);
+#endif
+
 #ifdef O_PATH
 	if(flags & O_PATH)
 	{
@@ -75,7 +81,7 @@ int sys_open(void)
 	}
 
 	/* Check for O_EXCL */
-	if(flags & O_CREAT && flags & O_EXCL && !created)
+	if(flags & O_CREAT && flags & O_EXCL && created)
 		return -1;
 
 	rproc->file_descriptors[fd].type = FD_TYPE_FILE;
@@ -633,14 +639,14 @@ int sys_access(void)
 	if(syscall_get_str_ptr(&pathname, 0)) return -1;
 	if(syscall_get_int((int*)&mode, 1)) return -1;
 
-	inode i = fs_open(pathname, O_RDONLY, 0x0, 0x0, 0x0);
-	if(!i) return -1;
+	inode i = fs_open(pathname, O_RDONLY, 0x0, 
+		rproc->ruid, rproc->rgid);
+	
+	if(!i) return -1; /* If the file dne, we can't open it! */
 
 	struct stat st;
 	fs_stat(i, &st);
 	fs_close(i);
-	
-	/* skipping all checks here */
 
 	return 0;
 }

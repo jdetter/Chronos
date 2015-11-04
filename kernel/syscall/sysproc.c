@@ -535,11 +535,12 @@ int sys_brk(void)
 /* void* sys_sbrk(uint increment) */
 int sys_sbrk(void)
 {
-	uint increment;
+	intptr_t increment;
 	if(syscall_get_int((int*)&increment, 0)) return -1;
 
 	slock_acquire(&ptable_lock);
 	uint old_end = rproc->heap_end;
+
 	/* Will this collide with the stack? */
 	if(PGROUNDUP(old_end + increment) >= rproc->stack_end
 		|| (rproc->mmap_end && 
@@ -549,10 +550,17 @@ int sys_sbrk(void)
 		return (int)NULL;
 	}
 
-	/* Map needed pages */
-	mappages(old_end, increment, rproc->pgdir, 1);
-	/* Zero space (security) */
-	memset((void*)old_end, 0, increment);
+	if(increment < 0)
+	{
+		/* Deallocating pages */
+		/* TODO: unmap and deallocate the pages here */
+	} else {
+		/* Map needed pages */
+		mappages(old_end, increment, rproc->pgdir, 1);
+		/* Zero space (security) */
+		memset((void*)old_end, 0, increment);
+	}
+
 	/* Change heap end */
 	rproc->heap_end = old_end + increment;
 	/* release lock */
@@ -633,7 +641,7 @@ int sys_times(void)
 		buf->tms_cutime = 0;
 		buf->tms_cstime = 0;
 	}
-	
+
 	return k_ticks;
 }
 
@@ -645,12 +653,12 @@ int sys_gettimeofday(void)
 	/* timezone is not used by any OS ever. It is purely historical. */
 	if(syscall_get_int((int*)&tv, 0)) return -1;
 	if(tv && syscall_get_buffer_ptr((void**)&tv, 
-		sizeof(struct timeval), 0)) return -1;
+				sizeof(struct timeval), 0)) return -1;
 	/* Is timezone specified? */
 	if(syscall_get_int((int*)&tz, 1)) return -1;
-        if(tz && syscall_get_buffer_ptr((void**)&tz, 
-                sizeof(struct timeval), 1)) return -1;
-		
+	if(tz && syscall_get_buffer_ptr((void**)&tz, 
+				sizeof(struct timeval), 1)) return -1;
+
 	int seconds = ktime_seconds();
 
 	if(tv)
@@ -664,7 +672,7 @@ int sys_gettimeofday(void)
 		memset(tz, 0, sizeof(struct timezone));
 	}
 
-        return 0;
+	return 0;
 }
 
 /* uid_t getuid(void) */
@@ -674,7 +682,7 @@ int sys_getuid(void){
 
 /* uid_t getuid(void) */
 int sys_geteuid(void){
-        return rproc->euid;
+	return rproc->euid;
 }
 
 /* int setuid(uid_t uid)*/
@@ -693,7 +701,7 @@ int sys_getgid(void){
 
 /* gid_t getegid(void) */
 int sys_getegid(void){
-        return rproc->egid;
+	return rproc->egid;
 }
 
 /* int setegid(gid_t gid) */
@@ -737,7 +745,7 @@ int sys_getresuid(void){
 	*euid = rproc->euid;
 	*suid = rproc->suid;
 	return 0;
-	
+
 }
 
 /* int getresuid(gid_t *rgid, gid_t *egid, gid_t *sgid) */
@@ -801,7 +809,7 @@ int sys_getpgid(void){
 		return rproc->pgid;
 	} else {
 		struct proc* p = get_proc_pid(pid);
-                if(p) return p->pgid;
+		if(p) return p->pgid;
 	}
 
 	return -1;	
@@ -821,7 +829,7 @@ int sys_setresuid(void){
 	if(syscall_get_int((int*)&ruid, 0)) return -1;
 	if(syscall_get_int((int*)&euid, 1)) return -1;
 	if(syscall_get_int((int*)&suid, 2)) return -1;
-	
+
 	uid_t arr[3];
 	arr[0] = ruid;
 	arr[1] = euid;
@@ -856,7 +864,7 @@ int sys_setresuid(void){
 		}
 	}
 	return 0;
-	
+
 }
 /* int setresgid(gid_t rgid, gid_t egid, gid_t sgid)*/
 int sys_setresgid(void){
