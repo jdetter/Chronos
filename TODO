@@ -129,6 +129,8 @@ Critical priority features
  + Increase portability (abstract VM)
  + Shared memory mappings
  + Map disk blocks into memory with mmap
+ + Get ramfs working again
+ + Setup fstab support
 
 High priority features
 ==========================
