@@ -28,7 +28,7 @@ void cprintf(char* fmt, ...)
 	tty_t t0 = tty_find(0);
         if(t0->type == 0)
         {
-		video_mode = 0;
+		//video_mode = 0;
 		switch(video_mode)
 		{
 			case VIDEO_MODE_NONE: 

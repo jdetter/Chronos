@@ -1,0 +1,5 @@
+PUBLIC ALPHA-1.1
+================
+ + Added support for ext2 file system
+ + Assembler (as) and Linker (ld) are now compatable.
+ + Bug fixes and stability improvements
