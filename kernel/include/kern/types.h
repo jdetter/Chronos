@@ -8,7 +8,10 @@
  * file, it doubles as the configuration file.
  */
 
-//#define ARCH_i386 /* Build target */
+/* Check to make sure the build is setup correctly */
+#if !defined(ARCH_STR) || (!defined( ARCH_i386)    )
+#error "Must specify an architecture in Makefile."
+#endif
 
 #ifdef ARCH_i386
 /* Unsigned types */

@@ -16,7 +16,7 @@ AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH)
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
 ASFLAGS += -ggdb -Werror -Wall
 QEMU := qemu-system-i386
 
