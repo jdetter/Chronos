@@ -34,7 +34,6 @@
 void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
 void __kernel_jmp__(uint entry);
-void __enable_paging__(uint* pgdir);
 void __enforce_kernel_readonly__(void);
 
 char* no_image = "Chronos.elf not found!\n";
@@ -71,7 +70,7 @@ int main(void)
 	cprintf(ok);
 
 	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
-	__enable_paging__(k_pgdir);
+	vm_enable_paging(k_pgdir);
 	cprintf(ok);
 
 	cprintf("Enforcing kernel readonly...\t\t\t\t\t\t");
@@ -185,7 +184,7 @@ int main(void)
 			uint mem_sz = curr_header.mem_sz;
 			uint needed_sz = PGROUNDUP(mem_sz);
 			/* map some pages in for this space */
-			mappages((uint)hd_addr, needed_sz, k_pgdir, 0);
+			vm_mappages((uint)hd_addr, needed_sz, k_pgdir, 0);
 			/* zero this region */
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */
@@ -247,25 +246,25 @@ void setup_boot2_pgdir(void)
 	vm_init_page_pool();
 	
 	/* Start by directly mapping the boot stage 2 pages */
-	dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 0);
+	vm_dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 0);
 
 	/* Directly map the kernel page directory */
-	dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 0);
 
 	/* Map null page temporarily */
-	dir_mappages(0x0, PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(0x0, PGSIZE, k_pgdir, 0);
 
 	/* Map pages for the kernel binary */
 	// mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
 	
 	/* Map in some of the disk caching space */
-	mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 0);
+	vm_mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 0);
 
 	/* Directly map video memory */
-	dir_mappages(CONSOLE_COLOR_BASE_ORIG, 
+	vm_dir_mappages(CONSOLE_COLOR_BASE_ORIG, 
 		CONSOLE_COLOR_BASE_ORIG + PGSIZE, 
 		k_pgdir, 0);
-	dir_mappages(CONSOLE_MONO_BASE_ORIG,
+	vm_dir_mappages(CONSOLE_MONO_BASE_ORIG,
 		CONSOLE_MONO_BASE_ORIG + PGSIZE,
 		k_pgdir, 0);
 }

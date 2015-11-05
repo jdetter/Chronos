@@ -70,7 +70,7 @@ void* dev_new_mapping(uint phy, uint sz)
 		panic("devman: Out of hardware memory.\n");
 	uint x;
 	for(x = 0;x < sz;x += PGSIZE)
-		mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
+		vm_mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
 
 	curr_mapping = v_end;
 	return (void*)v_start;
@@ -131,8 +131,8 @@ int dev_init()
 	if(t0->type == TTY_TYPE_COLOR || t0->type == TTY_TYPE_MONO)
 		t0->mem_start = video_mem;
 	/* Boot strap has directly mapped the video memory */
-	unmappage(CONSOLE_MONO_BASE_ORIG, k_pgdir);
-	unmappage(CONSOLE_COLOR_BASE_ORIG, k_pgdir);
+	vm_unmappage(CONSOLE_MONO_BASE_ORIG, k_pgdir);
+	vm_unmappage(CONSOLE_COLOR_BASE_ORIG, k_pgdir);
 
 	/* Find ata devices */
 	ata_init();

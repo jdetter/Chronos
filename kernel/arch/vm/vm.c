@@ -25,8 +25,6 @@
 #include "panic.h"
 #include "console.h"
 
-pgdir* __get_cr3__(void);
-void __enable_paging__(uint* pgdir);
 void __set_stack__(uint addr);
 void __drop_priv__(uint* k_context, uint new_esp, uint new_eip);
 void __context_restore__(uint* current, uint old);
@@ -36,7 +34,7 @@ uint k_stack; /* Kernel stack */
 extern pgdir* k_pgdir; /* Kernel page directory */
 extern slock_t global_mem_lock;
 
-uint vm_init(void)
+int vm_init(void)
 {
 	slock_init(&global_mem_lock);
 
@@ -48,13 +46,13 @@ uint vm_init(void)
 	//setup_kvm(); We do this in main now.
 	
 	/* The boot strap directly mapped in the null guard page */
-	unmappage(0x0, k_pgdir);
+	vm_unmappage(0x0, k_pgdir);
 
 	/* Map pages in for our kernel stack */
-	mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0);
+	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0);
 
 	/* Map pages in for kmalloc */
-	mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0);
+	vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0);
 
 	/* Add bootstrap code to the memory pool */
 	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
@@ -79,19 +77,20 @@ struct vm_segment_descriptor global_descriptor_table[] ={
 	MKVMSEG_NULL /* Will become TSS*/
 };
 
-void vm_seg_init(void)
+int vm_seg_init(void)
 {
 	lgdt((uint)global_descriptor_table, GDT_SIZE);
+	return 0;
 }
 
 void switch_kvm(void)
 {
-	__enable_paging__(k_pgdir);
+	vm_enable_paging(k_pgdir);
 }
 
 void switch_uvm(struct proc* p)
 {
-	__enable_paging__(p->pgdir);
+	vm_enable_paging(p->pgdir);
 }
 
 void switch_context(struct proc* p)
@@ -111,7 +110,7 @@ void switch_context(struct proc* p)
 	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
 
 	/* Switch to the user's page directory (stack access) */
-	__enable_paging__(p->pgdir);
+	vm_enable_paging(p->pgdir);
 	struct task_segment* ts = (struct task_segment*)p->tss;
 	ts->SS0 = SEG_KERNEL_DATA << 3;
 	ts->ESP0 = (uint)p->k_stack;
@@ -151,8 +150,8 @@ void pgdir_cmp(pgdir* src, pgdir* dst)
 	uchar dot = 1;
 	for(x = 0;x < 0xFFFFF000;x += PGSIZE)
 	{
-		uint src_page = findpg(x, 0, src, 0);
-		uint dst_page = findpg(x, 0, dst, 0);
+		uintptr_t src_page = vm_findpg(x, 0, src, 0);
+		uintptr_t dst_page = vm_findpg(x, 0, dst, 0);
 
 		if(src_page || dst_page)
 		{

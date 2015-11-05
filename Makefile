@@ -1,5 +1,6 @@
 # Use the new tool chain to build executables.
 TARGET=i686-pc-chronos-
+BUILD_ARCH=i386
 TOOL_DIR=../tools/bin
 CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
 CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
@@ -15,7 +16,8 @@ AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common
+BUILD_ARCH := $(addprefix ARCH_, $(BUILD_ARCH))
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -D$(BUILD_ARCH)
 ASFLAGS += -ggdb -Werror -Wall
 QEMU := qemu-system-i386
 

@@ -92,16 +92,14 @@ static void ramfs_free(struct FSHardwareDriver* driver)
 	slock_release(&ramfs_table_lock);
 }
 
-void __enable_paging__(uint* pgdir);
-uint __get_cr3__(void);
 static void ramfs_enter(struct ramfs_context* c)
 {
-	pgdir* old = (pgdir*)__get_cr3__();
+	pgdir* old = (pgdir*)vm_curr_pgdir();
 	vm_set_user_kstack(c->dir, old);
 	c->saved_dir = old;
 	/* Switch to our context */
 	push_cli();
-	__enable_paging__(c->dir);
+	vm_enable_paging(c->dir);
 	pop_cli();
 }
 
@@ -109,7 +107,7 @@ static void ramfs_exit(struct ramfs_context* c)
 {
 	/* Just restore old address space */
 	push_cli();
-	__enable_paging__(c->saved_dir);
+	vm_enable_paging(c->saved_dir);
 	pop_cli();	
 }
 
@@ -124,10 +122,10 @@ struct FSHardwareDriver* ramfs_driver_alloc(uint block_size, uint blocks)
 	if(!driver) return NULL;
 	struct ramfs_context* context = driver->context;
 
-	uint start = 0x1000;
-	uint end = PGROUNDUP(block_size * blocks);
+	uintptr_t start = 0x1000;
+	uintptr_t end = PGROUNDUP(block_size * blocks);
 
-	mappages(start, end - start, context->dir, 0);
+	vm_mappages(start, end - start, context->dir, 0);
 
 	context->start_addr = start;
 	context->end_addr = end;

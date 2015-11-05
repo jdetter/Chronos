@@ -121,13 +121,13 @@ struct proc* spawn_tty(tty_t t)
 	vm_copy_kvm(p->pgdir);
 
 	/* Map in a new kernel stack */
-        mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
+        vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
         p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
         p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
         p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
 	/* Map in a user stack. */
-	mappages(p->stack_end, PGSIZE, p->pgdir, 1);
+	vm_mappages(p->stack_end, PGSIZE, p->pgdir, 1);
 
 	/* Switch to user page table */
 	switch_uvm(p);
@@ -288,10 +288,10 @@ uint load_binary_inode(inode ino, struct proc* p)
                         /* Load this header into memory. */
                         uchar* hd_addr = (uchar*)curr_header.virt_addr;
                         uint offset = curr_header.offset;
-                        uint file_sz = curr_header.file_sz;
-                        uint mem_sz = curr_header.mem_sz;
+                        size_t file_sz = curr_header.file_sz;
+                        size_t mem_sz = curr_header.mem_sz;
 			/* Paging: allocate user pages */
-			mappages((uint)hd_addr, mem_sz, p->pgdir, 1);
+			vm_mappages((uintptr_t)hd_addr, mem_sz, p->pgdir, 1);
 			if((uint)hd_addr + mem_sz > elf_end)
 				elf_end = (uint)hd_addr + mem_sz;
                         /* zero this region */

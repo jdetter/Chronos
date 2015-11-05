@@ -31,8 +31,6 @@
 uchar __kvm_stack_check__(void);
 void __kvm_swap__(pgdir* kvm);
 uchar __check_paging__(void);
-void __enable_paging__(pgdir* dir);
-pgdir* __get_cr3__(void);
 
 extern pgdir* k_pgdir;
 void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags);
@@ -44,13 +42,13 @@ pgdir* vm_push_pgdir(void)
 {
 	/* Is paging even enabled? */
 	if(!__check_paging__()) return NULL;
-	pgdir* dir = __get_cr3__();
+	pgdir* dir = vm_curr_pgdir();
 	if(dir == k_pgdir) return NULL;
 	push_cli();
 	/* Are we on the kernel stack? */
 	if(!__kvm_stack_check__())
 		__kvm_swap__(k_pgdir);
-	else __enable_paging__(k_pgdir);
+	else vm_enable_paging(k_pgdir);
 	return dir;	
 }
 
@@ -60,82 +58,14 @@ void vm_pop_pgdir(pgdir* dir)
 	if(!__check_paging__()) return;
         if(dir == k_pgdir) return;
 	//vm_clear_uvm_kstack(k_pgdir);
-	__enable_paging__(dir);
+	vm_enable_paging(dir);
 	pop_cli();
 }
 
-void mappages(uint va, uint sz, pgdir* dir, uchar user)
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir,
+        uchar user, uint flags)
 {
-	pgdir* save = vm_push_pgdir();
-        /* round va + sz up to a page */
-        uint end = PGROUNDDOWN((va + sz + PGSIZE - 1));
-        uint start = PGROUNDDOWN(va);
-        if(debug)
-                cprintf("Creating virtual mapping from 0x%x to 0x%x\n",
-                                start, end);
-        if(end <= start) 
-	{
-		vm_pop_pgdir(save);
-		return;
-	}
-        uint x;
-        for(x = start;x != end;x += PGSIZE)
-        {
-                uint pg = findpg(x, 1, dir, user);
-                if(debug) cprintf("Virtual page 0x%x mapped to 0x%x\n", x, pg);
-        }
-	vm_pop_pgdir(save);
-}
-
-void dir_mappages(uint start, uint end, pgdir* dir, uchar user)
-{
-	pgdir* save = vm_push_pgdir();
-        start = PGROUNDDOWN(start);
-        end = PGROUNDUP(end);
-        uint x;
-        for(x = start;x < end;x += PGSIZE)
-                mappage(x, x, dir, user, 0);
-	vm_pop_pgdir(save);
-}
-
-void vm_safe_mapping(uint start, uint end, pgdir* dir)
-{
-	pgdir* save = vm_push_pgdir();
-        start = PGROUNDDOWN(start);
-        end = PGROUNDUP(end);
-        uint page;
-        for(page = start;page < end;page += PGSIZE)
-        {
-                /* Security: do not directly map guard pages */
-                if(page == KVM_KSTACK_G1 || page == KVM_KSTACK_G2)
-                        continue;
-                if(!findpg(page, 0, k_pgdir, 0))
-                        mappage(page, page, k_pgdir, 0, 0);
-        }
-	vm_pop_pgdir(save);
-}
-
-void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags)
-{
-	pgdir* save = vm_push_pgdir();
-        phy = PGROUNDDOWN(phy);
-        virt = PGROUNDDOWN(virt);
-        uint end_phy = PGROUNDDOWN(phy + sz + PGSIZE - 1);
-        uint end_virt = PGROUNDDOWN(virt + sz + PGSIZE - 1);
-        uint pages = end_phy - phy;
-        if(end_virt - virt > end_phy - phy)
-                pages = end_virt - virt;
-        pages /= PGSIZE;
-
-        uint x;
-        for(x = 0;x < pages;x++)
-                mappage(phy + x, virt + x, dir, user, flags);
-	 vm_pop_pgdir(save);
-}
-
-void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags)
-{
-	pgdir* save = vm_push_pgdir();
+        pgdir* save = vm_push_pgdir();
         uint dir_flags = KDIRFLAGS;
         uint tbl_flags = KTBLFLAGS;
 
@@ -159,10 +89,95 @@ void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags)
         } else {
                 panic("kvm remap: 0x%x\n", virt);
         }
+        vm_pop_pgdir(save);
+
+        return 0;
+}
+
+int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, uchar user)
+{
+	pgdir* save = vm_push_pgdir();
+        /* round va + sz up to a page */
+        uintptr_t end = PGROUNDDOWN((va + sz + PGSIZE - 1));
+        uintptr_t start = PGROUNDDOWN(va);
+        if(debug)
+                cprintf("Creating virtual mapping from 0x%x to 0x%x\n",
+                                start, end);
+        if(end <= start) 
+	{
+		vm_pop_pgdir(save);
+		return -1;
+	}
+        uintptr_t x;
+        for(x = start;x != end;x += PGSIZE)
+        {
+                uintptr_t pg = vm_findpg(x, 1, dir, user);
+                if(debug) cprintf("Virtual page 0x%x mapped to 0x%x\n", x, pg);
+        }
+
+	vm_pop_pgdir(save);
+
+	return 0;
+}
+
+int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, uchar user)
+{
+	pgdir* save = vm_push_pgdir();
+        start = PGROUNDDOWN(start);
+        end = PGROUNDUP(end);
+        uint x;
+        for(x = start;x < end;x += PGSIZE)
+                if(vm_mappage(x, x, dir, user, 0))
+			return -1;
+	vm_pop_pgdir(save);
+
+	return 0;
+}
+
+uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir)
+{
+        pgdir* save = vm_push_pgdir();
+        virt = PGROUNDDOWN(virt);
+        uint dir_index = PGDIRINDEX(virt);
+        uint tbl_index = PGTBLINDEX(virt);
+
+        if(!dir[dir_index])
+        {
+                vm_pop_pgdir(save);
+                return 0;
+        }
+
+        uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+        if(tbl[tbl_index])
+        {
+                uint page = PGROUNDDOWN(tbl[tbl_index]);
+                tbl[tbl_index] = 0;
+                vm_pop_pgdir(save);
+                return page;
+        }
+
+        vm_pop_pgdir(save);
+        return 0;
+}
+
+void vm_safe_mapping(uint start, uint end, pgdir* dir)
+{
+	pgdir* save = vm_push_pgdir();
+        start = PGROUNDDOWN(start);
+        end = PGROUNDUP(end);
+        uint page;
+        for(page = start;page < end;page += PGSIZE)
+        {
+                /* Security: do not directly map guard pages */
+                if(page == KVM_KSTACK_G1 || page == KVM_KSTACK_G2)
+                        continue;
+                if(!vm_findpg(page, 0, k_pgdir, 0))
+                        vm_mappage(page, page, k_pgdir, 0, 0);
+        }
 	vm_pop_pgdir(save);
 }
 
-uint findpg(uint virt, int create, pgdir* dir, uchar user)
+uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir, uchar user)
 {
 	pgdir* save = vm_push_pgdir();
         uint dir_flags = KDIRFLAGS;
@@ -324,13 +339,13 @@ uint vm_memmove(void* dst, const void* src, uint sz,
 		int to_copy = left;
 
 		/* The source page */
-		uint src_page = findpg((uint)src + bytes, 0, src_pgdir, 1);
+		uint src_page = vm_findpg((uint)src + bytes, 0, src_pgdir, 1);
 		uint src_offset = ((uint)src + bytes) & (PGSIZE - 1);
 		uint src_cpy = PGSIZE - src_offset;
 		if(!src_page) break;
 
 		/* Check destination page */
-		uint dst_page = findpg((uint)dst + bytes, 1, dst_pgdir, 1);
+		uint dst_page = vm_findpg((uint)dst + bytes, 1, dst_pgdir, 1);
 		uint dst_offset = ((uint)dst + bytes) & (PGSIZE - 1);
 		uint dst_cpy = PGSIZE - dst_offset;
 		if(!dst_page) break;
@@ -348,32 +363,6 @@ uint vm_memmove(void* dst, const void* src, uint sz,
 	return bytes;
 }
 
-uint unmappage(uint virt, pgdir* dir)
-{
-	pgdir* save = vm_push_pgdir();
-	virt = PGROUNDDOWN(virt);
-	uint dir_index = PGDIRINDEX(virt);
-	uint tbl_index = PGTBLINDEX(virt);
-
-	if(!dir[dir_index]) 
-	{
-		vm_pop_pgdir(save);
-		return 0;
-	}
-
-	uint* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
-	if(tbl[tbl_index])
-	{
-		uint page = PGROUNDDOWN(tbl[tbl_index]);
-		tbl[tbl_index] = 0;
-		vm_pop_pgdir(save);
-		return page;
-	}
-
-	vm_pop_pgdir(save);
-	return 0;
-}
-
 void vm_copy_kvm(pgdir* dir)
 {
 	pgdir* save = vm_push_pgdir();
@@ -381,10 +370,10 @@ void vm_copy_kvm(pgdir* dir)
 	uint x;
 	for(x = UVM_KVM_S;x < PGROUNDDOWN(UVM_KVM_E); x+= PGSIZE)
 	{
-		uint page = findpg(x, 0, k_pgdir, 0);
+		uint page = vm_findpg(x, 0, k_pgdir, 0);
 		uint flags = findpgflags(x, k_pgdir);
 		if(!page) continue;
-		mappage(page, x, dir, 0, 0);
+		vm_mappage(page, x, dir, 0, 0);
 		if(!(flags & PGTBL_RW))
 			pgreadonly(x, dir, 0);
 	}
@@ -416,12 +405,12 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	uint x;
 	for(x = 0;x < UVM_KVM_S;x += PGSIZE)
 	{
-		uint src_page = findpg(x, 0, src_dir, 1);
+		uint src_page = vm_findpg(x, 0, src_dir, 1);
 		if(!src_page) continue;
 		int src_flags = findpgflags(x, src_dir);
 		if(src_flags == -1) panic("kernel: page not present?\n");
 
-		uint dst_page = findpg(x, 1, dst_dir, 1);
+		uint dst_page = vm_findpg(x, 1, dst_dir, 1);
 		memmove((uchar*)dst_page,
 				(uchar*)src_page,
 				PGSIZE);
@@ -434,12 +423,12 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 			x += PGSIZE)
 	{
 		/* Remove old mapping */
-		unmappage(x, dst_dir);
-		uint src_page = findpg(x, 0, src_dir, 0);
+		vm_unmappage(x, dst_dir);
+		uint src_page = vm_findpg(x, 0, src_dir, 0);
 		if(!src_page) continue;
 
 		/* Create and map new page */
-		uint dst_page = findpg(x, 1, dst_dir, 0);
+		uint dst_page = vm_findpg(x, 1, dst_dir, 0);
 		/* Copy the page contents */
 		memmove((uchar*)dst_page,
 				(uchar*)src_page,
@@ -454,11 +443,11 @@ void vm_set_user_kstack(pgdir* dir, pgdir* kstack)
 	int x;
 	for(x = UVM_KSTACK_S;x < UVM_KSTACK_E;x += PGSIZE)
 	{
-		int kstack_pg = findpg(x, 0, kstack, 0);
+		int kstack_pg = vm_findpg(x, 0, kstack, 0);
 		/* Make sure the mapping is clear */
-		unmappage(x, dir);
+		vm_unmappage(x, dir);
 		/* Map the page */
-		mappage(kstack_pg, x, dir, 0x0, 0x0);
+		vm_mappage(kstack_pg, x, dir, 0x0, 0x0);
 	}
 	vm_pop_pgdir(save);
 }
@@ -475,8 +464,8 @@ void vm_set_swap_stack(pgdir* dir, pgdir* swap)
 	uint pg;
 	for(pg = start;pg < end;pg += PGSIZE)
 	{
-		uint src = findpg(pg + SVM_DISTANCE, 0, swap, 0);
-		mappage(src, pg, dir, 0, 0);
+		uint src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0);
+		vm_mappage(src, pg, dir, 0, 0);
 	}
 
 	vm_pop_pgdir(save);	
@@ -490,7 +479,7 @@ void vm_clear_swap_stack(pgdir* dir)
 	uint end = PGROUNDUP(SVM_KSTACK_E);
 	uint pg;
 	for(pg = start;pg < end;pg += PGSIZE)
-		unmappage(pg, dir);
+		vm_unmappage(pg, dir);
 
 	vm_pop_pgdir(save);
 }
@@ -535,7 +524,7 @@ void freepgdir(pgdir* dir)
 			pg < PGROUNDUP(UVM_KSTACK_E);
 			pg += PGSIZE)
 	{
-		uint freed = unmappage(pg, dir);
+		uintptr_t freed = vm_unmappage(pg, dir);
 		if(freed) pfree(freed);
 	}
 

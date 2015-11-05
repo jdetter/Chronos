@@ -233,15 +233,20 @@ struct vm_segment_descriptor
 	uint_8  base_3; /* 24..31 of base */
 };
 
-/**
- * Initilize a free list of pages from address start to address end.
- */
-uint vm_init(void);
+void vm_enable_paging(pgdir* dir);
+pgdir* vm_curr_pgdir(void);
+void vm_disable_paging(void);
 
 /**
- * Initilize kernel segments
+ * Initlize the memory manager. Returns 0 on success, non zero otherwise.
  */
-void vm_seg_init(void);
+int vm_init(void);
+
+/**
+ * Initilize segmentation if it is used. Returns 0 on success, non zero
+ * otherwise.
+ */
+int vm_seg_init(void);
 
 /**
  * Save the current page directory and disable interrupts on this cpu.
@@ -289,27 +294,27 @@ void setup_kvm(void);
 void save_vm(void);
 
 /**
+ * Map the page at virtual address virt, to the physical address phy into the
+ * page directory dir. This will create entries and tables where needed.
+ */
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, uchar user, uint flags);
+
+/**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
  * ignored. 
  */
-void mappages(uint va, uint sz, pgdir* dir, uchar user);
+int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, uchar user);
 
 /**
  * Directly map the pages into the page table.
  */
-void dir_mappages(uint start, uint end, pgdir* dir, uchar user);
-
-/**
- * Map the page at virtual address virt, to the physical address phy into the
- * page directory dir. This will create entries and tables where needed.
- */
-void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags);
+int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, uchar user);
 
 /**
  * Unmap the page from the page directory. If there isn't a page there then
  * nothing is done. Returns the page that was unmapped.
  */
-uint unmappage(uint virt, pgdir* dir);
+uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir);
 
 /**
  * Find a page in a page directory. If the page is not mapped, and create is 1,
@@ -317,7 +322,7 @@ uint unmappage(uint virt, pgdir* dir);
  * is 0, and the page is not found, return 0. Otherwise, return the address
  * of the mapped page.
  */
-uint findpg(uint virt, int create, pgdir* dir, uchar user);
+uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir, uchar user);
 
 /**
  * Returns the flags for a virtual memory address. Returns -1 if the

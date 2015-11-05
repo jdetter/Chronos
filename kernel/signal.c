@@ -295,7 +295,7 @@ int sig_handle(void)
 			int x;
 			for(x = 0;x < SIG_DEFAULT_GUARD;x++)
 			{
-				unmappage(end, rproc->pgdir);
+				vm_unmappage(end, rproc->pgdir);
 				end += PGSIZE;
 			}
 

@@ -71,7 +71,7 @@ int trap_pf(uint address){
 			return 1;
 		}
 		int numOfPgs = (stack_bottom - address_down)/PGSIZE;
-		mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 1);
+		vm_mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 1);
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
 		return 0;

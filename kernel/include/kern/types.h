@@ -1,12 +1,14 @@
 #ifndef _KERN_TYPES_H_
 #define _KERN_TYPES_H_
 
+#include <stdint.h>
+
 /**
  * Because this file is always the first include in every
  * file, it doubles as the configuration file.
  */
 
-#define ARCH_i386 /* Build target */
+//#define ARCH_i386 /* Build target */
 
 #ifdef ARCH_i386
 /* Unsigned types */
@@ -51,8 +53,8 @@ typedef signed int suseconds_t; */
 
 #endif
 
-typedef uint pgdir;
-typedef uint pgtbl;
+typedef uintptr_t pgdir;
+typedef uintptr_t pgtbl;
 
 #endif /* i386 */
 

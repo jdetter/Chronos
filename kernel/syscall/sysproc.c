@@ -44,7 +44,7 @@ int sys_fork(void)
 	new_proc->tid = 0; /* Not a thread */
 	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
-	new_proc->pgdir = (uint*) palloc();
+	new_proc->pgdir = (pgdir*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 
@@ -523,7 +523,7 @@ int sys_brk(void)
 	for(;page != old;page += PGSIZE)
 	{
 		/* Free the page */
-		uint pg = unmappage(page, rproc->pgdir);
+		uintptr_t pg = vm_unmappage(page, rproc->pgdir);
 		if(pg) pfree(pg);
 	}
 
@@ -539,7 +539,7 @@ int sys_sbrk(void)
 	if(syscall_get_int((int*)&increment, 0)) return -1;
 
 	slock_acquire(&ptable_lock);
-	uint old_end = rproc->heap_end;
+	uintptr_t old_end = rproc->heap_end;
 
 	/* Will this collide with the stack? */
 	if(PGROUNDUP(old_end + increment) >= rproc->stack_end
@@ -556,7 +556,7 @@ int sys_sbrk(void)
 		/* TODO: unmap and deallocate the pages here */
 	} else {
 		/* Map needed pages */
-		mappages(old_end, increment, rproc->pgdir, 1);
+		vm_mappages(old_end, increment, rproc->pgdir, 1);
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}

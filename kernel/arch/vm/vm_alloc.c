@@ -140,7 +140,7 @@ void vm_add_page(uint pg, pgdir* dir)
 
         pfree(pg);
 	/* If there is a dir, map this page into the dir */
-	if(dir) dir_mappages(pg, pg + PGSIZE, dir, 0);
+	if(dir) vm_dir_mappages(pg, pg + PGSIZE, dir, 0);
 }
 
 uint palloc(void)

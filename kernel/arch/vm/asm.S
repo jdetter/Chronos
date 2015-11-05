@@ -3,24 +3,10 @@
 #include "vm.h"
 #include "x86.h"
 
-.globl __enforce_kernel_readonly__
-__enforce_kernel_readonly__:
-	pushl	%ebp
-	movl	%esp, %ebp
-
-	movl	%cr0, %eax
-	orl	$CR0_WP, %eax
-	movl	%eax, %cr0
-
-	movl	%ebp, %esp
-	popl	%ebp
-
-	ret
-
-/* __enable_paging__(uint* pgdir)*/
+/* vm_enable_paging(pgdir* pgdir)*/
 #define CR0_PGENABLE (1<<31)
-.globl __enable_paging__
-__enable_paging__:
+.globl vm_enable_paging
+vm_enable_paging:
         pushl   %ebp
         movl    %esp, %ebp
 
@@ -36,8 +22,8 @@ __enable_paging__:
         pop     %ebp
         ret
 
-.globl __disable_paging__
-__disable_paging__:
+.globl vm_disable_paging
+vm_disable_paging:
         pushl   %eax
         pushl   %ecx
         movl    %cr0, %eax
@@ -47,6 +33,25 @@ __disable_paging__:
         movl    %eax, %cr0
         popl    %ecx
         popl    %eax
+        ret
+
+.globl vm_curr_pgdir
+vm_curr_pgdir:
+        movl    %cr3, %eax
+        ret
+
+.globl __enforce_kernel_readonly__
+__enforce_kernel_readonly__:
+        pushl   %ebp
+        movl    %esp, %ebp
+
+        movl    %cr0, %eax
+        orl     $CR0_WP, %eax
+        movl    %eax, %cr0
+
+        movl    %ebp, %esp
+        popl    %ebp
+
         ret
 
 # check to see if paging is enabled. 
@@ -76,11 +81,6 @@ __get_cr2__:
 .globl __get_cr0__
 __get_cr0__:
         movl    %cr0, %eax
-        ret
-
-.globl __get_cr3__
-__get_cr3__:
-        movl    %cr3, %eax
         ret
 
 # void __set_stack__(uint stack, uint return_addr)
