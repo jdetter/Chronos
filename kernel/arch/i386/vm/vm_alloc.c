@@ -192,7 +192,7 @@ void setup_kvm(void)
 	k_start_pages = k_pages;
 }
 
-void save_vm(void)
+void vm_save_vm(void)
 {
 	*(struct vm_free_node**)KVM_POOL_PTR = head;
 	*(uint*)KVM_PAGE_CT = k_pages;

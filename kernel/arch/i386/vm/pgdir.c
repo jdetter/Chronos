@@ -23,10 +23,13 @@
 #include "panic.h"
 #include "cpu.h"
 
-#define KDIRFLAGS (PGDIR_PRESENT | PGDIR_RW)
-#define KTBLFLAGS (PGTBL_PRESENT | PGTBL_RW)
-#define UDIRFLAGS (PGDIR_PRESENT | PGDIR_RW | PGDIR_USER)
-#define UTBLFLAGS (PGTBL_PRESENT | PGTBL_RW | PGTBL_USER)
+/** Default kernel directory and table flags for i386 */
+#define DFT_KDIRFLAGS (VM_DIR_PRES | VM_DIR_READ | VM_DIR_WRIT | VM_DIR_KRNP)
+#define DFT_KTBLFLAGS (VM_TAB_PRES | VM_TAB_READ | VM_TAB_KRNP)
+
+/** Default user directory and table flags for i386 */
+#define DFT_UDIRFLAGS (VM_DIR_PRES | VM_DIR_READ | VM_DIR_WRIT | VM_DIR_USRP)
+#define DFT_UTBLFLAGS (VM_TAB_PRES | VM_TAB_READ | VM_TAB_USRP)
 
 uchar __kvm_stack_check__(void);
 void __kvm_swap__(pgdir* kvm);
@@ -38,6 +41,32 @@ void vm_safe_mapping(uint start, uint end, pgdir* dir);
 
 void vm_clear_uvm_kstack(pgdir* dir);
 void vm_set_uvm_kstack(pgdir* dir, pgdir* swap);
+
+/* PGDIR FLAG CONVERSIONS */
+pgflags_t vm_dir_flags(pgflags_t flags)
+{
+	return 0;
+}
+
+pgflags_t vm_tbl_flags(pgflags_t flags)
+{
+        pgflags_t result = 0;
+        if(flags & VM_TAB_GLBL)
+		result |= 
+        if(flags & VM_TAB_DRTY)
+
+        if(flags & VM_TAB_ACSS)
+
+        if(flags & VM_TAB_CACH)
+
+        if(flags & VM_TAB_USRP)
+
+        if(flags & VM_TAB_WRIT)
+
+        if(flags & VM_TAB_PRES)
+}
+
+
 pgdir* vm_push_pgdir(void)
 {
 	/* Is paging even enabled? */
@@ -62,11 +91,10 @@ void vm_pop_pgdir(pgdir* dir)
 	pop_cli();
 }
 
-int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir,
-        uchar user, uint flags)
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, pgflags_t flags)
 {
         pgdir* save = vm_push_pgdir();
-        uint dir_flags = KDIRFLAGS;
+         dir_flags = KDIRFLAGS;
         uint tbl_flags = KTBLFLAGS;
 
         if(user)

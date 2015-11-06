@@ -56,9 +56,6 @@ typedef signed int suseconds_t; */
 
 #endif
 
-typedef uintptr_t pgdir;
-typedef uintptr_t pgtbl;
-
 #endif /* i386 */
 
 /* Uncomment to enable global debug */

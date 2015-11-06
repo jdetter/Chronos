@@ -204,7 +204,7 @@ int main(void)
 	cprintf(kernel_loaded);
 	
 	/* Save vm context */
-	save_vm();
+	vm_save_vm();
 	/* Jump into the kernel */
 	__kernel_jmp__(elf_entry);
 
