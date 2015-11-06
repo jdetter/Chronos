@@ -64,7 +64,6 @@ int log2_linux(uint value)
 
 #endif
 
-#include "x86.h"
 #include "file.h"
 #include "stdlock.h"
 #define NO_DEFINE_INODE
@@ -74,6 +73,7 @@ int log2_linux(uint value)
 #include "cache.h"
 #include "diskcache.h"
 #include "cacheman.h"
+#include "vm.h"
 
 #define EXT2_DIRECT_COUNT 12
 

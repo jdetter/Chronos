@@ -25,6 +25,7 @@
 #include "rtc.h"
 #include "ktime.h"
 #include "signal.h"
+#include "context.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -245,6 +246,9 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
+	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_WRIT | VM_DIR_READ;
+        pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_WRIT | VM_TBL_READ;
+
 	/* Does the binary look ok? */
 	if(check_binary_path(path))
 	{
@@ -285,21 +289,25 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		{
 			/* Set the value in env_arr */
 			vm_memmove(env_arr + index, &env_data, sizeof(int),
-					tmp_pgdir, rproc->pgdir);
+					tmp_pgdir, rproc->pgdir,
+					dir_flags, tbl_flags);
 
 			/* Move the string */
 			int len = strlen(envp[index]) + 1;
 			vm_memmove(env_data, envp[index], len, 
-					tmp_pgdir, rproc->pgdir);
+					tmp_pgdir, rproc->pgdir,
+					dir_flags, tbl_flags);
 			env_data += len;
 		}
 		/* Add null element */
 		vm_memmove(env_arr + index, &null_buff, sizeof(int),
-				tmp_pgdir, rproc->pgdir);
+				tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 	} else {
 		env_start -= sizeof(int);
 		vm_memmove((void*)env_start, &null_buff, sizeof(int),
-                                tmp_pgdir, rproc->pgdir);
+                                tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 	}
 
 	/* Create argument array */
@@ -315,7 +323,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		uint str_len = strlen(argv[x]) + 1;
 		uvm_stack -= str_len;
 		vm_memmove((void*)uvm_stack, (char*)argv[x], str_len,
-				tmp_pgdir, rproc->pgdir);
+				tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 		args[x] = (char*)uvm_stack;
 	}
 	/* Copy argument array */
@@ -324,7 +333,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	uvm_stack &= ~(sizeof(int) - 1);
 	/* Copy the array */
 	vm_memmove((void*)uvm_stack, args, MAX_ARG * sizeof(char*),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	uint arg_arr_ptr = uvm_stack; /* argv */
 	int arg_count = x;
@@ -332,23 +342,27 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* Push envp */
         uvm_stack -= sizeof(int);
         vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
-                        tmp_pgdir, rproc->pgdir);
+                        tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 	
 	/* Push argv */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_arr_ptr, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* push argc */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_count, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* Add bogus return address (solved by crt0 in stdlibc)*/
 	uvm_stack -= sizeof(int);
 	uint ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* Set stack start and stack end */
 	rproc->stack_start = PGROUNDUP(uvm_start);
@@ -556,7 +570,9 @@ int sys_sbrk(void)
 		/* TODO: unmap and deallocate the pages here */
 	} else {
 		/* Map needed pages */
-		vm_mappages(old_end, increment, rproc->pgdir, 1);
+		vm_mappages(old_end, increment, rproc->pgdir, 
+			VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT,
+			VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT);
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}

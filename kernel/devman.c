@@ -64,13 +64,18 @@ static struct DeviceDriver* dev_alloc(void)
 
 void* dev_new_mapping(uint phy, uint sz)
 {
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT 
+		| VM_TBL_CACH | VM_TBL_WRTH;
+
 	uint v_start = curr_mapping;
 	uint v_end = PGROUNDUP(v_start + sz);
 	if(v_end > KVM_HARDWARE_E)
 		panic("devman: Out of hardware memory.\n");
 	uint x;
 	for(x = 0;x < sz;x += PGSIZE)
-		vm_mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
+		vm_mappage(phy + x, v_start + x, k_pgdir, 
+			dir_flags, tbl_flags);
 
 	curr_mapping = v_end;
 	return (void*)v_start;

@@ -63,6 +63,8 @@ void trap_init(void)
 }
 
 int trap_pf(uint address){
+	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
 	uint stack_bottom = rproc->stack_end;
 	uint stack_tolerance = stack_bottom - stack_t*PGSIZE;
 	if(address<stack_bottom && address>=stack_tolerance){
@@ -71,7 +73,8 @@ int trap_pf(uint address){
 			return 1;
 		}
 		int numOfPgs = (stack_bottom - address_down)/PGSIZE;
-		vm_mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 1);
+		vm_mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 
+			dir_flags, tbl_flags);
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
 		return 0;

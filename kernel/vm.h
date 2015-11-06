@@ -1,12 +1,6 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
-#ifndef __VM_ASM_ONLY__
-typedef uintptr_t pgdir;
-typedef uintptr_t pgtbl;
-typedef unsigned int pgflags_t;
-#endif
-
 /* Include the architecture independant header */
 #ifdef ARCH_i386
 #include  "arch/i386/vm/vm.h"
@@ -71,38 +65,40 @@ typedef unsigned int pgflags_t;
 
 #endif
 
-/* GENERIC TABLE FLAGS */
-#define VM_TAB_GLBL 0x001 /* Mark the page as a global page */
-#define VM_TAB_DRTY 0x002 /* Mark the page as dirty */
-#define VM_TAB_ACSS 0x004 /* Mark the page as accessed */
-#define VM_TAB_CACH 0x008 /* Mark the page as not cached */
-#define VM_TAB_USRP 0x010 /* Mark the page as a user page */
-#define VM_TAB_KRNP 0x020 /* Mark the page as a kernel page  */
-#define VM_TAB_READ 0x040 /* Mark the page as readable */
-#define VM_TAB_WRIT 0x080 /* Mark the page as writable */
-#define VM_TAB_EXEC 0x100 /* Mark the page as executable */
-#define VM_TAB_PRES 0x200 /* Mark the page as present */
+/* GENERIC DIRECTORY FLAGS */
+#define VM_DIR_GLBL 0x0001 /* Mark the table as a global page */
+#define VM_DIR_DRTY 0x0002 /* Mark the table as dirty */
+#define VM_DIR_ACSS 0x0004 /* Mark the table as accessed */
+#define VM_DIR_CACH 0x0008 /* Mark the table as not cached */
+#define VM_DIR_WRTR 0x0010 /* Mark the table as write through */
+#define VM_DIR_USRP 0x0020 /* Mark the table as a user page */
+#define VM_DIR_KRNP 0x0040 /* Mark the table as a kernel page  */
+#define VM_DIR_READ 0x0080 /* Mark the table as readable */
+#define VM_DIR_WRIT 0x0100 /* Mark the table as writable */
+#define VM_DIR_PRES 0x0200 /* Mark the table as present */
+#define VM_DIR_LRGP 0x0400 /* Specify the page size as large */
+#define VM_DIR_SMLP 0x0800 /* Specify the page size as small */
 
 /* GENERIC TABLE FLAGS */
-#define VM_DIR_GLBL 0x001 /* Mark the table as a global page */
-#define VM_DIR_DRTY 0x002 /* Mark the table as dirty */
-#define VM_DIR_ACSS 0x004 /* Mark the table as accessed */
-#define VM_DIR_CACH 0x008 /* Mark the table as not cached */
-#define VM_DIR_USRP 0x010 /* Mark the table as a user page */
-#define VM_DIR_KRNP 0x020 /* Mark the table as a kernel page  */
-#define VM_DIR_READ 0x040 /* Mark the table as readable */
-#define VM_DIR_WRIT 0x080 /* Mark the table as writable */
-#define VM_DIR_PRES 0x200 /* Mark the table as present */
-#define VM_DIR_LRGP 0x400 /* Specify the page size as large */
-#define VM_DIR_SMLP 0x800 /* Specify the page size as small */
+#define VM_TBL_GLBL 0x0001 /* Mark the page as a global page */
+#define VM_TBL_DRTY 0x0002 /* Mark the page as dirty */
+#define VM_TBL_ACSS 0x0004 /* Mark the page as accessed */
+#define VM_TBL_CACH 0x0008 /* Mark the page as not cached */
+#define VM_TBL_WRTH 0x0010 /* Mark the page as write through */
+#define VM_TBL_USRP 0x0020 /* Mark the page as a user page */
+#define VM_TBL_KRNP 0x0040 /* Mark the page as a kernel page  */
+#define VM_TBL_READ 0x0080 /* Mark the page as readable */
+#define VM_TBL_WRIT 0x0100 /* Mark the page as writable */
+#define VM_TBL_EXEC 0x0200 /* Mark the page as executable */
+#define VM_TBL_PRES 0x0400 /* Mark the page as present */
 
 #ifndef __VM_ASM_ONLY__
 
 /* Include setup header */
-#include "vm_setup.h"
+#include "vm/vm_setup.h"
 
 /* Include alloc header */
-#include "vm_alloc.h"
+#include "vm/vm_alloc.h"
 
 void vm_enable_paging(pgdir* dir);
 pgdir* vm_curr_pgdir(void);
@@ -127,18 +123,21 @@ void setup_kvm(void);
  * Map the page at virtual address virt, to the physical address phy into the
  * page directory dir. This will create entries and tables where needed.
  */
-int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, pgflags_t flags);
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
  * ignored. 
  */
-int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, uchar user);
+int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Directly map the pages into the page table.
  */
-int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, uchar user);
+int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Unmap the page from the page directory. If there isn't a page there then
@@ -152,31 +151,30 @@ uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir);
  * is 0, and the page is not found, return 0. Otherwise, return the address
  * of the mapped page.
  */
-uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir, uchar user);
+uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
+
+pgflags_t vm_findtblflags(uintptr_t virt, pgdir* dir);
 /**
  * Returns the flags for a virtual memory address. Returns -1 if the
  * page is not mapped in memory. 
  */
 int findpgflags(uint virt, pgdir* dir);
 
-/**
- * Set the flags on a specific page table entry. Doesn't change page directory
- * flags.
- */
-uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags);
+int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags);
 
 /**
  * Sets the page read only. Returns the virtual address on success, 0 on
  * failure.
  */
-uint pgreadonly(uint virt, pgdir* dir, uchar user);
+int vm_pgreadonly(uintptr_t virt, pgdir* dir);
 
 /**
  * Set the range of pages from virt_start to virt_end to read only.
  * returns 0 on success, 1 on failure.
  */
-uint pgsreadonly(uint virt_start, uint virt_end, pgdir* dir, uchar user);
+int vm_pgsreadonly(uintptr_t start, uintptr_t end, pgdir* dir);
 
 /**
  * Free all pages in the page table and free the directory itself.
@@ -186,7 +184,7 @@ void freepgdir(pgdir* dir);
 /**
  * Copy the kernel portion of the page table
  */
-void vm_copy_kvm(pgdir* dir);
+int vm_copy_kvm(pgdir* dir);
 
 /**
  * Instead of creating a copy of a user virtual memory space, directly map
@@ -209,10 +207,6 @@ void vm_free_uvm(pgdir* dir);
  */
 void switch_kvm(void);
 
-/**
- * Switch to a user's page table and restore the context.
- */
-void switch_uvm(struct proc* p);
 
 /**
  * Map another process's kstack into another process's address space.
@@ -230,16 +224,12 @@ void vm_set_swap_stack(pgdir* dir, pgdir* swap);
 void vm_clear_swap_stack(pgdir* dir);
 
 /**
- * Switch to the user's context.
- */
-void switch_context(struct proc* p);
-
-/**
  * Move memory from one address space to another. Return the amount of bytes
  * copied.
  */
-uint vm_memmove(void* dst, const void* src, uint sz,
-                pgdir* dst_pgdir, pgdir* src_pgdir);
+size_t vm_memmove(void* dst, const void* src, size_t sz,
+                pgdir* dst_pgdir, pgdir* src_pgdir,
+                pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Free the directory and page table struct  but none of the pages pointed to 

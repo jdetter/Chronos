@@ -49,10 +49,10 @@ int vm_init(void)
 	vm_unmappage(0x0, k_pgdir);
 
 	/* Map pages in for our kernel stack */
-	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0);
+	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0, 0);
 
 	/* Map pages in for kmalloc */
-	vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0);
+	vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0, 0);
 
 	/* Add bootstrap code to the memory pool */
 	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
@@ -150,8 +150,8 @@ void pgdir_cmp(pgdir* src, pgdir* dst)
 	uchar dot = 1;
 	for(x = 0;x < 0xFFFFF000;x += PGSIZE)
 	{
-		uintptr_t src_page = vm_findpg(x, 0, src, 0);
-		uintptr_t dst_page = vm_findpg(x, 0, dst, 0);
+		uintptr_t src_page = vm_findpg(x, 0, src, 0, 0);
+		uintptr_t dst_page = vm_findpg(x, 0, dst, 0, 0);
 
 		if(src_page || dst_page)
 		{

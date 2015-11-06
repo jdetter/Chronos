@@ -29,7 +29,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #endif
 
 #include "kern/types.h"
-#include "x86.h"
+#include "vm.h"
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"

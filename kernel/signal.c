@@ -318,16 +318,21 @@ int sig_handle(void)
 		/* set the return address to the sig handler */
 		rproc->tf->eip = (uint)sig_handler;
 
+		pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+		pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
+
 		/* Push argument (sig) */
 		stack -= sizeof(int);
 		vm_memmove((void*)stack, &sig->signum, sizeof(int),
-				rproc->pgdir, rproc->pgdir);
+				rproc->pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 
 		/* (safely) Push our magic return value */
 		stack -= sizeof(int);
 		uint mag = SIG_MAGIC;
 		vm_memmove((void*)stack, &mag, sizeof(int), 
-				rproc->pgdir, rproc->pgdir);
+				rproc->pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 
 		/* Update stack pointer */
 		rproc->tf->esp = stack;

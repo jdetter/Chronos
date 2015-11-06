@@ -125,7 +125,7 @@ struct FSHardwareDriver* ramfs_driver_alloc(uint block_size, uint blocks)
 	uintptr_t start = 0x1000;
 	uintptr_t end = PGROUNDUP(block_size * blocks);
 
-	vm_mappages(start, end - start, context->dir, 0);
+	vm_mappages(start, end - start, context->dir, 0, 0);
 
 	context->start_addr = start;
 	context->end_addr = end;

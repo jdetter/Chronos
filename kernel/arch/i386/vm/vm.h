@@ -203,6 +203,15 @@
 
 #define UVM_MIN_STACK	0x00A00000 /* 10MB minimum stack size */
 
+
+/* Some page table definitions */
+#define PGSIZE 4096
+#define PGROUNDDOWN(pg) ((pg) & ~(PGSIZE - 1))  
+#define PGROUNDUP(pg)   ((pg + PGSIZE - 1) & ~(PGSIZE - 1))
+
+#define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
+#define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
+
 /** Memory mapped file systems
  *  < Will be updated when implemented >
  */
@@ -223,6 +232,12 @@
 #define TSS_DEFAULT_FLAGS	0x09
 
 #ifndef __VM_ASM_ONLY__
+
+#include <stdint.h>
+
+typedef unsigned int pgflags_t;
+typedef uint32_t pgdir;
+typedef uint32_t pgtbl;
 
 struct vm_segment_descriptor
 {

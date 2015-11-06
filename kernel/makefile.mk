@@ -160,7 +160,7 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o kernel/boot/boot-stage1.o kernel/boot/bootasm.o kernel/boot/ata-read.o
 	$(CROSS_OBJCOPY) -S -O binary -j .text kernel/boot/boot-stage1.o kernel/boot/boot-stage1.img
 
-kernel/boot/boot-stage2.img: $(KERNEL_ARCH_OBJECTS) $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
+kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
 	# Build special files for boot stage 2
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_2__ -c -o kernel/boot/ext2.o kernel/drivers/ext2.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_2__ -c -o kernel/boot/cache.o kernel/cache/cache.c

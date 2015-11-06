@@ -17,7 +17,7 @@ OBJCOPY=objcopy
 
 LDFLAGS := 
 CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
-ASFLAGS += -ggdb -Werror -Wall
+ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
 QEMU := qemu-system-i386
 
 # Flags for building indipendant binaries
