@@ -154,33 +154,6 @@ void sched_init();
 struct proc* spawn_tty(tty_t t);
 
 /**
- * Check to see if the file looks like it is executable. Returns 0 on
- * success, non zero otherwise. This function is depricated. Please
- * use check_binary_inode instead (SECURITY).
- */
-uchar check_binary_path(const char* path);
-
-/**
- * Check to see if a file is an executable. Returns 0 if the file
- * is an ELF executable, non zero otherwise.
- */
-uchar check_binary_inode(inode ino);
-
-/**
- * Load the binary with a given path into the address space of process p. 
- * Returns the end of the binary in memory. This function is depricated,
- * please use load_binary_inode instead (SECURITY).
- */
-uint load_binary_path(const char* path, struct proc* p);
-
-/**
- * Load the binary with the given inode into the address space of p. The
- * file is left open after the operation is complete. Returns the end
- * of the binary in memory on sucess, otherwise returns 0.
- */
-uint load_binary_inode(inode ino, struct proc* p);
-
-/**
  * Returns a pointer with the process id pid. If there is no such process,
  * then NULL is returned. (lock not needed)
  */

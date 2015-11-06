@@ -249,7 +249,7 @@ void pgdir_cmp(pgdir* src, pgdir* dst);
 /**
  * Compare 2 pages.
  */
-void pg_cmp(uchar* pg1, uchar* pg2);
+//void pg_cmp(uchar* pg1, uchar* pg2);
 
 #endif 
 

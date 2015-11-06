@@ -83,7 +83,7 @@ int log2_linux(uint value)
 
 // #define DEBUG
 #define DEBUG_FSCK
-#ifdef __BOOT_2__
+#ifdef __BOOT_STRAP__
 #undef DEBUG
 #undef DEBUG_FSCK
 #endif

@@ -26,6 +26,7 @@
 #include "ktime.h"
 #include "signal.h"
 #include "context.h"
+#include "elf.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -378,8 +379,12 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	switch_uvm(rproc);
 
 	/* load the binary if possible. */
-	uint load_result = load_binary_path(program_path, rproc);
-	if(load_result == 0)
+	uintptr_t code_start;
+	uintptr_t code_end;
+	uintptr_t entry = load_binary_path(program_path, rproc->pgdir,
+		&code_start, &code_end, 1);
+
+	if(entry == 0)
 	{
 		memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 		/* Free temporary directory */
@@ -399,7 +404,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->tf->eip = rproc->entry_point;
 
 	/* Adjust heap start and end */
-	rproc->heap_start = PGROUNDUP(load_result);
+	rproc->heap_start = PGROUNDUP(code_end);
 	rproc->heap_end = rproc->heap_start;
 
 	uchar setuid = 0;

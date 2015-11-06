@@ -241,12 +241,12 @@ typedef uint32_t pgtbl;
 
 struct vm_segment_descriptor
 {
-        uint_16 limit_1; /* 0..15 of limit */
-        uint_16 base_1;  /* 0..15 of base */
-        uint_8  base_2;  /* 16..23 of base */
-        uint_8  type;    /* descriptor type */
-        uint_8  flags_limit_2; /* flags + limit 16..19 */
-        uint_8  base_3; /* 24..31 of base */
+        uint16_t limit_1; /* 0..15 of limit */
+        uint16_t base_1;  /* 0..15 of base */
+        uint8_t  base_2;  /* 16..23 of base */
+        uint8_t  type;    /* descriptor type */
+        uint8_t  flags_limit_2; /* flags + limit 16..19 */
+        uint8_t  base_3; /* 24..31 of base */
 };
 
 /**

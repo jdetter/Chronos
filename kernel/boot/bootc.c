@@ -183,21 +183,22 @@ int main(void)
 			uint file_sz = curr_header.file_sz;
 			uint mem_sz = curr_header.mem_sz;
 			uint needed_sz = PGROUNDUP(mem_sz);
+
+			pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+			pgflags_t tbl_flags = VM_TBL_READ;
+
+			if(!(curr_header.flags & ELF_PH_FLAG_W))
+				tbl_flags |= VM_TBL_WRIT;
+
 			/* map some pages in for this space */
-			vm_mappages((uint)hd_addr, needed_sz, k_pgdir, 0);
+			vm_mappages((uint)hd_addr, needed_sz, k_pgdir, 
+				dir_flags, tbl_flags);
+
 			/* zero this region */
 			memset(hd_addr, 0, mem_sz);
 			/* Load the section */
 			fs.read(chronos_inode, hd_addr, offset,
 				file_sz, fs.context);
-
-			/* Should this section be read only? */
-			if(!(curr_header.flags & ELF_PH_FLAG_W))
-			{
-				pgsreadonly((uint)hd_addr, 
-					(uint)hd_addr + needed_sz,
-					k_pgdir, 0);
-			}
 		}
 	}
 
@@ -245,26 +246,32 @@ void setup_boot2_pgdir(void)
 	vm_stable_page_pool();
 	vm_init_page_pool();
 	
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+
 	/* Start by directly mapping the boot stage 2 pages */
-	vm_dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 0);
+	vm_dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 
+		dir_flags, tbl_flags);
 
 	/* Directly map the kernel page directory */
-	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 
+		dir_flags, tbl_flags);
 
 	/* Map null page temporarily */
-	vm_dir_mappages(0x0, PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(0x0, PGSIZE, k_pgdir, dir_flags, tbl_flags);
 
 	/* Map pages for the kernel binary */
 	// mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
 	
 	/* Map in some of the disk caching space */
-	vm_mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 0);
+	vm_mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 
+		dir_flags, tbl_flags);
 
 	/* Directly map video memory */
 	vm_dir_mappages(CONSOLE_COLOR_BASE_ORIG, 
 		CONSOLE_COLOR_BASE_ORIG + PGSIZE, 
-		k_pgdir, 0);
+		k_pgdir, dir_flags, tbl_flags);
 	vm_dir_mappages(CONSOLE_MONO_BASE_ORIG,
 		CONSOLE_MONO_BASE_ORIG + PGSIZE,
-		k_pgdir, 0);
+		k_pgdir, dir_flags, tbl_flags);
 }
