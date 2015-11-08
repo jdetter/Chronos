@@ -35,7 +35,35 @@
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
-#define stack_t 2
+#define STACK_TOLERANCE 16
+
+// #define DEBUG
+
+#ifdef DEBUG
+#define TRAP_NAME_SZ 20
+char* trap_names[] = {
+        "DIVIDE ERROR",
+        "DEBUG",
+        "NON MASKABLE INTERRUPT",
+        "BREAK RECEIVED",
+        "OVERFLOW CAUGHT",
+        "BOUND RANGE EXCEEDED",
+        "INVALID OPCODE",
+        "DEVICE NOT AVAILABLE",
+        "DOUBLE FAULT",
+        "COPROCESSOR SEGMENT OVERRUN",
+        "INVALID TSS",
+        "SEGMENT NOT PRESENT",
+        "STACK SEGMENT FAULT",
+        "GENERAL PROTECTION FAULT",
+        "PAGE FAULT",
+        "RESERVED INTERRUPT",
+        "FLOATING POINT EXCEPTION",
+        "ALIGNMENT CHECK",
+        "MACHINE CHECK",
+        "SIMD FLOATING POINT EXCEPTION"
+};
+#endif
 
 extern struct rtc_t k_time;
 struct int_gate interrupt_table[TRAP_COUNT];
@@ -62,18 +90,23 @@ void trap_init(void)
 	lidt((uint)interrupt_table, INTERRUPT_TABLE_SIZE);		
 }
 
-int trap_pf(uint address){
+int trap_pf(uintptr_t address)
+{
+#ifdef DEBUG
+	cprintf("Fault address: 0x%x\n", address);
+#endif
 	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
 	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
-	uint stack_bottom = rproc->stack_end;
-	uint stack_tolerance = stack_bottom - stack_t*PGSIZE;
-	if(address<stack_bottom && address>=stack_tolerance){
-		uint address_down = PGROUNDDOWN(address);
-		if(address_down == rproc->heap_end){
+
+	uintptr_t stack_bottom = rproc->stack_end;
+	uintptr_t stack_tolerance = stack_bottom - STACK_TOLERANCE * PGSIZE;
+	if(address < stack_bottom && address >= stack_tolerance){
+		uintptr_t address_down = PGROUNDDOWN(address);
+		if(address_down <= rproc->heap_end)
 			return 1;
-		}
-		int numOfPgs = (stack_bottom - address_down)/PGSIZE;
-		vm_mappages(address_down, numOfPgs*PGSIZE, rproc->pgdir, 
+
+		int numOfPgs = (stack_bottom - address_down) / PGSIZE;
+		vm_mappages(address_down, numOfPgs * PGSIZE, rproc->pgdir, 
 			dir_flags, tbl_flags);
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
@@ -86,11 +119,16 @@ int trap_pf(uint address){
 void trap_handler(struct trap_frame* tf)
 {
 	rproc->tf = tf;
+	
 	int trap = tf->trap_number;
 	char fault_string[64];
 	int syscall_ret = -1;
 	int handled = 0;
 	int user_problem = 0;
+	int kernel_fault = 0;
+
+	if(!(tf->cs & 0x3))
+		kernel_fault = 1;
 
 	/**
 	 * A couple of quick optimizations:
@@ -99,9 +137,17 @@ void trap_handler(struct trap_frame* tf)
 	 *  + signal handling shouldn't handle in switch
 	 */
 
+#ifdef DEBUG
+	if(trap < TRAP_NAME_SZ)
+		cprintf("trap: %s\n", trap_names[trap]);
+#endif
+
 	handled = 1;
 	if(trap == TRAP_SC)
 	{
+#ifdef DEBUG
+		cprintf("trap: SYSTEM CALL\n");
+#endif
 		strncpy(fault_string, "System Call", 64);
 		syscall_ret = syscall_handler((uint*)tf->esp);
 		rproc->tf->eax = syscall_ret;
@@ -193,11 +239,17 @@ void trap_handler(struct trap_frame* tf)
 			user_problem = 1;
 			break;
 		case TRAP_PF:
+			if(kernel_fault) 
+			{
+				strncpy(fault_string, "Seg Fault", 64);
+                                tf->error = __get_cr2__();
+				break;
+			}
+
 			if(trap_pf(__get_cr2__())){
-				cprintf("%s: Seg Fault: 0x%x\n",
-						rproc->name, 
-						__get_cr2__());
-				_exit(1);
+				strncpy(fault_string, "Seg Fault", 64);
+				tf->error = __get_cr2__();
+				user_problem = 1;
 			}else{
 				handled = 1;
 			}
@@ -231,7 +283,7 @@ TRAP_DONE:
 	{
 		cprintf("%s: 0x%x", fault_string, tf->error);
 
-		if(user_problem && rproc)
+		if(user_problem && rproc && !kernel_fault)
 		{
 			_exit(1);
 		} else for(;;);

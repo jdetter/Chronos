@@ -34,7 +34,7 @@ extern uint k_ticks;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
-void trap_return(void);
+void fork_return(void);
 int sys_fork(void)
 {
 	struct proc* new_proc = alloc_proc();
@@ -83,13 +83,13 @@ int sys_fork(void)
 	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
 
 	struct trap_frame* tf = (struct trap_frame*)
-		((uchar*)new_proc->tf - SVM_DISTANCE);
+		((char*)new_proc->tf - SVM_DISTANCE);
 	tf->eax = 0; /* The child should return 0 */
 
 	/* new proc needs a context */
 	struct context* c = (struct context*)
-		((uchar*)tf - sizeof(struct context));
-	c->eip = (uint)trap_return;
+		((char*)tf - sizeof(struct context));
+	c->eip = (uint)fork_return;
 	c->esp = (uint)tf - 4 + SVM_DISTANCE;
 	c->cr0 = (uint)new_proc->pgdir;
 	new_proc->context = (uint)c + SVM_DISTANCE;
@@ -247,15 +247,15 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
-	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_WRIT | VM_DIR_READ;
-        pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_WRIT | VM_TBL_READ;
+	pgflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
+        pgflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
 
 	/* Does the binary look ok? */
-	if(check_binary_path(path))
+	if(elf_check_binary_path(path))
 	{
 		/* see if it is available in /bin */
 		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(check_binary_path(path))
+		if(elf_check_binary_path(path))
 		{
 			/* It really doesn't exist. */
 			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
@@ -381,7 +381,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* load the binary if possible. */
 	uintptr_t code_start;
 	uintptr_t code_end;
-	uintptr_t entry = load_binary_path(program_path, rproc->pgdir,
+	uintptr_t entry = elf_load_binary_path(program_path, rproc->pgdir,
 		&code_start, &code_end, 1);
 
 	if(entry == 0)
@@ -560,24 +560,41 @@ int sys_sbrk(void)
 	slock_acquire(&ptable_lock);
 	uintptr_t old_end = rproc->heap_end;
 
-	/* Will this collide with the stack? */
-	if(PGROUNDUP(old_end + increment) >= rproc->stack_end
-		|| (rproc->mmap_end && 
-			PGROUNDUP(old_end + increment) >= rproc->mmap_end))
-	{
-		slock_release(&ptable_lock);
-		return (int)NULL;
-	}
-
 	if(increment < 0)
 	{
 		/* Deallocating pages */
-		/* TODO: unmap and deallocate the pages here */
+		uintptr_t new_page = PGROUNDDOWN(old_end + increment - 1);
+		uintptr_t old_page = PGROUNDDOWN(old_end - 1);
+
+		for(;old_page > new_page;old_page -= PGSIZE)
+		{
+			if(!vm_unmappage(old_page, rproc->pgdir))
+				panic("%s: Couldn't unmap page: 0x%x\n",
+						rproc->name,
+						old_page);
+		}
+
 	} else {
-		/* Map needed pages */
-		vm_mappages(old_end, increment, rproc->pgdir, 
-			VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT,
-			VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT);
+		/* Will this collide with the stack? */
+		if(PGROUNDUP(old_end + increment) >= rproc->stack_end
+				|| (rproc->mmap_end &&
+					PGROUNDUP(old_end + increment) 
+					>= rproc->mmap_end))
+		{
+			slock_release(&ptable_lock);
+			return (int)NULL;
+		}
+
+		/* Do we even need to map pages? */
+		if(PGROUNDUP(old_end) != PGROUNDUP(old_end + increment))
+		{
+			/* Map needed pages */
+			vm_mappages(old_end, increment, rproc->pgdir, 
+					VM_DIR_USRP | VM_DIR_READ 
+					| VM_DIR_WRIT,
+					VM_TBL_USRP | VM_TBL_READ 
+					| VM_TBL_WRIT);
+		}
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}

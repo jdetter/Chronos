@@ -130,7 +130,7 @@
 #define SVM_KSTACK_S	0xFEFEE000 /* swap stack start */
 #define SVM_KSTACK_G2	0xFEFED000 /* swap stack bottom guard page */
 
-#define KVM_KMALLOC_E   0xFEFFCFFF /* Where kmalloc ends */
+#define KVM_KMALLOC_E   0xFE000000 /* Where kmalloc ends */
 #define KVM_KMALLOC_S   0xFDFF8000 /* Where kmalloc starts */
 
 #define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */

@@ -140,7 +140,8 @@ void vm_add_page(uint pg, pgdir* dir)
 
         pfree(pg);
 	/* If there is a dir, map this page into the dir */
-	if(dir) vm_dir_mappages(pg, pg + PGSIZE, dir, 0, 0);
+	if(dir) vm_dir_mappages(pg, pg + PGSIZE, dir, 
+		VM_DIR_WRIT, VM_TBL_WRIT);
 }
 
 uint palloc(void)
@@ -197,23 +198,4 @@ void vm_save_vm(void)
 	*(struct vm_free_node**)KVM_POOL_PTR = head;
 	*(uint*)KVM_PAGE_CT = k_pages;
 	*(uint*)KVM_VMODE = (uint)((*(const uint_16*)0x410) & 0x30);
-}
-
-void free_list_check(void)
-{
-        if(debug) cprintf("Checking free list...\t\t\t\t\t\t\t");
-        struct vm_free_node* curr = head;
-        while(curr)
-        {
-                if(curr->magic != KVM_MAGIC)
-                {
-                        if(debug) cprintf("[FAIL]\n");
-                        if(debug) cprintf("[WARNING] KVM "
-                                        "has become unstable.\n");
-                        return;
-                }
-                curr = (struct vm_free_node*)curr->next;
-        }
-
-        if(debug) cprintf("[ OK ]\n");
 }

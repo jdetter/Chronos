@@ -11,26 +11,26 @@
 #include "elf.h"
 
 
-int check_binary_path(const char* path)
+int elf_check_binary_path(const char* path)
 {
 	inode ino = fs_open(path, O_RDONLY, 0644, 0, 0);
 	if(!ino) return -1;
-	uchar result = check_binary_inode(ino);
+	int result = elf_check_binary_inode(ino);
 	fs_close(ino);
 	return result;
 }
 
-uintptr_t load_binary_path(const char* path, pgdir* pgdir, uintptr_t* start, 
-	uintptr_t* end, int user)
+uintptr_t elf_load_binary_path(const char* path, pgdir* pgdir, 
+	uintptr_t* start, uintptr_t* end, int user)
 {
         inode ino = fs_open(path, O_RDONLY, 0644, 0x0, 0x0);
         if(!ino) return 0;
-        uintptr_t result = load_binary_inode(ino, pgdir, start, end, user);
+        uintptr_t result = elf_load_binary_inode(ino, pgdir, start, end, user);
         fs_close(ino);
         return result;
 }
 
-int check_binary_inode(inode ino)
+int elf_check_binary_inode(inode ino)
 {
 	if(!ino) return -1;
 
@@ -54,12 +54,12 @@ int check_binary_inode(inode ino)
 	return 0;
 }
 
-uintptr_t load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* seg_start, 
+uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* seg_start, 
 		uintptr_t* seg_end, int user)
 {
 	if(!ino) return 0;
 
-	if(check_binary_inode(ino))
+	if(elf_check_binary_inode(ino))
 		return 0;
 
 	/* Load the entire elf header. */
@@ -102,15 +102,16 @@ uintptr_t load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* seg_start,
 			/* Paging: allocate user pages */
 			
 			pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-			pgflags_t tbl_flags = 0;
+			pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 			
 			if(user) 
+			{
 				dir_flags |= VM_DIR_USRP;
-			else dir_flags |= VM_DIR_KRNP;
-
-                        /* Should this section be readable? */
-                        if(curr_header.flags & ELF_PH_FLAG_R)
-                                tbl_flags |= VM_TBL_READ;
+				tbl_flags |= VM_TBL_USRP;
+			} else {
+				dir_flags |= VM_DIR_KRNP;
+				tbl_flags |= VM_TBL_KRNP;
+			}
 
 			/* Should this section be executable? */
 			if(curr_header.flags & ELF_PH_FLAG_X)

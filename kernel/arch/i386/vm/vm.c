@@ -48,11 +48,16 @@ int vm_init(void)
 	/* The boot strap directly mapped in the null guard page */
 	vm_unmappage(0x0, k_pgdir);
 
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+
 	/* Map pages in for our kernel stack */
-	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 0, 0);
+	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 
+		dir_flags, tbl_flags);
 
 	/* Map pages in for kmalloc */
-	vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, k_pgdir, 0, 0);
+	// vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, 
+	//	k_pgdir, dir_flags, tbl_flags);
 
 	/* Add bootstrap code to the memory pool */
 	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
@@ -133,40 +138,4 @@ void switch_context(struct proc* p)
 
 	/* Go from kernel context to process context */
 	__context_restore__(&k_context, p->context);
-}
-
-void pg_cmp(uchar* pg1, uchar* pg2)
-{
-	cprintf("INDEX     | PAGE 1 | PAGE 2 \n");
-	int x;
-	for(x = 0;x < PGSIZE;x++)
-		cprintf("0x%x | 0x%x | 0x%x \n", x, pg1[x], pg2[x]);
-}
-
-void pgdir_cmp(pgdir* src, pgdir* dst)
-{
-	cprintf("INDEX      | DIRECTORY 1 | DIRECTORY 2\n");
-	uint x;
-	uchar dot = 1;
-	for(x = 0;x < 0xFFFFF000;x += PGSIZE)
-	{
-		uintptr_t src_page = vm_findpg(x, 0, src, 0, 0);
-		uintptr_t dst_page = vm_findpg(x, 0, dst, 0, 0);
-
-		if(src_page || dst_page)
-		{
-			dot = 1;
-			cprintf("0x%x | ", x);
-			cprintf("0x%x | ", src_page);
-			cprintf("0x%x\n", dst_page);
-		} else {
-			if(dot)
-			{
-				cprintf("0x%x | ", x);
-				cprintf(".......... | ");
-				cprintf("..........\n");
-				dot = 0;
-			}
-		}
-	}
 }

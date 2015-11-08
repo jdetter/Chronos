@@ -31,6 +31,13 @@ mktf:
 	pushl	%esp # start of the trap frame
 	call	trap_handler
 
+.globl fork_return
+fork_return:
+	nop
+	nop
+	nop
+	nop
+
 .globl trap_return
 trap_return:
 	# pop registers

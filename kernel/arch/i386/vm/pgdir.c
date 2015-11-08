@@ -95,7 +95,7 @@ pgflags_t vm_tbl_flags(pgflags_t flags)
         if(flags & VM_TBL_WRIT)
 		result |= PGTBL_WRITE;
         if(flags & VM_TBL_PRES)
-		result |= PGTBL_DIRTY;
+		result |= PGTBL_PRSNT;
 
 	return result;
 }
@@ -124,13 +124,10 @@ void vm_pop_pgdir(pgdir* dir)
 	pop_cli();
 }
 
-int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, 
-		pgflags_t dir_flags, pgflags_t tbl_flags)
+int vm_mappage_native(uintptr_t phy, uintptr_t virt, pgdir* dir,
+                pgflags_t dir_flags, pgflags_t tbl_flags)
 {
         pgdir* save = vm_push_pgdir();
-
-        dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
-        tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
 
         phy = PGROUNDDOWN(phy);
         virt = PGROUNDDOWN(virt);
@@ -145,7 +142,7 @@ int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir,
                 tbl[tbl_index] = phy | tbl_flags;
         } else {
                 panic("kvm remap: 0x%x\n", virt);
-		return -1;
+                return -1;
         }
 
         vm_pop_pgdir(save);
@@ -153,12 +150,21 @@ int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir,
         return 0;
 }
 
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, 
+		pgflags_t dir_flags, pgflags_t tbl_flags)
+{
+        dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
+        tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
+
+        return vm_mappage_native(phy, virt, dir, dir_flags, tbl_flags);
+}
+
 int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, 
 	pgflags_t dir_flags, pgflags_t tbl_flags)
 {
 	pgdir* save = vm_push_pgdir();
         /* round va + sz up to a page */
-        uintptr_t end = PGROUNDDOWN((va + sz + PGSIZE - 1));
+        uintptr_t end = PGROUNDUP(va + sz);
         uintptr_t start = PGROUNDDOWN(va);
 
         if(end <= start) 
@@ -226,13 +232,10 @@ uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir)
         return 0;
 }
 
-uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
+uintptr_t vm_findpg_native(uintptr_t virt, int create, pgdir* dir,
 	pgflags_t dir_flags, pgflags_t tbl_flags)
 {
 	pgdir* save = vm_push_pgdir();
-
-	dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
-        tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
 
         virt = PGROUNDDOWN(virt);
        	int dir_index = PGDIRINDEX(virt);
@@ -264,6 +267,14 @@ uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
 
 	vm_pop_pgdir(save);
         return PGROUNDDOWN(page);
+}
+
+uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
+        pgflags_t dir_flags, pgflags_t tbl_flags)
+{
+	dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
+        tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
+	return vm_findpg_native(virt, create, dir, dir_flags, tbl_flags);
 }
 
 pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir)
@@ -437,7 +448,7 @@ int vm_copy_kvm(pgdir* dir)
 		uintptr_t tbl_flags = vm_findtblflags(x, k_pgdir);
 		if(!page) continue;
 
-		if(vm_mappage(page, x, dir, tbl_flags, pg_flags))
+		if(vm_mappage_native(page, x, dir, tbl_flags, pg_flags))
 			return -1;
 	}
 
@@ -454,8 +465,9 @@ void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir)
 	for(x = 0;x < (UVM_KVM_S >> 22);x++)
 	{   
 		uintptr_t src_page = PGROUNDDOWN(src_dir[x]); 
-		pgflags_t tbl_flags = vm_findtblflags(src_page, src_dir);
 		if(!src_page) continue;
+		pgflags_t tbl_flags = src_dir[x] & (PGSIZE - 1);
+
 		if(!dst_dir[x]) dst_dir[x] = palloc() | tbl_flags;
 		memmove((void*)PGROUNDDOWN(dst_dir[x]), 
 				(void*)PGROUNDDOWN(src_dir[x]), 
@@ -476,7 +488,7 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 		pgflags_t src_pgflags = vm_findpgflags(x, src_dir);
 		pgflags_t src_tblflags = vm_findtblflags(x, src_dir);
 		
-		uintptr_t dst_page = vm_findpg(x, 1, dst_dir, 
+		uintptr_t dst_page = vm_findpg_native(x, 1, dst_dir, 
 			src_tblflags, src_pgflags);
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
@@ -489,10 +501,13 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 		/* Remove old mapping */
 		vm_unmappage(x, dst_dir);
 		uintptr_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
+		pgflags_t src_pgflags = vm_findpgflags(x, src_dir);
+		pgflags_t src_tblflags = vm_findtblflags(x, src_dir);
 		if(!src_page) continue;
 
 		/* Create and map new page */
-		uintptr_t dst_page = vm_findpg(x, 1, dst_dir, 0, 0);
+		uintptr_t dst_page = vm_findpg_native(x, 1, dst_dir, 
+			src_tblflags, src_pgflags);
 		/* Copy the page contents */
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
@@ -528,7 +543,9 @@ void vm_set_swap_stack(pgdir* dir, pgdir* swap)
 	for(pg = start;pg < end;pg += PGSIZE)
 	{
 		uintptr_t src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0, 0);
-		vm_mappage(src, pg, dir, 0, 0);
+		vm_mappage(src, pg, dir, 
+			VM_DIR_READ | VM_DIR_WRIT, 
+			VM_TBL_READ | VM_TBL_WRIT);
 	}
 
 	vm_pop_pgdir(save);	
@@ -615,4 +632,72 @@ void freepgdir_struct(pgdir* dir)
 	pfree((uintptr_t)dir);
 
 	vm_pop_pgdir(save);
+}
+
+int vm_print_pgdir(uintptr_t last_page, pgdir* dir)
+{
+	int pgs = 0;
+	uintptr_t start = 0;
+	uintptr_t end = PGROUNDDOWN(VM_MAX);
+	if(last_page) end = last_page;
+
+	int printed = 0;
+	for(;start < end;start += PGSIZE)
+	{
+		uintptr_t page = vm_findpg(start, 0, dir, 0, 0);
+
+		/* If the page is valid, print it out */
+		if(page)
+		{
+			cprintf("0x%x -> 0x%x || ", start, PGROUNDDOWN(page));
+			pgflags_t tbl_flags = vm_findtblflags(start, dir);
+			pgflags_t pg_flags = vm_findpgflags(start, dir);
+			
+			if(tbl_flags & PGDIR_PRSNT)
+				cprintf("PRSNT ");
+			if(tbl_flags & PGDIR_WRITE)
+				cprintf("WRITE ");
+			if(tbl_flags & PGDIR_USERP)
+				cprintf("USERP ");
+			if(tbl_flags & PGDIR_WRTHR)
+				cprintf("WRTHR ");
+			if(tbl_flags & PGDIR_CACHD)
+				cprintf("CACHD ");
+			if(tbl_flags & PGDIR_ACESS)
+				cprintf("ACESS ");
+			if(tbl_flags & PGDIR_LGPGS)
+				cprintf("LGPGS ");
+			
+			cprintf("|| ");
+
+			if(pg_flags & PGTBL_PRSNT)
+                                cprintf("PRSNT ");
+			if(pg_flags & PGTBL_WRITE)
+                                cprintf("WRITE ");
+			if(pg_flags & PGTBL_USERP)
+                                cprintf("USERP ");
+			if(pg_flags & PGTBL_WRTHR)
+                                cprintf("WRTHR ");
+			if(pg_flags & PGTBL_CACHD)
+                                cprintf("CACHD ");
+			if(pg_flags & PGTBL_ACESS)
+                                cprintf("ACESS ");
+			if(pg_flags & PGTBL_DIRTY)
+                                cprintf("DIRTY ");
+			if(pg_flags & PGTBL_GLOBL)
+                                cprintf("GLOBL ");
+
+			cprintf("\n");
+			printed = 1;
+			pgs++;
+		} else {
+			if(printed)
+			{
+				cprintf("...\n");
+				printed = 0;
+			}
+		}
+	}
+
+	return pgs;
 }

@@ -89,8 +89,8 @@
 #define VM_TBL_KRNP 0x0040 /* Mark the page as a kernel page  */
 #define VM_TBL_READ 0x0080 /* Mark the page as readable */
 #define VM_TBL_WRIT 0x0100 /* Mark the page as writable */
-#define VM_TBL_EXEC 0x0200 /* Mark the page as executable */
-#define VM_TBL_PRES 0x0400 /* Mark the page as present */
+#define VM_TBL_PRES 0x0200 /* Mark the page as present */
+#define VM_TBL_EXEC 0x0400 /* Mark the page as executable */
 
 #ifndef __VM_ASM_ONLY__
 
@@ -160,7 +160,7 @@ pgflags_t vm_findtblflags(uintptr_t virt, pgdir* dir);
  * Returns the flags for a virtual memory address. Returns -1 if the
  * page is not mapped in memory. 
  */
-int findpgflags(uint virt, pgdir* dir);
+pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir);
 
 int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags);
 
@@ -238,18 +238,12 @@ size_t vm_memmove(void* dst, const void* src, size_t sz,
 void freepgdir_struct(pgdir* dir);
 
 /** Memory debugging functions */
-void free_list_check(void); /* Verfy the free list */
-void free_list_dump(void); /* Print the free list */
 
 /**
- * Compare 2 page tables.
+ * Print each mapping and flags in the page table. Returns the amount of
+ * pages found in the page table.
  */
-void pgdir_cmp(pgdir* src, pgdir* dst);
-
-/**
- * Compare 2 pages.
- */
-//void pg_cmp(uchar* pg1, uchar* pg2);
+int vm_print_pgdir(uintptr_t last_page, pgdir* dir);
 
 #endif 
 
