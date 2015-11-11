@@ -121,7 +121,8 @@ int (*syscall_table[])(void) = {
 	sys_sigpending,
 	sys_signal,
 	sys_sigsuspend,
-	sys_setegid
+	sys_setegid,
+	sys_sync
 };
 
 char* syscall_table_names[] = {
@@ -214,8 +215,8 @@ char* syscall_table_names[] = {
         "sigpending",
         "signal",
         "sigsuspend",
-        "setegid"
-
+        "setegid",
+        "sync"
 };
 
 

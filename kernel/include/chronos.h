@@ -94,6 +94,7 @@
 #define SYS_signal	0x57
 #define SYS_sigsuspend	0x58
 #define SYS_setegid	0x59
+#define SYS_sync	0x5A
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);

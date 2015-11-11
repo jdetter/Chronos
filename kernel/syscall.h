@@ -161,8 +161,9 @@ int sys_sigpending(void);
 int sys_signal(void);
 int sys_sigsuspend(void);
 int sys_setegid(void);
+int sys_sync(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_setegid /* System call with the greatest value*/
+#define SYS_MAX SYS_sync /* System call with the greatest value*/
 
 #endif

@@ -142,6 +142,10 @@ run-x:
 run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 
+export-fs:
+	rm -f ext2.img
+	dd if=./chronos.img of=./ext2.img ibs=512 skip=$(FS_START)
+
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
 

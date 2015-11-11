@@ -173,6 +173,7 @@ void get_perm(struct stat* st, char* dst)
 			break;
 		default:
 			dst[0] = '?';
+			printf("Unknown property: %u", st->st_mode & S_IFMT);
 			break;
 	}
 

@@ -81,7 +81,7 @@ int log2_linux(uint value)
 #define EXT2_MAX_NAME FILE_MAX_NAME
 #define EXT2_MAX_PATH_SEGS 32
 
-// #define DEBUG
+#define DEBUG
 #define DEBUG_FSCK
 #ifdef __BOOT_STRAP__
 #undef DEBUG
@@ -2224,10 +2224,16 @@ int ext2_create(const char* path, mode_t permissions,
 	/* update attributes */
 	new_ino->mode = permissions;
 	new_ino->owner = uid;
-	new_ino->group = new_file >> context->inodegroupshift;
+	new_ino->group = gid;
 	new_ino->creation_time = 0;/* TODO: get kernel time */
 	new_ino->modification_time = new_ino->creation_time;
+	new_ino->last_access_time = new_ino->creation_time;
 	new_ino->hard_links = 1; /* Starts with one hard link */
+	new_ino->sectors = 0;
+
+#ifdef DEBUG
+	cprintf("Created file with permissions: 0x%x\n", permissions);
+#endif
 
 	/* Close the child */
 	ext2_close(ino, context);
@@ -2252,10 +2258,13 @@ int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
 
 int ext2_chmod(inode* ino, mode_t mode, context* context)
 {
+	ino->ino->mode &= ~0777;
+	ino->ino->mode |= mode;
+
 #ifdef DEBUG
-	cprintf("ext2: changed permission of file: %s\n", ino->path);
+        cprintf("ext2: changed permission of file: %s to %x\n", 
+                ino->path, ino->ino->mode);
 #endif
-	ino->ino->mode = mode;
 
 	/* Results will get written to disk when the file is closed.*/
 	return 0;

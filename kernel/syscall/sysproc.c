@@ -393,6 +393,9 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		return -1;
 	}
 
+	rproc->code_start = code_start;
+	rproc->code_end = code_end;
+
 	/* Change name */
 	strncpy(rproc->name, program_path, FILE_MAX_PATH);
 
