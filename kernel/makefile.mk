@@ -1,6 +1,7 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
 	elf \
+	arch/$(BUILD_ARCH)/trap/trap \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
@@ -20,7 +21,6 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
-	trap \
 	cpu \
 	pipe \
 	fsman \
