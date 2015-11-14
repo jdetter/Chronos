@@ -93,12 +93,11 @@ void fsman_init(void)
 	ext2->type = 0;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
 
-	/* Initilize the file system */
-	/* TODO: update init */
-	// vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
-	//	vsfs->cache, vsfs->context);
+	return;
 
-	return; /* NO RAMFS FOR NOW */
+	/* Initilize the dev file system */
+	/// struct FSDriver* dev = fs_alloc();
+	//struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(4096, 1024);
 
 	/* make sure there is a dev folder */
 	ext2->mkdir("/dev", 
