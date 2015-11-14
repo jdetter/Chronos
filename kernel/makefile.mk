@@ -53,6 +53,7 @@ KERNEL_DRIVERS := \
 	cmos \
 	rtc \
 	diskio \
+	lwfs \
 	raid
 
 #        vsfs 

@@ -11,4 +11,9 @@ void cman_init(void);
  */
 void* cman_alloc(uint sz);
 
+/**
+ * Free the cache space.
+ */
+void cman_free(void* ptr, size_t size);
+
 #endif
