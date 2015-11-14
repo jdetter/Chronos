@@ -47,7 +47,11 @@ struct lwfs_inode
 	uint32_t last_access_time;
 	uint32_t size;
 	void*    direct[LWFS_DIRECT];
-	uint32_t next_free; /* The next free inode */
+	union
+	{
+		uint32_t references; /* Current pointers to this node */
+		uint32_t next_free; /* The next free inode */
+	} state_info;
 };
 
 /* Copy of EXT2 file types */
@@ -107,7 +111,7 @@ inode* allocate_inode(context* c)
 	if(c->inode_head)
 	{
 		result = c->inode_head;
-		c->inode_head = (inode*)result->next_free;
+		c->inode_head = (inode*)result->state_info.next_free;
 		memset(result, 0, sizeof(inode));
 		c->free_inodes--;
 	}
@@ -125,7 +129,7 @@ int free_inode(inode* ino, context* c)
 			+ (c->inode_count << c->inode_shifter))
 	{
 		slock_acquire(&c->inode_list_lock);
-		ino->next_free = (uint32_t)c->inode_head;
+		ino->state_info.next_free = (uint32_t)c->inode_head;
 		c->inode_head = ino;
 		c->free_inodes++;
 		slock_release(&c->inode_list_lock);
@@ -546,7 +550,9 @@ void* lwfs_open(const char* path, context* context)
 
 int lwfs_close(inode* i, context* context)
 {
-	return -1;
+	/* Decrement references */
+	i->state_info.references--;
+	retur00;
 }
 
 int lwfs_stat(inode* i, struct stat* dst, context* context)
@@ -609,8 +615,8 @@ int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 	new_ino->status_changed_time = 0;
 	new_ino->last_access_time = 0;
 	new_ino->size = 0;
+	new_ino->state_info.references = 0;
 	memset(new_ino->direct, 0, sizeof(uint32_t) * LWFS_DIRECT);
-	new_ino->next_free = 0;
 
 #ifdef KTIME_PROVIDED
 	new_ino->modification_time = ktime_seconds();
@@ -657,12 +663,16 @@ int lwfs_chmod(inode* i, mode_t permission, context* context)
 
 int lwfs_truncate(inode* i, size_t sz, context* context)
 {
+#ifdef KTIME_PROVIDED
+	i->last_access_time = ktime_seconds();
+        i->status_changed_time = i->last_access_time;
+#endif
+
 	return _truncate(i, sz, context);
 }
 
 int lwfs_link(const char* file, const char* link, context* context)
 {
-
 	char link_parent[FILE_MAX_PATH];
 	char link_name[FILE_MAX_PATH];
 
@@ -733,12 +743,44 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 		lwfs_close(parent, context);
 		return -1;
 	}
+
+	/* Set the proper file attributes */
 	new_dir->mode = S_IFDIR;
 	lwfs_chmod(new_dir, permission, context);
 	lwfs_chown(new_dir, uid, gid, context);
 	
+	/* Create . and .. */
+	if(alloc_dirent(new_dir, ".", new_dir, context))
+	{
+		free_inode(new_dir, context);
+		lwfs_close(parent, context);
+		return -1;
+	}
 
-	return -1;
+	if(alloc_dirent(new_dir, "..", parent, context))
+        {
+                free_inode(new_dir, context);
+                lwfs_close(parent, context);
+                return -1;
+        }
+
+	/* Now add the child to the parent*/
+	if(alloc_dirent(parent, dir_name, new_dir, context))
+        {
+                free_inode(new_dir, context);
+                lwfs_close(parent, context);
+                return -1;
+        }
+
+	/* The parent gained a reference */
+	parent->hard_links++;
+	/* The child has 2 references: from itself and its parent*/
+	new_dir->hard_links = 2;
+
+	/* Close the parent, no need to close child (no open)*/
+	lwfs_close(parent, context);
+
+	return 0;
 }
 
 int lwfs_read(inode* inode, void* dst, uintptr_t start, size_t sz, 
@@ -789,6 +831,26 @@ int lwfs_unlink(const char* file, context* context)
 	inode* dir = lwfs_open(parent_dir, context);
 	if(!dir) return -1;
 
+	/* Decrement references */
+	inode* f = lwfs_open(file, context);
+
+	/* Is this the only reference open? */
+	if(f->state_info.references > 1)
+	{
+		lwfs_close(f);
+		return -1; /* Cannot delete open file */
+	}
+
+	if(f)
+	{
+		f->hard_links--;
+		lwfs_close(f, context);
+
+		/* Was that the last reference to that inode? */
+		if(!f->hard_links)
+			free_inode(f, context);
+	}
+
 	if(free_dirent(dir, file_name, context))
 	{
 		lwfs_close(dir, context);
@@ -797,24 +859,45 @@ int lwfs_unlink(const char* file, context* context)
 
 	lwfs_close(dir, context);
 
-	/* Decrement references */
-	inode* f = lwfs_open(file, context);
-	if(!f) return -1;
-	f->hard_links--;
-	lwfs_close(f, context);
-	
 	return 0;
 }
 
 int lwfs_readdir(inode* dir, int index, struct dirent* dst, context* context)
 {
-	return -1;
+	off_t offset = index << context->dirent_shifter;
+	if(offset >= dir->size) return -1; /* end if dir*/
+
+	dirent d;
+	if(_read(dir, &d, offset, sizeof(dirent), context) != sizeof(dirent))
+		return -1;
+	dst->d_ino = d.inode;
+	dst->d_off = offset + sizeof(dirent);
+	dst->d_reclen = sizeof(ino_t) + sizeof(off_t) 
+		+ sizeof(unsigned short) + sizeof(unsigned char)
+		+ strlen(d.name) + 1;
+	dst->d_type = d.type;
+	/* Preset maxiumum is 256 for struct linux_dirent */
+	strncpy(dst->d_name, d.name, 256);
+
+	return 0;
 }
 
 int lwfs_getdents(inode* dir, struct dirent* dst_arr, size_t count,
-		off_t posistion, context* context)
+		off_t position, context* context)
 {
-	return -1;
+	/* Round position up to the closest entry */
+	position += sizeof(dirent) - 1;
+	position &= ~(sizeof(dirent) - 1);
+
+	int left = (dir->size - position) >> context->dirent_shifter;
+	if(count > left) count = left;
+	if(count == 0) return 0; /* end of directory */
+
+	if(_read(dir, dst_arr, position, count << context->dirent_shifter, 
+				context) != count << context->dirent_shifter)
+		return -1;
+
+	return count;
 }
 
 int lwfs_fsstat(struct fs_stat* dst, context* context)
@@ -829,7 +912,53 @@ inode* lwfs_opened(const char* path, context* context)
 
 int lwfs_rmdir(const char* path, context* context)
 {
-	return -1;
+	char parent_path[FILE_MAX_PATH];
+	char file_name[FILE_MAX_PATH];
+
+	strncpy(parent_path, path, FILE_MAX_PATH);
+	strncpy(file_name, path, FILE_MAX_PATH);
+
+	if(file_path_parent(parent_path))
+		return -1;
+	if(file_path_file(parent_path))
+		return -1;
+	if(file_path_name(file_name))
+		return -1;
+
+	/* Open the parent and the child */
+	inode* parent = lwfs_open(parent_path, context);
+	inode* child = lwfs_open(path, context);
+
+	if(!parent || !child)
+	{
+		if(parent) lwfs_close(parent, context);
+		if(child) lwfs_close(child, context);
+		return -1;
+	}
+
+	/* Does the child only contain 2 files? Is the child a directory? */
+	if(child->size > sizeof(dirent) * 2 || !S_ISDIR(child->mode))
+	{
+		lwfs_close(parent, context);
+		lwfs_close(child, context);
+		return -1;
+	}
+
+	/* Remove the child from the parent */
+	if(free_dirent(parent, file_name, context))
+	{
+		lwfs_close(parent, context);
+		return -1;
+	}
+
+	/* Decrement parent references */
+	parent->hard_links--;
+
+	/* Close and delete the child */
+	lwfs_close(child, context);
+	free_inode(child, context);
+
+	return 0;
 }
 
 int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
