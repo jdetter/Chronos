@@ -8,7 +8,6 @@
 #include "stdlock.h"
 #include "file.h"
 #include "vm.h"
-#include "ramfs.h"
 #define NO_DEFINE_INODE
 #include "fsman.h"
 #undef NO_DEFINE_INODE
@@ -104,7 +103,6 @@ struct lwfs_context
 	int free_blocks;
 
 	inode* root; /* The root inode */
-	struct FSHardwareDriver* driver;
 };
 
 static int inode_to_num(inode* ino, context* c)
@@ -482,20 +480,8 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 		int cache_sz, char* cache, struct FSDriver* driver,
 		void* c)
 {
-	context* context = c;
-	if(start_sector != PGSIZE)
-	{
-#ifdef DEBUG
-		cprintf("lwfs: first sector should be first page.\n");
-#endif
-		return -1;
-	}
-
-	context->driver = ramfs_driver_alloc(PGSIZE, 
-		end_sector - start_sector);
 	if(!driver) return -1;
-	/* Enter the ramfs address space for the first time */
-	ramfs_enter(context->driver->context);
+	context* context = c;
 	memset(context, 0, sizeof(struct lwfs_context));
 	slock_init(&context->inode_list_lock);
 	slock_init(&context->block_list_lock);
@@ -533,10 +519,7 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 		}
 
 		if(inode_sz & 0x01 || dirent_sz & 0x01 || pg_sz & 0x01) 
-		{
-			ramfs_exit(context->driver->context);
 			return -1;
-		}
 
 		inode_sz >>= 1;
 		dirent_sz >>= 1;
@@ -553,7 +536,6 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 	if(1 << block_shift != PGSIZE)
 	{
 		cprintf("lwfs: log2 algorithm is currupt!\n");
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 #endif
@@ -576,7 +558,6 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 		cprintf("lwfs: Sect size is imcompatable! have: %d need: %d\n",
 				sectsize, PGSIZE);
 #endif
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -628,15 +609,9 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 	lwfs_chmod(root, 0755, context);
 
 	if(alloc_dirent(root, ".", root, context))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 	if(alloc_dirent(root, "..", root, context))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 	context->root = root;
 
 	/* Set the function pointers */
@@ -671,48 +646,34 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 	cprintf("lwfs: Setup complete.\n");
 #endif
 
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 void* lwfs_open(const char* path, context* context)
 {
-	ramfs_enter(context->driver->context);
 	/* Lets lookup this inode */
 	inode* dir = lwfs_lookup(path, context);
 	if(!dir)
 	{
 		/* The file doesn't exist */
-		ramfs_exit(context->driver->context);
 		return NULL;
 	}
 
 	/* Increment the references */
 	dir->state_info.references++;
 
-	ramfs_exit(context->driver->context);
 	return dir;
 }
 
 int lwfs_close(inode* i, context* context)
 {
-	ramfs_enter(context->driver->context);
 	/* Decrement references */
 	i->state_info.references--;
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 int lwfs_stat(inode* i, struct stat* dst, context* context)
 {
-	ramfs_enter(context->driver->context);
-	if((uintptr_t)dst < UVM_TOP)
-	{
-		cprintf("lwfs: warning: destination within user space.\n");
-		ramfs_exit(context->driver->context);
-		return -1;
-	}
-
 	dst->st_dev = 0;
 	dst->st_ino = inode_to_num(i, context);
 	dst->st_mode = i->mode;
@@ -726,7 +687,6 @@ int lwfs_stat(inode* i, struct stat* dst, context* context)
 	dst->st_atime = i->last_access_time;
 	dst->st_mtime = i->modification_time;
 	dst->st_ctime = i->status_changed_time;
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
@@ -734,28 +694,17 @@ int lwfs_stat(inode* i, struct stat* dst, context* context)
 int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 		context* context)
 {
-	ramfs_enter(context->driver->context);
 	char parent_path[FILE_MAX_PATH];
 	char file_name[FILE_MAX_PATH];
 	strncpy(parent_path, path, FILE_MAX_PATH);
 	strncpy(file_name, path, FILE_MAX_PATH);
 
 	if(file_path_parent(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_file(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 	if(file_path_name(file_name))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	inode* parent_dir = lwfs_open(parent_path, context);
 	inode* new_ino = allocate_inode(context);
@@ -764,7 +713,6 @@ int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 	{
 		if(parent_dir) lwfs_close(parent_dir, context);
 		if(new_ino) free_inode(new_ino, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -777,7 +725,6 @@ int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 	{
 		lwfs_close(parent_dir, context);
 		free_inode(new_ino, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -800,28 +747,24 @@ int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 
 	new_ino = NULL;
 	lwfs_close(parent_dir, context);
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
 
 int lwfs_chown(inode* i, uid_t uid, gid_t gid, context* context)
 {
-	ramfs_enter(context->driver->context);
 	i->owner_uid = uid;
 	i->group_gid = gid;
 
 #ifdef KTIME_PROVIDED
 	i->status_changed_time = ktime_seconds();
 #endif
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
 
 int lwfs_chmod(inode* i, mode_t permission, context* context)
 {
-	ramfs_enter(context->driver->context);
 	/* dont allow the file to change type */
 	permission &= 07777;
 
@@ -835,25 +778,21 @@ int lwfs_chmod(inode* i, mode_t permission, context* context)
         i->status_changed_time = ktime_seconds();
 #endif
 
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 int lwfs_truncate(inode* i, size_t sz, context* context)
 {
-	ramfs_enter(context->driver->context);
 #ifdef KTIME_PROVIDED
 	i->last_access_time = ktime_seconds();
         i->status_changed_time = i->last_access_time;
 #endif
 
-	ramfs_exit(context->driver->context);
 	return _truncate(i, sz, context);
 }
 
 int lwfs_link(const char* file, const char* link, context* context)
 {
-	ramfs_enter(context->driver->context);
 	char link_parent[FILE_MAX_PATH];
 	char link_name[FILE_MAX_PATH];
 
@@ -861,22 +800,11 @@ int lwfs_link(const char* file, const char* link, context* context)
 	strncpy(link_name, link, FILE_MAX_PATH);
 
 	if(file_path_parent(link_parent))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_file(link_parent))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_name(link_name))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	inode* f = lwfs_open(file, context);
 	inode* link_dir = lwfs_open(link_parent, context);
@@ -885,7 +813,6 @@ int lwfs_link(const char* file, const char* link, context* context)
 	{
 		if(f) lwfs_close(f, context);
 		if(link_dir) lwfs_close(link_dir, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -893,7 +820,6 @@ int lwfs_link(const char* file, const char* link, context* context)
 	{
 		lwfs_close(f, context);
 		lwfs_close(link_dir, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -904,22 +830,17 @@ int lwfs_link(const char* file, const char* link, context* context)
 	lwfs_close(f, context);
 	lwfs_close(link_dir, context);
 
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 int lwfs_symlink(const char* file, const char* link, context* context)
 {
-	ramfs_enter(context->driver->context);
-
-	ramfs_exit(context->driver->context);
 	return -1;
 }
 
 int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 		context* context)
 {
-	ramfs_enter(context->driver->context);
 	char parent_path[FILE_MAX_PATH];
 	char dir_name[FILE_MAX_PATH];
 	
@@ -927,35 +848,19 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 	strncpy(dir_name, path, FILE_MAX_PATH);
 
 	if(file_path_parent(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_file(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_name(dir_name))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	inode* parent = lwfs_open(parent_path, context);
-        if(!parent) 
-	{
-		ramfs_exit(context->driver->context);
-		return -1;
-	}
+        if(!parent) return -1;
 
 	inode* new_dir = allocate_inode(context);
 	if(!new_dir) 
 	{
 		lwfs_close(parent, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -969,7 +874,6 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 	{
 		free_inode(new_dir, context);
 		lwfs_close(parent, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -977,7 +881,6 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
         {
                 free_inode(new_dir, context);
                 lwfs_close(parent, context);
-		ramfs_exit(context->driver->context);
                 return -1;
         }
 
@@ -986,7 +889,6 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
         {
                 free_inode(new_dir, context);
                 lwfs_close(parent, context);
-		ramfs_exit(context->driver->context);
                 return -1;
         }
 
@@ -997,7 +899,6 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 
 	/* Close the parent, no need to close child (no open)*/
 	lwfs_close(parent, context);
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
@@ -1005,19 +906,11 @@ int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
 int lwfs_read(inode* inode, void* dst, uintptr_t start, size_t sz, 
 		context* context)
 {
-	if((uintptr_t)dst < UVM_TOP)
-	{
-		cprintf("lwfs: warning: dst is in user address space.\n");
-		return -1;
-	}
-
-	ramfs_enter(context->driver->context);
 #ifdef KTIME_PROVIDED   
         inode->last_access_time = ktime_seconds();
 #endif
 
 	int result = _read(inode, dst, start, sz, context);
-	ramfs_exit(context->driver->context);
 
 	return result;
 }
@@ -1025,70 +918,42 @@ int lwfs_read(inode* inode, void* dst, uintptr_t start, size_t sz,
 int lwfs_write(inode* ino, const void* src, intptr_t start, size_t sz,
 		context* context)
 {
-        if((uintptr_t)src < UVM_TOP)
-        {
-                cprintf("lwfs: warning: src is in user address space.\n");
-		return -1;
-        }
-
-	ramfs_enter(context->driver->context);
 #ifdef KTIME_PROVIDED   
         ino->last_access_time = ktime_seconds();
         ino->modification_time = ino->last_access_time;
 #endif
 
-	int result = _write(ino, src, start, sz, context);
-	ramfs_exit(context->driver->context);
-	return result;
+	return _write(ino, src, start, sz, context);
 }
 
 int lwfs_rename(const char* src, const char* dst, context* context)
 {
 	if(lwfs_link(src, dst, context))
-	{
-		ramfs_enter(context->driver->context);
 		return -1;
-	}
 
 	lwfs_unlink(src, context);
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 int lwfs_unlink(const char* file, context* context)
 {
-	ramfs_enter(context->driver->context);
 	char parent_dir[FILE_MAX_PATH];
 	char file_name[FILE_MAX_PATH];
 
 	/* Calculate parent directory */
 	strncpy(parent_dir, file, FILE_MAX_PATH);
 	if(file_path_parent(parent_dir))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_file(parent_dir))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	/* Calculate file name */
 	strncpy(file_name, file, FILE_MAX_PATH);
 	if(file_path_name(file_name))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	inode* dir = lwfs_open(parent_dir, context);
-	if(!dir) 
-	{
-		ramfs_exit(context->driver->context);
-		return -1;
-	}
+	if(!dir) return -1;
 
 	/* Decrement references */
 	inode* f = lwfs_open(file, context);
@@ -1097,7 +962,6 @@ int lwfs_unlink(const char* file, context* context)
 	if(f->state_info.references > 1)
 	{
 		lwfs_close(f, context);
-		ramfs_exit(context->driver->context);
 		return -1; /* Cannot delete open file */
 	}
 
@@ -1114,38 +978,23 @@ int lwfs_unlink(const char* file, context* context)
 	if(free_dirent(dir, file_name, context))
 	{
 		lwfs_close(dir, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
 	lwfs_close(dir, context);
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
 
 int lwfs_readdir(inode* dir, int index, struct dirent* dst, context* context)
 {
-        if((uintptr_t)dst < UVM_TOP)
-        {
-                cprintf("lwfs: warning: dst is in user address space.\n");
-		return -1;
-        }
-
-	ramfs_enter(context->driver->context);
 	off_t offset = index << context->dirent_shifter;
 	if(offset >= dir->size) 
-	{
-		ramfs_exit(context->driver->context);
 		return -1; /* end if dir*/
-	}
 
 	dirent d;
 	if(_read(dir, &d, offset, sizeof(dirent), context) != sizeof(dirent))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	dst->d_ino = d.inode;
 	dst->d_off = offset + sizeof(dirent);
@@ -1156,20 +1005,12 @@ int lwfs_readdir(inode* dir, int index, struct dirent* dst, context* context)
 	/* Preset maxiumum is 256 for struct linux_dirent */
 	strncpy(dst->d_name, d.name, 256);
 
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
 int lwfs_getdents(inode* dir, struct dirent* dst_arr, size_t count,
 		off_t position, context* context)
 {
-	if((uintptr_t)dst_arr < UVM_TOP)
-        {
-                cprintf("lwfs: warning: dst is in user address space.\n");
-                return -1;
-        }
-
-	ramfs_enter(context->driver->context);
 	/* Round position up to the closest entry */
 	position += sizeof(dirent) - 1;
 	position &= ~(sizeof(dirent) - 1);
@@ -1177,42 +1018,27 @@ int lwfs_getdents(inode* dir, struct dirent* dst_arr, size_t count,
 	int left = (dir->size - position) >> context->dirent_shifter;
 	if(count > left) count = left;
 	if(count == 0) 
-	{
-		ramfs_exit(context->driver->context);
 		return 0; /* end of directory */
-	}
 
 	if(_read(dir, dst_arr, position, count << context->dirent_shifter, 
 				context) != count << context->dirent_shifter)
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
-	ramfs_exit(context->driver->context);
 	return count;
 }
 
 int lwfs_fsstat(struct fs_stat* dst, context* context)
 {
-	ramfs_enter(context->driver->context);
-
-	ramfs_exit(context->driver->context);
-
 	return -1;
 }
 
 inode* lwfs_opened(const char* path, context* context)
 {
-	ramfs_enter(context->driver->context);
-
-	ramfs_exit(context->driver->context);
 	return NULL;
 }
 
 int lwfs_rmdir(const char* path, context* context)
 {
-	ramfs_exit(context->driver->context);
 	char parent_path[FILE_MAX_PATH];
 	char file_name[FILE_MAX_PATH];
 
@@ -1220,22 +1046,11 @@ int lwfs_rmdir(const char* path, context* context)
 	strncpy(file_name, path, FILE_MAX_PATH);
 
 	if(file_path_parent(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_file(parent_path))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
-
 	if(file_path_name(file_name))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	/* Open the parent and the child */
 	inode* parent = lwfs_open(parent_path, context);
@@ -1245,7 +1060,6 @@ int lwfs_rmdir(const char* path, context* context)
 	{
 		if(parent) lwfs_close(parent, context);
 		if(child) lwfs_close(child, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -1254,7 +1068,6 @@ int lwfs_rmdir(const char* path, context* context)
 	{
 		lwfs_close(parent, context);
 		lwfs_close(child, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -1262,7 +1075,6 @@ int lwfs_rmdir(const char* path, context* context)
 	if(free_dirent(parent, file_name, context))
 	{
 		lwfs_close(parent, context);
-		ramfs_exit(context->driver->context);
 		return -1;
 	}
 
@@ -1272,7 +1084,6 @@ int lwfs_rmdir(const char* path, context* context)
 	/* Close and delete the child */
 	lwfs_close(child, context);
 	free_inode(child, context);
-	ramfs_exit(context->driver->context);
 
 	return 0;
 }
@@ -1280,25 +1091,15 @@ int lwfs_rmdir(const char* path, context* context)
 int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
 		mode_t permission, context* context)
 {
-	ramfs_enter(context->driver->context);
 	if(!(permission & S_IFMT))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	if(lwfs_create(path, permission, 0, 0, context))
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	inode* ino = lwfs_open(path, context);
 	if(!ino) 
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
 	ino->mode = permission;
 	int dev_data[2];
@@ -1306,12 +1107,8 @@ int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
 	dev_data[1] = dev_minor;
 	if(lwfs_write(ino, dev_data, 0, sizeof(int) * 2, context)
 			!= sizeof(int) * 2)
-	{
-		ramfs_exit(context->driver->context);
 		return -1;
-	}
 
-	ramfs_exit(context->driver->context);
 	return 0;
 }
 
