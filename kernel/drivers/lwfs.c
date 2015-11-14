@@ -103,6 +103,7 @@ struct lwfs_context
 	int free_blocks;
 
 	inode* root; /* The root inode */
+	void* cache;
 };
 
 static int inode_to_num(inode* ino, context* c)
@@ -476,15 +477,17 @@ int lwfs_fsync(void* i, void* context);
 int lwfs_fsck(context* context);
 
 
-int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
-		int cache_sz, char* cache, struct FSDriver* driver,
-		void* c)
+int lwfs_init(size_t size, struct FSDriver* driver)
 {
 	if(!driver) return -1;
-	context* context = c;
+	context* context = (void*)driver->context;
 	memset(context, 0, sizeof(struct lwfs_context));
 	slock_init(&context->inode_list_lock);
 	slock_init(&context->block_list_lock);
+
+	/* Setup the cache */
+	void* start = cman_alloc(size);
+	context->cache = start;
 
 	/* Lets do some sanity checking: */
 	size_t inode_sz = sizeof(inode);
@@ -540,42 +543,21 @@ int lwfs_init(sect_t start_sector, sect_t end_sector, int sectsize,
 	}
 #endif
 
-	/* We shouldn't have a cache, we never use it. */
-	if(cache_sz > 0)
-	{
-#ifdef DEBUG
-		cprintf("lwfs: I don't need a cache!\n");
-#endif
-
-#ifndef __LINUX__
-		cman_free(cache, cache_sz);
-#endif
-	}
-
-	if(sectsize != PGSIZE)
-	{
-#ifdef DEBUG
-		cprintf("lwfs: Sect size is imcompatable! have: %d need: %d\n",
-				sectsize, PGSIZE);
-#endif
-		return -1;
-	}
-
 	/* How many inodes should we make? */
 	int inode_blocks = 8;
 	/* If we have more than a megabyte, allow more */
-	if(end_sector > 0x1000000)
+	if(size > 0x1000000)
 		inode_blocks = 16;
 	/* If we have more than 256MB then allow a ton */
-	if(end_sector > 0x100000000)
+	if(size > 0x100000000)
 		inode_blocks = 32;
 
 	size_t block_size = 1 << block_shift;
-	context->inodes_start = start_sector << block_shift;
+	context->inodes_start = (uintptr_t)start << block_shift;
 	context->inode_count = (block_size >> inode_shift) * inode_blocks;
 	context->blocks_start = (inode_blocks << block_shift) 
 			+ context->inodes_start;
-	context->block_count = end_sector - start_sector - inode_blocks;
+	context->block_count = size >> block_shift;
 
 	/* set quick shifters */
 	context->block_shifter = block_shift;

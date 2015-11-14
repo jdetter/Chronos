@@ -15,7 +15,6 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "fsman.h"
-#include "vsfs.h"
 #include "ata.h"
 #include "panic.h"
 #include "stdarg.h"
@@ -26,6 +25,7 @@
 #include "ramfs.h"
 #include "panic.h"
 #include "ext2.h"
+#include "lwfs.h"
 #include "diskio.h"
 #include "diskcache.h"
 
@@ -86,18 +86,12 @@ void fsman_init(void)
 	ext2->start = 2048;
 	disk_cache_init(ext2);
 	
-	/* Set our vsfs as the root file system. */
+	/* Set our ext2 as the root file system. */
 	ext2_init(ext2);
 	// ext2->fsck(ext2->context);
 	ext2->valid = 1;
 	ext2->type = 0;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
-
-	return;
-
-	/* Initilize the dev file system */
-	/// struct FSDriver* dev = fs_alloc();
-	//struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(4096, 1024);
 
 	/* make sure there is a dev folder */
 	ext2->mkdir("/dev", 
@@ -105,16 +99,17 @@ void fsman_init(void)
 		0x0, 0x0, ext2->context);
 
 	/* Create a ramfs instance */
-	struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(512, 1024);
-	struct FSDriver* ramfs = fs_alloc();
-	ramfs->driver = ramfs_driver;
-	vsfs_driver_init(ramfs);
+	struct FSDriver* dev = fs_alloc();
+	if(lwfs_init(0x10000, dev))
+	{
+		cprintf("kernel: failed to create /dev ram file system.\n");
+		fs_free(dev);
+		return;
+	}
 	
-	/* Create a vsfs instance ontop of the ramfs */
-	//vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
-	//	ramfs_driver->writesect, ramfs);
-	ramfs->type = 0;
-	strncpy(ramfs->mount_point, "/dev/", FILE_MAX_PATH);
+	dev->type = 0;
+	dev->valid = 1;
+	strncpy(dev->mount_point, "/dev/", FILE_MAX_PATH);
 }
 
 static struct FSDriver* fs_alloc(void)
