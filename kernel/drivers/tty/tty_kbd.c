@@ -14,7 +14,7 @@
 #include "proc.h"
 #include "serial.h"
 
-#define KEY_DEBUG
+// #define KEY_DEBUG
 
 extern struct tty* active_tty;
 

@@ -16,12 +16,6 @@
 /** Uncomment this line for debugging */
 #define DEBUG
 
-#define SET0_KEY_CTRL	0x1D
-#define SET0_KEY_ALT   	0x38
-#define SET0_KEY_CAPS  	0x3B
-#define SET0_KEY_LSHIFT	0x2A
-#define SET0_KEY_RSHIFT	0x36
-
 /* Values for the common special keys (setup in init) */
 static int key_lctrl;
 static int key_rctrl;
@@ -40,6 +34,8 @@ static int num_lock_enabled;
 
 /* Keyboard commands */
 #define KBD_ENABLE_SCANNING 0xF4
+#define KBD_DISABLE_SCANNING 0xF4
+#define KBD_GET_SET 0xF0
 
 /* Responses */
 #define KBD_ACK 0xFA
@@ -114,9 +110,9 @@ char scan_set_1_special_keys[512] =
 	       0,	       0,	       0,	       0,//3X
 	       0,	       0,    SKEY_RSHIFT,	       0,
        SKEY_LALT,	       0,      SKEY_CAPS,        SKEY_F1,
-	       0,        SKEY_F2,        SKEY_F3, 	 SKEY_F4,
-	 SKEY_F5,        SKEY_F6,        SKEY_F7,        SKEY_F8,//4X
-	 SKEY_F9,	SKEY_F10,	       0,      SKEY_HOME,
+         SKEY_F2,        SKEY_F3, 	 SKEY_F4,        SKEY_F5,
+	 SKEY_F6,        SKEY_F7,        SKEY_F8,        SKEY_F9,//4X
+	SKEY_F10,	       0,	       0,      SKEY_HOME,
      SKEY_UARROW,      SKEY_PGUP,	       0,    SKEY_LARROW,
 	       0,    SKEY_RARROW,	       0,       SKEY_END,
      SKEY_DARROW,    SKEY_PGDOWN,	       0,    SKEY_DELETE,//5X
@@ -169,7 +165,7 @@ char scan_set_1_special_keys[512] =
 /* Special keys for set 1 */
 #define SET1_KEY_CTRL   0x1D
 #define SET1_KEY_ALT    0x38
-#define SET1_KEY_CAPS   0x3B
+#define SET1_KEY_CAPS   0x3A
 #define SET1_KEY_LSHIFT 0x2A
 #define SET1_KEY_RSHIFT 0x36
 
@@ -207,6 +203,7 @@ int (*shandle)(int pressed, int special, int val, int ctrl, int alt,
 
 int kbd_init(void)
 {
+
 	pic_enable(INT_PIC_KEYBOARD);
 	shift_enabled = 0;
 	ctrl_enabled = 0;
@@ -217,6 +214,7 @@ int kbd_init(void)
 
 	/* Which set are we using? */
 	int set = 1;
+
 	if(set == 1)
 	{
 		key_lctrl = SET1_KEY_CTRL;
@@ -262,6 +260,8 @@ get_key:
 		released = 1;
 		scancode &= 127;
 	}
+
+	cprintf("kbd: received: 0x%x  pressed? %d\n", scancode, !released);
 
 	/* Before any processing, check if it is a special key */
 	int special_val = CHAR_SPECIAL(scancode);
@@ -353,12 +353,26 @@ get_key:
 			result = TO_LOWERCASE(result);
 	}
 
+
+	/* this key is a character, if there are mods it is special */
+        if(alt_enabled || ctrl_enabled || caps_enabled)
+        {
+                if(shandle)
+                {
+                        shandle(!released, 0, result,
+                                        ctrl_enabled, alt_enabled,
+                                        shift_enabled, caps_enabled);
+                }
+
+                goto get_key;
+        }
+
 	// char c = sctoa(scancode);
 	return result;
 }
 
 void kbd_event_handler(int (*handle) (int pressed, int special, 
-		int val, int ctrl, int alt, int shift, int caps))
+			int val, int ctrl, int alt, int shift, int caps))
 {
 	/* assign the handler */
 	shandle = handle;
