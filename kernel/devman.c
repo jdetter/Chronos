@@ -208,11 +208,11 @@ void dev_populate(void)
 	int dev_perm = PERM_URD | PERM_UWR |
 		PERM_GRD | PERM_GWR | 
 		PERM_ORD | PERM_OWR;
-	int x;
+	dev_t x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{
 		if(!drivers[x].valid) continue;
-		int type = drivers[x].type;
+		dev_t type = drivers[x].type;
 		switch(type)
 		{
 			/* Character devices */
@@ -256,12 +256,12 @@ struct DeviceDriver* dev_lookup(int dev)
 	else return NULL;
 }
 
-int io_null_read(void* dst, uint start_read, uint sz, void* context)
+int io_null_read(void* dst, uint start_read, size_t sz, void* context)
 {
 	return 0;
 }
 
-int io_null_write(void* dst, uint start_read, uint sz, void* context)
+int io_null_write(void* dst, uint start_read, size_t sz, void* context)
 {
 	return sz;
 }
@@ -275,13 +275,13 @@ int io_null_init(struct IODriver* driver)
 	return 0;
 }
 
-int io_zero_read(void* dst, uint start_read, uint sz, void* context)
+int io_zero_read(void* dst, uint start_read, size_t sz, void* context)
 {
 	memset(dst, 0, sz);
         return sz;
 }
 
-int io_zero_write(void* dst, uint start_read, uint sz, void* context)
+int io_zero_write(void* dst, uint start_read, size_t sz, void* context)
 {
         return sz;
 }

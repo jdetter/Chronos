@@ -18,8 +18,17 @@ struct IODriver
 	slock_t device_lock;
 	/* Basic io functions */
 	int (*init)(struct IODriver* driver);
-	int (*read)(void* dst, uint start_read, uint sz, void* context);
-        int (*write)(void* src, uint start_write, uint sz, void* context);
+	/**
+	 * Read sz bytes into the buffer dst. Returns the amount of
+	 * bytes read.
+	 */
+	int (*read)(void* dst, uint start_read, size_t sz, void* context);
+	
+	/**
+	 * Write sz bytes to the device from buffer src. Returns the amount
+	 * of bytes written to the device.
+	 */
+        int (*write)(void* src, uint start_write, size_t sz, void* context);
 	int (*ioctl)(unsigned long request, void* arg, void* context);
 };
 

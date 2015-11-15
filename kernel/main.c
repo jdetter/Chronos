@@ -118,14 +118,14 @@ void main_stack(void)
 	fsman_init();
 	cprintf("[ OK ]\n");
 
+	/* Populate the device folder */
+	cprintf("Populating the dev folder...\t\t\t\t\t\t");
+        dev_populate();
+        cprintf("[ OK ]\n");
+
 	cprintf("Starting network manager...\t\t\t\t\t\t");
 	net_init();
 	cprintf("[ OK ]\n");
-
-	/* Populate the device folder */
-	//cprintf("Populating the dev folder...\t\t\t\t\t\t");
-	//dev_populate();
-	//cprintf("[ OK ]\n");
 
 	/* Enable PIT */
         cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");

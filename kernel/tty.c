@@ -35,8 +35,8 @@ struct tty ttys[MAX_TTYS];
 static struct tty* active = NULL;
 
 int tty_io_init(struct IODriver* driver);
-int tty_io_read(void* dst, uint start_read, uint sz, void* context);
-int tty_io_write(void* src, uint start_write, uint sz, void* context);
+int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
+int tty_io_write(void* src, uint start_write, size_t sz, void* context);
 int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
 int tty_io_setup(struct IODriver* driver, uint tty_num)
 {
@@ -55,7 +55,7 @@ int tty_io_init(struct IODriver* driver)
 	return 0;
 }
 
-int tty_io_read(void* dst, uint start_read, uint sz, void* context)
+int tty_io_read(void* dst, uint start_read, size_t sz, void* context)
 {
 	// tty_t t = context;
 	// cprintf("Initiated read for max of %d characters.\n", sz);
@@ -74,7 +74,7 @@ int tty_io_read(void* dst, uint start_read, uint sz, void* context)
 	return sz; */
 }
 
-int tty_io_write(void* src, uint start_write, uint sz, void* context)
+int tty_io_write(void* src, uint start_write, size_t sz, void* context)
 {
 	tty_t t = context;
 	uchar* src_c = src;

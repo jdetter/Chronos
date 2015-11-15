@@ -81,8 +81,8 @@ int log2_linux(uint value)
 #define EXT2_MAX_NAME FILE_MAX_NAME
 #define EXT2_MAX_PATH_SEGS 32
 
-#define DEBUG
-#define DEBUG_FSCK
+// #define DEBUG
+// #define DEBUG_FSCK
 #ifdef __BOOT_STRAP__
 #undef DEBUG
 #undef DEBUG_FSCK

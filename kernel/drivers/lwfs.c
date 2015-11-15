@@ -24,7 +24,7 @@ typedef uint32_t sect_t;
 #define LWFS_DIRNAMESZ 120
 
 #define KTIME_PROVIDED
-#define DEBUG
+// #define DEBUG
 
 #ifdef __LINUX__
 #undef KTIME_PROVIDED
@@ -293,7 +293,9 @@ done:
 static int _truncate(inode* ino, size_t new_sz, context* context)
 {
 	if(new_sz >= ino->size) return new_sz;
+	ino->size = new_sz;
 
+	/* Free up the unused blocks */
 	int new_start_block = (new_sz - 1) >> context->block_shifter;
 	int old_start_block = (ino->size - 1) >> context->block_shifter;
 
@@ -333,14 +335,15 @@ static int alloc_dirent(inode* dir, const char* name, inode* file,
 		type = LWFS_FILE_SYMLINK;
 	else if(S_ISSOCK(file->mode))
 		type = LWFS_FILE_SOCK;
+
 	new_dirent.type = type;
 	int name_sz = strlen(name);
 	if(name_sz > LWFS_DIRNAMESZ - 1)
 		return -1; /* Name too long! */
-	strncpy(new_dirent.name, name, name_sz);
+	strncpy(new_dirent.name, name, LWFS_DIRNAMESZ);
 	new_dirent.name_sz = name_sz;
 
-	if(_write(dir, &new_dirent, file->size, sizeof(dirent), context)
+	if(_write(dir, &new_dirent, dir->size, sizeof(dirent), context)
 				!= sizeof(dirent))
 		return -1;
 	return 0;
@@ -372,7 +375,7 @@ static int free_dirent(inode* dir, const char* name, context* context)
 	if(offset + sizeof(dirent) == dir->size)
 	{
 		/* Just truncate the file */
-		return _truncate(dir, offset, context) == offset;
+		return _truncate(dir, offset, context) != offset;
 	}
 
 	/* Lets swap it with the last entry */
@@ -386,9 +389,9 @@ static int free_dirent(inode* dir, const char* name, context* context)
 			!= sizeof(dirent))
 		return -1;
 
+	size_t new_sz = dir->size - sizeof(dirent);
 	/* Now truncate to the new size */
-	return _truncate(dir, dir->size - sizeof(dirent), context)
-			==  dir->size - sizeof(dirent);
+	return _truncate(dir, new_sz, context) != new_sz;
 }
 
 static int _lwfs_inum_lookup(inode* dir, const char* filename, 
@@ -553,7 +556,7 @@ int lwfs_init(size_t size, struct FSDriver* driver)
 		inode_blocks = 32;
 
 	size_t block_size = 1 << block_shift;
-	context->inodes_start = (uintptr_t)start << block_shift;
+	context->inodes_start = (uintptr_t)start;
 	context->inode_count = (block_size >> inode_shift) * inode_blocks;
 	context->blocks_start = (inode_blocks << block_shift) 
 			+ context->inodes_start;
@@ -634,17 +637,17 @@ int lwfs_init(size_t size, struct FSDriver* driver)
 void* lwfs_open(const char* path, context* context)
 {
 	/* Lets lookup this inode */
-	inode* dir = lwfs_lookup(path, context);
-	if(!dir)
+	inode* file = lwfs_lookup(path, context);
+	if(!file)
 	{
 		/* The file doesn't exist */
 		return NULL;
 	}
 
 	/* Increment the references */
-	dir->state_info.references++;
+	file->state_info.references++;
 
-	return dir;
+	return file;
 }
 
 int lwfs_close(inode* i, context* context)
@@ -676,6 +679,14 @@ int lwfs_stat(inode* i, struct stat* dst, context* context)
 int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
 		context* context)
 {
+	/* Try opening the file first */
+	inode* exists = lwfs_open(path, context);
+	if(exists)
+	{
+		lwfs_close(exists, context);
+		return 0; /* Corner case: return 0 on exists */
+	}
+
 	char parent_path[FILE_MAX_PATH];
 	char file_name[FILE_MAX_PATH];
 	strncpy(parent_path, path, FILE_MAX_PATH);
@@ -1016,7 +1027,15 @@ int lwfs_fsstat(struct fs_stat* dst, context* context)
 
 inode* lwfs_opened(const char* path, context* context)
 {
-	return NULL;
+	inode* ino = lwfs_open(path, context);
+	if(!ino) return NULL;
+	if(ino->state_info.references == 1)
+	{
+		lwfs_close(ino, context);
+		return NULL;
+	}
+
+	return ino;
 }
 
 int lwfs_rmdir(const char* path, context* context)
@@ -1047,6 +1066,14 @@ int lwfs_rmdir(const char* path, context* context)
 
 	/* Does the child only contain 2 files? Is the child a directory? */
 	if(child->size > sizeof(dirent) * 2 || !S_ISDIR(child->mode))
+	{
+		lwfs_close(parent, context);
+		lwfs_close(child, context);
+		return -1;
+	}
+
+	/* Is the directory referenced? */
+	if(child->state_info.references != 1)
 	{
 		lwfs_close(parent, context);
 		lwfs_close(child, context);
@@ -1087,8 +1114,8 @@ int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
 	int dev_data[2];
 	dev_data[0] = dev_major;
 	dev_data[1] = dev_minor;
-	if(lwfs_write(ino, dev_data, 0, sizeof(int) * 2, context)
-			!= sizeof(int) * 2)
+	if(lwfs_write(ino, dev_data, 0, sizeof(dev_t) * 2, context)
+			!= sizeof(dev_t) * 2)
 		return -1;
 
 	return 0;
