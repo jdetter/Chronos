@@ -182,6 +182,8 @@ int dev_init()
 
 	/* Keyboard */
 	kbd_init();
+	/* Enable events from keyboards */
+	tty_setup_kbd_events();
 
 	/* make null and zero devices */
 	driver = dev_alloc();

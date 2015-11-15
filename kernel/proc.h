@@ -6,6 +6,8 @@
 #include "kern/signal.h"
 #include "trap.h"
 #include "vm.h"
+#include "fsman.h"
+#include "pipe.h"
 
 /* The amount of processes in the ptable */
 #define PTABLE_SIZE	50

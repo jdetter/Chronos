@@ -11,7 +11,6 @@ KERNEL_OBJECTS := \
 	netman \
 	main \
 	proc \
-	tty \
 	panic \
 	kcond \
 	syscall/syscall \
@@ -42,6 +41,9 @@ KERNEL_ASSEMBLY := \
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
+	tty/tty_display \
+	tty/tty_io \
+	tty/tty_kbd \
 	ata \
 	keyboard \
 	pic \

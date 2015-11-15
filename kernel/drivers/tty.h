@@ -236,4 +236,9 @@ char tty_keyboard_read(tty_t t);
  */
 int tty_keyboard_count(tty_t t);
 
+/**
+ * Allow ttys to capture keyboard events.
+ */
+void tty_setup_kbd_events(void);
+
 #endif

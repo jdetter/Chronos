@@ -99,11 +99,7 @@ void main_stack(void)
 	ktime_init();
 	cprintf("[ OK ]\n");
 
-	/* Initilize keyboard driver */
-	cprintf("Initilizing keyboard driver...\t\t\t\t\t\t");
-	kbd_init();
-	cprintf("[ OK ]\n");
-
+	/* Initilize caches */
 	cprintf("Initilizing caches...\t\t\t\t\t\t\t");
 	cman_init();
 	cprintf("[ OK ]\n");
@@ -113,7 +109,7 @@ void main_stack(void)
 	dev_init();
 	cprintf("[ OK ]\n");
 
-	/* Start disk driver */
+	/* Start file system manager */
 	cprintf("Starting file system manager...\t\t\t\t\t\t");
 	fsman_init();
 	cprintf("[ OK ]\n");
