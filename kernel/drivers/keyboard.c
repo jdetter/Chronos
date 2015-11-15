@@ -14,7 +14,7 @@
 #include "keyboard.h"
 
 /** Uncomment this line for debugging */
-#define DEBUG
+// #define DEBUG
 
 /* Values for the common special keys (setup in init) */
 static int key_lctrl;
@@ -261,7 +261,9 @@ get_key:
 		scancode &= 127;
 	}
 
+#ifdef DEBUG
 	cprintf("kbd: received: 0x%x  pressed? %d\n", scancode, !released);
+#endif
 
 	/* Before any processing, check if it is a special key */
 	int special_val = CHAR_SPECIAL(scancode);

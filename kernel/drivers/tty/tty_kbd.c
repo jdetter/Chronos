@@ -172,6 +172,7 @@ void tty_handle_keyboard_interrupt(void)
 static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
                 int shift, int caps)
 {
+#ifdef DEBUG
 	cprintf("tty: special key received:\n");
 	cprintf("    + pressed:   %d\n", pressed);
 	cprintf("    + special:   %d\n", special);
@@ -180,6 +181,7 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	cprintf("    + alt:       %d\n", alt);
 	cprintf("    + shift:     %d\n", shift);
 	cprintf("    + caps:      %d\n", caps);
+#endif
 
 	if(!special)
 		cprintf("    + character: %c\n", (char)val);
