@@ -141,10 +141,18 @@ void main_stack(void)
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");
-	
-	cprintf("Spawning tty0...\t\t\t\t\t\t\t");
-	/* Setup an init process */
-	init_proc = spawn_tty(tty_find(0));
+
+	/* Spawn shells on all of the ttys */	
+	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
+	int tty_num;
+	for(tty_num = 0;;tty_num++)
+	{
+		tty_t t = tty_find(tty_num);
+		if(!t) break;
+
+		/* Setup an init process */
+        	init_proc = spawn_tty(t);
+	}
 	cprintf("[ OK ]\n");
 
 	/* Start scheduling loop. */

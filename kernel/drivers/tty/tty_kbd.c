@@ -69,6 +69,7 @@ void tty_handle_keyboard_interrupt(void)
 	slock_acquire(&ptable_lock);
 	slock_acquire(&active_tty->key_lock);
 	char c = 0;
+
 	do
 	{
 		switch(active_tty->type)
@@ -181,10 +182,25 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	cprintf("    + alt:       %d\n", alt);
 	cprintf("    + shift:     %d\n", shift);
 	cprintf("    + caps:      %d\n", caps);
-#endif
 
 	if(!special)
 		cprintf("    + character: %c\n", (char)val);
+#endif
+
+	/* If the special event is CTRL-FX, switch to that tty */
+	if(special && ctrl && pressed &&
+		val >= SKEY_F1 && val <= SKEY_F12)
+	{
+		/* Switch to that tty */
+		int tty_num = val - SKEY_F1;
+
+		/* Make sure the tty exists */
+		tty_t t = tty_find(tty_num);
+		if(!t) return 0;
+
+		/* Put that tty in the foreground */
+		tty_enable(t);
+	}
 
 	return 0;
 }
@@ -294,6 +310,9 @@ void tty_keyboard_flush_line(tty_t t)
 
 char tty_keyboard_read(tty_t t)
 {
+	/* Can't read unless you are the active tty */
+	if(t != active_tty) return 0;
+
 	char c;
 	/* try to read from normal buffer first */
 	if((c = tty_keyboard_read_buff(&t->keyboard)))
