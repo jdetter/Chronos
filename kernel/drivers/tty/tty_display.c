@@ -233,11 +233,6 @@ void tty_print_screen(tty_t t, char* buffer)
 	}
 }
 
-int tty_gets(char* dst, int sz)
-{
-	return block_keyboard_io(dst, sz);
-}
-
 char tty_getc(tty_t t)
 {
 	char c;

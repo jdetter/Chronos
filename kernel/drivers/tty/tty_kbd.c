@@ -18,6 +18,12 @@
 
 extern struct tty* active_tty;
 
+/* Public method for reading from tty */
+int tty_gets(char* dst, int sz)
+{
+        return block_keyboard_io(dst, sz);
+}
+
 void tty_delete_char(tty_t t)
 {
 #ifdef KEY_DEBUG
@@ -85,6 +91,7 @@ void tty_handle_keyboard_interrupt(void)
 				c = serial_read_noblock();
 				break;
 		}
+
 		if(!c) break; /* no more characters */
 		/* Got character. */
 
@@ -102,8 +109,10 @@ void tty_handle_keyboard_interrupt(void)
 				cprintf("canon: \\r swapped for \\n");
 #endif
 				/* Carrige return */
-				if(active_tty->term.c_iflag & IGNCR) continue;
-				else if(active_tty->term.c_iflag & ICRNL) c = '\n';
+				if(active_tty->term.c_iflag & IGNCR) 
+					continue;
+				if(active_tty->term.c_iflag & ICRNL) 
+					c = '\n';
 			} else if(c == '\n')
 			{
 				if(active_tty->term.c_iflag & INLCR) 
@@ -133,7 +142,10 @@ void tty_handle_keyboard_interrupt(void)
 				continue;
 			} else {
 				/* Write to the current line */
-				tty_keyboard_write_buff(&active_tty->kbd_line, c);
+				tty_keyboard_write_buff(
+					&active_tty->kbd_line, c);
+
+				/* Are there new lines available? */
 				if(active_tty->kbd_line.key_nls)
 				{
 					/* A line delimiter was written */
@@ -152,6 +164,7 @@ void tty_handle_keyboard_interrupt(void)
 			{
 				cprintf("Warning: keyboard buffer is full.\n");
 			}
+
 			/* signal anyone waiting for anything */
 			signal_keyboard_io(active_tty);
 
@@ -159,8 +172,9 @@ void tty_handle_keyboard_interrupt(void)
 
 #ifdef KEY_DEBUG
 		cprintf("kbd: NLS in line buffer: %d\n", 
-			active_tty->kbd_line.key_nls);
-		cprintf("kbd: Line buffer: %s\n", active_tty->kbd_line.buffer +
+				active_tty->kbd_line.key_nls);
+		cprintf("kbd: Line buffer: %s\n", 
+				active_tty->kbd_line.buffer +
 				active_tty->kbd_line.key_read);
 #endif
 	} while(1);
@@ -171,7 +185,7 @@ void tty_handle_keyboard_interrupt(void)
 }
 
 static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
-                int shift, int caps)
+		int shift, int caps)
 {
 #ifdef DEBUG
 	cprintf("tty: special key received:\n");
@@ -189,7 +203,7 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 
 	/* If the special event is CTRL-FX, switch to that tty */
 	if(special && ctrl && pressed &&
-		val >= SKEY_F1 && val <= SKEY_F12)
+			val >= SKEY_F1 && val <= SKEY_F12)
 	{
 		/* Switch to that tty */
 		int tty_num = val - SKEY_F1;
@@ -294,7 +308,9 @@ char tty_keyboard_delete(tty_t t)
 char tty_keyboard_kill(tty_t t)
 {
 	int x;
+	/* Read the whole keyboard buffer in */
 	while(tty_keyboard_read_buff(&t->kbd_line))x++;
+	/* Clear the line */
 	memset(&t->kbd_line, 0, sizeof(struct kbd_buff));
 
 	return x;
@@ -319,7 +335,7 @@ char tty_keyboard_read(tty_t t)
 	{	
 		/* Read success */
 		return c;
-	} // else cprintf("Keyboard buffer empty.\n");
+	}
 
 	/* If were in canonical mode we can also read from the line buffer */
 	if(t->term.c_lflag & ICANON)
@@ -328,10 +344,9 @@ char tty_keyboard_read(tty_t t)
 		{
 			/* Read success */
 			return c;
-		} // else cprintf("Line buffer empty.\n");
+		}
 	}
 
-	// cprintf("Read failure.\n");
 	/* read failure: buffer empty */
 	return 0;
 }
