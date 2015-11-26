@@ -374,7 +374,7 @@ void tty_signal_io_ready(tty_t t)
 			p->name, p->pid, read_bytes);
 #endif
 
-
+	pgdir* curr_dir = vm_curr_pgdir();
 	for(read_bytes = 0;read_bytes < p->io_request;
 			read_bytes++)
 	{
@@ -386,7 +386,8 @@ void tty_signal_io_ready(tty_t t)
 		cprintf("tty: %s:%d got %c\n",
 				p->name, p->pid, c);
 #endif
-		p->io_dst[read_bytes] = c;
+		// p->io_dst[read_bytes] = c;
+		vm_memmove(p->io_dst, &c, 1, p->pgdir, curr_dir, 0, 0);
 		if(canon && (c == '\n' || c == 13))
 		{
 			read_bytes++;
@@ -398,8 +399,8 @@ void tty_signal_io_ready(tty_t t)
 	if(read_bytes > 0) wake = 1;
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s:%d ended read with %d bytes.\n",
-                        p->name, p->pid, read_bytes);
+	cprintf("tty: %s:%d ended read with %d bytes.\n",
+			p->name, p->pid, read_bytes);
 #endif
 
 	/* update recieved */
