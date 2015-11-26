@@ -69,6 +69,10 @@ uint tty_num(tty_t t)
 
 void tty_enable(tty_t t)
 {
+	/* unset the currently active tty */
+	if(active_tty)
+		active_tty->active = 0;
+
 	t->active = 1;
 	active_tty = t;
 	if(t->type==TTY_TYPE_SERIAL)
@@ -93,6 +97,7 @@ void tty_putc(tty_t t, char c)
 		if(t->active) serial_write(&c,1);
 		return;
 	}
+
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
 		uchar printable = 1;
@@ -113,15 +118,20 @@ void tty_putc(tty_t t, char c)
 				new_pos -= new_pos % 8;
 				for(x = 0;t->cursor_pos < new_pos;x++)
 					tty_putc(t, ' ');	
-				return;
+				printable = 0;
+				break;
 
 		}
+
+		/* If this tty is active, output the char */
 		if(t->active && printable)
 		{
 			console_putc(t->cursor_pos, c, t->color, 
 					t->type==TTY_TYPE_COLOR, 
 					(uchar*)t->mem_start);
 		}
+
+		/* Update the back buffer */
 		if(printable)
 		{
 			if(t->type==TTY_TYPE_COLOR)
@@ -140,6 +150,7 @@ void tty_putc(tty_t t, char c)
 			t->cursor_pos++;
 		}
 
+		/* Scroll the screen if needed */
 		if(t->cursor_pos >= CONSOLE_COLS * CONSOLE_ROWS)
 		{
 			tty_scroll(t);
@@ -147,6 +158,7 @@ void tty_putc(tty_t t, char c)
 				- CONSOLE_COLS;
 		}
 
+		/* If this tty is active, update the on screen cursor */
 		if(t->active)
 			console_update_cursor(t->cursor_pos);
 	}
@@ -176,8 +188,11 @@ void tty_scroll(tty_t t)
 {
 	if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
 		return;
+	/* Bytes per row */
 	uint bpr = CONSOLE_COLS * 2;
+	/* Rows on the screen */
 	uint rows = CONSOLE_ROWS;
+	/* Back buffer */
 	char* buffer = t->buffer;
 
 	int x;
@@ -188,39 +203,31 @@ void tty_scroll(tty_t t)
 		memmove(dst_row, src_row, bpr);
 	}
 	memset(buffer + x * bpr, 0, bpr);
-	tty_print_screen(t, t->buffer);
+
+	/* If this tty is active, print this immediatly. */
+	if(t->active)
+		tty_print_screen(t, t->buffer);
 }
 
 void tty_print_screen(tty_t t, char* buffer)
 {
+	if(!t->active) return;
+
 	if(t->type==TTY_TYPE_SERIAL)
 	{
 		return;
-	}
-	else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
+	} else if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
 		char* vid_addr = (char*)t->mem_start;
-		//char* graph_addr = NULL;
 		uint sz = 0;
 		if(t->type==TTY_TYPE_COLOR)
 		{
-			//graph_addr = CONSOLE_COLOR_BASE;
 			sz = CONSOLE_ROWS*CONSOLE_COLS*2;
-		}
-		else
-		{
-			//graph_addr = CONSOLE_MONO_BASE;
+		} else {
 			sz = CONSOLE_ROWS*CONSOLE_COLS;
 		}
 		memmove(vid_addr, buffer, sz);
-		if(t->active)
-		{
-			//memmove(graph_addr, buffer, sz);
-		}
-
-	}
-	else
-	{
+	} else {
 		panic("TTY invalid graphics mode");
 	}
 }
