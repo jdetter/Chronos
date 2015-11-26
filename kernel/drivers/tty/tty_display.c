@@ -222,9 +222,9 @@ void tty_print_screen(tty_t t, char* buffer)
 		uint sz = 0;
 		if(t->type==TTY_TYPE_COLOR)
 		{
-			sz = CONSOLE_ROWS*CONSOLE_COLS*2;
+			sz = CONSOLE_ROWS * CONSOLE_COLS * 2;
 		} else {
-			sz = CONSOLE_ROWS*CONSOLE_COLS;
+			sz = CONSOLE_ROWS * CONSOLE_COLS;
 		}
 		memmove(vid_addr, buffer, sz);
 	} else {

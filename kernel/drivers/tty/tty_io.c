@@ -252,8 +252,13 @@ static struct proc* tty_dequeue(tty_t t)
 #ifdef QUEUE_DEBUG
 		cprintf("tty_queue: %s dequeued.\n", p->name);
 #endif
-		t->io_queue = p->io_next;
-		p->io_next = NULL;
+		if(p)
+		{
+			t->io_queue = p->io_next;
+			p->io_next = NULL;
+		} else {
+			t->io_queue = NULL;
+		}
 	} else {
 #ifdef QUEUE_DEBUG
 		cprintf("tty_queue: NULL DEQUEUE!!.\n", p->name);
@@ -306,7 +311,17 @@ io_sleep:
 	rproc->io_recieved = 0;
 	rproc->io_request = sz;
 
+#ifdef KEY_DEBUG
+	cprintf("tty: %s is now waiting for io.\n", 
+		rproc->name);
+#endif
+
 	yield_withlock();
+
+#ifdef KEY_DEBUG
+        cprintf("tty: %s is now running again!\n",
+                rproc->name);
+#endif
 
 	/* When we wake up here, we should have something in our buffer. */
 	slock_acquire(&ptable_lock);

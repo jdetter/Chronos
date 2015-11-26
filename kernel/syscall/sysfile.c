@@ -190,6 +190,7 @@ int sys_read(void)
 	default: return -1;
 	}
 
+	cprintf("Returned from read system call.");
 	rproc->file_descriptors[fd].seek += sz;
 	return sz;
 }

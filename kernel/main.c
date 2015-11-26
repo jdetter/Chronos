@@ -145,7 +145,7 @@ void main_stack(void)
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
-	for(tty_num = 0;;tty_num++)
+	for(tty_num = 0;tty_num < 2;tty_num++)
 	{
 		tty_t t = tty_find(tty_num);
 		if(!t) break;
