@@ -8,7 +8,7 @@
 
 #define MAX_ARG 64
 
-char* spawn_process = "/bin/sh";
+char* spawn_process = "/bin/tty-test";
 
 void some_recursion(int i);
 

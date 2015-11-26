@@ -40,6 +40,8 @@ extern uint k_stack;
 /* Entry point for the kernel */
 int main(void)
 {
+	/* Initilize the primary tty */
+	cprintf_init();
 	/* Lets make sure that tty0 gets configured properly. */
 	setup_kvm();
 	cprintf("Welcome to the Chronos kernel!\n");
@@ -141,6 +143,11 @@ void main_stack(void)
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");
+
+	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(0), "/tty0.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");

@@ -17,7 +17,7 @@
 #include "proc.h"
 #include "panic.h"
 
-// #define DEBUG
+#define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -190,7 +190,11 @@ int sys_read(void)
 	default: return -1;
 	}
 
-	cprintf("Returned from read system call.");
+	cprintf("RETURNING:\n");
+	int i;
+	for(i = 0;i < sz;i++)
+		cprintf("%d: %c\n", i, dst[i]);
+
 	rproc->file_descriptors[fd].seek += sz;
 	return sz;
 }

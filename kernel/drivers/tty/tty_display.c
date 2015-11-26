@@ -14,11 +14,10 @@
 #include "stdarg.h"
 #include "stdlib.h"
 #include "proc.h"
+#include "fcntl.h"
 
 static struct tty ttys[MAX_TTYS];
 struct tty* active_tty = NULL;
-
-
 
 tty_t tty_find(uint index)
 {
@@ -67,6 +66,18 @@ uint tty_num(tty_t t)
 	return t->num;
 }
 
+int tty_enable_logging(tty_t t, char* file)
+{
+	void* ino = fs_open(file, O_CREAT | O_RDWR, 0600, 0, 0);
+	if(!ino)
+		return -1;
+
+	t->out_logged = 1;
+	t->out_inode = ino;
+	
+	return 0;
+}
+
 void tty_enable(tty_t t)
 {
 	/* unset the currently active tty */
@@ -92,6 +103,14 @@ void tty_disable(tty_t t)
 
 void tty_putc(tty_t t, char c)
 {
+	/* Is this tty logged? */
+	if(t->out_logged)
+	{
+		int res = fs_write(t->out_inode, &c, 1, 
+			t->out_file_pos);
+		if(res == 1) t->out_file_pos++;
+	}
+
 	if(t->type==TTY_TYPE_SERIAL)
 	{
 		if(t->active) serial_write(&c,1);

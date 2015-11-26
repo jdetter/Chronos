@@ -103,11 +103,13 @@ static int tty_handle_char(char c, tty_t t)
 {
 	/* Preprocess the input (canonical mode only!) */
 	uchar canon = t->term.c_lflag & ICANON;
+
 #ifdef KEY_DEBUG
 	cprintf("tty: tty %d received char %c.\n",
 		tty_num(y), c);
 	cprintf("tty: Canonical mode: %d\n", canon);
 #endif
+
 	if(canon)
 	{
 		if(c == 13)
@@ -197,7 +199,8 @@ static int tty_handle_char(char c, tty_t t)
 #ifdef KEY_DEBUG
 	cprintf("kbd: NLS in line buffer: %d\n", 
 			t->kbd_line.key_nls);
-	cprintf("kbd: Line buffer: %s\n", t->kbd_line.buffer +
+	cprintf("kbd: Line buffer: %s\n", 	
+			t->kbd_line.buffer +
 			t->kbd_line.key_read);
 #endif
 
@@ -205,38 +208,38 @@ static int tty_handle_char(char c, tty_t t)
 }
 
 static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
-                int shift, int caps)
+		int shift, int caps)
 {
 #ifdef DEBUG
-        cprintf("tty: special key received:\n");
-        cprintf("    + pressed:   %d\n", pressed);
-        cprintf("    + special:   %d\n", special);
-        cprintf("    + val:       %d\n", val);
-        cprintf("    + ctrl:      %d\n", ctrl);
-        cprintf("    + alt:       %d\n", alt);
-        cprintf("    + shift:     %d\n", shift);
-        cprintf("    + caps:      %d\n", caps);
+	cprintf("tty: special key received:\n");
+	cprintf("    + pressed:   %d\n", pressed);
+	cprintf("    + special:   %d\n", special);
+	cprintf("    + val:       %d\n", val);
+	cprintf("    + ctrl:      %d\n", ctrl);
+	cprintf("    + alt:       %d\n", alt);
+	cprintf("    + shift:     %d\n", shift);
+	cprintf("    + caps:      %d\n", caps);
 
-        if(!special)
-                cprintf("    + character: %c\n", (char)val);
+	if(!special)
+		cprintf("    + character: %c\n", (char)val);
 #endif
 
-        /* If the special event is CTRL-FX, switch to that tty */
-        if(special && ctrl && pressed &&
-                        val >= SKEY_F1 && val <= SKEY_F12)
-        {
-                /* Switch to that tty */
-                int tty_num = val - SKEY_F1;
+	/* If the special event is CTRL-FX, switch to that tty */
+	if(special && ctrl && pressed &&
+			val >= SKEY_F1 && val <= SKEY_F12)
+	{
+		/* Switch to that tty */
+		int tty_num = val - SKEY_F1;
 
-                /* Make sure the tty exists */
-                tty_t t = tty_find(tty_num);
-                if(!t) return 0;
+		/* Make sure the tty exists */
+		tty_t t = tty_find(tty_num);
+		if(!t) return 0;
 
-                /* Put that tty in the foreground */
-                tty_enable(t);
-        }
+		/* Put that tty in the foreground */
+		tty_enable(t);
+	}
 
-        return 0;
+	return 0;
 }
 
 void tty_setup_kbd_events(void)

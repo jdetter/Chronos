@@ -149,6 +149,14 @@ export-fs:
 	rm -f ext2.img
 	dd if=./chronos.img of=./ext2.img ibs=512 skip=$(FS_START)
 
+export-log: export-fs
+	mkdir tmp
+	sudo mount -o loop ./ext2.img ./tmp
+	sudo cp ./tmp/tty0.txt .
+	sudo umount ./tmp
+	rmdir tmp
+	sudo chmod 664 ./tty0.txt
+
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
 

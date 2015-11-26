@@ -81,6 +81,9 @@ struct tty
 	uchar color; /* The current printing color of the terminal. */
 	pid_t cpgid; /* The process group id of the controlling process. */
 	uchar exclusive; /* Whether or not this tty can be opened */
+	uchar out_logged; /* Is the output of this tty being logged? */
+	void* out_inode; /* The inode to write the log to. */
+	uint out_file_pos; /* The output file position */
 
 	/**
  	 * When in Canonical mode, input is made available line by line, so
@@ -134,6 +137,13 @@ uint tty_num(tty_t t);
  * Enable this tty. This tty is now in the foreground and visible to the user.
  */
 void tty_enable(tty_t t);
+
+/**
+ * Enable file logging for a tty. Returns 0 if the file could be opened
+ * and is ready to start logging. Otherwise, returns -1 if the file
+ * could not be created.
+ */
+int tty_enable_logging(tty_t t, char* file);
 
 /**
  * Disable this tty. This tty is now in the background. Any data written to

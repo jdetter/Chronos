@@ -281,12 +281,20 @@ static void tty_enqueue(struct proc* p, tty_t t)
 	if(!t->io_queue)
 	{
 		t->io_queue = p;
+#ifdef QUEUE_DEBUG
+		cprintf("tty_queue: %s is first!\n", p->name);
+#endif
 	} else {
+#ifdef QUEUE_DEBUG
+		cprintf("tty_queue: %s is not first!.\n", p->name);
+#endif
 		struct proc* next = t->io_queue;
 		while(next->io_next)
 			next = next->io_next;
 		next->io_next = p;
 	}
+
+	p->io_next = NULL;
 	slock_release(&t->io_queue_lock);
 }
 
@@ -312,15 +320,15 @@ io_sleep:
 	rproc->io_request = sz;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: %s is now waiting for io.\n", 
-		rproc->name);
+	cprintf("tty: %s:%d is now waiting for io.\n", 
+		rproc->name, rproc->pid);
 #endif
 
 	yield_withlock();
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s is now running again!\n",
-                rproc->name);
+        cprintf("tty: %s:%d is now running again!\n",
+                rproc->name, rproc->pid);
 #endif
 
 	/* When we wake up here, we should have something in our buffer. */
@@ -333,6 +341,10 @@ io_sleep:
 		goto io_sleep;
 	}
 
+#ifdef KEY_DEBUG
+        cprintf("tty: %s:%d received: %s\n",
+                rproc->name, rproc->pid, dst);
+#endif
 	slock_release(&ptable_lock);
 
 	return rproc->io_recieved;
@@ -358,8 +370,8 @@ void tty_signal_io_ready(tty_t t)
 	int wake = 0; /* Wether or not to wake the process */
 
 #ifdef KEY_DEBUG
-	cprintf("tty: %s starting read with %d bytes.\n",
-			p->name, read_bytes);
+	cprintf("tty: %s:%d starting read with %d bytes.\n",
+			p->name, p->pid, read_bytes);
 #endif
 
 
@@ -371,8 +383,8 @@ void tty_signal_io_ready(tty_t t)
 		if(!c) break;
 		/* Place character into dst */
 #ifdef KEY_DEBUG
-		cprintf("tty: %c given to %s\n",
-				c, p->name);
+		cprintf("tty: %s:%d got %c\n",
+				p->name, p->pid, c);
 #endif
 		p->io_dst[read_bytes] = c;
 		if(canon && (c == '\n' || c == 13))
@@ -386,8 +398,8 @@ void tty_signal_io_ready(tty_t t)
 	if(read_bytes > 0) wake = 1;
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s ended read with %d bytes.\n",
-                        p->name, read_bytes);
+        cprintf("tty: %s:%d ended read with %d bytes.\n",
+                        p->name, p->pid, read_bytes);
 #endif
 
 	/* update recieved */
@@ -396,9 +408,12 @@ void tty_signal_io_ready(tty_t t)
 	if(wake)
 	{
 #ifdef KEY_DEBUG
-		cprintf("tty: %s woke up!\n", p->name);
+		cprintf("tty: %s:%d woke up!\n", p->name, p->pid);
 #endif
 		p->state = PROC_RUNNABLE;
 		p->block_type = PROC_BLOCKED_NONE;
+	} else {
+		cprintf("tty: why wasn't I woken up?\n");
+		for(;;);
 	}
 }
