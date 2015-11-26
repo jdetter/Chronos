@@ -344,8 +344,7 @@ int fs_link(const char* file, const char* link);
 int fs_symlink(const char* file, const char* link);
 
 /**
- * Create the directory designated by path. Returns an inode describing the
- * directory on success, returns NULL on failure.
+ * Create the directory given by path. Returns 0 on success, -1 on failure.
  */
 int fs_mkdir(const char* path, uint flags, 
 		uint permissions, uint uid, uint gid);

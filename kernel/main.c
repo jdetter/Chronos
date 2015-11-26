@@ -145,14 +145,14 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 
 	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
-	if(tty_enable_logging(tty_find(0), "/tty0.txt"))
+	if(tty_enable_logging(tty_find(0), "/var/log/tty0.txt"))
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
-	for(tty_num = 0;tty_num < 2;tty_num++)
+	for(tty_num = 0;;tty_num++)
 	{
 		tty_t t = tty_find(tty_num);
 		if(!t) break;

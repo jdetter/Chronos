@@ -14,8 +14,8 @@ extern struct proc* rproc;
 extern struct proc ptable[];
 
 // #define DEBUG
-#define KEY_DEBUG
-#define QUEUE_DEBUG
+// #define KEY_DEBUG
+// #define QUEUE_DEBUG
 
 static int tty_io_init(struct IODriver* driver);
 static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
@@ -374,7 +374,18 @@ void tty_signal_io_ready(tty_t t)
 			p->name, p->pid, read_bytes);
 #endif
 
+	/**
+	 * We have to be careful about which address space we are in
+	 * right now. The destination buffer may live in another
+	 * vm space. This caused a major tty input bug that was
+	 * extremely hard to reproduce.
+	 */
+
 	pgdir* curr_dir = vm_curr_pgdir();
+	int same_vm = 0;
+	if(p->pgdir == curr_dir)
+		same_vm = 1;
+
 	for(read_bytes = 0;read_bytes < p->io_request;
 			read_bytes++)
 	{
@@ -383,11 +394,22 @@ void tty_signal_io_ready(tty_t t)
 		if(!c) break;
 		/* Place character into dst */
 #ifdef KEY_DEBUG
-		cprintf("tty: %s:%d got %c\n",
-				p->name, p->pid, c);
+		cprintf("tty: %s:%d got %c %d\n",
+				p->name, p->pid, c, c);
 #endif
-		// p->io_dst[read_bytes] = c;
-		vm_memmove(p->io_dst, &c, 1, p->pgdir, curr_dir, 0, 0);
+		/**
+		 * If we are already in the correct vm space, then
+		 * we can just move the bytes normally.
+		 */
+		if(same_vm)
+			p->io_dst[read_bytes] = c;
+
+		/**
+		 * Otherwise we have to use the vm space memmove.
+		 */
+		else vm_memmove(p->io_dst + read_bytes, &c, 1, 
+				p->pgdir, curr_dir, 0, 0);
+
 		if(canon && (c == '\n' || c == 13))
 		{
 			read_bytes++;
