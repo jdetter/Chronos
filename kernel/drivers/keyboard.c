@@ -266,10 +266,11 @@ get_key:
 #endif
 
 	/* Before any processing, check if it is a special key */
-	int special_val = CHAR_SPECIAL(scancode);
+	char special_val = (unsigned char)CHAR_SPECIAL(scancode);
 	if((alt_enabled || ctrl_enabled || special_val) && shandle)
 	{
-		shandle(!released, 1, special_val, 
+		int uns = (unsigned char) special_val;
+		shandle(!released, 1, uns, 
 			ctrl_enabled, alt_enabled, 
 			shift_enabled, caps_enabled);
 	}
@@ -359,9 +360,10 @@ get_key:
 	/* this key is a character, if there are mods it is special */
         if(alt_enabled || ctrl_enabled || caps_enabled)
         {
+		int uns = (unsigned char)result;
                 if(shandle)
                 {
-                        shandle(!released, 0, result,
+                        shandle(!released, 0, uns,
                                         ctrl_enabled, alt_enabled,
                                         shift_enabled, caps_enabled);
                 }
@@ -369,7 +371,6 @@ get_key:
                 goto get_key;
         }
 
-	// char c = sctoa(scancode);
 	return result;
 }
 
