@@ -174,7 +174,7 @@ void trap_handler(struct trap_frame* tf)
 			break;
 			// cprintf("Keyboard interrupt.\n");
 			/* Keyboard interrupt */
-			tty_handle_keyboard_interrupt();	
+			tty_keyboard_interrupt_handler();
 			pic_eoi(INT_PIC_TIMER_CODE);
 			pic_eoi(INT_PIC_COM1_CODE);
 			handled = 1;

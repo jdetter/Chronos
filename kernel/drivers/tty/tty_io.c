@@ -9,9 +9,13 @@
 #include "tty.h"
 #include "proc.h"
 
+extern slock_t ptable_lock;
 extern struct proc* rproc;
+extern struct proc ptable[];
 
 // #define DEBUG
+#define KEY_DEBUG
+#define QUEUE_DEBUG
 
 static int tty_io_init(struct IODriver* driver);
 static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
@@ -37,7 +41,7 @@ static int tty_io_init(struct IODriver* driver)
 
 static int tty_io_read(void* dst, uint start_read, size_t sz, void* context)
 {
-	sz = tty_gets(dst, sz);
+	sz = tty_gets(dst, sz, context);
 	return sz;
 }
 
@@ -237,3 +241,149 @@ static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 	return 0;	
 }
 
+static struct proc* tty_dequeue(tty_t t)
+{
+	struct proc* p = NULL;
+	/* Grab the IO queue lock */
+	slock_acquire(&t->io_queue_lock);
+	if(t->io_queue)
+	{
+		p = t->io_queue;
+#ifdef QUEUE_DEBUG
+		cprintf("tty_queue: %s dequeued.\n", p->name);
+#endif
+		t->io_queue = p->io_next;
+		p->io_next = NULL;
+	} else {
+#ifdef QUEUE_DEBUG
+		cprintf("tty_queue: NULL DEQUEUE!!.\n", p->name);
+#endif
+	}
+	slock_release(&t->io_queue_lock);
+
+	return p;
+}
+
+static void tty_enqueue(struct proc* p, tty_t t)
+{
+	/* Grab the IO queue lock */
+	slock_acquire(&t->io_queue_lock);
+
+#ifdef QUEUE_DEBUG
+	cprintf("tty_queue: %s enqueued.\n", p->name);
+#endif
+
+	if(!t->io_queue)
+	{
+		t->io_queue = p;
+	} else {
+		struct proc* next = t->io_queue;
+		while(next->io_next)
+			next = next->io_next;
+		next->io_next = p;
+	}
+	slock_release(&t->io_queue_lock);
+}
+
+int tty_gets(char* dst, int sz, tty_t t)
+{
+	/* Check for bad request */
+	if(!sz || !dst) return 0;
+
+	/* Acquire the ptable lock */
+	slock_acquire(&ptable_lock);
+
+	rproc->io_dst = (void*)dst;
+	memset(dst, 0, sz);
+
+io_sleep:
+	/* Put our process in the wait queue */
+	tty_enqueue(rproc, t);
+
+	/* Go to sleep */
+	rproc->state = PROC_BLOCKED;
+	rproc->block_type = PROC_BLOCKED_IO;
+	rproc->io_recieved = 0;
+	rproc->io_request = sz;
+
+	yield_withlock();
+
+	/* When we wake up here, we should have something in our buffer. */
+	slock_acquire(&ptable_lock);
+
+	/* Did we get anything? */
+	if(rproc->io_recieved == 0)
+	{
+		cprintf("tty: extraneous proc wakeup.\n");
+		goto io_sleep;
+	}
+
+	slock_release(&ptable_lock);
+
+	return rproc->io_recieved;
+}
+
+/* ptable and key lock must be held here. */
+void tty_signal_io_ready(tty_t t)
+{
+	char canon = t->term.c_lflag & ICANON;
+
+	/* Keyboard signaled. */
+	struct proc* p = tty_dequeue(t);
+	if(!p)
+	{
+#ifdef KEY_DEBUG
+		cprintf("tty: signaled, nobody is waiting!\n");
+		return;
+#endif
+	}
+
+	/* Read into the destination buffer */
+	int read_bytes = p->io_recieved;
+	int wake = 0; /* Wether or not to wake the process */
+
+#ifdef KEY_DEBUG
+	cprintf("tty: %s starting read with %d bytes.\n",
+			p->name, read_bytes);
+#endif
+
+
+	for(read_bytes = 0;read_bytes < p->io_request;
+			read_bytes++)
+	{
+		/* Read a character */
+		char c = tty_keyboard_read(t);
+		if(!c) break;
+		/* Place character into dst */
+#ifdef KEY_DEBUG
+		cprintf("tty: %c given to %s\n",
+				c, p->name);
+#endif
+		p->io_dst[read_bytes] = c;
+		if(canon && (c == '\n' || c == 13))
+		{
+			read_bytes++;
+			break;
+		}
+	}
+
+	/* If we read anything, wakeup the process */
+	if(read_bytes > 0) wake = 1;
+
+#ifdef KEY_DEBUG
+        cprintf("tty: %s ended read with %d bytes.\n",
+                        p->name, read_bytes);
+#endif
+
+	/* update recieved */
+	p->io_recieved = read_bytes;
+
+	if(wake)
+	{
+#ifdef KEY_DEBUG
+		cprintf("tty: %s woke up!\n", p->name);
+#endif
+		p->state = PROC_RUNNABLE;
+		p->block_type = PROC_BLOCKED_NONE;
+	}
+}

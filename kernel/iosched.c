@@ -34,7 +34,7 @@ void iosched_check_sleep(void);
 
 void iosched_check(void)
 {
-	tty_handle_keyboard_interrupt();
+	tty_keyboard_interrupt_handler();
 	/* Check for system time changes */
 	uchar cmos_val = cmos_read_interrupt();
 	if(cmos_val == 144)
@@ -50,7 +50,8 @@ void iosched_check(void)
 	iosched_check_sleep();
 }
 
-int block_keyboard_io(void* dst, int request_size)
+#if 0
+int DEPRICATED_block_keyboard_io(void* dst, int request_size)
 {
 	// cprintf("block called.\n");
 	/* quick sanity check */
@@ -122,7 +123,7 @@ keyboard_sleep:
 }
 
 /* ptable and key lock must be held here. */
-void signal_keyboard_io(tty_t t)
+void DEPRICATED_signal_keyboard_io(tty_t t)
 {
 	char canon = t->term.c_lflag & ICANON;
 
@@ -177,6 +178,8 @@ void signal_keyboard_io(tty_t t)
 		}
 	}
 }
+
+#endif
 
 void iosched_check_sleep(void)
 {

@@ -58,61 +58,43 @@ struct file_descriptor
 #define PROC_BLOCKED_WAIT 0x01 /* The process is waiting on a child */
 #define PROC_BLOCKED_COND 0x02 /* The thread is waiting on a condition */
 #define PROC_BLOCKED_IO   0x03 /* The process is waiting on io to finish */
-#define PROC_BLOCKED_SLEEP 0x04 /* The process is waiting on io to finish */
-
-/* Reasons for io block */
-#define PROC_IO_NONE     0x00 /* Not waiting on IO */
-#define PROC_IO_KEYBOARD 0x01 /* Waiting for characters from the keyboard */
+#define PROC_BLOCKED_SLEEP 0x04 /* The process is waiting on sleep  */
 
 struct proc
 {
-	tty_t t; /* The tty this program is attached to. */
+	/** Process priviliges (all of the ids of this process) */
 	pid_t sid; /* The session id*/
 	pid_t pid; /* The id of the process */
 	pid_t pgid; /* The process group */
 	pid_t tid; /* The ID of this thread (if its a thread) */
-	
 	uid_t uid; /* The id of the user running the process */
 	uid_t euid; /* The effective uid of the process */
 	uid_t suid; /* The saved uid */
 	uid_t ruid; /* The uid of the user that started the task. */
-	
 	gid_t gid; /* The id of the group running the process */
 	gid_t egid; /* The effective gid of the process */
 	gid_t sgid; /* The saved gid */
 	gid_t rgid; /* The gid of the user that started the task. */
 
-	mode_t umask; /* File creation mask */
-
+	/** Open files for this process */
 	struct file_descriptor file_descriptors[MAX_FILES];
+	mode_t umask; /* File creation mask */
 	
+	/** Process state parameters */
 	uint state; /* The state of the process */
-	
-	slock_t mem_lock;	
-	/* Stack start will be greater than stack end */
-	uint stack_start; /* The high memory, start of the stack */
-	uint stack_end; /* Size of the stack in bytes. */
-	/* Heap end will be greater than heap start. */
-	uint heap_start; /* The low memory, start of the heap */
-	uint heap_end; /* Size of the heap in bytes. */
-
-	/* mmap area grows down towards heap */
-	uint mmap_start; /* Start of the mmap area */
-	uint mmap_end; /* end of the mmap area */
-
-	/* mmap area grows down towards heap */
-	uint code_start; /* Start of the code area */
-	uint code_end; /* end of the code area */
-
 	uchar block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */
 	uint b_condition_signal; /* The condition ticket number. */
 	int b_pid; /* The pid we are waiting on. */
-	int io_type; /* The type of io thats being waited on */
-	uchar* io_dst; /* Where the destination bytes will be placed. */
-	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
-	int io_recieved; /* The actual amount of bytes recieved. */
 	uint sleep_time; /* The time when the sleep ends */
+
+	/** IO parameters */
+	tty_t t; /* The tty this program is attached to. */
+	uchar* io_dst; /* Where the destination bytes will be placed. */
+        int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
+        int io_recieved; /* The actual amount of bytes recieved. */
+	struct proc* io_next; /* The next process waiting in the io queue*/
+	void* io_ticket; /* Optional parameter for some io operations */
 
 	/** SIGNAL stuff */
 	uint sig_handling; /* Are we handling a signal right now? */
@@ -122,12 +104,23 @@ struct proc
 	uint sig_stack_start; /* The start of the signal stack (higher) */
 	sigset_t sig_suspend_mask; /* The suspended mask */
 
+	/** Parent and debug information */
 	uchar orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME]; /* The name of the process */
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
 
+	/** Virtual memory */
+        slock_t mem_lock;
+        uint stack_start; /* The high memory, start of the stack */
+        uint stack_end; /* Size of the stack in bytes. */
+        uint heap_start; /* The low memory, start of the heap */
+        uint heap_end; /* Size of the heap in bytes. */
+        uint mmap_start; /* Start of the mmap area */
+        uint mmap_end; /* end of the mmap area */
+        uint code_start; /* Start of the code area */
+        uint code_end; /* end of the code area */
 	pgdir* pgdir; /* The page directory for the process */
 	uint* sys_esp; /* Pointer to the start of the syscall argv */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
@@ -136,6 +129,7 @@ struct proc
 	uint entry_point; /* The address of the first instruction */
 	uint context; /* The address at the top of the saved stack */
 
+	/* Resource usage */
 	uint user_ticks; /* The amount of ticks spent in user mode */
 	uint kernel_ticks; /* The amount of ticks spent in kernel mode */
 };
