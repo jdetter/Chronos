@@ -8,7 +8,12 @@
 #include "console.h"
 #include "serial.h"
 #include "tty.h"
-#include "panic.h"
+
+#define DEBUG 1
+
+#ifdef DEBUG
+#define puts(param) tty_puts_native(param, t)
+#endif
 
 /* Some useful hidden functions we need */
 
@@ -52,6 +57,13 @@ void tty_putc_native(char c, tty_t t)
         /* Update the on screen cursor position if needed */
         if(t->active)
                 console_update_cursor(t->cursor_pos);
+}
+
+/* Print out a string (Debug for tty only) */
+void tty_puts_native(char* str, tty_t t)
+{
+	for(;*str;str++)
+		tty_putc_native(*str, t);
 }
 
 /* do a carriage return (go to beginning of line) */
@@ -106,7 +118,10 @@ int tty_parse_code(tty_t t, char c)
 				case ')': /* Define G1 character set */
 				case ']': /* OS command (change colors) */
 					t->escape_count++;
-					t->escape_chars[0] = '[';
+					t->escape_chars[0] = c;
+#ifdef DEBUG
+					puts("tty: esc started.\n");	
+#endif
 					break;
 
 					/* Unimplemented escape sequences */
@@ -131,12 +146,14 @@ int tty_parse_code(tty_t t, char c)
 				case '=': /* Set application keyboard mode */
 
 				default:
-					cprintf("tty: ESC char unsupported: "
-							"0x%x %c\n",
-							c, c);
 					t->escape_seq = 0;
+#ifdef DEBUG
+					puts("tty: unknown escape seq.\n");
+#endif
 					break;
 			}
+		} else {
+			puts("tty: advanced sequence encountered.\n");
 		}
 
 		/* This char was part of an escape sequence */
@@ -168,6 +185,10 @@ int tty_parse_code(tty_t t, char c)
 			t->escape_seq = 1;
 			t->escape_count = 0;
 			memset(t->escape_chars, 0, NPAR);
+
+#ifdef DEBUG
+			puts("tty: Escape sequence started\n");
+#endif
 			break;
 
 			/* Unimplemented below here */
@@ -179,7 +200,6 @@ int tty_parse_code(tty_t t, char c)
 		case 0x1A:
 
 		case 0x9B: /* EQU TO ESC [ */
-			cprintf("tty: Unimplemented code: 0x%x\n", c);
 			break;
 
 			/* nop below here */
