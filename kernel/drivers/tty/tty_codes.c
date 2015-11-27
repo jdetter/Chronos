@@ -1,4 +1,6 @@
 #include <sys/types.h>
+#include <string.h>
+
 #include "file.h"
 #include "stdlock.h"
 #include "kern/types.h"
@@ -92,7 +94,44 @@ static void tty_tab(tty_t t)
 
 int tty_parse_code(tty_t t, char c)
 {
-	// return 0;
+	if(t->escape_seq)
+	{
+		if(!t->escape_count)
+		{
+			case '[': /* CSI START */
+                                t->escape_count++;
+                                t->escape_chars[0] = '[';
+                                break;
+
+			/* Unimplemented escape sequences */
+			case 'c': /* Reset the terminal properties */
+
+			case 'D': /* Line feed */
+
+			case 'E': /* New line */
+
+			case 'H': /* Set tab stop at curr pos */
+
+			case 'M': /* Reverse line feed */
+
+			case 'Z': /* DECID */
+
+			case '7': /* Save tty state */
+
+			case '8': /* restore tty state */
+			
+			default:
+				cprintf("tty: ESC char unsupported: "
+						"0x%x %c\n",
+						c, c);
+				t->escape_seq = 0;
+				break;
+		}
+
+		/* This char was part of an escape sequence */
+		return 1;
+	}
+
 	int was_code = 1;
 	switch((unsigned char)c)
 	{
@@ -114,10 +153,13 @@ int tty_parse_code(tty_t t, char c)
 		case 0x09: /* tab */
 			tty_tab(t);
 			break;
+		case 0x1B: /* Escape sequence start */
+			t->escape_seq = 1;
+			t->escape_count = 0;
+			memset(t->escape_chars, 0, NPAR);
+			break;
 
 		/* Unimplemented below here */
-		case 0x07: /* beep */
-
 		case 0x0E: /* use G1 character set */
 
 		case 0x0F: /* use G0 character set */
@@ -125,14 +167,13 @@ int tty_parse_code(tty_t t, char c)
 		case 0x18: /* int escape sequence start */
 		case 0x1A:
 
-		case 0x1B: /* Escape sequence start */
-
 		case 0x9B: /* EQU TO ESC [ */
 			cprintf("tty: Unimplemented code: 0x%x\n", c);
 			break;
 
-		/* Ignored below here */
+		/* nop below here */
 		case 0x7F: /* Delete (ignored) */
+		case 0x07: /* beep */
 		default:
 			was_code = 0;
 			break;

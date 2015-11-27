@@ -57,6 +57,10 @@
 #define TTY_BACK_BROWN          (TTY_FORE_BROWN << 4)
 #define TTY_BACK_GREY           (TTY_FORE_GREY << 4)
 
+#ifndef NPAR
+#define NPAR 16
+#endif
+
 #include "ioctl.h"
 
 struct kbd_buff
@@ -84,6 +88,11 @@ struct tty
 	uchar out_logged; /* Is the output of this tty being logged? */
 	void* out_inode; /* The inode to write the log to. */
 	uint out_file_pos; /* The output file position */
+	
+	/* Escape sequence parameters */
+	int escape_seq; /* The input is processing an escape sequence */
+	char escape_chars[NPAR]; /* The current escape chars seen so far */
+	int escape_count; /* How many escape characters are in the buffer? */
 
 	/**
  	 * When in Canonical mode, input is made available line by line, so
