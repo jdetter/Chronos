@@ -98,34 +98,45 @@ int tty_parse_code(tty_t t, char c)
 	{
 		if(!t->escape_count)
 		{
-			case '[': /* CSI START */
-                                t->escape_count++;
-                                t->escape_chars[0] = '[';
-                                break;
+			switch(c)
+			{
+				case '[': /* CSI START */
+				case '#': /* Possible alignment test */
+				case '(': /* Define G0 character set */
+				case ')': /* Define G1 character set */
+				case ']': /* OS command (change colors) */
+					t->escape_count++;
+					t->escape_chars[0] = '[';
+					break;
 
-			/* Unimplemented escape sequences */
-			case 'c': /* Reset the terminal properties */
+					/* Unimplemented escape sequences */
+				case 'c': /* Reset the terminal properties */
 
-			case 'D': /* Line feed */
+				case 'D': /* Line feed */
 
-			case 'E': /* New line */
+				case 'E': /* New line */
 
-			case 'H': /* Set tab stop at curr pos */
+				case 'H': /* Set tab stop at curr pos */
 
-			case 'M': /* Reverse line feed */
+				case 'M': /* Reverse line feed */
 
-			case 'Z': /* DECID */
+				case 'Z': /* DECID */
 
-			case '7': /* Save tty state */
+				case '7': /* Save tty state */
 
-			case '8': /* restore tty state */
-			
-			default:
-				cprintf("tty: ESC char unsupported: "
-						"0x%x %c\n",
-						c, c);
-				t->escape_seq = 0;
-				break;
+				case '8': /* restore tty state */
+
+				case '>': /* Set numeric keyboard mode */
+
+				case '=': /* Set application keyboard mode */
+
+				default:
+					cprintf("tty: ESC char unsupported: "
+							"0x%x %c\n",
+							c, c);
+					t->escape_seq = 0;
+					break;
+			}
 		}
 
 		/* This char was part of an escape sequence */
@@ -141,8 +152,8 @@ int tty_parse_code(tty_t t, char c)
 			break;
 
 		case 0x0A: /* line feed */
-                case 0x0B:
-                case 0x0C:
+		case 0x0B:
+		case 0x0C:
 			tty_new_line(t);
 			break;
 
@@ -159,7 +170,7 @@ int tty_parse_code(tty_t t, char c)
 			memset(t->escape_chars, 0, NPAR);
 			break;
 
-		/* Unimplemented below here */
+			/* Unimplemented below here */
 		case 0x0E: /* use G1 character set */
 
 		case 0x0F: /* use G0 character set */
@@ -171,7 +182,7 @@ int tty_parse_code(tty_t t, char c)
 			cprintf("tty: Unimplemented code: 0x%x\n", c);
 			break;
 
-		/* nop below here */
+			/* nop below here */
 		case 0x7F: /* Delete (ignored) */
 		case 0x07: /* beep */
 		default:
