@@ -44,6 +44,7 @@ KERNEL_DRIVERS := \
 	tty/tty_display \
 	tty/tty_io \
 	tty/tty_kbd \
+	tty/tty_codes \
 	ata \
 	keyboard \
 	pic \

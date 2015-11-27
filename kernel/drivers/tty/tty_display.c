@@ -101,8 +101,20 @@ void tty_disable(tty_t t)
 	t->active=0;
 }
 
+void tty_putc_native(char c, tty_t t);
 void tty_putc(tty_t t, char c)
 {
+	/* Write out to the serial connection */
+        if(t->type==TTY_TYPE_SERIAL)
+        {
+                if(t->active) serial_write(&c,1);
+                return;
+        }
+
+	/* Process console codes */
+	if(tty_parse_code(t, c))
+		return;
+
 	/* Is this tty logged? */
 	if(t->out_logged)
 	{
@@ -111,39 +123,10 @@ void tty_putc(tty_t t, char c)
 		if(res == 1) t->out_file_pos++;
 	}
 
-	if(t->type==TTY_TYPE_SERIAL)
-	{
-		if(t->active) serial_write(&c,1);
-		return;
-	}
-
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
-		uchar printable = 1;
-		uint new_pos = t->cursor_pos;
-		int x;
-		switch(c)
-		{
-			case '\n':
-				/* Move down a line */
-				t->cursor_pos += CONSOLE_COLS - 1;
-				t->cursor_pos -= t->cursor_pos %
-					CONSOLE_COLS;
-				printable = 0;
-				break;
-			case '\t':
-				/* round cursor position */
-				new_pos += 8;
-				new_pos -= new_pos % 8;
-				for(x = 0;t->cursor_pos < new_pos;x++)
-					tty_putc(t, ' ');	
-				printable = 0;
-				break;
-
-		}
-
 		/* If this tty is active, output the char */
-		if(t->active && printable)
+		if(t->active)
 		{
 			console_putc(t->cursor_pos, c, t->color, 
 					t->type==TTY_TYPE_COLOR, 
@@ -151,23 +134,20 @@ void tty_putc(tty_t t, char c)
 		}
 
 		/* Update the back buffer */
-		if(printable)
+		if(t->type==TTY_TYPE_COLOR)
 		{
-			if(t->type==TTY_TYPE_COLOR)
-			{
-				char* vid_addr = t->buffer
-					+ (t->cursor_pos * 2);
-				*(vid_addr)     = c;
-				*(vid_addr + 1) = t->color;
-			}
-			else
-			{
-				char* vid_addr = t->buffer
-					+ (t->cursor_pos);
-				*(vid_addr)     = c;
-			}
-			t->cursor_pos++;
+			char* vid_addr = t->buffer
+				+ (t->cursor_pos * 2);
+			*(vid_addr)     = c;
+			*(vid_addr + 1) = t->color;
 		}
+		else
+		{
+			char* vid_addr = t->buffer
+				+ (t->cursor_pos);
+			*(vid_addr)     = c;
+		}
+		t->cursor_pos++;
 
 		/* Scroll the screen if needed */
 		if(t->cursor_pos >= CONSOLE_COLS * CONSOLE_ROWS)
@@ -221,6 +201,7 @@ void tty_scroll(tty_t t)
 		char* src_row = dst_row + bpr;
 		memmove(dst_row, src_row, bpr);
 	}
+	/* Unset the last line */
 	memset(buffer + x * bpr, 0, bpr);
 
 	/* If this tty is active, print this immediatly. */
@@ -257,7 +238,7 @@ uchar tty_set_cursor(tty_t t, uchar enabled)
 	return 0;
 }
 
-uchar tty_set_cursor_pos(tty_t t, uchar pos)
+uchar tty_set_cursor_pos(tty_t t, uint pos)
 {
 	t->cursor_pos = pos;
 	return 0;

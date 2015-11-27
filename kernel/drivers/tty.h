@@ -151,6 +151,13 @@ int tty_enable_logging(tty_t t, char* file);
  */
 void tty_disable(tty_t t);
 
+/**
+ * Handle the give console code. If the character is not part of a console
+ * code sequence, 0 is returned. If the character is part of a console
+ * code sequence, it is handled and -1 is returned.
+ */
+int tty_parse_code(tty_t t, char c);
+
 /** 
  * Print the character at the current cursor position.
  */
@@ -176,7 +183,7 @@ uchar tty_set_cursor(tty_t t, uchar enabled);
 /**
  * Sets the current position of the cursor for the specified mode.
  */
-uchar tty_set_cursor_pos(tty_t t, uchar pos);
+uchar tty_set_cursor_pos(tty_t t, uint pos);
 
 /**
  * Sets the current color of the tty output (text mode only).
