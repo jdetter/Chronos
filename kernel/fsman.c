@@ -15,7 +15,6 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "fsman.h"
-#include "vsfs.h"
 #include "ata.h"
 #include "panic.h"
 #include "stdarg.h"
@@ -26,6 +25,7 @@
 #include "ramfs.h"
 #include "panic.h"
 #include "ext2.h"
+#include "lwfs.h"
 #include "diskio.h"
 #include "diskcache.h"
 
@@ -86,36 +86,48 @@ void fsman_init(void)
 	ext2->start = 2048;
 	disk_cache_init(ext2);
 	
-	/* Set our vsfs as the root file system. */
+	/* Set our ext2 as the root file system. */
 	ext2_init(ext2);
 	// ext2->fsck(ext2->context);
 	ext2->valid = 1;
 	ext2->type = 0;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
 
-	/* Initilize the file system */
-	/* TODO: update init */
-	// vsfs->init(64, 0, 512, FS_CACHE_SIZE, 
-	//	vsfs->cache, vsfs->context);
-
-	return; /* NO RAMFS FOR NOW */
+	/* If the directory is already there, delete it */
+	ext2->rmdir("/dev", ext2->context);
 
 	/* make sure there is a dev folder */
-	ext2->mkdir("/dev", 
+	if(ext2->mkdir("/dev", 
 		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR | S_IFDIR,
-		0x0, 0x0, ext2->context);
+		0x0, 0x0, ext2->context))
+	{
+		/* If this fails, then there must be junk in the directory */
+		/* Make sure the permissions are okay at least */
+		void* ino = ext2->open("/dev", ext2->context);
+		if(!ino)
+		{
+			/* If we can't open dev the file system is currupt */
+			return;
+		}
 
-	/* Create a ramfs instance */
-	struct FSHardwareDriver* ramfs_driver = ramfs_driver_alloc(512, 1024);
-	struct FSDriver* ramfs = fs_alloc();
-	ramfs->driver = ramfs_driver;
-	vsfs_driver_init(ramfs);
+		ext2->chmod(ino, 
+			PERM_ARD | PERM_AEX | PERM_UWR 
+			| PERM_GWR | S_IFDIR, ext2->context);
+		ext2->chown(ino, 0, 0, ext2->context);
+	}
+
+	/* Create a light weight file system on /dev */
+	struct FSDriver* dev = fs_alloc();
+	if(lwfs_init(0x100000, dev))
+	{
+		cprintf("kernel: failed to create /dev ram file system.\n");
+		fs_free(dev);
+		return;
+	}
 	
-	/* Create a vsfs instance ontop of the ramfs */
-	//vsfs_mkfs(1024, 512, 64, 0, 1024, FS_CACHE_SIZE, 
-	//	ramfs_driver->writesect, ramfs);
-	ramfs->type = 0;
-	strncpy(ramfs->mount_point, "/dev/", FILE_MAX_PATH);
+	dev->type = 0;
+	dev->valid = 1;
+	strncpy(dev->mount_point, "/dev/", FILE_MAX_PATH);
 }
 
 static struct FSDriver* fs_alloc(void)
@@ -732,18 +744,20 @@ int fs_rmdir(const char* path)
 	struct FSDriver* fs = fs_find_fs(res_path);
 	if(!fs) return -1; /* Bad path */
 
-	/* Make sure the path doesn't end with a slash */
-	char path_tmp[FILE_MAX_PATH];
-	strncpy(path_tmp, res_path, FILE_MAX_PATH);
-	file_path_file(path_tmp);
+	/* Get the file system version of the path */
+	char fs_path[FILE_MAX_PATH];
+	if(fs_get_path(fs, res_path, fs_path, FILE_MAX_PATH))
+		return -1; /* Path is not in this file system */
+	if(file_path_file(fs_path))
+		return -1;
 
 	/* remove the directory */
-	if(fs->rmdir(path_tmp, fs->context))
+	if(fs->rmdir(fs_path, fs->context))
 		return -1;
 	return 0;
 }
 
-int fs_mknod(const char* path, int dev, int dev_type, int perm)
+int fs_mknod(const char* path, dev_t dev, dev_t dev_type, mode_t perm)
 {
 	char res_path[FILE_MAX_PATH];
 	if(fs_path_resolve(path, res_path, FILE_MAX_PATH))
@@ -754,16 +768,16 @@ int fs_mknod(const char* path, int dev, int dev_type, int perm)
 	if(!fs) return -1; /* Bad path */
 
 	/* Get the file system path */
-	char path_tmp[FILE_MAX_PATH];
-	if(fs_get_path(fs, res_path, path_tmp, FILE_MAX_PATH))
+	char fs_path[FILE_MAX_PATH];
+	if(fs_get_path(fs, res_path, fs_path, FILE_MAX_PATH))
 		return -1;
 
 	/* Make sure the path doesn't end with a slash */
-	strncpy(res_path, path_tmp, FILE_MAX_PATH);
-	file_path_file(res_path);
+	if(file_path_file(fs_path))
+		return -1;
 
 	/* Create the node if it's supported */
-	if(fs->mknod && fs->mknod(res_path, dev, dev_type, perm, fs->context))
+	if(fs->mknod && fs->mknod(fs_path, dev, dev_type, perm, fs->context))
 		return -1;
 	return 0;
 }

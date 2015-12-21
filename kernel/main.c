@@ -40,6 +40,8 @@ extern uint k_stack;
 /* Entry point for the kernel */
 int main(void)
 {
+	/* Initilize the primary tty */
+	cprintf_init();
 	/* Lets make sure that tty0 gets configured properly. */
 	setup_kvm();
 	cprintf("Welcome to the Chronos kernel!\n");
@@ -99,11 +101,7 @@ void main_stack(void)
 	ktime_init();
 	cprintf("[ OK ]\n");
 
-	/* Initilize keyboard driver */
-	cprintf("Initilizing keyboard driver...\t\t\t\t\t\t");
-	kbd_init();
-	cprintf("[ OK ]\n");
-
+	/* Initilize caches */
 	cprintf("Initilizing caches...\t\t\t\t\t\t\t");
 	cman_init();
 	cprintf("[ OK ]\n");
@@ -113,19 +111,19 @@ void main_stack(void)
 	dev_init();
 	cprintf("[ OK ]\n");
 
-	/* Start disk driver */
+	/* Start file system manager */
 	cprintf("Starting file system manager...\t\t\t\t\t\t");
 	fsman_init();
 	cprintf("[ OK ]\n");
 
+	/* Populate the device folder */
+	cprintf("Populating the dev folder...\t\t\t\t\t\t");
+        dev_populate();
+        cprintf("[ OK ]\n");
+
 	cprintf("Starting network manager...\t\t\t\t\t\t");
 	net_init();
 	cprintf("[ OK ]\n");
-
-	/* Populate the device folder */
-	//cprintf("Populating the dev folder...\t\t\t\t\t\t");
-	//dev_populate();
-	//cprintf("[ OK ]\n");
 
 	/* Enable PIT */
         cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
@@ -145,10 +143,23 @@ void main_stack(void)
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");
-	
-	cprintf("Spawning tty0...\t\t\t\t\t\t\t");
-	/* Setup an init process */
-	init_proc = spawn_tty(tty_find(0));
+
+	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(0), "/var/log/tty0.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
+
+	/* Spawn shells on all of the ttys */	
+	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
+	int tty_num;
+	for(tty_num = 0;;tty_num++)
+	{
+		tty_t t = tty_find(tty_num);
+		if(!t) break;
+
+		/* Setup an init process */
+        	init_proc = spawn_tty(t);
+	}
 	cprintf("[ OK ]\n");
 
 	/* Start scheduling loop. */

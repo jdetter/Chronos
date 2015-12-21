@@ -1,5 +1,9 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	kill \
+	tty-test \
+	dd \
+	sync \
 	signal-test \
 	compile-test \
 	fs \

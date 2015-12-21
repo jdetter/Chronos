@@ -57,6 +57,10 @@
 #define TTY_BACK_BROWN          (TTY_FORE_BROWN << 4)
 #define TTY_BACK_GREY           (TTY_FORE_GREY << 4)
 
+#ifndef NPAR
+#define NPAR 16
+#endif
+
 #include "ioctl.h"
 
 struct kbd_buff
@@ -81,6 +85,14 @@ struct tty
 	uchar color; /* The current printing color of the terminal. */
 	pid_t cpgid; /* The process group id of the controlling process. */
 	uchar exclusive; /* Whether or not this tty can be opened */
+	uchar out_logged; /* Is the output of this tty being logged? */
+	void* out_inode; /* The inode to write the log to. */
+	uint out_file_pos; /* The output file position */
+	
+	/* Escape sequence parameters */
+	int escape_seq; /* The input is processing an escape sequence */
+	char escape_chars[NPAR]; /* The current escape chars seen so far */
+	int escape_count; /* How many escape characters are in the buffer? */
 
 	/**
  	 * When in Canonical mode, input is made available line by line, so
@@ -88,10 +100,12 @@ struct tty
 	 * of characters in the buffer.
 	 */
 	struct kbd_buff kbd_line; /* Current line buffer */
-	struct kbd_buff keyboard; /* Total keyboard buffer */
+	// struct kbd_buff keyboard; /* Total keyboard buffer */
 	slock_t key_lock; /* The lock needed in order to read from keybaord */
 
 	struct DeviceDriver* driver; /* driver for standard in/out */
+	slock_t io_queue_lock; /* Lock needed to touch the io queue */
+	struct proc* io_queue; /* Process currently waiting for io */
 
 	/* Terminal operating settings */
 	struct termios term;
@@ -134,10 +148,24 @@ uint tty_num(tty_t t);
 void tty_enable(tty_t t);
 
 /**
+ * Enable file logging for a tty. Returns 0 if the file could be opened
+ * and is ready to start logging. Otherwise, returns -1 if the file
+ * could not be created.
+ */
+int tty_enable_logging(tty_t t, char* file);
+
+/**
  * Disable this tty. This tty is now in the background. Any data written to
  * this tty should be written to the buffer, but not written to memory.
  */
 void tty_disable(tty_t t);
+
+/**
+ * Handle the give console code. If the character is not part of a console
+ * code sequence, 0 is returned. If the character is part of a console
+ * code sequence, it is handled and -1 is returned.
+ */
+int tty_parse_code(tty_t t, char c);
 
 /** 
  * Print the character at the current cursor position.
@@ -150,16 +178,11 @@ void tty_putc(tty_t t, char c);
 void tty_print_screen(tty_t t, char* buffer);
 
 /**
- * Get a character from the tty.
- */
-char tty_getc(tty_t t);
-
-/**
  * Get a string from the tty. A maximum of sz bytes will be copied into 
  * the dst buffer. The string is NOT null terminated. Returns the amount
  * of characters written into the buffer.
  */
-int tty_gets(char* dst, int sz);
+int tty_gets(char* dst, int sz, tty_t t);
 
 /**
  * Sets whether or not the cursor should appear on the screen.
@@ -169,7 +192,7 @@ uchar tty_set_cursor(tty_t t, uchar enabled);
 /**
  * Sets the current position of the cursor for the specified mode.
  */
-uchar tty_set_cursor_pos(tty_t t, uchar pos);
+uchar tty_set_cursor_pos(tty_t t, uint pos);
 
 /**
  * Sets the current color of the tty output (text mode only).
@@ -184,7 +207,12 @@ void tty_scroll(tty_t t);
 /**
  * Handles the keyboard interrupt with the active tty.
  */
-void tty_handle_keyboard_interrupt(void);
+void tty_keyboard_interrupt_handler(void);
+
+/**
+ * Signal the tty that input is ready to be given to processes
+ */
+void tty_signal_io_ready(tty_t t);
 
 /**
  * Clear the input stream of the tty.
@@ -196,11 +224,6 @@ void tty_clear_input(tty_t t);
  * to the tty_t struct. Otherwise it returns null.
  */
 tty_t tty_check(struct DeviceDriver* driver);
-
-/**
- * Flush the line buffer for the given tty.
- */
-void tty_keyboard_flush_line(tty_t t);
 
 /**
  * Kill the current line (erase the line). On success, returns
@@ -235,5 +258,10 @@ char tty_keyboard_read(tty_t t);
  * Check to see how many characters are waiting in the input buffer.
  */
 int tty_keyboard_count(tty_t t);
+
+/**
+ * Allow ttys to capture keyboard events.
+ */
+void tty_setup_kbd_events(void);
 
 #endif

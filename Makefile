@@ -1,5 +1,6 @@
 # Use the new tool chain to build executables.
 TARGET=i686-pc-chronos-
+BUILD_ARCH=i386
 TOOL_DIR=../tools/bin
 CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
 CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
@@ -15,8 +16,8 @@ AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common
-ASFLAGS += -ggdb -Werror -Wall
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
+ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
 QEMU := qemu-system-i386
 
 # Flags for building indipendant binaries
@@ -79,7 +80,7 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp/
-	cp ./sysskel/* ./tmp/
+	cp -R ./sysskel/* ./tmp/
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/
 	mkdir -p ./tmp/boot
@@ -140,6 +141,21 @@ run-x:
 	$(QEMU) $(QEMU_OPTIONS)
 run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
+
+run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
+	$(QEMU) $(QEMU_OPTIONS) -s -S
+
+export-fs:
+	rm -f ext2.img
+	dd if=./chronos.img of=./ext2.img ibs=512 skip=$(FS_START)
+
+export-log: export-fs
+	mkdir tmp
+	sudo mount -o loop ./ext2.img ./tmp
+	sudo cp ./tmp/tty0.txt .
+	sudo umount ./tmp
+	rmdir tmp
+	sudo chmod 664 ./tty0.txt
 
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)

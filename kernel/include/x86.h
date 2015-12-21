@@ -31,48 +31,6 @@
 
 /* Chronos Trap Definitions are in chronos.h */
 
-/* Intel page table and page directory flags */
-#define PG_PRESENT(pg) (pg & 0x1)
-#define PG_RW(pg) (pg & 0x2)
-#define PG_USER(pg) (pg & 0x4)
-#define PG_WTWB(pg) (pg & 0x8)
-#define PG_DCACHE(pg) (pg & 0x10)
-#define PG_ACCESSED(pg) (pg & 0x20)
-/* Reserved */
-#define PG_SIZE(pg) (pg & 0x80)
-#define PG_GLBL(pg) (pg & 0x100)
-
-#define PG_FLG9(pg) (pg & 0x200)
-#define PG_FLG10(pg) (pg & 0x400)
-#define PG_FLG11(pg) (pg & 0x800)
-
-#define PGDIR_PRESENT	(1 << 0x0)
-#define PGDIR_RW 	(1 << 0x1)
-#define PGDIR_USER	(1 << 0x2)
-#define PGDIR_WTHROUGH 	(1 << 0x4)
-#define PGDIR_DCACHE 	(1 << 0x8)
-#define PGDIR_ACCESSED	(1 << 0x10)
-/* Reserved */
-#define PGDIR_SIZE	(1 << 0x40)
-#define PGDIR_GLBL	(1 << 0x80)
-
-#define PGTBL_PRESENT   (1 << 0x0)
-#define PGTBL_RW        (1 << 0x1)
-#define PGTBL_USER      (1 << 0x2)
-#define PGTBL_WTWB      (1 << 0x4)
-#define PGTBL_CACHE_DIS (1 << 0x8)
-#define PGTBL_ACCESSED  (1 << 0x10)
-#define PGTBL_DIRTY     (1 << 0x20)
-/* Reserved */
-
-#define PGSIZE 4096
-
-#define PGROUNDDOWN(pg) ((pg) & ~(PGSIZE - 1))  
-#define PGROUNDUP(pg)   ((pg + PGSIZE - 1) & ~(PGSIZE - 1))
-
-#define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
-#define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
-
 /* EFLAGS definitions */
 #define EFLAGS_CF	(0x01 << 0)
 #define EFLAGS_PF	(0x01 << 2)

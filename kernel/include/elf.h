@@ -85,4 +85,38 @@ struct elf32_program_header
 	uint_32 align; /* The memory alignment requrired by this segment. */
 };
 
+#include "stdlock.h"
+#include "fsman.h"
+#include "vm.h"
+
+/**
+ * Check the binary denoted by the given path. Returns 0 if the binary 
+ * looks ok to load.
+ */
+int elf_check_binary_inode(inode ino);
+
+/**
+ * Check the binary denoted by the given path. Returns 0 if the binary 
+ * looks ok to load. DEPREICATED USE check_binary_inode.
+ */
+int elf_check_binary_path(const char* path);
+
+/**
+ * Load the binary into memory denoted by the given inode. The start of the 
+ * code segment (low) will be placed into start if it is not NULL. The end of
+ * the code segment (high) is returned in end if it is not null. Returns 0
+ * on success, non zero otherwise.
+ */
+uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* start, 
+	uintptr_t* end, int user);
+
+/**
+ * Load the binary into memory denoted by the given path. The start of the 
+ * code segment (low) will be placed into start if it is not NULL. The end of
+ * the code segment (high) is returned in end if it is not null. Returns 0
+ * on success, non zero otherwise. DEPRICATED USE load_binary_inode.
+ */
+uintptr_t elf_load_binary_path(const char* path, pgdir* pgdir, 
+	uintptr_t* start, uintptr_t* end, int user);
+
 #endif

@@ -121,7 +121,8 @@ int (*syscall_table[])(void) = {
 	sys_sigpending,
 	sys_signal,
 	sys_sigsuspend,
-	sys_setegid
+	sys_setegid,
+	sys_sync
 };
 
 char* syscall_table_names[] = {
@@ -214,8 +215,8 @@ char* syscall_table_names[] = {
         "sigpending",
         "signal",
         "sigsuspend",
-        "setegid"
-
+        "setegid",
+        "sync"
 };
 
 
@@ -493,13 +494,13 @@ int sys_mprotect(void)
 
 	uchar flags = 0;
 	if(prot & PROT_READ) flags |= 0;
-	if(prot & PROT_WRITE) flags |= PGTBL_RW;
+	if(prot & PROT_WRITE) flags |= VM_TBL_WRIT | VM_TBL_READ;
 	if(prot & PROT_READ) flags |= 0;
 
 
 	size_t x;
 	for(x = start;x < end;x += PGSIZE)
-		pgflags(x, rproc->pgdir, 1, flags);
+		vm_pgflags(x, rproc->pgdir, flags);
 
 	return 0;
 }

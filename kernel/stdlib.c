@@ -290,6 +290,7 @@ int vsnprintf(char* dst, size_t sz, const char* fmt, va_list list)
 			dst[dst_index] = 0;
 			break;
 		}
+
                 if(fmt[fmt_index] == '%')
                 {
                         if(fmt[fmt_index + 1] == '%')
@@ -344,7 +345,7 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 {
 	va_list list;
 	va_start(list, fmt);
-        int result =  vsnprintf(dst, sz, list, fmt);
+        int result =  vsnprintf(dst, sz, fmt, list);
 	va_end(list);
 
 	return result;

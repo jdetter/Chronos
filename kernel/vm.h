@@ -1,114 +1,21 @@
 #ifndef _UVM_H_
 #define _UVM_H_
 
-/*****************************************
- *********** CHRONOS MEMORY MAP **********
- *****************************************/
+/* Include the architecture independant header */
+#ifdef ARCH_i386
+#include  "arch/i386/vm/vm.h"
+#else
+#error "Invalid architecture selected."
+#endif
 
-/** Kernel virtual memory map
- *
- * Build last modified: alpha-0.2
- * Maintainer: John Detter <jdetter@chronos.systems>
- * 
- * 
- * 0xFFFFF000 Virtual memory space top (NO PAE) 
- * ...
- * Kernel binary + global data
- * ...
- * 0xFF000000
- * 0xFEFFF000 kernel stack upper guard page 
- * 0xFEFFEFFF
- * ...
- * Kernel stack
- * ...
- * 0xFEFFA000
- * 0xFEFF9000 kernel stack lower guard page / user kstack upper guard page
- * 0xFEFF8FFF
- * ...
- * User kstack
- * ...
- * 0xFEFF4000
- * 0xFEFF3000 user kstack lower guard page
- * 0xFEFF2FFF
- * ...
- * Swap stack (stacks of other processes get mapped here)
- * ...
- * 0xFEFEE000
- * 0xFEFED000 extra stack lower guard page
- * 0xFEFFCFFF
- * ...
- * kmalloc space
- * ...
- * 0xFDFF8000
- *
- * 0xFDFF7FFF
- * ...
- * Hardware mapping space
- * ...
- * 0xFD000000
- *  Note: all pages in hardware mapping space are marked as *write through*
- *  Note: all pages below here are directly mapped virt = phy, 
- *
- * VV   Top of the page pool  VV
- * 
- * 0xFEFFFFFF
- * ...
- * Page pool (if it exists)
- * ...
- * 0x00100000 
- *
- * 0x000FFFFF
- * ...
- * video memory / BIOS ROM area (Hole)
- * ...
- * 0x000A0000 
- *
- * 0x0009FFFF
- * ...
- * Page pool
- * ...
- * 0x0000FC00
- * 
- * 0x0000FDFF
- * ...
- * Boot stage 2 %%
- * ...
- * 0x00007E00
- * 
- * 0x00007DFF
- * ...
- * Boot stage 1 boot strap %%
- * ...
- * 0x00007C00
- *
- * 0x00007BFF
- * ...
- * Page pool
- * ...
- * 0x00002000 
- * ^^  Bottom of the page pool ^^
- *
- * 0x00001000 Kernel page directory
- * 0x00000958 Current video mode 
- * 0x00000954 Available pages in the memory pool
- * 0x00000950 Pointer to the first page in the memory pool
- * 0x00000500 Memory map (boot stage 1)
- * ...
- * All memory here left untouched (real mode IDT, bios data)
- * ...
- * 0x00000000 
- *
- * Notes:
- *   %%: will get reclaimed as part of the memory pool after boot.
- *
- */
+/** VERY GENERIC MEMORY MAPS */
+#ifndef VM_LAYOUT_PROVIDED
 
-/** Definitions for the above memory map **/
-
-#define VM_MAX		0xFFFFFFFF /* Maximum possible address */
+#define VM_LAYOUT_PROVIDED
+#define VM_MAX          0xFFFFFFFF /* Maximum possible address */
 
 #define KVM_DISK_E      0xFFFFF000 /* End of disk caching space */
-#define KVM_DISK_S	0xFFA00000 /* Start of the disk caching space */
+#define KVM_DISK_S      0xFFA00000 /* Start of the disk caching space */
 #define KVM_KERN_E      0xFF9FFFFF /* Kernel binary ends */
 #define KVM_KERN_S      0xFF000000 /* Kernel binary starts*/
 
@@ -119,15 +26,15 @@
 
 #define KVM_KSTACK_G2   0xFEFF9000 /* Kernel stack lower guard page */
 
-#define UVM_KSTACK_G1	KVM_KSTACK_G2 /* User kstack upper guard page */
-#define UVM_KSTACK_E	0xFEFF8FFF /* End (top) of the user process stack */
-#define UVM_KSTACK_S	0xFEFF4000 /* Start of the user process stack */
-#define UVM_KSTACK_G2	0xFEFF3000
+#define UVM_KSTACK_G1   KVM_KSTACK_G2 /* User kstack upper guard page */
+#define UVM_KSTACK_E    0xFEFF8FFF /* End (top) of the user process stack */
+#define UVM_KSTACK_S    0xFEFF4000 /* Start of the user process stack */
+#define UVM_KSTACK_G2   0xFEFF3000
 
-#define SVM_KSTACK_G1	0xFEFF3000 /* swap stack top guard page */
-#define SVM_KSTACK_E	0xFEFF2FFF /* swap stack end */
-#define SVM_KSTACK_S	0xFEFEE000 /* swap stack start */
-#define SVM_KSTACK_G2	0xFEFED000 /* swap stack bottom guard page */
+#define SVM_KSTACK_G1   0xFEFF3000 /* swap stack top guard page */
+#define SVM_KSTACK_E    0xFEFF2FFF /* swap stack end */
+#define SVM_KSTACK_S    0xFEFEE000 /* swap stack start */
+#define SVM_KSTACK_G2   0xFEFED000 /* swap stack bottom guard page */
 
 #define KVM_KMALLOC_E   0xFEFFCFFF /* Where kmalloc ends */
 #define KVM_KMALLOC_S   0xFDFF8000 /* Where kmalloc starts */
@@ -135,113 +42,67 @@
 #define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */
 #define KVM_HARDWARE_S  0xFD000000 /* Start of hardware mappings */
 
-#define KVM_BOOT2_E	0x00019600 /* Start of the second boot stage binary */
-#define KVM_BOOT2_S	0x00007E00 /* Start of the second boot stage binary */
+#define KVM_BOOT2_E     0x00019600 /* Start of the second boot stage binary */
+#define KVM_BOOT2_S     0x00007E00 /* Start of the second boot stage binary */
 
 #define KVM_KPGDIR      0x00001000 /* The kernel page directory */
-#define KVM_VMODE    	0x00000958 /* The current video mode */
-#define KVM_PAGE_CT    	0x00000954 /* Amount of pages in the page pool */
+#define KVM_VMODE       0x00000958 /* The current video mode */
+#define KVM_PAGE_CT     0x00000954 /* Amount of pages in the page pool */
 #define KVM_POOL_PTR    0x00000950 /* Pointer to the first page in mem pool*/
 
 /* Quickly calculate the difference between the normal and swap stacks. */
 #define SVM_DISTANCE (UVM_KSTACK_S - SVM_KSTACK_S)
 
-/** User application memory map
- * 
- * 0xFFFFFFFF Top of kernel space
- * ...
- * Kernel binary space (code + global data)
- * ...
- * 0xFEFFA000
- * 0xFEFF9000 Stack guard page top 
- * 0xFEFF8FFF
- * ...
- * User kernel stack (see definition above)
- * ...
- * 0xFEFF4000
- * 0xFEFF3000 Stack guard page bottom
- * 0xFEFF2FFF
- * ...
- * Hardware mappings, kmalloc space, ...
- * ... 
- * 0xFD000000 Bottom of kernel space
- * 0xFCFFFFFF User application user space top
- * ...
- * ?????????? Environment variable space (dependant on size)
- * ?????????? User stack start
- *     |
- *     | Stack grows down when the user needs more stack space
- *     |
- *     V
- * ?????????? mmap area start
- * ...
- * ?????????? mmap area end
- *     |
- *     | mmap area grows towards heap
- *     |
- *     V
- *
- *     ^
- *     |
- *     | Heap grows up when the user needs more heap space
- *     |
- * ?????????? Start of heap (page aligned after user binary)
- * ...
- * ...
- * 0x00001000 Start of user binary
- * 0x00000000 NULL guard page (Security)
- */
-
 /** Definitions for the above memory map **/
-#define UVM_KVM_E	0xFFFFFFFF /* End of the kernel space*/
-#define UVM_KVM_S	0xFD000000 /* Start of the kernel space */
-#define UVM_TOP		0xFCFFFFFF /* Top of the user address space */
+#define UVM_KVM_E       0xFFFFFFFF /* End of the kernel space*/
+#define UVM_KVM_S       0xFD000000 /* Start of the kernel space */
+#define UVM_TOP         0xFCFFFFFF /* Top of the user address space */
 /* User stack start is now unknown due to environment variables */
-//#define UVM_USTACK_TOP	0xFCFFFFFF /* Top of the user's stack */
-#define UVM_LOAD	0x00001000 /* Where the user binary gets loaded */
+//#define UVM_USTACK_TOP        0xFCFFFFFF /* Top of the user's stack */
+#define UVM_LOAD        0x00001000 /* Where the user binary gets loaded */
 
-#define UVM_MIN_STACK	0x00A00000 /* 10MB minimum stack size */
+#define UVM_MIN_STACK   0x00A00000 /* 10MB minimum stack size */
 
-/** Memory mapped file systems
- *  < Will be updated when implemented >
- */
+#endif
 
-#define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
-#define MKVMSEG(priv, exe_data, read_write, base, limit) \
-        {((limit >> 12) & 0xFFFF),                         \
-        (base & 0xFFFF),                                  \
-        ((base >> 16) & 0xFF),                            \
-        ((SEG_DEFAULT_ACCESS | exe_data | read_write | priv) & 0xFF), \
-        (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF),     \
-        ((base >> 24) & 0xFF)}
+/* GENERIC DIRECTORY FLAGS */
+#define VM_DIR_GLBL 0x0001 /* Mark the table as a global page */
+#define VM_DIR_DRTY 0x0002 /* Mark the table as dirty */
+#define VM_DIR_ACSS 0x0004 /* Mark the table as accessed */
+#define VM_DIR_CACH 0x0008 /* Mark the table as not cached */
+#define VM_DIR_WRTR 0x0010 /* Mark the table as write through */
+#define VM_DIR_USRP 0x0020 /* Mark the table as a user page */
+#define VM_DIR_KRNP 0x0040 /* Mark the table as a kernel page  */
+#define VM_DIR_READ 0x0080 /* Mark the table as readable */
+#define VM_DIR_WRIT 0x0100 /* Mark the table as writable */
+#define VM_DIR_PRES 0x0200 /* Mark the table as present */
+#define VM_DIR_LRGP 0x0400 /* Specify the page size as large */
+#define VM_DIR_SMLP 0x0800 /* Specify the page size as small */
 
-#define TSS_BUSY		0x02
-#define TSS_PRESENT		0x80
-#define TSS_GRANULARITY		0x80
-#define TSS_AVAILABILITY	0x10
-#define TSS_DEFAULT_FLAGS	0x09
+/* GENERIC TABLE FLAGS */
+#define VM_TBL_GLBL 0x0001 /* Mark the page as a global page */
+#define VM_TBL_DRTY 0x0002 /* Mark the page as dirty */
+#define VM_TBL_ACSS 0x0004 /* Mark the page as accessed */
+#define VM_TBL_CACH 0x0008 /* Mark the page as not cached */
+#define VM_TBL_WRTH 0x0010 /* Mark the page as write through */
+#define VM_TBL_USRP 0x0020 /* Mark the page as a user page */
+#define VM_TBL_KRNP 0x0040 /* Mark the page as a kernel page  */
+#define VM_TBL_READ 0x0080 /* Mark the page as readable */
+#define VM_TBL_WRIT 0x0100 /* Mark the page as writable */
+#define VM_TBL_PRES 0x0200 /* Mark the page as present */
+#define VM_TBL_EXEC 0x0400 /* Mark the page as executable */
 
 #ifndef __VM_ASM_ONLY__
 
-struct vm_segment_descriptor
-{
-	uint_16 limit_1; /* 0..15 of limit */
-	uint_16 base_1;  /* 0..15 of base */
-	uint_8  base_2;  /* 16..23 of base */
-	uint_8  type;    /* descriptor type */
-	uint_8  flags_limit_2; /* flags + limit 16..19 */
-	uint_8  base_3; /* 24..31 of base */
-};
+/* Include setup header */
+#include "vm/vm_setup.h"
 
-/**
- * Initilize a free list of pages from address start to address end.
- */
-uint vm_init(void);
+/* Include alloc header */
+#include "vm/vm_alloc.h"
 
-/**
- * Initilize kernel segments
- */
-void vm_seg_init(void);
+void vm_enable_paging(pgdir* dir);
+pgdir* vm_curr_pgdir(void);
+void vm_disable_paging(void);
 
 /**
  * Save the current page directory and disable interrupts on this cpu.
@@ -253,63 +114,36 @@ pgdir* vm_push_pgdir(void);
  */
 void vm_pop_pgdir(pgdir* dir);
 
-/**    
- * Allocate a page. Return NULL if there are no more free pages. The address
- * returned should be page aligned.
- * Security: Remember to zero the page before returning the address.
- */
-uint palloc(void);
-
-/**
- * Free the page, pg. Add it to anywhere in the free list (no coalescing).
- */
-void pfree(uint pg);
-
-/**
- * Add pages to the page pool. This will not add pages to the page pool
- * that are going to be direct mapped.
- */
-void vm_add_pages(uint start, uint end, pgdir* dir);
-
-/**
- * Setup the page pool. This is done during the second boot stage.
- */
-void vm_init_page_pool(void);
-
 /**
  * Setup the kernel portion of the page table.
  */
 void setup_kvm(void);
 
 /**
- * Called when the bootstrap has finished setting up memory. The
- * information saved by this function call is read by the kernel
- * when it starts executing.
+ * Map the page at virtual address virt, to the physical address phy into the
+ * page directory dir. This will create entries and tables where needed.
  */
-void save_vm(void);
+int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
  * ignored. 
  */
-void mappages(uint va, uint sz, pgdir* dir, uchar user);
+int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Directly map the pages into the page table.
  */
-void dir_mappages(uint start, uint end, pgdir* dir, uchar user);
-
-/**
- * Map the page at virtual address virt, to the physical address phy into the
- * page directory dir. This will create entries and tables where needed.
- */
-void mappage(uint phy, uint virt, pgdir* dir, uchar user, uint flags);
+int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, 
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Unmap the page from the page directory. If there isn't a page there then
  * nothing is done. Returns the page that was unmapped.
  */
-uint unmappage(uint virt, pgdir* dir);
+uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir);
 
 /**
  * Find a page in a page directory. If the page is not mapped, and create is 1,
@@ -317,31 +151,30 @@ uint unmappage(uint virt, pgdir* dir);
  * is 0, and the page is not found, return 0. Otherwise, return the address
  * of the mapped page.
  */
-uint findpg(uint virt, int create, pgdir* dir, uchar user);
+uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
+	pgflags_t dir_flags, pgflags_t tbl_flags);
 
+
+pgflags_t vm_findtblflags(uintptr_t virt, pgdir* dir);
 /**
  * Returns the flags for a virtual memory address. Returns -1 if the
  * page is not mapped in memory. 
  */
-int findpgflags(uint virt, pgdir* dir);
+pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir);
 
-/**
- * Set the flags on a specific page table entry. Doesn't change page directory
- * flags.
- */
-uint pgflags(uint virt, pgdir* dir, uchar user, uchar flags);
+int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags);
 
 /**
  * Sets the page read only. Returns the virtual address on success, 0 on
  * failure.
  */
-uint pgreadonly(uint virt, pgdir* dir, uchar user);
+int vm_pgreadonly(uintptr_t virt, pgdir* dir);
 
 /**
  * Set the range of pages from virt_start to virt_end to read only.
  * returns 0 on success, 1 on failure.
  */
-uint pgsreadonly(uint virt_start, uint virt_end, pgdir* dir, uchar user);
+int vm_pgsreadonly(uintptr_t start, uintptr_t end, pgdir* dir);
 
 /**
  * Free all pages in the page table and free the directory itself.
@@ -351,7 +184,7 @@ void freepgdir(pgdir* dir);
 /**
  * Copy the kernel portion of the page table
  */
-void vm_copy_kvm(pgdir* dir);
+int vm_copy_kvm(pgdir* dir);
 
 /**
  * Instead of creating a copy of a user virtual memory space, directly map
@@ -374,10 +207,6 @@ void vm_free_uvm(pgdir* dir);
  */
 void switch_kvm(void);
 
-/**
- * Switch to a user's page table and restore the context.
- */
-void switch_uvm(struct proc* p);
 
 /**
  * Map another process's kstack into another process's address space.
@@ -395,16 +224,12 @@ void vm_set_swap_stack(pgdir* dir, pgdir* swap);
 void vm_clear_swap_stack(pgdir* dir);
 
 /**
- * Switch to the user's context.
- */
-void switch_context(struct proc* p);
-
-/**
  * Move memory from one address space to another. Return the amount of bytes
  * copied.
  */
-uint vm_memmove(void* dst, const void* src, uint sz,
-                pgdir* dst_pgdir, pgdir* src_pgdir);
+size_t vm_memmove(void* dst, const void* src, size_t sz,
+                pgdir* dst_pgdir, pgdir* src_pgdir,
+                pgflags_t dir_flags, pgflags_t tbl_flags);
 
 /**
  * Free the directory and page table struct  but none of the pages pointed to 
@@ -413,18 +238,12 @@ uint vm_memmove(void* dst, const void* src, uint sz,
 void freepgdir_struct(pgdir* dir);
 
 /** Memory debugging functions */
-void free_list_check(void); /* Verfy the free list */
-void free_list_dump(void); /* Print the free list */
 
 /**
- * Compare 2 page tables.
+ * Print each mapping and flags in the page table. Returns the amount of
+ * pages found in the page table.
  */
-void pgdir_cmp(pgdir* src, pgdir* dst);
-
-/**
- * Compare 2 pages.
- */
-void pg_cmp(uchar* pg1, uchar* pg2);
+int vm_print_pgdir(uintptr_t last_page, pgdir* dir);
 
 #endif 
 

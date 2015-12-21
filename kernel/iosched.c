@@ -23,6 +23,8 @@
 #include "rtc.h"
 #include "ktime.h"
 
+#define DEBUG
+
 extern slock_t ptable_lock;
 extern struct proc ptable[];
 extern struct proc* rproc;
@@ -34,7 +36,7 @@ void iosched_check_sleep(void);
 
 void iosched_check(void)
 {
-	tty_handle_keyboard_interrupt();
+	tty_keyboard_interrupt_handler();
 	/* Check for system time changes */
 	uchar cmos_val = cmos_read_interrupt();
 	if(cmos_val == 144)
@@ -50,7 +52,8 @@ void iosched_check(void)
 	iosched_check_sleep();
 }
 
-int block_keyboard_io(void* dst, int request_size)
+#if 0
+int DEPRICATED_block_keyboard_io(void* dst, int request_size)
 {
 	// cprintf("block called.\n");
 	/* quick sanity check */
@@ -122,7 +125,7 @@ keyboard_sleep:
 }
 
 /* ptable and key lock must be held here. */
-void signal_keyboard_io(tty_t t)
+void DEPRICATED_signal_keyboard_io(tty_t t)
 {
 	char canon = t->term.c_lflag & ICANON;
 
@@ -135,29 +138,44 @@ void signal_keyboard_io(tty_t t)
 				&& ptable[x].io_type == PROC_IO_KEYBOARD
 				&& ptable[x].t == t)
 		{
-			// cprintf("Found blocked process: %s\n", ptable[x].name);
-			/* Acquire the key lock */
-			/* Found blocked process. */
+#ifdef DEBUG
+			cprintf("iosched: Found blocked process: %s"
+				" pid: %d\n", ptable[x].name, ptable[x].pid);
+#endif
+
 			/* Read into the destination buffer */
 			int read_bytes = ptable[x].io_recieved;
 			int wake = 0; /* Wether or not to wake the process */
 
-			for(read_bytes = 0;read_bytes < 
-					ptable[x].io_request;
-					read_bytes++)
+#ifdef DEBUG
+			cprintf("iosched: %d have already been read.\n", 
+				read_bytes);
+#endif
+
+			for(;read_bytes < ptable[x].io_request;read_bytes++)
 			{
 				/* Read a character */
 				char c = tty_keyboard_read(t);
 				if(!c) break;
+
 				/* Place character into dst */
 				ptable[x].io_dst[read_bytes] = c;
-				// cprintf("Read: %c\n", c);
+
+				/**
+				 * Only read until the next new line if
+				 * operating in canonical mode.
+				 */
 				if(canon && (c == '\n' || c == 13))
 				{
 					read_bytes++;
 					break;
 				}
 			}
+
+#ifdef DEBUG
+			cprintf("iosched: Total bytes read: %d\n", 
+				read_bytes);
+#endif
 
 			/* If we read anything, wakeup the process */
 			if(read_bytes > 0) wake = 1;
@@ -167,16 +185,21 @@ void signal_keyboard_io(tty_t t)
 
 			if(wake)
 			{
-				// cprintf("Process unblocked.\n");
 				ptable[x].state = PROC_RUNNABLE;
 				ptable[x].block_type = PROC_BLOCKED_NONE;
 				ptable[x].io_type = PROC_IO_NONE;
+				
+#ifdef DEBUG
+				cprintf("iosched: Process woke up.");
+#endif
 			}
 
 			break;
 		}
 	}
 }
+
+#endif
 
 void iosched_check_sleep(void)
 {

@@ -841,3 +841,9 @@ int sys_ftruncate(void)
 	cprintf("kernel: ftruncate not implemented yet.\n");
 	return -1;
 }
+
+int sys_sync(void)
+{
+	fs_sync();
+	return 0;
+}

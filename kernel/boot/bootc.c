@@ -34,7 +34,6 @@
 void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
 void __kernel_jmp__(uint entry);
-void __enable_paging__(uint* pgdir);
 void __enforce_kernel_readonly__(void);
 
 char* no_image = "Chronos.elf not found!\n";
@@ -71,7 +70,7 @@ int main(void)
 	cprintf(ok);
 
 	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
-	__enable_paging__(k_pgdir);
+	vm_enable_paging(k_pgdir);
 	cprintf(ok);
 
 	cprintf("Enforcing kernel readonly...\t\t\t\t\t\t");
@@ -179,33 +178,37 @@ int main(void)
 		if(curr_header.type == ELF_PH_TYPE_LOAD)
 		{
 			/* Load this header into memory. */
-			uchar* hd_addr = (uchar*)curr_header.virt_addr;
-			uint offset = curr_header.offset;
-			uint file_sz = curr_header.file_sz;
-			uint mem_sz = curr_header.mem_sz;
-			uint needed_sz = PGROUNDUP(mem_sz);
+			uintptr_t hd_addr = (uintptr_t)curr_header.virt_addr;
+			off_t offset = curr_header.offset;
+			size_t file_sz = curr_header.file_sz;
+			size_t mem_sz = curr_header.mem_sz;
+			size_t needed_sz = PGROUNDUP(mem_sz);
+
+			pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+			pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+
 			/* map some pages in for this space */
-			mappages((uint)hd_addr, needed_sz, k_pgdir, 0);
+			vm_mappages(hd_addr, needed_sz, k_pgdir, 
+				dir_flags, tbl_flags);
+
 			/* zero this region */
-			memset(hd_addr, 0, mem_sz);
+			memset((void*)hd_addr, 0, mem_sz);
 			/* Load the section */
-			fs.read(chronos_inode, hd_addr, offset,
+			fs.read(chronos_inode, (void*)hd_addr, offset,
 				file_sz, fs.context);
 
-			/* Should this section be read only? */
+			/* Security: check for read only */
 			if(!(curr_header.flags & ELF_PH_FLAG_W))
-			{
-				pgsreadonly((uint)hd_addr, 
-					(uint)hd_addr + needed_sz,
-					k_pgdir, 0);
-			}
+				if(vm_pgsreadonly(hd_addr, hd_addr + needed_sz,
+						k_pgdir))
+					panic("bootstrap: readonly failed!\n");
 		}
 	}
 
 	cprintf(kernel_loaded);
 	
 	/* Save vm context */
-	save_vm();
+	vm_save_vm();
 	/* Jump into the kernel */
 	__kernel_jmp__(elf_entry);
 
@@ -246,26 +249,38 @@ void setup_boot2_pgdir(void)
 	vm_stable_page_pool();
 	vm_init_page_pool();
 	
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+
 	/* Start by directly mapping the boot stage 2 pages */
-	dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 0);
+	vm_dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 
+		dir_flags, tbl_flags);
+
+	/* Map the current stack */
+	vm_pgflags(PGROUNDDOWN(KVM_BOOT2_S), k_pgdir, tbl_flags);
 
 	/* Directly map the kernel page directory */
-	dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 
+			dir_flags, tbl_flags);
 
 	/* Map null page temporarily */
-	dir_mappages(0x0, PGSIZE, k_pgdir, 0);
+	vm_dir_mappages(0x0, PGSIZE, k_pgdir, dir_flags, tbl_flags);
 
 	/* Map pages for the kernel binary */
 	// mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
-	
+
 	/* Map in some of the disk caching space */
-	mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 0);
+	vm_mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 
+			dir_flags, tbl_flags);
+
+	/* Don't cache and write through the hardware mappings */
+	tbl_flags |= VM_TBL_WRTH | VM_TBL_CACH;
 
 	/* Directly map video memory */
-	dir_mappages(CONSOLE_COLOR_BASE_ORIG, 
-		CONSOLE_COLOR_BASE_ORIG + PGSIZE, 
-		k_pgdir, 0);
-	dir_mappages(CONSOLE_MONO_BASE_ORIG,
-		CONSOLE_MONO_BASE_ORIG + PGSIZE,
-		k_pgdir, 0);
+	vm_dir_mappages(CONSOLE_COLOR_BASE_ORIG, 
+			CONSOLE_COLOR_BASE_ORIG + PGSIZE, 
+			k_pgdir, dir_flags, tbl_flags);
+	vm_dir_mappages(CONSOLE_MONO_BASE_ORIG,
+			CONSOLE_MONO_BASE_ORIG + PGSIZE,
+			k_pgdir, dir_flags, tbl_flags);
 }

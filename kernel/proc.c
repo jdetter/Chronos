@@ -29,6 +29,7 @@
 #include "iosched.h"
 #include "time.h"
 #include "rtc.h"
+#include "context.h"
 
 extern struct vsfs_context context;
 
@@ -120,14 +121,19 @@ struct proc* spawn_tty(tty_t t)
 	p->pgdir = (pgdir*)palloc();
 	vm_copy_kvm(p->pgdir);
 
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+
 	/* Map in a new kernel stack */
-        mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 0);
+        vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 
+		dir_flags, tbl_flags);
         p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
         p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
         p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
 	/* Map in a user stack. */
-	mappages(p->stack_end, PGSIZE, p->pgdir, 1);
+	vm_mappages(p->stack_end, PGSIZE, p->pgdir, 
+		dir_flags | VM_DIR_USRP, tbl_flags | VM_TBL_USRP);
 
 	/* Switch to user page table */
 	switch_uvm(p);
@@ -154,8 +160,14 @@ struct proc* spawn_tty(tty_t t)
         p->tf->esp = (uint)ustack;
 
 	/* Load the binary */
-	uint end = load_binary_path("/bin/init", p);
-	p->heap_start = PGROUNDUP(end);
+	uintptr_t code_start;
+	uintptr_t code_end;
+	uintptr_t entry = elf_load_binary_path("/bin/init", p->pgdir, 
+		&code_start, &code_end, 1);
+	p->code_start = code_start;
+	p->code_end = code_end;
+	p->entry_point = entry;
+	p->heap_start = PGROUNDUP(code_end);
 	p->heap_end = p->heap_start;
 
 	/* Set the mmap area start */
@@ -166,165 +178,6 @@ struct proc* spawn_tty(tty_t t)
 	slock_release(&ptable_lock);
 
 	return p;
-}
-
-uchar check_binary_path(const char* path)
-{
-	inode ino = fs_open(path, O_RDONLY, 0644, 0, 0);
-	if(!ino) return -1;
-	uchar result = check_binary_inode(ino);
-	fs_close(ino);
-	return result;
-}
-
-uchar check_binary_inode(inode ino)
-{
-	if(!ino) return -1;
-
-        /* Sniff to see if it looks right. */
-        uchar elf_buffer[4];
-        fs_read(ino, elf_buffer, 4, 0);
-        char elf_buff[] = ELF_MAGIC;
-        if(memcmp(elf_buffer, elf_buff, 4)) return 1;
-
-        /* Load the entire elf header. */
-        struct elf32_header elf;
-        fs_read(ino, &elf, sizeof(struct elf32_header), 0);
-        /* Check class */
-        if(elf.exe_class != 1) return 1;
-        if(elf.version != 1) return 1;
-        if(elf.e_type != ELF_E_TYPE_EXECUTABLE) return 1;
-        if(elf.e_machine != ELF_E_MACHINE_x86) return 1;
-        if(elf.e_version != 1) return 1;
-
-	return 0;
-}
-
-uint load_binary_path(const char* path, struct proc* p)
-{
-	inode ino = fs_open(path, O_RDONLY, 0644, p->uid, p->gid);
-	if(!ino) return 0;
-	uint result = load_binary_inode(ino, p);
-	fs_close(ino);
-	return result;
-}
-
-
-uint load_binary_inode(inode ino, struct proc* p)
-{
-	if(!ino || !p) return 0;
-
-        /* Sniff to see if it looks right. */
-        uchar elf_buffer[4];
-        fs_read(ino, elf_buffer, 4, 0);
-        char elf_buff[] = ELF_MAGIC;
-        if(memcmp(elf_buffer, elf_buff, 4))
-	{
-                cprintf("kernel: Elf magic is wrong\n");
-		return 0;
-	}
-
-	/* Load the entire elf header. */
-        struct elf32_header elf;
-        fs_read(ino, &elf, sizeof(struct elf32_header), 0);
-        /* Check class */
-        if(elf.exe_class != 1) 
-	{
-		cprintf("Binary not executable");
-		return 0;
-	}
-
-        if(elf.version != 1) 
-	{
-		cprintf("Binary wrong ELF version");
-		return 0;
-	}
-
-        if(elf.e_type != ELF_E_TYPE_EXECUTABLE) 
-	{
-		cprintf("Binary wrong exe type");
-		return 0;
-	}
-
-        if(elf.e_machine != ELF_E_MACHINE_x86) 
-	{
-		cprintf("Binary wrong ISA");
-		return 0;
-	}
-
-        if(elf.e_version != 1) 
-	{
-		cprintf("Binary wrong machine version");
-		return 0;
-	}
-
-	uint elf_end = 0;
-        uint elf_entry = elf.e_entry;
-
-	uint code_start = (int)-1;
-	uint code_end = 0;
-	int x;
-        for(x = 0;x < elf.e_phnum;x++)
-        {
-                int header_loc = elf.e_phoff + (x * elf.e_phentsize);
-                struct elf32_program_header curr_header;
-                fs_read(ino, &curr_header,
-                        sizeof(struct elf32_program_header),
-                        header_loc);
-                /* Skip null program headers */
-                if(curr_header.type == ELF_PH_TYPE_NULL) continue;
-
-                /* 
-                 * GNU Stack is a recommendation by the compiler
-                 * to allow executable stacks. This section doesn't
-                 * need to be loaded into memory because it's just
-                 * a flag.
-                 */
-                if(curr_header.type == ELF_PH_TYPE_GNU_STACK)
-                        continue;
-
-                if(curr_header.type == ELF_PH_TYPE_LOAD)
-                {
-                        /* Load this header into memory. */
-                        uchar* hd_addr = (uchar*)curr_header.virt_addr;
-                        uint offset = curr_header.offset;
-                        uint file_sz = curr_header.file_sz;
-                        uint mem_sz = curr_header.mem_sz;
-			/* Paging: allocate user pages */
-			mappages((uint)hd_addr, mem_sz, p->pgdir, 1);
-			if((uint)hd_addr + mem_sz > elf_end)
-				elf_end = (uint)hd_addr + mem_sz;
-                        /* zero this region */
-                        memset(hd_addr, 0, mem_sz);
-
-			/* Is this a new start? */
-			if((uint)hd_addr < code_start)
-				code_start = (uint)hd_addr;
-
-			/* Is this a new end? */
-			if((uint)(hd_addr + mem_sz) > code_end)
-				code_end = (uint)(hd_addr + mem_sz);
-
-                        /* Load the section */
-                        fs_read(ino, hd_addr, file_sz, offset);
-
-			/* Should this section be read only? */
-			if(!(curr_header.flags & ELF_PH_FLAG_W))
-			{
-				pgsreadonly((uint)hd_addr, 
-					(uint)hd_addr + mem_sz,
-					p->pgdir, 1);
-
-			}
-                }
-        }
-
-	/* Set the entry point of the program */
-	p->entry_point = elf_entry;
-	p->code_start = code_start;
-	p->code_end = code_end;
-
-	return elf_end;
 }
 
 uchar proc_tty_connected(tty_t t)

@@ -64,13 +64,18 @@ static struct DeviceDriver* dev_alloc(void)
 
 void* dev_new_mapping(uint phy, uint sz)
 {
+	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT 
+		| VM_TBL_CACH | VM_TBL_WRTH;
+
 	uint v_start = curr_mapping;
 	uint v_end = PGROUNDUP(v_start + sz);
 	if(v_end > KVM_HARDWARE_E)
 		panic("devman: Out of hardware memory.\n");
 	uint x;
 	for(x = 0;x < sz;x += PGSIZE)
-		mappage(phy + x, v_start + x, k_pgdir, 0, PGTBL_WTWB);
+		vm_mappage(phy + x, v_start + x, k_pgdir, 
+			dir_flags, tbl_flags);
 
 	curr_mapping = v_end;
 	return (void*)v_start;
@@ -131,8 +136,8 @@ int dev_init()
 	if(t0->type == TTY_TYPE_COLOR || t0->type == TTY_TYPE_MONO)
 		t0->mem_start = video_mem;
 	/* Boot strap has directly mapped the video memory */
-	unmappage(CONSOLE_MONO_BASE_ORIG, k_pgdir);
-	unmappage(CONSOLE_COLOR_BASE_ORIG, k_pgdir);
+	vm_unmappage(CONSOLE_MONO_BASE_ORIG, k_pgdir);
+	vm_unmappage(CONSOLE_COLOR_BASE_ORIG, k_pgdir);
 
 	/* Find ata devices */
 	ata_init();
@@ -178,6 +183,9 @@ int dev_init()
 	/* Keyboard */
 	kbd_init();
 
+	/* Enable events from keyboards */
+	tty_setup_kbd_events();
+
 	/* make null and zero devices */
 	driver = dev_alloc();
 	driver->type = DEV_IO;
@@ -203,11 +211,11 @@ void dev_populate(void)
 	int dev_perm = PERM_URD | PERM_UWR |
 		PERM_GRD | PERM_GWR | 
 		PERM_ORD | PERM_OWR;
-	int x;
+	dev_t x;
 	for(x = 0;x < MAX_DEVICES;x++)
 	{
 		if(!drivers[x].valid) continue;
-		int type = drivers[x].type;
+		dev_t type = drivers[x].type;
 		switch(type)
 		{
 			/* Character devices */
@@ -251,12 +259,12 @@ struct DeviceDriver* dev_lookup(int dev)
 	else return NULL;
 }
 
-int io_null_read(void* dst, uint start_read, uint sz, void* context)
+int io_null_read(void* dst, uint start_read, size_t sz, void* context)
 {
 	return 0;
 }
 
-int io_null_write(void* dst, uint start_read, uint sz, void* context)
+int io_null_write(void* dst, uint start_read, size_t sz, void* context)
 {
 	return sz;
 }
@@ -270,13 +278,13 @@ int io_null_init(struct IODriver* driver)
 	return 0;
 }
 
-int io_zero_read(void* dst, uint start_read, uint sz, void* context)
+int io_zero_read(void* dst, uint start_read, size_t sz, void* context)
 {
 	memset(dst, 0, sz);
         return sz;
 }
 
-int io_zero_write(void* dst, uint start_read, uint sz, void* context)
+int io_zero_write(void* dst, uint start_read, size_t sz, void* context)
 {
         return sz;
 }

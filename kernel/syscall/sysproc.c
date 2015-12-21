@@ -25,6 +25,8 @@
 #include "rtc.h"
 #include "ktime.h"
 #include "signal.h"
+#include "context.h"
+#include "elf.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -32,7 +34,7 @@ extern uint k_ticks;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
-void trap_return(void);
+void fork_return(void);
 int sys_fork(void)
 {
 	struct proc* new_proc = alloc_proc();
@@ -44,7 +46,7 @@ int sys_fork(void)
 	new_proc->tid = 0; /* Not a thread */
 	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
-	new_proc->pgdir = (uint*) palloc();
+	new_proc->pgdir = (pgdir*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 
@@ -81,13 +83,13 @@ int sys_fork(void)
 	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
 
 	struct trap_frame* tf = (struct trap_frame*)
-		((uchar*)new_proc->tf - SVM_DISTANCE);
+		((char*)new_proc->tf - SVM_DISTANCE);
 	tf->eax = 0; /* The child should return 0 */
 
 	/* new proc needs a context */
 	struct context* c = (struct context*)
-		((uchar*)tf - sizeof(struct context));
-	c->eip = (uint)trap_return;
+		((char*)tf - sizeof(struct context));
+	c->eip = (uint)fork_return;
 	c->esp = (uint)tf - 4 + SVM_DISTANCE;
 	c->cr0 = (uint)new_proc->pgdir;
 	new_proc->context = (uint)c + SVM_DISTANCE;
@@ -245,12 +247,15 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
+	pgflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
+        pgflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
+
 	/* Does the binary look ok? */
-	if(check_binary_path(path))
+	if(elf_check_binary_path(path))
 	{
 		/* see if it is available in /bin */
 		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(check_binary_path(path))
+		if(elf_check_binary_path(path))
 		{
 			/* It really doesn't exist. */
 			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
@@ -285,21 +290,25 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		{
 			/* Set the value in env_arr */
 			vm_memmove(env_arr + index, &env_data, sizeof(int),
-					tmp_pgdir, rproc->pgdir);
+					tmp_pgdir, rproc->pgdir,
+					dir_flags, tbl_flags);
 
 			/* Move the string */
 			int len = strlen(envp[index]) + 1;
 			vm_memmove(env_data, envp[index], len, 
-					tmp_pgdir, rproc->pgdir);
+					tmp_pgdir, rproc->pgdir,
+					dir_flags, tbl_flags);
 			env_data += len;
 		}
 		/* Add null element */
 		vm_memmove(env_arr + index, &null_buff, sizeof(int),
-				tmp_pgdir, rproc->pgdir);
+				tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 	} else {
 		env_start -= sizeof(int);
 		vm_memmove((void*)env_start, &null_buff, sizeof(int),
-                                tmp_pgdir, rproc->pgdir);
+                                tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 	}
 
 	/* Create argument array */
@@ -315,7 +324,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		uint str_len = strlen(argv[x]) + 1;
 		uvm_stack -= str_len;
 		vm_memmove((void*)uvm_stack, (char*)argv[x], str_len,
-				tmp_pgdir, rproc->pgdir);
+				tmp_pgdir, rproc->pgdir,
+				dir_flags, tbl_flags);
 		args[x] = (char*)uvm_stack;
 	}
 	/* Copy argument array */
@@ -324,7 +334,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	uvm_stack &= ~(sizeof(int) - 1);
 	/* Copy the array */
 	vm_memmove((void*)uvm_stack, args, MAX_ARG * sizeof(char*),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	uint arg_arr_ptr = uvm_stack; /* argv */
 	int arg_count = x;
@@ -332,23 +343,27 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* Push envp */
         uvm_stack -= sizeof(int);
         vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
-                        tmp_pgdir, rproc->pgdir);
+                        tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 	
 	/* Push argv */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_arr_ptr, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* push argc */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_count, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* Add bogus return address (solved by crt0 in stdlibc)*/
 	uvm_stack -= sizeof(int);
 	uint ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
-			tmp_pgdir, rproc->pgdir);
+			tmp_pgdir, rproc->pgdir,
+			dir_flags, tbl_flags);
 
 	/* Set stack start and stack end */
 	rproc->stack_start = PGROUNDUP(uvm_start);
@@ -364,8 +379,12 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	switch_uvm(rproc);
 
 	/* load the binary if possible. */
-	uint load_result = load_binary_path(program_path, rproc);
-	if(load_result == 0)
+	uintptr_t code_start;
+	uintptr_t code_end;
+	uintptr_t entry = elf_load_binary_path(program_path, rproc->pgdir,
+		&code_start, &code_end, 1);
+
+	if(entry == 0)
 	{
 		memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 		/* Free temporary directory */
@@ -373,6 +392,10 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		slock_release(&ptable_lock);
 		return -1;
 	}
+
+	rproc->code_start = code_start;
+	rproc->code_end = code_end;
+	rproc->entry_point = entry;
 
 	/* Change name */
 	strncpy(rproc->name, program_path, FILE_MAX_PATH);
@@ -385,7 +408,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->tf->eip = rproc->entry_point;
 
 	/* Adjust heap start and end */
-	rproc->heap_start = PGROUNDUP(load_result);
+	rproc->heap_start = PGROUNDUP(code_end);
 	rproc->heap_end = rproc->heap_start;
 
 	uchar setuid = 0;
@@ -523,7 +546,7 @@ int sys_brk(void)
 	for(;page != old;page += PGSIZE)
 	{
 		/* Free the page */
-		uint pg = unmappage(page, rproc->pgdir);
+		uintptr_t pg = vm_unmappage(page, rproc->pgdir);
 		if(pg) pfree(pg);
 	}
 
@@ -539,24 +562,43 @@ int sys_sbrk(void)
 	if(syscall_get_int((int*)&increment, 0)) return -1;
 
 	slock_acquire(&ptable_lock);
-	uint old_end = rproc->heap_end;
-
-	/* Will this collide with the stack? */
-	if(PGROUNDUP(old_end + increment) >= rproc->stack_end
-		|| (rproc->mmap_end && 
-			PGROUNDUP(old_end + increment) >= rproc->mmap_end))
-	{
-		slock_release(&ptable_lock);
-		return (int)NULL;
-	}
+	uintptr_t old_end = rproc->heap_end;
 
 	if(increment < 0)
 	{
 		/* Deallocating pages */
-		/* TODO: unmap and deallocate the pages here */
+		uintptr_t new_page = PGROUNDDOWN(old_end + increment - 1);
+		uintptr_t old_page = PGROUNDDOWN(old_end - 1);
+
+		for(;old_page > new_page;old_page -= PGSIZE)
+		{
+			if(!vm_unmappage(old_page, rproc->pgdir))
+				panic("%s: Couldn't unmap page: 0x%x\n",
+						rproc->name,
+						old_page);
+		}
+
 	} else {
-		/* Map needed pages */
-		mappages(old_end, increment, rproc->pgdir, 1);
+		/* Will this collide with the stack? */
+		if(PGROUNDUP(old_end + increment) >= rproc->stack_end
+				|| (rproc->mmap_end &&
+					PGROUNDUP(old_end + increment) 
+					>= rproc->mmap_end))
+		{
+			slock_release(&ptable_lock);
+			return (int)NULL;
+		}
+
+		/* Do we even need to map pages? */
+		if(PGROUNDUP(old_end) != PGROUNDUP(old_end + increment))
+		{
+			/* Map needed pages */
+			vm_mappages(old_end, increment, rproc->pgdir, 
+					VM_DIR_USRP | VM_DIR_READ 
+					| VM_DIR_WRIT,
+					VM_TBL_USRP | VM_TBL_READ 
+					| VM_TBL_WRIT);
+		}
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}

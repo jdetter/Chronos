@@ -1,12 +1,17 @@
 #ifndef _KERN_TYPES_H_
 #define _KERN_TYPES_H_
 
+#include <stdint.h>
+
 /**
  * Because this file is always the first include in every
  * file, it doubles as the configuration file.
  */
 
-#define ARCH_i386 /* Build target */
+/* Check to make sure the build is setup correctly */
+#if !defined(ARCH_STR) || (!defined( ARCH_i386)    )
+#error "Must specify an architecture in Makefile."
+#endif
 
 #ifdef ARCH_i386
 /* Unsigned types */
@@ -50,9 +55,6 @@ typedef signed int time_t;
 typedef signed int suseconds_t; */
 
 #endif
-
-typedef uint pgdir;
-typedef uint pgtbl;
 
 #endif /* i386 */
 

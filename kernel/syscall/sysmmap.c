@@ -27,7 +27,7 @@ static void* mmap_find_space(uint sz)
 	void* address = NULL;
 	for(;page > rproc->heap_end;page -= PGSIZE)
 	{
-		if(findpg(page, 0, rproc->pgdir, 0))
+		if(vm_findpg(page, 0, rproc->pgdir, 0, 0))
 			pages = 0;
 		else {
 			pages++;
@@ -66,7 +66,7 @@ int sys_munmap(void)
 
 	uint x;
 	for(x = 0;x < length;x += PGSIZE)
-		unmappage(x + address, rproc->pgdir);
+		vm_unmappage(x + address, rproc->pgdir);
 
 	return 0;
 }
@@ -126,16 +126,13 @@ void* mmap(void* hint, uint sz, int protection,
 	}
 	if(pagestart < rproc->mmap_end)
 		rproc->mmap_end = pagestart;
-        mappages(pagestart, sz, rproc->pgdir, 1);
 
-	/* Check for write protection */
-	if(!(protection & PROT_WRITE))
-	{
-		/* Pages are read only */
-		uint x;
-		for(x = 0;x < sz;x += PGSIZE)
-			pgreadonly(x + pagestart, rproc->pgdir, 1);
-	}
+	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ;
+	if(protection & PROT_WRITE)
+		tbl_flags |= VM_TBL_WRIT;
+
+        vm_mappages(pagestart, sz, rproc->pgdir, dir_flags, tbl_flags);
 
 	/* Release locks */
 	slock_release(&rproc->mem_lock);

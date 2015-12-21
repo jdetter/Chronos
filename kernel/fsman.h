@@ -231,8 +231,8 @@ struct FSDriver
 	 * Create a node on the file system. This allows programs to have
 	 * a common interface to access devices.
 	 */
-	int (*mknod)(const char* path, uint dev, uint dev_type,
-                uint perm, void* context);
+	int (*mknod)(const char* path, dev_t major, dev_t minor,
+                mode_t perm, void* context);
 
 	/**
 	 * Sync all files and data with the storage. This function never
@@ -344,8 +344,7 @@ int fs_link(const char* file, const char* link);
 int fs_symlink(const char* file, const char* link);
 
 /**
- * Create the directory designated by path. Returns an inode describing the
- * directory on success, returns NULL on failure.
+ * Create the directory given by path. Returns 0 on success, -1 on failure.
  */
 int fs_mkdir(const char* path, uint flags, 
 		uint permissions, uint uid, uint gid);
@@ -400,7 +399,7 @@ int fs_rmdir(const char* path);
 /**
  * Create a device node at the specified path.
  */
-int fs_mknod(const char* path, int dev, int dev_type, int perm);
+int fs_mknod(const char* path, dev_t dev, dev_t dev_type, mode_t perm);
 
 /**
  * Truncate a file to a specific length. Returns 0 on success.
