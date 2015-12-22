@@ -32,6 +32,7 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	t->num = num;
 	t->active = 0; /* 1: This tty is in the foreground, 0: background*/
 	t->type = type;
+	t->tab_stop = 8;
 	t->color = TTY_BACK_BLACK|TTY_FORE_GREY;
 	int i;
 	for(i = 0; i<TTY_BUFFER_SZ; i+=2)/*sets text and graphics buffers*/

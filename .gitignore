@@ -23,6 +23,10 @@ tmp/
 kernel/idt.S
 *.sym
 
+# Log files
+tty0.txt
+code.txt
+
 
 # binaries for building (obtain from developer website)
 tools/build

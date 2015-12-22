@@ -149,10 +149,13 @@ void main_stack(void)
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 
+	cprintf("Starting all other logs...\t\t\t\t\t\t");
+	tty_code_log_init();
+
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
-	for(tty_num = 0;;tty_num++)
+	for(tty_num = 1;;tty_num++)
 	{
 		tty_t t = tty_find(tty_num);
 		if(!t) break;

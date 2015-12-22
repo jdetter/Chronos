@@ -72,6 +72,10 @@ struct kbd_buff
 	uint key_nls; /* line delimiter characters in the current buff */
 };
 
+#define ESC_TYPE_ESC 0x01
+#define ESC_TYPE_CSI 0x02
+#define ESC_TYPE_SGR 0x03
+
 /* tty structure. Contains all of the metadata for a tty. */
 struct tty
 {
@@ -91,6 +95,7 @@ struct tty
 	
 	/* Escape sequence parameters */
 	int escape_seq; /* The input is processing an escape sequence */
+	int escape_type; /* The type of escape sequence we are processing */
 	char escape_chars[NPAR]; /* The current escape chars seen so far */
 	int escape_count; /* How many escape characters are in the buffer? */
 
@@ -113,9 +118,14 @@ struct tty
 
 	/* Window size parameters */
 	struct winsize window;
+
+	/* Some console config settings */
+	int tab_stop;
 };
 
 typedef struct tty* tty_t;
+
+void tty_code_log_init(void);
 
 /**
  * Return a tty object type for the tty at the index. NULL is returned if
