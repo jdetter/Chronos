@@ -144,6 +144,10 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 
+	/* Create /var/log if it doesn't exist */
+	fs_mkdir("/var", 0, 0, 0, 0700);
+	fs_mkdir("/var/log", 0, 0, 0, 0700);
+
 	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
 	if(tty_enable_logging(tty_find(0), "/var/log/tty0.txt"))
 		cprintf("[FAIL]\n");
