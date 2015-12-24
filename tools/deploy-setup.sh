@@ -42,4 +42,13 @@ ssh -p 8081 -i $KEY ubuntu@localhost "chmod 600 ~/.ssh/id_rsa.pub"
 ssh -p 8081 -i $KEY ubuntu@localhost "/home/ubuntu/setup/add-key.sh"
 
 # stop the insecure server
-ssh -p 8081 -i $KEY ubuntu@localhost "/home/ubuntu/setup/stop-server.sh"
+ssh -p 8081 -i $KEY ubuntu@localhost "/home/ubuntu/setup/stop-server.sh" > /dev/null
+
+echo "+---------------------------------------+"
+echo "+----- SETUP COMPLETE (SUCCESS) --------+"
+echo "+---------------------------------------+"
+echo ""
+echo "You are now ready to use chronos deploy!!"
+echo "Checkout the documentation at: https://wiki.chronos.systems/index.php/Chronos_Deploy"
+echo ""
+echo "Setup complete."
