@@ -123,42 +123,60 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
 .PHONY: qemu qemu-gdb qemu-x qemu-x-gdb
 
+# Standard build and launch recipes
 qemu: all
 	$(QEMU) -nographic $(QEMU_OPTIONS)
-
 qemu-gdb: all kernel-symbols user-symbols
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
-
 qemu-x: all 
 	$(QEMU) $(QEMU_OPTIONS)
-
 qemu-x-gdb: all kernel-symbols user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
+# Launch current build recipes
 run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
 run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
-
 run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
+# Export entire file system
 export-fs:
 	rm -f ext2.img
 	dd if=./chronos.img of=./ext2.img ibs=512 skip=$(FS_START)
-
-export-log: export-fs
-	mkdir tmp
-	sudo mount -o loop ./ext2.img ./tmp
-	sudo cp ./tmp/tty0.txt .
-	sudo umount ./tmp
-	rmdir tmp
-	sudo chmod 664 ./tty0.txt
+export-logs: export-fs
+	mkdir -p logs
+	mkdir chronos-fs
+	sudo mount -o loop ./ext2.img ./chronos-fs
+	sudo cp ./chronos-fs/var/log/* ./logs
+	sudo umount ./chronos-fs
+	rmdir chronos-fs
+	sudo chown -R $(USER):$(USER) ./logs
 
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
+
+# Deploy recipes
+deploy-base: clean
+	rm -f chronos-deploy.tar
+	tar cf chronos-deploy.tar *
+	scp -P 8081 ./chronos-deploy.tar ubuntu@localhost:/home/ubuntu/Chronos
+	rm -f chronos-deploy.tar
+	ssh ubuntu@localhost -p 8081 "/bin/build-gdb.sh"
+	scp -P 8081 ubuntu@localhost:/home/ubuntu/Chronos/chronos/chronos.img ./chronos.img
+deploy-base-gdb: deploy-base
+	scp -P 8081 ubuntu@localhost:/home/ubuntu/Chronos/chronos/symbols.tar ./symbols.tar
+	tar xf symbols.tar
+	rm -f symbols.tar
+deploy: deploy-base run
+deploy-x: deploy-base run-x
+deploy-gdb: deploy-base-gdb
+	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
+deploy-x-gdb: deploy-base-gdb
+	$(QEMU) $(QEMU_OPTIONS) -s -S
 
 patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot-stage2.img $(USER_BUILD)
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
