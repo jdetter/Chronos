@@ -30,7 +30,8 @@ KERNEL_OBJECTS := \
 	stdlock \
 	file \
 	stdlib \
-	ioctl
+	ioctl \
+	sem
 
 # assembly files
 KERNEL_ASSEMBLY := \

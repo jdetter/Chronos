@@ -3,14 +3,14 @@
 
 struct cond
 {
-	uint next_signal;
-	uint current_signal;
+	int next_signal;
+	int current_signal;
 };
 typedef struct cond cond_t;
 
 struct slock
 {
-	uint val;
+	int val;
 };
 typedef struct slock slock_t;
 
