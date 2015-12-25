@@ -144,18 +144,30 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 
-	/* Create /var/log if it doesn't exist */
-	fs_mkdir("/var", 0, 0, 0, 0700);
-	fs_mkdir("/var/log", 0, 0, 0, 0700);
+	cprintf("Initilizing kernel logger...\t\t\t\t\t");
+	klog_init();
+	cprintf("[ OK ]\n");
 
-	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
-	if(tty_enable_logging(tty_find(0), "/var/log/tty0.txt"))
+	cprintf("Starting all logs...\t\t\t\t\t\t\t");
+	if(tty_code_log_init())
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 
-	cprintf("Starting all other logs...\t\t\t\t\t\t");
-	tty_code_log_init();
+	cprintf("Enabling logging on tty0...\t\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(0), "tty0.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
+	
+	cprintf("Enabling logging on tty1...\t\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(1), "tty1.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 
+	cprintf("Enabling console code logging on tty1...\t\t\t");
+	if(tty_enable_code_logging(tty_find(1)))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
+		
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;

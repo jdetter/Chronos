@@ -1,5 +1,6 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
+	klog \
 	elf \
 	arch/$(BUILD_ARCH)/trap/trap \
 	arch/$(BUILD_ARCH)/vm/vm \

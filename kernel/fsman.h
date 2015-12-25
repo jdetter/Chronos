@@ -6,6 +6,9 @@
 /* Some dependant headers */
 #include <sys/stat.h>
 #include <dirent.h>
+#include "kern/types.h"
+#include "file.h"
+#include "stdlock.h"
 #include "cache.h"
 
 /* Some cache tunables */
@@ -14,7 +17,7 @@
 
 struct FSHardwareDriver
 {
-	uchar valid; /* 1 = valid, 0 = invalid. */
+	char valid; /* 1 = valid, 0 = invalid. */
 	uint sectmax;
 	uint sectshifter;
 	uint sectsize;

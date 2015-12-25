@@ -14,25 +14,25 @@
 
 #define MAX_NUM 15
 
-void console_putc(uint position, char character, char color, uchar colored, uchar* base_addr)
+void console_putc(int position, char character, char color, char colored, char* base_addr)
 {
 	if(colored)
 	{
-		uchar* vid_addr = base_addr
+		char* vid_addr = base_addr
 			+ (position * 2);
 		*(vid_addr)     = character;
 		*(vid_addr + 1) = color;
 	} else {
-		uchar* vid_addr = base_addr
+		char* vid_addr = base_addr
                         + (position);
                 *(vid_addr)     = character;
 	}
 }
 
-void console_print_buffer(char* buffer, uchar colored, uint vid_mem_i)
+void console_print_buffer(char* buffer, char colored, uintptr_t vid_mem_i)
 {
-	uchar* vid_mem = (uchar*)vid_mem_i;
-	uint sz = CONSOLE_ROWS * CONSOLE_COLS;
+	char* vid_mem = (char*)vid_mem_i;
+	int sz = CONSOLE_ROWS * CONSOLE_COLS;
 	if(colored) sz *= 2;
 	memmove(vid_mem, buffer, sz);
 }

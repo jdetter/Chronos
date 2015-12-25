@@ -22,7 +22,7 @@ static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
 static int tty_io_write(void* src, uint start_write, size_t sz, void* context);
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
 
-int tty_io_setup(struct IODriver* driver, uint tty_num)
+int tty_io_setup(struct IODriver* driver, int tty_num)
 {
 	/* Get the tty */
 	tty_t t = tty_find(tty_num);

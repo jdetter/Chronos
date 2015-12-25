@@ -14,6 +14,7 @@
 #include "proc.h"
 #include "serial.h"
 
+#define DEBUG
 // #define KEY_DEBUG
 
 extern struct tty* active_tty;
@@ -99,6 +100,22 @@ void tty_keyboard_interrupt_handler(void)
 	slock_release(&active_tty->key_lock);
 }
 
+static int tty_handle_raw(char c, tty_t t)
+{
+	char raw = !(t->term.c_lflag & ICANON);
+	if(!raw)  return -1;
+	/* Write a character to the keyboard buffer */
+	if(tty_keyboard_write_buff(&t->kbd_line, c))
+	{
+		cprintf("Warning: keyboard buffer is full.\n");
+	}
+
+	/* signal anyone waiting for anything */
+	tty_signal_io_ready(t);
+
+	return 0;
+}
+
 static int tty_handle_char(char c, tty_t t)
 {
 	/* Preprocess the input (canonical mode only!) */
@@ -106,7 +123,7 @@ static int tty_handle_char(char c, tty_t t)
 
 #ifdef KEY_DEBUG
 	cprintf("tty: tty %d received char %c.\n",
-		tty_num(y), c);
+			tty_num(t), c);
 	cprintf("tty: Canonical mode: %d\n", canon);
 #endif
 
@@ -148,7 +165,7 @@ static int tty_handle_char(char c, tty_t t)
 			{
 #ifdef KEY_DEBUG
 				cprintf("tty: swapped upper case letter for"
-					" lower case letter.\n");
+						" lower case letter.\n");
 #endif
 				c += ('a' - 'A');
 			}
@@ -185,15 +202,7 @@ static int tty_handle_char(char c, tty_t t)
 		if(t->term.c_lflag & ECHO)
 			tty_putc(t, c);
 	} else {
-		/* Write a character to the keyboard buffer */
-		if(tty_keyboard_write_buff(&t->kbd_line, c))
-		{
-			cprintf("Warning: keyboard buffer is full.\n");
-		}
-
-		/* signal anyone waiting for anything */
-		tty_signal_io_ready(t);
-
+		tty_handle_raw(c, t);
 	}
 
 #ifdef KEY_DEBUG
@@ -237,6 +246,38 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 
 		/* Put that tty in the foreground */
 		tty_enable(t);
+
+		return 0;
+	}
+
+	tty_t t = tty_active();
+
+	if(!t || !pressed) return 0;
+
+	switch(val)
+	{
+		case SKEY_LARROW:
+			tty_handle_raw((char)0x1b, t);
+			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw((char)0x44, t);
+			break;
+		case SKEY_RARROW:
+			tty_handle_raw((char)0x1b, t);
+			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw((char)0x43, t);
+			break;
+		case SKEY_UARROW:
+			tty_handle_raw((char)0x1b, t);
+			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw((char)0x41, t);
+			break;
+		case SKEY_DARROW:
+			tty_handle_raw((char)0x1b, t);
+			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw((char)0x42, t);
+			break;
+		default: /* special character unhandled */
+			break;
 	}
 
 	return 0;
