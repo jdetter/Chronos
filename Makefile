@@ -148,13 +148,14 @@ export-fs:
 	rm -f ext2.img
 	dd if=./chronos.img of=./ext2.img ibs=512 skip=$(FS_START)
 export-logs: export-fs
-	mkdir -p logs
-	mkdir chronos-fs
+	rm -rf logs
+	mkdir -p chronos-fs
 	sudo mount -o loop ./ext2.img ./chronos-fs
-	sudo cp ./chronos-fs/var/log/* ./logs
+	sudo cp -R ./chronos-fs/var/log ./logs
 	sudo umount ./chronos-fs
 	rmdir chronos-fs
 	sudo chown -R $(USER):$(USER) ./logs
+	sudo chmod 700 ./logs
 
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
