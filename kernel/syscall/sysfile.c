@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
+#include <sys/select.h>
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
@@ -838,7 +839,7 @@ int sys_sysconf(void)
 
 int sys_ftruncate(void)
 {
-	cprintf("kernel: ftruncate not implemented yet.\n");
+	panic("kernel: ftruncate not implemented yet.\n");
 	return -1;
 }
 
@@ -846,4 +847,31 @@ int sys_sync(void)
 {
 	fs_sync();
 	return 0;
+}
+
+int sys_select(void)
+{
+	int nfds;
+	fd_set* readfds = NULL;
+	fd_set* writefds = NULL;
+	fd_set* exceptfds = NULL;
+	struct timeval* timeout = NULL;
+
+	if(syscall_get_int(&nfds, 0))
+		return -1;
+	syscall_get_optional_ptr((void**)&readfds, 1);
+	syscall_get_optional_ptr((void**)&writefds, 2);
+	syscall_get_optional_ptr((void**)&exceptfds, 3);
+	syscall_get_optional_ptr((void**)&timeout, 4);
+
+	if(timeout)
+	{
+		/* Are we being polled? */
+		if(timeout->tv_sec == 0 && timeout->tv_usec == 0)
+			return 0;
+	}
+	
+
+        panic("WARNING: select system call unimplemented.\n");
+        return -1;
 }

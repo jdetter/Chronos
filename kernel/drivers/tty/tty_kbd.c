@@ -14,7 +14,7 @@
 #include "proc.h"
 #include "serial.h"
 
-#define DEBUG
+// #define DEBUG
 // #define KEY_DEBUG
 
 extern struct tty* active_tty;
@@ -119,7 +119,7 @@ static int tty_handle_raw(char c, tty_t t)
 static int tty_handle_char(char c, tty_t t)
 {
 	/* Preprocess the input (canonical mode only!) */
-	uchar canon = t->term.c_lflag & ICANON;
+	char canon = t->term.c_lflag & ICANON;
 
 #ifdef KEY_DEBUG
 	cprintf("tty: tty %d received char %c.\n",

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include "kern/types.h"
 #include "file.h"
@@ -13,7 +14,7 @@ extern slock_t ptable_lock;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
-// #define DEBUG
+#define DEBUG
 // #define KEY_DEBUG
 // #define QUEUE_DEBUG
 
@@ -21,6 +22,8 @@ static int tty_io_init(struct IODriver* driver);
 static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
 static int tty_io_write(void* src, uint start_write, size_t sz, void* context);
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
+static int tty_io_ready_read(void* context);
+static int tty_io_ready_write(void* context);
 
 int tty_io_setup(struct IODriver* driver, int tty_num)
 {
@@ -31,7 +34,34 @@ int tty_io_setup(struct IODriver* driver, int tty_num)
 	driver->read = tty_io_read;
 	driver->write = tty_io_write;
 	driver->ioctl = (int (*)(unsigned long, void*, void*))tty_io_ioctl;
+	driver->ready_read = tty_io_ready_read;
+	driver->ready_write = tty_io_ready_write;
 	return 0;
+}
+
+static int tty_io_ready_read(void* context)
+{
+	tty_t t = context;
+	/* Are we in canonical mode? */
+	int canon = t->term.c_lflag & ICANON;
+	if(canon)
+	{
+		/* There needs to be a newline in the buffer */
+		if(t->kbd_line.key_nls)
+			return 1;
+	} else {
+		if(t->kbd_line.key_full || 
+			t->kbd_line.key_write !=
+				t->kbd_line.key_read)
+			return 1;
+	}
+
+	return 0; /* Not ready for read */
+}
+
+static int tty_io_ready_write(void* context)
+{
+	return 1; /* Always ready for write */
 }
 
 static int tty_io_init(struct IODriver* driver)
@@ -361,8 +391,8 @@ void tty_signal_io_ready(tty_t t)
 	{
 #ifdef KEY_DEBUG
 		cprintf("tty: signaled, nobody is waiting!\n");
-		return;
 #endif
+		return;
 	}
 
 	/* Read into the destination buffer */

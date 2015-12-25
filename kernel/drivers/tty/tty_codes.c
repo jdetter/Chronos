@@ -15,11 +15,8 @@
 #include "fsman.h"
 #include "klog.h"
 
-#define DEBUG 1
-
-#ifdef DEBUG
+// #define DEBUG 1
 #define cprintf ___cprintf
-#endif
 
 klog_t code_log;
 
@@ -306,9 +303,9 @@ static void tty_cursor_right(tty_t t, int cols)
 	if(t->active) console_update_cursor(t->cursor_pos);
 }
 
-#ifdef DEBUG
 static void ___cprintf(char* fmt, ...)
 {
+#ifdef DEBUG
 	va_list list;
 	va_start(list, fmt);
 	char text[128];
@@ -318,8 +315,8 @@ static void ___cprintf(char* fmt, ...)
 
 	tty_puts_native(tty_find(0), text);
 	tty_new_line(tty_find(0));
-}
 #endif
+}
 
 /** Return results for parsing */
 #define ESC_RES_ERR 0x00 /* Sequence is invalid */
@@ -690,11 +687,8 @@ static int tty_esc_type_esc(tty_t t, char c, int pos)
 
 int tty_parse_code(tty_t t, char c)
 {
-
-#ifdef DEBUG
 	char key_debug[32];
 	memset(key_debug, 0, 32);
-#endif
 
 	if(t->escape_seq)
 	{

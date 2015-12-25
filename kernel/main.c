@@ -144,7 +144,7 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 
-	cprintf("Initilizing kernel logger...\t\t\t\t\t");
+	cprintf("Initilizing kernel logger...\t\t\t\t\t\t");
 	klog_init();
 	cprintf("[ OK ]\n");
 
@@ -153,17 +153,17 @@ void main_stack(void)
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 
-	cprintf("Enabling logging on tty0...\t\t\t\t\t\t\t");
+	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
 	if(tty_enable_logging(tty_find(0), "tty0.txt"))
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 	
-	cprintf("Enabling logging on tty1...\t\t\t\t\t\t\t");
+	cprintf("Enabling logging on tty1...\t\t\t\t\t\t");
 	if(tty_enable_logging(tty_find(1), "tty1.txt"))
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
 
-	cprintf("Enabling console code logging on tty1...\t\t\t");
+	cprintf("Enabling console code logging on tty1...\t\t\t\t");
 	if(tty_enable_code_logging(tty_find(1)))
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");

@@ -230,9 +230,9 @@ int sys_execve(void)
 	/* envp is allowed to be null */
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;;
-	if(syscall_get_buffer_ptrs((uchar***)&argv, 1)) return -1;
+	if(syscall_get_buffer_ptrs((void***)&argv, 1)) return -1;
 	if(syscall_get_int((int*)&envp, 2)) return -1;
-	if(envp && syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
+	if(envp && syscall_get_buffer_ptrs((void***)&envp, 2)) return -1;
 
 	return execve(path, (char* const*)argv, (char* const*)envp);
 }
@@ -1068,12 +1068,6 @@ int sys_sleep(void)
 int sys_alarm(void)
 {
 	panic("WARNING: alarm system call unimplemented.\n");
-	return -1;
-}
-
-int sys_select(void)
-{
-	panic("WARNING: select system call unimplemented.\n");
 	return -1;
 }
 

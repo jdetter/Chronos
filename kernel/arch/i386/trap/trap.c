@@ -286,7 +286,10 @@ TRAP_DONE:
 		if(user_problem && rproc && !kernel_fault)
 		{
 			_exit(1);
-		} else for(;;);
+		} else {
+			cprintf("chronos: kernel panic\n");
+			for(;;);
+		}
 	}
 
 	/* Do we have any signals waiting? */

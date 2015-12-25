@@ -73,7 +73,7 @@
 #endif
 
 #include "klog.h"
-#include "ioctl.h"
+#include <sys/ioctl.h>
 
 struct kbd_buff
 {
