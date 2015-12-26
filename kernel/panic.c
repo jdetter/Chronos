@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "kern/types.h"
@@ -110,8 +111,20 @@ void cprintf(char* fmt, ...)
 	}
 }
 
+void tty_erase_display(tty_t t);
+void tty_set_cur_rc(tty_t t, int row, int col);
 void panic(char* fmt, ...)
 {
+	tty_t active = tty_active();
+	if(active)
+	{
+		tty_erase_display(active);
+		tty_set_cur_rc(active, 0, 0);
+		char buff[256];
+		va_list list;
+		va_start(list, fmt);
+		vsnprintf(buff, 256, fmt, list);
+	}
 	asm volatile("addl $0x08, %esp");
 	asm volatile("call cprintf");
 	for(;;);

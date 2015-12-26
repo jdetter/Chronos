@@ -15,7 +15,7 @@
 #include "fsman.h"
 #include "klog.h"
 
-// #define DEBUG 1
+#define DEBUG 1
 #define cprintf ___cprintf
 
 klog_t code_log;
@@ -35,6 +35,10 @@ void tty_delete_char(tty_t t);
 /* Put a character on the screen at the given position */
 void tty_native_setc(tty_t t, int pos, char c)
 {
+	if(pos < 0) pos = 0;
+	if(pos >= CONSOLE_ROWS * CONSOLE_COLS)
+		pos = (CONSOLE_ROWS * CONSOLE_COLS) - 1;
+
         /* Is this a serial tty? */
         if(t->type==TTY_TYPE_SERIAL)
         {
@@ -60,6 +64,58 @@ void tty_native_setc(tty_t t, int pos, char c)
                 char* vid_addr = t->buffer + (pos);
                 *(vid_addr)     = c;
         }
+}
+
+static void tty_native_scroll_down(tty_t t)
+{
+	if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
+		return;
+	/* Bytes per row */
+	int bpr = CONSOLE_COLS * 2;
+	/* Rows on the screen */
+	int rows = CONSOLE_ROWS;
+	/* Back buffer */
+	char* buffer = t->buffer;
+
+	int x;
+	for(x = 0;x < rows - 1;x++)
+	{
+		char* dst_row = buffer + x * bpr;
+		char* src_row = dst_row + bpr;
+		memmove(dst_row, src_row, bpr);
+	}
+	/* Unset the last line */
+	memset(buffer + x * bpr, 0, bpr);
+
+	/* If this tty is active, print this immediatly. */
+	if(t->active)
+		tty_print_screen(t, t->buffer);
+}
+
+static void tty_native_scroll_up(tty_t t)
+{
+        if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
+                return;
+        /* Bytes per row */
+        int bpr = CONSOLE_COLS * 2;
+        /* Rows on the screen */
+        int rows = CONSOLE_ROWS;
+        /* Back buffer */
+        char* buffer = t->buffer;
+
+        int x;
+        for(x = rows - 1;x > 0;x--)
+        {
+                char* dst_row = buffer + (x * bpr);
+                char* src_row = dst_row - bpr;
+                memmove(dst_row, src_row, bpr);
+        }
+        /* Unset the first line */
+        memset(buffer, 0, bpr);
+
+        /* If this tty is active, print this immediatly. */
+        if(t->active)
+                tty_print_screen(t, t->buffer);
 }
 
 /* Simply print a character (no processing) */
@@ -99,12 +155,23 @@ void tty_putc_native(tty_t t, char c)
         /* Update the on screen cursor position if needed */
         if(t->active)
                 console_update_cursor(t->cursor_pos);
+}
 
-	if(t->codes_logged)
+static void tty_refresh_screen(tty_t t)
+{
+	if(t->type != TTY_TYPE_COLOR) return;
+
+	int x;
+	for(x = 0;x < (CONSOLE_ROWS * CONSOLE_COLS) - 1;x++)
 	{
-		/* Log this character */
-		klog_write(code_log, &c, 1);
+		/* Update back buffer */
+			char* vid_addr = t->buffer
+				+ (t->cursor_pos * 2);
+			*(vid_addr + 1) = t->sgr.color;
 	}
+
+	if(t->active)
+		tty_print_screen(t, t->buffer);
 }
 
 void tty_set_cur_row(tty_t t, int row)
@@ -136,8 +203,12 @@ void tty_set_cur_rc(tty_t t, int row, int col)
 void tty_erase_from_to_pos(tty_t t, int start_pos, int end_pos)
 {
 	if(end_pos <= start_pos) return;
-	if(end_pos > (CONSOLE_ROWS * CONSOLE_COLS) - 1)
-		end_pos = (CONSOLE_ROWS * CONSOLE_COLS) - 1;
+	if(start_pos < 0) start_pos = 0;
+	if(start_pos > (CONSOLE_ROWS * CONSOLE_COLS) - 1)
+		start_pos = (CONSOLE_ROWS * CONSOLE_COLS) - 1;
+	if(end_pos > CONSOLE_ROWS * CONSOLE_COLS)
+		end_pos = CONSOLE_ROWS * CONSOLE_COLS;
+	if(end_pos < 0) end_pos = 0;
 
 	int pos = start_pos;
 	for(;pos < end_pos;pos++)
@@ -153,12 +224,30 @@ void tty_erase_from_to(tty_t t, int srow, int scol, int erow, int ecol)
 }
 
 /* Either erase to cursor or entire line */
-void tty_erase_line(tty_t t, int entire_line)
+static int tty_erase_line(tty_t t, int mode)
 {
 	int row_start = t->cursor_pos - (t->cursor_pos % CONSOLE_COLS);
-	if(entire_line)
-		tty_erase_from_to_pos(t, row_start, row_start + CONSOLE_COLS);
-	else tty_erase_from_to_pos(t, row_start, t->cursor_pos);
+	int row_end = row_start + CONSOLE_COLS;
+	switch(mode)
+	{
+		case 0:
+			/* Active to end of line */
+			tty_erase_from_to_pos(t, t->cursor_pos, row_end);
+			break;
+		case 1:
+			/* Erase from the start of the screen to here */
+			tty_erase_from_to_pos(t, 0, t->cursor_pos);
+			break;
+		case 2:
+			/* Erase entire line */
+			tty_erase_from_to_pos(t, row_start, 
+				row_start + CONSOLE_COLS);
+			break;
+		default: /* Could not understand what to erase */
+			return 1;
+	}
+
+	return 0;
 }
 
 void tty_erase_display(tty_t t)
@@ -196,13 +285,6 @@ static void tty_new_line(tty_t t)
 
 	/* Adjust cursor position */
 	tty_carrige_return(t);
-
-	if(t->codes_logged)
-	{
-		/* Log this nl */
-		char nl = '\n';
-		klog_write(code_log, &nl, 1);
-	}
 }
 
 /* Output a tab */
@@ -257,26 +339,49 @@ void tty_reset_sgr(tty_t t)
 	memset(&t->sgr, 0, sizeof(struct sgr_attr));
 	tty_reset_foreground(t);
 	tty_reset_background(t);
+	t->sgr.cs_prefix[0] = 0x1b;
+	t->sgr.cs_prefix[1] = 0x5b;
 }
 
-static void tty_cursor_up(tty_t t, int rows)
+void tty_video_reverse(tty_t t)
+{
+	/* Swap foreground and background */
+	char low = t->sgr.color & 0x0F;
+	t->sgr.color >>= 4;
+	t->sgr.color |= (low << 4);
+
+	/* Refresh the screen */
+	tty_refresh_screen(t);
+}
+
+static void tty_cursor_up(tty_t t, int rows, int scroll)
 {
 	int curr_row = t->cursor_pos / CONSOLE_COLS;
 	int curr_col = t->cursor_pos % CONSOLE_COLS;
 	curr_row -= rows;
-	if(curr_row <= 0)
+
+	if(curr_row < 0)
+	{
+		/* Should we scroll? */
+		if(scroll) tty_native_scroll_up(t);
 		curr_row = 0;
+	}
+
 	t->cursor_pos = (curr_row * CONSOLE_COLS) + curr_col;
 	if(t->active) console_update_cursor(t->cursor_pos);
 }
 
-static void tty_cursor_down(tty_t t, int rows)
+static void tty_cursor_down(tty_t t, int rows, int scroll)
 {
 	int curr_row = t->cursor_pos / CONSOLE_COLS;
 	int curr_col = t->cursor_pos % CONSOLE_COLS;
 	curr_row += rows;
+
 	if(curr_row >= CONSOLE_ROWS)
+	{
+		if(scroll) tty_native_scroll_down(t);
 		curr_row = CONSOLE_ROWS - 1;
+	}
 	t->cursor_pos = (curr_row * CONSOLE_COLS) + curr_col;
 	if(t->active) console_update_cursor(t->cursor_pos);
 }
@@ -313,8 +418,16 @@ static void ___cprintf(char* fmt, ...)
 	vsnprintf(text, 128, fmt, list);
 	va_end(list);
 
-	tty_puts_native(tty_find(0), text);
-	tty_new_line(tty_find(0));
+	//tty_puts_native(tty_find(0), text);
+	//tty_new_line(tty_find(0));
+	/* Write directly to the log file */
+	tty_t active = tty_active();
+	if(active && active->codes_logged)
+	{
+		klog_write(code_log, text, strlen(text));
+		char nl = '\n';
+		klog_write(code_log, &nl, 1);
+	}
 #endif
 }
 
@@ -332,6 +445,8 @@ static int tty_esc_type_sgr(tty_t t, char c, int pos,
 		tty_reset_sgr(t);
 		return ESC_RES_DNE;
 	}
+
+	if(param_count < 0) return ESC_RES_ERR;
 
 	char err = 0;
 	char incomplete = 0;
@@ -354,9 +469,12 @@ static int tty_esc_type_sgr(tty_t t, char c, int pos,
 			case 5: /* Set background blink */
 				t->sgr.color |= TTY_BACK_BLINK;
 				break;
-			case 7: /* Reverse the video output? */
-				t->sgr.reverse_video = 1;
-				incomplete = 1;
+			case 7: /* Reverse the video output */
+				if(t->sgr.reversed)
+				{
+					tty_video_reverse(t);
+					t->sgr.reversed = 1;
+				}
 				break;
 			case 24: /* Unset underscore */
 				t->sgr.underscore = 0;
@@ -366,8 +484,11 @@ static int tty_esc_type_sgr(tty_t t, char c, int pos,
 				t->sgr.color &= ~TTY_BACK_BLINK;
 				break;
 			case 27:
-				t->sgr.reverse_video = 0;
-				incomplete = 1;
+				if(t->sgr.reversed)
+				{
+					tty_video_reverse(t);
+					t->sgr.reversed = 0;
+				}
 				break;
 			case 30: /* Black foreground */
 				t->sgr.color &= ~TTY_FORE_COLOR_MASK;
@@ -512,6 +633,11 @@ static int tty_esc_type_dec(tty_t t, char c, int pos)
 	{
 		/* Unimplemented below here */
 		case 1: /* DECCKM:  Escape modifier for arrow keys */
+			if(set)
+				t->sgr.cs_prefix[1] = '0';
+			else t->sgr.cs_prefix[1] = 0x5b;
+			break;
+
 		case 3: /* DECCOLM: Column resolution switch */
 		case 5: /* DECSCNM: Reverse video mode */
 		case 6: /* DECOM:   Addresssing relative to scroll */
@@ -554,28 +680,32 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 	switch(c)
 	{
 		case 'A':
-			tty_cursor_up(t, params[0]);
+			if(params[0] == 0) params[0]++;
+			tty_cursor_up(t, params[0], 1);
 			return ESC_RES_DNE;
 		case 'e':
 		case 'B':
-			tty_cursor_down(t, params[0]);
+			if(params[0] == 0) params[0]++;
+			tty_cursor_down(t, params[0], 1);
 			return ESC_RES_DNE;
 		case 'C':
+			if(params[0] == 0) params[0]++;
 			tty_cursor_right(t, params[0]);
 			return ESC_RES_DNE;
 		case 'D':
+			if(params[0] == 0) params[0]++;
 			tty_cursor_left(t, params[0]);
 			return ESC_RES_DNE;
 		case 'E':
-			tty_cursor_down(t, params[0]);
+			tty_cursor_down(t, params[0], 1);
 			tty_carrige_return(t);
 			return ESC_RES_DNE;
 		case 'F':
-			tty_cursor_up(t, params[0]);
+			tty_cursor_up(t, params[0], 1);
 			tty_carrige_return(t);
 			return ESC_RES_DNE;
 		case 'G':
-			tty_set_cur_col(t, params[0]);
+			tty_set_cur_col(t, params[0] - 1);
 			return ESC_RES_DNE;
 		case 'f':
 		case 'H':
@@ -584,6 +714,10 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 		case 'J':
 			switch(params[0])
 			{
+				case 0:
+					tty_erase_from_to_pos(t, t->cursor_pos,
+							CONSOLE_ROWS * CONSOLE_COLS);
+					break;
 				case 1:
 					tty_erase_from_to_pos(t, 0, 
 							t->cursor_pos);
@@ -599,19 +733,9 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 
 			return ESC_RES_DNE;
 		case 'K':
-			switch(params[0])
-			{
-				case 1:
-					tty_erase_line(t, 0);
-					break;
-				case 2:
-					tty_erase_line(t, 1);
-					break;
-				default:
-					cprintf("INVALID CURSOR POS");
-					break;
-			}
-			break;
+			if(tty_erase_line(t, params[0]))
+				return ESC_RES_ERR;
+			return ESC_RES_DNE;
 		case 'm': /* SGR sequence */
 			return tty_esc_type_sgr(t, c, pos,
 					params, param_count);
@@ -754,7 +878,8 @@ int tty_parse_code(tty_t t, char c)
 
 		case 0x08: /* backspace */
 			strncpy(key_debug, "Backspace", 32);
-			tty_delete_char(t);
+			/* Just move backwards */
+			tty_cursor_left(t, 1);
 			break;
 
 		case 0x09: /* tab */

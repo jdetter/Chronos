@@ -88,8 +88,9 @@ struct sgr_attr
 {
 	char bold;
 	char underscore;
-	char reverse_video;
+	char reversed;
 	char color;
+	char cs_prefix[2];
 };
 
 #define ESC_TYPE_ESC 0x01

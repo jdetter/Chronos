@@ -23,7 +23,7 @@
 #include "rtc.h"
 #include "ktime.h"
 
-#define DEBUG
+// #define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc ptable[];

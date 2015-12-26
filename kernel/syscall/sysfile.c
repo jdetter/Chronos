@@ -19,7 +19,7 @@
 #include "proc.h"
 #include "panic.h"
 
-#define DEBUG
+// #define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -1025,9 +1025,9 @@ int sys_select(void)
 
 	/* copy the return sets */
 	int fd_count = 0;
-	fd_count += sys_select_fdset_move(readfds, &ret_readfds, nfds);
-	fd_count += sys_select_fdset_move(writefds, &ret_writefds, nfds);
-	fd_count += sys_select_fdset_move(exceptfds, &ret_exceptfds, nfds);
+	if(readfds) fd_count += sys_select_fdset_move(readfds, &ret_readfds, nfds);
+	if(writefds) fd_count += sys_select_fdset_move(writefds, &ret_writefds, nfds);
+	if(exceptfds) fd_count += sys_select_fdset_move(exceptfds, &ret_exceptfds, nfds);
 
 #ifdef DEBUG
 	cprintf("select: value returned: %d\n", fd_count);

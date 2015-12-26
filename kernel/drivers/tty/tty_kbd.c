@@ -95,6 +95,20 @@ void tty_keyboard_interrupt_handler(void)
 		tty_handle_char(c, active_tty);
 	} while(1);
 
+	/* Can anyone be woken up? */
+	tty_t t = tty_find(0);
+	int x;
+	for(x = 0;x < MAX_TTYS;x++)
+	{
+		if((t + x)->io_queue && (t + x)->driver->io_driver.ready_read(t + x))
+		{
+#ifdef KEY_DEBUG
+			cprintf("tty: tty %d needed to be woken up again!\n", x);
+#endif
+			
+			tty_signal_io_ready(t + x);
+		}
+	}
 
 	slock_release(&ptable_lock);
 	slock_release(&active_tty->key_lock);
@@ -115,11 +129,14 @@ static int tty_handle_raw(char c, tty_t t)
 
 static int tty_handle_char(char c, tty_t t)
 {
+	if(!t)
+		panic("tty: invalid tty passed to handle char.\n");
+
 	/* Preprocess the input (canonical mode only!) */
 	char canon = t->term.c_lflag & ICANON;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: tty %d received char %c.\n",
+	cprintf("tty: tty %d received char %c\n",
 			tty_num(t), c);
 	cprintf("tty: Canonical mode: %d\n", canon);
 #endif
@@ -255,26 +272,26 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	switch(val)
 	{
 		case SKEY_LARROW:
-			tty_handle_raw((char)0x1b, t);
-			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw(t->sgr.cs_prefix[0], t);
+			tty_handle_raw(t->sgr.cs_prefix[1], t);
 			tty_handle_raw((char)0x44, t);
 			tty_signal_io_ready(t);
 			break;
 		case SKEY_RARROW:
-			tty_handle_raw((char)0x1b, t);
-			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw(t->sgr.cs_prefix[0], t);
+			tty_handle_raw(t->sgr.cs_prefix[1], t);
 			tty_handle_raw((char)0x43, t);
 			tty_signal_io_ready(t);
 			break;
 		case SKEY_UARROW:
-			tty_handle_raw((char)0x1b, t);
-			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw(t->sgr.cs_prefix[0], t);
+			tty_handle_raw(t->sgr.cs_prefix[1], t);
 			tty_handle_raw((char)0x41, t);
 			tty_signal_io_ready(t);
 			break;
 		case SKEY_DARROW:
-			tty_handle_raw((char)0x1b, t);
-			tty_handle_raw((char)0x5b, t);
+			tty_handle_raw(t->sgr.cs_prefix[0], t);
+			tty_handle_raw(t->sgr.cs_prefix[1], t);
 			tty_handle_raw((char)0x42, t);
 			tty_signal_io_ready(t);
 			break;

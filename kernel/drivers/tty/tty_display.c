@@ -65,7 +65,9 @@ void tty_init(tty_t t, int num, char type, int cursor_enabled,
 
 int tty_num(tty_t t)
 {
-	return t->num;
+	if((char*)t >= (char*)ttys && (char*)t < (char*)(ttys + MAX_TTYS))
+		return t->num;
+	else panic("Invalid tty given to tty_num\n");
 }
 
 int tty_enable_code_logging(tty_t t)
@@ -83,7 +85,7 @@ int tty_enable_logging(tty_t t, char* file)
 		return -1;
 
 	t->out_logged = 1;
-	
+
 	return 0;
 }
 
@@ -123,18 +125,18 @@ void tty_putc_native(char c, tty_t t);
 void tty_putc(tty_t t, char c)
 {
 	/* Write out to the serial connection */
-        if(t->type==TTY_TYPE_SERIAL)
-        {
-                if(t->active) serial_write(&c,1);
-                return;
-        }
+	if(t->type==TTY_TYPE_SERIAL)
+	{
+		if(t->active) serial_write(&c,1);
+		return;
+	}
 
 	/* Process console codes */
 	if(tty_parse_code(t, c))
 	{
 		if(t->out_logged && (c == '\n' || c == '\t'))
 			klog_write(t->tty_log, &c, 1);
-		
+
 		return;
 	}
 

@@ -14,7 +14,7 @@ extern slock_t ptable_lock;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
-#define DEBUG
+// #define DEBUG
 // #define KEY_DEBUG
 // #define QUEUE_DEBUG
 
@@ -48,13 +48,27 @@ static int tty_io_ready_read(void* context)
 	{
 		/* There needs to be a newline in the buffer */
 		if(t->kbd_line.key_nls)
+		{
+#ifdef DEBUG
+			cprintf("TTY READY!\n");
+#endif
 			return 1;
+		}
 	} else {
 		if(t->kbd_line.key_full || 
 			t->kbd_line.key_write !=
 				t->kbd_line.key_read)
+		{
+#ifdef DEBUG
+			cprintf("TTY READY!\n");
+#endif
 			return 1;
+		}
 	}
+
+#ifdef DEBUG
+	// cprintf("*******************TTY UNREADY\n");
+#endif
 
 	return 0; /* Not ready for read */
 }
@@ -372,8 +386,8 @@ io_sleep:
 	}
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s:%d received: %s\n",
-                rproc->name, rproc->pid, dst);
+        cprintf("tty: %s:%d received %d 0x%x %c\n",
+                rproc->name, rproc->pid, *dst, *dst, *dst);
 #endif
 	slock_release(&ptable_lock);
 
