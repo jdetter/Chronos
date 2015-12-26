@@ -63,7 +63,7 @@ int syscall_get_str_ptr(const char** dst, int arg_num);
  * and non zero, 0 is returned. Otherwise 1 is returned and
  * ptr is undefined.
  */
-int syscall_get_optional_pointer(void** ptr, int arg_num);
+int syscall_get_optional_ptr(void** ptr, int arg_num);
 
 /**
  * Find an available file descriptor.

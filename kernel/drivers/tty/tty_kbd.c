@@ -110,9 +110,6 @@ static int tty_handle_raw(char c, tty_t t)
 		cprintf("Warning: keyboard buffer is full.\n");
 	}
 
-	/* signal anyone waiting for anything */
-	tty_signal_io_ready(t);
-
 	return 0;
 }
 
@@ -203,6 +200,7 @@ static int tty_handle_char(char c, tty_t t)
 			tty_putc(t, c);
 	} else {
 		tty_handle_raw(c, t);
+		tty_signal_io_ready(t);
 	}
 
 #ifdef KEY_DEBUG
@@ -260,21 +258,25 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 			tty_handle_raw((char)0x1b, t);
 			tty_handle_raw((char)0x5b, t);
 			tty_handle_raw((char)0x44, t);
+			tty_signal_io_ready(t);
 			break;
 		case SKEY_RARROW:
 			tty_handle_raw((char)0x1b, t);
 			tty_handle_raw((char)0x5b, t);
 			tty_handle_raw((char)0x43, t);
+			tty_signal_io_ready(t);
 			break;
 		case SKEY_UARROW:
 			tty_handle_raw((char)0x1b, t);
 			tty_handle_raw((char)0x5b, t);
 			tty_handle_raw((char)0x41, t);
+			tty_signal_io_ready(t);
 			break;
 		case SKEY_DARROW:
 			tty_handle_raw((char)0x1b, t);
 			tty_handle_raw((char)0x5b, t);
 			tty_handle_raw((char)0x42, t);
+			tty_signal_io_ready(t);
 			break;
 		default: /* special character unhandled */
 			break;

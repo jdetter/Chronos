@@ -20,7 +20,7 @@ extern struct proc* rproc;
 int find_fd(void)
 {
         int x;
-        for(x = 3;x < MAX_FILES;x++)
+        for(x = 3;x < PROC_MAX_FDS;x++)
                 if(rproc->file_descriptors[x].type == 0x0)
                         return x;
         return -1;
@@ -32,7 +32,7 @@ int find_fd(void)
 int find_fd_gt(int val)
 {
         int x;
-        for(x = val;x < MAX_FILES;x++)
+        for(x = val;x < PROC_MAX_FDS;x++)
                 if(rproc->file_descriptors[x].type == 0x0)
                         return x;
         return -1;
@@ -41,7 +41,7 @@ int find_fd_gt(int val)
 /** Check to see if an fd is valid */
 int fd_ok(int fd)
 {
-        if(fd < 0 || fd >= MAX_FILES)
+        if(fd < 0 || fd >= PROC_MAX_FDS)
                 return 1;
         if(rproc->file_descriptors[fd].type)
                 return 0;
@@ -85,7 +85,7 @@ int syscall_ptr_safe(void* address)
  */
 int syscall_get_int(int* dst, int arg_num)
 {
-	uintptr_t* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
         esp += arg_num;
         char* num_start = (char*)esp;
         char* num_end = (char*)esp + sizeof(int) - 1;
@@ -102,7 +102,7 @@ int syscall_get_int(int* dst, int arg_num)
  */
 int syscall_get_long(long* dst, int arg_num)
 {
-        uintptr_t* esp = rproc->sys_esp;
+        uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
         esp += arg_num;
         char* num_start = (char*)esp;
         char* num_end = (char*)esp + sizeof(long) - 1;
@@ -119,7 +119,7 @@ int syscall_get_long(long* dst, int arg_num)
  */
 int syscall_get_short(short* dst, int arg_num)
 {
-        uintptr_t* esp = rproc->sys_esp;
+        uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
         esp += arg_num;
         char* num_start = (char*)esp;
         char* num_end = (char*)esp + sizeof(short) - 1;
@@ -133,7 +133,7 @@ int syscall_get_short(short* dst, int arg_num)
 
 char syscall_get_str(char* dst, int sz_kern, int arg_num)
 {
-	uintptr_t* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
         memset(dst, 0, sz_kern);
         esp += arg_num; /* This is a pointer to the string we need */
         char* str_addr = (char*)esp;
@@ -155,7 +155,7 @@ char syscall_get_str(char* dst, int sz_kern, int arg_num)
 
 int syscall_get_str_ptr(const char** dst, int arg_num)
 {
-	int* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
 	esp += arg_num; /* This is a pointer to the string we need */
 	const char* str_addr = (const char*)esp;
 	if(syscall_ptr_safe((void*)str_addr))
@@ -176,7 +176,7 @@ int syscall_get_str_ptr(const char** dst, int arg_num)
 
 int syscall_get_buffer_ptr(char** ptr, int sz, int arg_num)
 {
-	uintptr_t* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
 	esp += arg_num; /* This is a pointer to the string we need */
 	char* buff_addr = (char*)esp;
 	if(syscall_addr_safe(buff_addr))
@@ -192,7 +192,7 @@ int syscall_get_buffer_ptr(char** ptr, int sz, int arg_num)
 
 int syscall_get_buffer_ptrs(void*** ptr, int arg_num)
 {
-	uintptr_t* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
 	esp += arg_num;
 	/* Get the address of the buffer */
 	char*** buff_buff_addr = (char***)esp;
@@ -206,7 +206,7 @@ int syscall_get_buffer_ptrs(void*** ptr, int arg_num)
 	{
 		if(syscall_ptr_safe((char*)(buff_addr + x)))
 			return 1;
-		uchar* val = *(buff_addr + x);
+		char* val = *(buff_addr + x);
 		if(val == 0) break;
 	}
 
@@ -217,14 +217,14 @@ int syscall_get_buffer_ptrs(void*** ptr, int arg_num)
 	}
 
 	/* Everything is reasonable. */
-	*ptr = buff_addr;
+	*ptr = (void**)buff_addr;
 	return 0;
 }
 
 
-int syscall_get_optional_pointer(void** ptr, int arg_num)
+int syscall_get_optional_ptr(void** ptr, int arg_num)
 {
-	uintptr_t* esp = rproc->sys_esp;
+	uintptr_t* esp = (uintptr_t*)rproc->sys_esp;
 	esp += arg_num;
 
 	if(syscall_ptr_safe(esp))

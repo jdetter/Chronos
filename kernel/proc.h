@@ -29,7 +29,7 @@
 
 struct file_descriptor
 {
-	uchar type;
+	int type;
 	int flags;
 	int seek;
 	inode i;
@@ -39,7 +39,7 @@ struct file_descriptor
 	char path[FILE_MAX_PATH];
 };
 
-#define MAX_FILES 0x20
+#define PROC_MAX_FDS 0x20
 
 /* States for processes */
 #define PROC_UNUSED 	0x00 /* This process is free */
@@ -77,7 +77,7 @@ struct proc
 	gid_t rgid; /* The gid of the user that started the task. */
 
 	/** Open files for this process */
-	struct file_descriptor file_descriptors[MAX_FILES];
+	struct file_descriptor file_descriptors[PROC_MAX_FDS];
 	mode_t umask; /* File creation mask */
 	
 	/** Process state parameters */

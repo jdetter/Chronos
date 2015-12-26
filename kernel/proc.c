@@ -96,7 +96,7 @@ struct proc* spawn_tty(tty_t t)
 	p->uid = 0; /* init is owned by root */
 	p->gid = 0; /* group is also root */
 	memset(p->file_descriptors, 0,
-		sizeof(struct file_descriptor) * MAX_FILES);
+		sizeof(struct file_descriptor) * PROC_MAX_FDS);
 
 	/* Setup stdin, stdout and stderr */
 	p->file_descriptors[0].type = FD_TYPE_DEVICE;

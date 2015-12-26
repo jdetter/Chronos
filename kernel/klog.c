@@ -13,8 +13,8 @@ void klog_init(void)
 {
 	slock_init(&klog_lock);
 	memset(klog_table, 0, sizeof(struct klog) * NKLOG);
-	fs_mkdir("/var", 0, 0, 0, 0700);
-        fs_mkdir("/var/log", 0, 0, 0, 0700);
+	fs_mkdir("/var", 0, 0700, 0, 0);
+        fs_mkdir("/var/log", 0, 0700, 0, 0);
 }
 
 klog_t klog_alloc(int append, char* path)

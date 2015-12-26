@@ -268,7 +268,7 @@ int sys_isatty(void)
         int fd;
         if(syscall_get_int(&fd, 0)) return 1;
 
-        if(fd < 0 || fd > MAX_FILES) return 1;
+        if(fd < 0 || fd > PROC_MAX_FDS) return 1;
 
         int x;
         for(x = 0;x < MAX_TTYS;x++)

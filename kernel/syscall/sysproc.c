@@ -52,7 +52,7 @@ int sys_fork(void)
 
 	/* Increment file references for all inodes */
 	int i;
-	for(i = 0;i < MAX_FILES;i++)
+	for(i = 0;i < PROC_MAX_FDS;i++)
 	{
 		switch(new_proc->file_descriptors[i].type)
 		{
@@ -156,7 +156,7 @@ int waitpid(int pid, int* status, int options)
 			rproc = p;
 			/* Close open files */
 			int file;
-			for(file = 0;file < MAX_FILES;file++)
+			for(file = 0;file < PROC_MAX_FDS;file++)
 				close(file);
 			rproc = current;
 

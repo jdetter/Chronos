@@ -15,10 +15,11 @@
 #include "pipe.h"
 #include "syscall.h"
 #include "chronos.h"
+#include "ktime.h"
 #include "proc.h"
 #include "panic.h"
 
-// #define DEBUG
+#define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -131,7 +132,7 @@ int sys_close(void)
 
 int close(int fd)
 {
-	if(fd >= MAX_FILES || fd < 0){return -1;}
+	if(fd >= PROC_MAX_FDS || fd < 0){return -1;}
 	if(rproc->file_descriptors[fd].type == FD_TYPE_FILE)
 		fs_close(rproc->file_descriptors[fd].i);
 	else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
@@ -167,7 +168,9 @@ int sys_read(void)
 		if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
 				rproc->file_descriptors[fd].seek)) < 0) 
 		{
+#ifdef DEBUG
 			cprintf("READ FAILURE!\n");
+#endif
 			return -1;
 		}
 		break;
@@ -344,7 +347,7 @@ int sys_fstat(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
-	if(fd < 0 || fd >= MAX_FILES) return -1;
+	if(fd < 0 || fd >= PROC_MAX_FDS) return -1;
 
 	int close_on_exit = 0;
 	inode i = NULL;
@@ -362,7 +365,9 @@ int sys_fstat(void)
 		close_on_exit = 1;
 		break;
 	default:
+#ifdef DEBUG
 		cprintf("Fstat called on: %d\n", rproc->file_descriptors[fd].type); 
+#endif
 		return -1;
 	}
 
@@ -503,8 +508,8 @@ int sys_dup2(void)
 
 int dup2(int new_fd, int old_fd)
 {
-	if(new_fd < 0 || new_fd >= MAX_FILES) return -1;
-	if(old_fd < 0 || old_fd >= MAX_FILES) return -1;
+	if(new_fd < 0 || new_fd >= PROC_MAX_FDS) return -1;
+	if(old_fd < 0 || old_fd >= PROC_MAX_FDS) return -1;
 	/* Make sure new_fd is closed */
 	close(new_fd);
 	memmove(rproc->file_descriptors + new_fd,
@@ -539,7 +544,7 @@ int dup2(int new_fd, int old_fd)
 int sys_fchdir(int fd)
 {
 	if(fd < 0) return -1;
-	if(fd >= MAX_FILES) return -1;
+	if(fd >= PROC_MAX_FDS) return -1;
 	switch(fd)
 	{
 	case FD_TYPE_FILE:
@@ -562,7 +567,7 @@ int sys_fchmod(void)
 	if(syscall_get_int((int*)&mode, 1)) return -1;
 
 	if(fd < 0) return -1;
-	if(fd >= MAX_FILES) return -1;
+	if(fd >= PROC_MAX_FDS) return -1;
 	switch(fd)
 	{
 	case FD_TYPE_FILE:
@@ -586,7 +591,7 @@ int sys_fchown(void)
 	if(syscall_get_short((short*)&group, 2)) return -1;
 
 	if(fd < 0) return -1;
-	if(fd >= MAX_FILES) return -1;
+	if(fd >= PROC_MAX_FDS) return -1;
 	switch(fd)
 	{
 	case FD_TYPE_FILE:
@@ -830,7 +835,9 @@ int sys_sysconf(void)
 	switch(name)
 	{
 		default:
+#ifdef DEBUG
 			cprintf("kernel: no such limit: %d\n", name);
+#endif
 			break;
 	}
 
@@ -849,13 +856,51 @@ int sys_sync(void)
 	return 0;
 }
 
+int sys_select_next_fd(int curr_fd, fd_set* set, int max_fd)
+{
+	for(;curr_fd < PROC_MAX_FDS && curr_fd < max_fd;curr_fd++)
+	{
+		if(FD_ISSET(curr_fd, set))
+			return curr_fd;
+	}
+
+	return -1;
+}
+
+int sys_select_fdset_move(fd_set* dst, fd_set* src, int max)
+{
+	FD_ZERO(dst);
+
+	int set_count = 0;
+
+	int fd;
+	for(fd = 0;fd < max;fd++)
+		if(FD_ISSET(fd, src))
+		{
+			FD_SET(fd, dst);
+			set_count++;
+		}
+
+	return set_count;
+}
+
 int sys_select(void)
 {
+#ifdef DEBUG
+	cprintf("kernel: call to select.\n");
+#endif
 	int nfds;
 	fd_set* readfds = NULL;
 	fd_set* writefds = NULL;
 	fd_set* exceptfds = NULL;
 	struct timeval* timeout = NULL;
+
+	fd_set ret_readfds;
+	FD_ZERO(&ret_readfds);
+	fd_set ret_writefds;
+	FD_ZERO(&ret_writefds);
+	fd_set ret_exceptfds;
+	FD_ZERO(&ret_exceptfds);
 
 	if(syscall_get_int(&nfds, 0))
 		return -1;
@@ -864,14 +909,129 @@ int sys_select(void)
 	syscall_get_optional_ptr((void**)&exceptfds, 3);
 	syscall_get_optional_ptr((void**)&timeout, 4);
 
+#ifdef DEBUG
+	cprintf("nfds: %d  readfds? %d  writefds? %d exceptfds? %d timeout? %d\n", nfds, 
+			readfds ? 1 : 0, 
+			writefds ? 1 : 0, 
+			exceptfds ? 1 : 0, 
+			timeout ? 1 : 0);
 	if(timeout)
-	{
-		/* Are we being polled? */
-		if(timeout->tv_sec == 0 && timeout->tv_usec == 0)
-			return 0;
-	}
-	
+		cprintf("\ttimeout: tv_sec: %d  tv_usec %d\n", timeout->tv_sec, timeout->tv_usec);
+#endif
 
-        panic("WARNING: select system call unimplemented.\n");
-        return -1;
+	int dev_found = 0;
+	unsigned int endtime = 0;
+	if(timeout)
+		endtime = ktime_seconds() + timeout->tv_sec;
+	while(!dev_found)
+	{
+		int fd;
+		/* Check read fds if available */
+		if(readfds)
+		{
+			fd = 0;
+			while((fd = sys_select_next_fd(fd, readfds, nfds)) != -1)
+			{
+				switch(rproc->file_descriptors[fd].type)
+				{
+					case FD_TYPE_FILE:
+						/** 
+						 * Files are always 
+						 * ready for reading
+						 */
+						FD_SET(fd, &ret_readfds);
+						dev_found = 1;
+						break;
+					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
+
+						/* Does this device support read 'peek'? */
+						if(rproc->file_descriptors[fd].device->io_driver.ready_read)
+						{
+							/* Does the device have something for us? */
+							if(rproc->file_descriptors[fd].device->io_driver.ready_read(
+										rproc->file_descriptors[fd].device->io_driver.context))
+							{
+								FD_SET(fd, &ret_readfds);
+								dev_found = 1;
+							}
+						}
+
+						break;
+					case FD_TYPE_PATH:
+					case FD_TYPE_NULL:
+						break;
+				}
+
+				fd++;
+			}
+		}
+
+		if(writefds)
+		{
+			fd = 0;
+			while((fd = sys_select_next_fd(fd, writefds, nfds)) != -1)
+			{
+				switch(rproc->file_descriptors[fd].type)
+				{
+					case FD_TYPE_FILE:
+						/** 
+						 * Files are always 
+						 * ready for writing
+						 */
+						dev_found = 1;
+						FD_SET(fd, &ret_writefds);
+						break;
+					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
+
+						/* Does this device support write 'peek'? */
+						if(rproc->file_descriptors[fd].device->io_driver.ready_write)
+						{
+							/* Is this output device ready? */
+							if(rproc->file_descriptors[fd].device->io_driver.ready_write(
+										rproc->file_descriptors[fd].device->io_driver.context))
+							{
+								FD_SET(fd, &ret_writefds);
+								dev_found = 1;
+							}
+						}
+
+						break;
+					case FD_TYPE_PATH:
+					case FD_TYPE_NULL:
+						break;
+				}
+
+				fd++;
+			}
+		}
+
+
+		if(!dev_found)
+		{
+			/* yield for a cycle */
+			yield();
+	
+			/* Is our timeout up? */
+			if(timeout && ktime_seconds() >= endtime)
+			{
+#ifdef DEBUG
+				cprintf("select: timeout expired.\n");
+#endif
+				return 0;
+			}
+		}
+
+	}	
+
+	/* copy the return sets */
+	int fd_count = 0;
+	fd_count += sys_select_fdset_move(readfds, &ret_readfds, nfds);
+	fd_count += sys_select_fdset_move(writefds, &ret_writefds, nfds);
+	fd_count += sys_select_fdset_move(exceptfds, &ret_exceptfds, nfds);
+
+#ifdef DEBUG
+	cprintf("select: value returned: %d\n", fd_count);
+#endif
+
+	return fd_count;
 }

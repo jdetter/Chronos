@@ -579,7 +579,7 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 			return ESC_RES_DNE;
 		case 'f':
 		case 'H':
-			tty_set_cur_rc(t, params[0], params[1]);
+			tty_set_cur_rc(t, params[0] - 1, params[1] - 1);
 			return ESC_RES_DNE;
 		case 'J':
 			switch(params[0])
