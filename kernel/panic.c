@@ -57,8 +57,9 @@ void cprintf(char* fmt, ...)
 	tty_t t0 = tty_find(0);
         void** argument = (void**)(&fmt + 1);
 
+	int len = strlen(fmt);
         uint x;
-        for(x = 0;x < strlen(fmt);x++)
+        for(x = 0;x < len;x++)
         {
                 if(fmt[x] == '%' && x + 1 < strlen(fmt))
                 {

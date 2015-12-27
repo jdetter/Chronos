@@ -19,7 +19,8 @@
 #include "proc.h"
 #include "panic.h"
 
-// #define DEBUG
+#define DEBUG_SELECT
+#define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -30,8 +31,14 @@ int sys_link(void)
 	const char* newName;
 	if(syscall_get_str_ptr(&oldName, 0)) return -1;
 	if(syscall_get_str_ptr(&newName, 0)) return -1;
-	return fs_link(oldName, newName);
 
+#ifdef DEBUG
+	if(oldName && newName)
+		cprintf("%s: created soft link %s -> %s\n",
+				rproc->name, oldName, newName);
+#endif
+
+	return fs_link(oldName, newName);
 }
 
 int sys_stat(void)
@@ -40,8 +47,17 @@ int sys_stat(void)
 	struct stat* st;
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+#ifdef DEBUG
+	if(path) cprintf("%s: statting file: %s\n", rproc->name, path);
+#endif
 	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
-	if(i == NULL) return -1;
+	if(i == NULL) 
+	{
+#ifdef DEBUG
+		cprintf("%s: permission denied.\n", rproc->name);
+#endif
+		return -1;
+	}
 	fs_stat(i, st);
 	fs_close(i);
 	return 0;
@@ -83,7 +99,7 @@ int sys_open(void)
 	}
 
 	/* Check for O_EXCL */
-	if(flags & O_CREAT && flags & O_EXCL && created)
+	if((flags & O_CREAT) && (flags & O_EXCL) && created)
 		return -1;
 
 	rproc->file_descriptors[fd].type = FD_TYPE_FILE;
@@ -91,9 +107,11 @@ int sys_open(void)
 	rproc->file_descriptors[fd].flags = flags;
 	rproc->file_descriptors[fd].i = fs_open((char*) path, flags,
 			mode, rproc->uid, rproc->uid);
+
 	if(rproc->file_descriptors[fd].i == NULL)
 	{
-		memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
+		memset(rproc->file_descriptors + fd, 0, 
+			sizeof(struct file_descriptor));
 		return -1;
 	}
 
@@ -119,6 +137,9 @@ int sys_open(void)
 		fs_truncate(rproc->file_descriptors[fd].i, 0);
 
 	rproc->file_descriptors[fd].seek = 0;
+#ifdef DEBUG
+	cprintf("%s: opened file %s with fd %d\n", rproc->name, path, fd);
+#endif
 	return fd;
 }
 
@@ -127,6 +148,11 @@ int sys_close(void)
 {
 	int fd;
 	if(syscall_get_int(&fd, 0)) return -1;
+
+#ifdef DEBUG
+	cprintf("%s: closing file %d\n", rproc->name, fd);
+#endif
+
 	return close(fd);
 }
 
@@ -134,8 +160,13 @@ int close(int fd)
 {
 	if(fd >= PROC_MAX_FDS || fd < 0){return -1;}
 	if(rproc->file_descriptors[fd].type == FD_TYPE_FILE)
+	{
+#ifdef DEBUG
+		cprintf("%s: closing file %s\n",
+			rproc->name, rproc->file_descriptors[fd].path);
+#endif
 		fs_close(rproc->file_descriptors[fd].i);
-	else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
+	}else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
 	{
 		/* Do we need to free the pipe? */
 		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
@@ -161,9 +192,18 @@ int sys_read(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 1)) return -1;
 
+#ifdef DEBUG
+	cprintf("%s: doing read for %d bytes.\n",
+		rproc->name, sz);
+#endif
+
 	switch(rproc->file_descriptors[fd].type)
 	{
-	case 0x00: return -1;
+	case 0x00:
+#ifdef DEBUG
+		cprintf("%s: invalid fd %d\n", rproc->name, fd);
+#endif 
+		return -1;
 	case FD_TYPE_FILE:
 		if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
 				rproc->file_descriptors[fd].seek)) < 0) 
@@ -173,6 +213,10 @@ int sys_read(void)
 #endif
 			return -1;
 		}
+
+#ifdef DEBUG
+		cprintf("%s: got %d bytes from read.\n", rproc->name, sz);
+#endif
 		break;
 	case FD_TYPE_DEVICE:
 		/* Check for read support */
@@ -195,6 +239,13 @@ int sys_read(void)
 	}
 
 	rproc->file_descriptors[fd].seek += sz;
+
+#ifdef DEBUG
+	cprintf("%s: CONTENTS |%s|\n", rproc->name, dst);
+	cprintf("%s: new position in file: %d\n", 
+		rproc->name, rproc->file_descriptors[fd].seek);
+#endif
+
 	return sz;
 }
 
@@ -208,14 +259,30 @@ int sys_write(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&src, sz, 1)) return -1;
 
+#ifdef DEBUG
+        cprintf("%s: doing write for %d bytes.\n",
+                rproc->name, sz);
+#endif
+
 
 	switch(rproc->file_descriptors[fd].type)
 	{
-	default: return -1;
+	default:
+#ifdef DEBUG
+                cprintf("%s: invalid fd %d\n", rproc->name, fd);
+#endif 
+		return -1;
 	case FD_TYPE_FILE:
 		if(fs_write(rproc->file_descriptors[fd].i, src, sz,
 				rproc->file_descriptors[fd].seek) == -1)
+		{
+#ifdef DEBUG
+			cprintf("%s: write to file %s failed!\n",
+				rproc->name, 
+				rproc->file_descriptors[fd].path);
+#endif
 			return -1;
+		}
 		break;
 	case FD_TYPE_PIPE:
 		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
@@ -233,6 +300,11 @@ int sys_write(void)
 	}
 
 	rproc->file_descriptors[fd].seek += sz;
+
+#ifdef DEBUG
+	cprintf("New position in file: %d\n", 
+		rproc->file_descriptors[fd].seek);
+#endif
 	return sz;
 }
 
@@ -248,6 +320,10 @@ int sys_lseek(void)
 	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE){
 		return -1;
 	}
+#ifdef DEBUG
+	cprintf("%s: Seeking in file\n", rproc->name);
+#endif
+
 	int seek_pos;
 	if(whence == SEEK_CUR){
 		seek_pos = rproc->file_descriptors[fd].seek + offset;
@@ -262,8 +338,10 @@ int sys_lseek(void)
 	} else {
 		return -1;
 	}
+
 	if(seek_pos < 0){ seek_pos = 0;}
 	rproc->file_descriptors[fd].seek = seek_pos;
+
 	return seek_pos;
 }
 
@@ -273,6 +351,10 @@ int sys_chmod(void)
 {
 	const char* path;
 	mode_t mode;
+
+#ifdef DEBUG
+	cprintf("%s: chmodding file\n", rproc->name);
+#endif
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_int((int*)&mode, 1)) return -1;
@@ -320,6 +402,13 @@ int sys_unlink(void)
 {
 	const char* file;
 	if(syscall_get_str_ptr(&file, 0)) return -1;
+
+#ifdef DEBUG
+	if(file) 
+		cprintf("%s: unlinking file %s\n", rproc->name,
+			file);
+#endif
+
 	return fs_unlink(file);
 }
 
@@ -335,6 +424,7 @@ int sys_rmdir(void)
 int sys_mv(void)
 {
 	/* Implement */
+	panic("sys_mv not implemented!\n");
 	return 0;
 }
 
@@ -348,6 +438,10 @@ int sys_fstat(void)
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(fd < 0 || fd >= PROC_MAX_FDS) return -1;
+
+#ifdef DEBUG
+	cprintf("%s: fstat on file %d\n", rproc->name, fd);
+#endif
 
 	int close_on_exit = 0;
 	inode i = NULL;
@@ -796,6 +890,11 @@ int sys_fcntl(void)
 	int i_arg;
 	if(syscall_get_int(&i_arg, 2)) return -1;
 
+#ifdef DEBUG
+	cprintf("%s: fcntl on fd %d, action %d, iarg: %d\n", 
+			rproc->name, fd, action, i_arg);
+#endif
+
 	slock_acquire(&ptable_lock);
 
 	int result = 0;
@@ -814,11 +913,18 @@ int sys_fcntl(void)
 			rproc->file_descriptors[i_arg].flags |= O_CLOEXEC;
                         break;
 		case F_GETFD:
-			result = rproc->file_descriptors[i_arg].flags;
+			result = rproc->file_descriptors[fd].flags;
 			break;
 		case F_SETFD:
-			rproc->file_descriptors[i_arg].flags = i_arg;
+			rproc->file_descriptors[fd].flags = i_arg;
 			break;
+		case F_GETFL:
+			result = rproc->file_descriptors[fd].flags;
+			break;
+		default:
+			cprintf("UNIMPLEMENTED FCNTL: %d\n", action);
+			result = -1;
+			break;;
 	}
 	
 	slock_release(&ptable_lock);
@@ -886,7 +992,7 @@ int sys_select_fdset_move(fd_set* dst, fd_set* src, int max)
 
 int sys_select(void)
 {
-#ifdef DEBUG
+#ifdef DEBUG_SELECT
 	cprintf("kernel: call to select.\n");
 #endif
 	int nfds;
@@ -909,7 +1015,7 @@ int sys_select(void)
 	syscall_get_optional_ptr((void**)&exceptfds, 3);
 	syscall_get_optional_ptr((void**)&timeout, 4);
 
-#ifdef DEBUG
+#ifdef DEBUG_SELECT
 	cprintf("nfds: %d  readfds? %d  writefds? %d exceptfds? %d timeout? %d\n", nfds, 
 			readfds ? 1 : 0, 
 			writefds ? 1 : 0, 
@@ -1014,7 +1120,7 @@ int sys_select(void)
 			/* Is our timeout up? */
 			if(timeout && ktime_seconds() >= endtime)
 			{
-#ifdef DEBUG
+#ifdef DEBUG_SELECT
 				cprintf("select: timeout expired.\n");
 #endif
 				return 0;
@@ -1029,7 +1135,7 @@ int sys_select(void)
 	if(writefds) fd_count += sys_select_fdset_move(writefds, &ret_writefds, nfds);
 	if(exceptfds) fd_count += sys_select_fdset_move(exceptfds, &ret_exceptfds, nfds);
 
-#ifdef DEBUG
+#ifdef DEBUG_SELECT
 	cprintf("select: value returned: %d\n", fd_count);
 #endif
 

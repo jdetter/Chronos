@@ -15,7 +15,7 @@
 #include "fsman.h"
 #include "klog.h"
 
-#define DEBUG 1
+// #define DEBUG 1
 #define cprintf ___cprintf
 
 klog_t code_log;
@@ -709,6 +709,8 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 			return ESC_RES_DNE;
 		case 'f':
 		case 'H':
+			if(params[0] == 0) params[0]++;
+			if(params[1] == 0) params[1]++;
 			tty_set_cur_rc(t, params[0] - 1, params[1] - 1);
 			return ESC_RES_DNE;
 		case 'J':
@@ -752,6 +754,11 @@ static int tty_esc_type_csi(tty_t t, char c, int pos)
 				return ESC_RES_CNT;
 			}
 			return ESC_RES_ERR;
+		
+		case 'l': /* SGR RENDITION*/
+			return tty_esc_type_sgr(t, c, pos, params, param_count);
+		case 'h': /* SGR RENDITION*/
+			return tty_esc_type_sgr(t, c, pos, params, param_count);
 
 		default:
 			cprintf("INVALID CSI SEQUENCE");
@@ -853,7 +860,14 @@ int tty_parse_code(tty_t t, char c)
 			t->escape_count = 0;
 			t->escape_type = 0;
 			t->escape_seq = 0;
-			cprintf("ERROR PARSING.");
+			cprintf("ERROR PARSING: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x",
+				t->escape_chars[0], t->escape_chars[1],
+				t->escape_chars[2], t->escape_chars[3],
+				t->escape_chars[4], t->escape_chars[5]);
+			cprintf("ERROR PARSING: %c   %c   %c   %c   %c   %c",
+                                t->escape_chars[0], t->escape_chars[1],
+                                t->escape_chars[2], t->escape_chars[3],
+                                t->escape_chars[4], t->escape_chars[5]);
 		}
 
 		/* This char was part of an escape sequence */
@@ -872,7 +886,7 @@ int tty_parse_code(tty_t t, char c)
 		case 0x0A: /* line feed */
 		case 0x0B:
 		case 0x0C:
-			strncpy(key_debug, "New Line", 132);
+			strncpy(key_debug, "New Line", 32);
 			tty_new_line(t);
 			break;
 

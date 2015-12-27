@@ -80,6 +80,7 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp/
+	bash ./tools/gensysskel.sh
 	cp -R ./sysskel/* ./tmp/
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/

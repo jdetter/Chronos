@@ -287,7 +287,7 @@ TRAP_DONE:
 		{
 			_exit(1);
 		} else {
-			cprintf("chronos: kernel panic\n");
+			// cprintf("chronos: kernel panic\n");
 			for(;;);
 		}
 	}

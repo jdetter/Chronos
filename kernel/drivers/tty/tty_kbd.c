@@ -269,34 +269,50 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 
 	if(!t || !pressed) return 0;
 
-	switch(val)
+
+	char raw = !(t->term.c_lflag & ICANON);
+	if(raw)
 	{
-		case SKEY_LARROW:
-			tty_handle_raw(t->sgr.cs_prefix[0], t);
-			tty_handle_raw(t->sgr.cs_prefix[1], t);
-			tty_handle_raw((char)0x44, t);
-			tty_signal_io_ready(t);
-			break;
-		case SKEY_RARROW:
-			tty_handle_raw(t->sgr.cs_prefix[0], t);
-			tty_handle_raw(t->sgr.cs_prefix[1], t);
-			tty_handle_raw((char)0x43, t);
-			tty_signal_io_ready(t);
-			break;
-		case SKEY_UARROW:
-			tty_handle_raw(t->sgr.cs_prefix[0], t);
-			tty_handle_raw(t->sgr.cs_prefix[1], t);
-			tty_handle_raw((char)0x41, t);
-			tty_signal_io_ready(t);
-			break;
-		case SKEY_DARROW:
-			tty_handle_raw(t->sgr.cs_prefix[0], t);
-			tty_handle_raw(t->sgr.cs_prefix[1], t);
-			tty_handle_raw((char)0x42, t);
-			tty_signal_io_ready(t);
-			break;
-		default: /* special character unhandled */
-			break;
+		if(ctrl)
+		{
+			/* Is this a letter? */
+			if(val >= 'a' && val <= 'z')
+			{
+				val -= 'a' + 1;
+				/* Send this new character */
+				tty_handle_raw((char)val, t);
+			}
+		} else {
+			switch(val)
+			{
+				case SKEY_LARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x44, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_RARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x43, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_UARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x41, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_DARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x42, t);
+					tty_signal_io_ready(t);
+					break;
+				default: /* special character unhandled */
+					break;
+			}
+		}
 	}
 
 	return 0;
