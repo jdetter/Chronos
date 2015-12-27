@@ -148,7 +148,21 @@ void main_stack(void)
 	klog_init();
 	cprintf("[ OK ]\n");
 
+	cprintf("Starting all logs...\t\t\t\t\t\t\t");
+        if(tty_code_log_init())
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
 #if 0
+        cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(0), "tty0-new.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+
+	cprintf("Enabling logging on tty1...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(1), "tty1-new.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+
 	cprintf("Starting all logs...\t\t\t\t\t\t\t");
 	if(tty_code_log_init())
 		cprintf("[FAIL]\n");

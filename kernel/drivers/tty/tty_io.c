@@ -481,6 +481,6 @@ void tty_signal_io_ready(tty_t t)
 		p->block_type = PROC_BLOCKED_NONE;
 	} else {
 		cprintf("tty: why wasn't I woken up?\n");
-		for(;;);
+		// for(;;);
 	}
 }

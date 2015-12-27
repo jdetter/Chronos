@@ -17,7 +17,7 @@ char kbd_getc(void);
  */
 void kbd_event_handler(int (*handle)
 		(int pressed, int special, int val, int ctrl, int alt, 
-			int shift, int caps));
+			int shift, int caps, char ascii));
 
 /* Special keys for the above event handler */
 #define SKEY_LARROW	0x01

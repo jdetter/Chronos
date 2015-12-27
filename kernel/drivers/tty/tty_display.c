@@ -131,18 +131,13 @@ void tty_putc(tty_t t, char c)
 		return;
 	}
 
-	/* Process console codes */
-	if(tty_parse_code(t, c))
-	{
-		if(t->out_logged && (c == '\n' || c == '\t'))
-			klog_write(t->tty_log, &c, 1);
-
-		return;
-	}
-
 	/* Is this tty logged? */
 	if(t->out_logged)
 		klog_write(t->tty_log, &c, 1);
+
+	/* Process console codes */
+	if(tty_parse_code(t, c))
+		return;
 
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{

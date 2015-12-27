@@ -15,7 +15,7 @@
 #include "fsman.h"
 #include "klog.h"
 
-// #define DEBUG 1
+#define DEBUG 1
 #define cprintf ___cprintf
 
 klog_t code_log;
@@ -31,6 +31,8 @@ int tty_code_log_init(void)
 /* Some useful hidden functions we need */
 /* Delete a column */
 void tty_delete_char(tty_t t);
+/* Send a character for input */
+int tty_handle_raw(char c, tty_t t);
 
 /* Put a character on the screen at the given position */
 void tty_native_setc(tty_t t, int pos, char c)
@@ -631,13 +633,13 @@ static int tty_esc_type_dec(tty_t t, char c, int pos)
 
 	switch(val)
 	{
-		/* Unimplemented below here */
 		case 1: /* DECCKM:  Escape modifier for arrow keys */
 			if(set)
 				t->sgr.cs_prefix[1] = '0';
 			else t->sgr.cs_prefix[1] = 0x5b;
-			break;
+			return ESC_RES_DNE;
 
+		/* Unimplemented below here */
 		case 3: /* DECCOLM: Column resolution switch */
 		case 5: /* DECSCNM: Reverse video mode */
 		case 6: /* DECOM:   Addresssing relative to scroll */
@@ -645,6 +647,7 @@ static int tty_esc_type_dec(tty_t t, char c, int pos)
 		case 8: /* DECARM:  Keyboard autorepeat */
 		case 9: /* X10 Mouse Reporting */
 		case 25: /* Make cursor visible */
+		case 47: /* Use alternate screen buffer */
 		case 1000: /* X11 Mouse Reporting */
 			cprintf("DEC UNIMPLEMENTED");
 			break;
@@ -796,6 +799,11 @@ static int tty_esc_type_esc(tty_t t, char c, int pos)
 		case '8': /* restore tty state */
 			tty_restore(t);
 			return ESC_RES_DNE;
+		case 'Z': /* Identify self */
+			tty_handle_raw(0x1B, t);
+			tty_handle_raw('/', t);
+			tty_handle_raw('Z', t);
+			return ESC_RES_DNE;
 			/* Unimplemented escape sequences */
 		case '#': /* Possible alignment test */
 
@@ -803,8 +811,6 @@ static int tty_esc_type_esc(tty_t t, char c, int pos)
 
 
 		case 'M': /* Reverse line feed */
-
-		case 'Z': /* DECID */
 
 		case '>': /* Set numeric keyboard mode */
 
@@ -901,12 +907,19 @@ int tty_parse_code(tty_t t, char c)
 			tty_tab(t);
 			break;
 		case 0x1B: /* Escape sequence start */
-		case 0x9B: /* EQU TO ESC [ */
 			strncpy(key_debug, "ESC START", 32);
 			t->escape_seq = 1;
 			t->escape_count = 0;
 			t->escape_type = ESC_TYPE_ESC;
 			memset(t->escape_chars, 0, NPAR);
+			break;
+		case 0x9B: /* EQU TO ESC [ */
+			strncpy(key_debug, "CSI ESC START", 32);
+                        t->escape_seq = 1;
+                        t->escape_count = 1;
+                        t->escape_type = ESC_TYPE_CSI;
+			t->escape_chars[0] = '[';
+                        memset(t->escape_chars, 0, NPAR);
 			break;
 
 			/* Unimplemented below here */

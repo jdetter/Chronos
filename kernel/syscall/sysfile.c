@@ -19,8 +19,8 @@
 #include "proc.h"
 #include "panic.h"
 
-#define DEBUG_SELECT
-#define DEBUG
+// #define DEBUG_SELECT
+// #define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;

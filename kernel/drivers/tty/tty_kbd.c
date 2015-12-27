@@ -114,7 +114,7 @@ void tty_keyboard_interrupt_handler(void)
 	slock_release(&active_tty->key_lock);
 }
 
-static int tty_handle_raw(char c, tty_t t)
+int tty_handle_raw(char c, tty_t t)
 {
 	char raw = !(t->term.c_lflag & ICANON);
 	if(!raw)  return -1;
@@ -232,7 +232,7 @@ static int tty_handle_char(char c, tty_t t)
 }
 
 static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
-		int shift, int caps)
+		int shift, int caps, char ascii)
 {
 #ifdef DEBUG
 	cprintf("tty: special key received:\n");
@@ -243,6 +243,7 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	cprintf("    + alt:       %d\n", alt);
 	cprintf("    + shift:     %d\n", shift);
 	cprintf("    + caps:      %d\n", caps);
+	cprintf("    + ascii:     %d  %c\n", ascii, ascii);
 
 	if(!special)
 		cprintf("    + character: %c\n", (char)val);
@@ -276,11 +277,13 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 		if(ctrl)
 		{
 			/* Is this a letter? */
-			if(val >= 'a' && val <= 'z')
+			if(ascii >= 'a' && ascii <= 'z')
 			{
-				val -= 'a' + 1;
+				ascii -= 'a';
+				ascii++;
 				/* Send this new character */
-				tty_handle_raw((char)val, t);
+				tty_handle_raw((char)ascii, t);
+				return 0;
 			}
 		} else {
 			switch(val)
