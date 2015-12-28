@@ -22,6 +22,7 @@
 #include "vm.h"
 #include "panic.h"
 
+// #define DEBUG
 #define KVM_MAGIC 0x55AA55AA
 
 struct kvm_region {vmpage_t start_addr; vmpage_t end_addr;};
@@ -183,7 +184,7 @@ void pfree(vmpage_t pg)
 
 #ifdef _ALLOW_VM_SHARE_
 	/* Was this page shared? */
-	if(vm_pgunshare(pg))
+	if(vm_pgunshare((pypage_t)pg))
 		return; /* Something still needs this page */
 #endif
 

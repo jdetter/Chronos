@@ -159,9 +159,9 @@ static inline int fetch_and_add(int* variable, int inc)
  * Exchange the value in addr for newval and return the original value of addr.
  * This happens atomically.
  */
-static inline uint xchg(volatile uint *addr, uint newval)
+static inline int xchg(volatile int *addr, int newval)
 {
-	uint result;
+	int result;
 	asm volatile("lock; xchgl %0, %1" :
 			"+m" (*addr), "=a" (result) :
 			"1" (newval) :

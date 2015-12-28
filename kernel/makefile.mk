@@ -6,6 +6,7 @@ KERNEL_OBJECTS := \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
+	arch/$(BUILD_ARCH)/vm/vm_share \
 	cache/diskcache \
 	cache/cacheman \
 	cache/cache \
@@ -21,7 +22,6 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
-	vm/vm_share \
 	cpu \
 	pipe \
 	fsman \
@@ -38,8 +38,7 @@ KERNEL_OBJECTS := \
 KERNEL_ASSEMBLY := \
 	arch/$(BUILD_ARCH)/vm/asm \
 	asm \
-	idt \
-	boot/bootc_jmp
+	idt
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -148,8 +147,26 @@ BOOT_STAGE2_SECTORS := 140
 
 # What should be linked into the second stage boot loader?
 # NOTE: keep this list minimal!
-BOOT_STAGE2_DEPS := kernel/boot/bootc.o kernel/boot/bootc_jmp.o  kernel/arch/$(BUILD_ARCH)/vm/asm.o kernel/cpu.o kernel/arch/$(BUILD_ARCH)/vm/pgdir.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
+BOOT_STAGE2_DEPS := \
+	kernel/arch/$(BUILD_ARCH)/vm/asm.o \
+	kernel/arch/$(BUILD_ARCH)/vm/pgdir.o \
+	kernel/drivers/serial.o \
+	kernel/drivers/ata.o \
+	kernel/drivers/pic.o \
+	kernel/drivers/diskio.o \
+	kernel/cache/diskcache.o \
+	kernel/cache/cacheman.o \
+	kernel/cpu.o \
+	kernel/stdlock.o \
+	kernel/file.o \
+	kernel/stdlib.o 
 
+BOOT_STAGE2_SPECIAL := \
+	kernel/boot/bootc.o \
+	kernel/boot/bootc_jmp.o \
+	kernel/boot/ext2.o \
+	kernel/boot/cache.o \
+	kernel/boot/vm_alloc.o
 
 .PHONY: kernel-symbols
 kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
@@ -169,11 +186,13 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 
 kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
 	# Build special files for boot stage 2
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/bootc.o kernel/boot/bootc.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/bootc_jmp.o kernel/boot/bootc_jmp.S
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/ext2.o kernel/drivers/ext2.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/cache.o kernel/cache/cache.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/vm_alloc.o kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o $(BOOT_STAGE2_DEPS)
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/vm_alloc.o \
+		kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.c
+	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o $(BOOT_STAGE2_DEPS) $(BOOT_STAGE2_SPECIAL)
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(CROSS_OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	
@@ -197,6 +216,3 @@ kernel/%.o: kernel/%.c
 
 kernel/drivers/%.o: kernel/drivers/%.c
 	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<
-
-kernel/boot/%.o: kernel/%.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o $< $@
