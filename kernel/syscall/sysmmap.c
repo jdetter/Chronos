@@ -127,8 +127,8 @@ void* mmap(void* hint, uint sz, int protection,
 	if(pagestart < rproc->mmap_end)
 		rproc->mmap_end = pagestart;
 
-	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ;
+	vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ;
 	if(protection & PROT_WRITE)
 		tbl_flags |= VM_TBL_WRIT;
 

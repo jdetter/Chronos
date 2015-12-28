@@ -31,7 +31,7 @@ void __context_restore__(uint* current, uint old);
 
 uint k_context; /* The kernel context */
 uint k_stack; /* Kernel stack */
-extern pgdir* k_pgdir; /* Kernel page directory */
+extern pgdir_t* k_pgdir; /* Kernel page directory */
 extern slock_t global_mem_lock;
 
 int vm_init(void)
@@ -48,8 +48,8 @@ int vm_init(void)
 	/* The boot strap directly mapped in the null guard page */
 	vm_unmappage(0x0, k_pgdir);
 
-	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 
 	/* Map pages in for our kernel stack */
 	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 

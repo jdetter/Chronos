@@ -118,11 +118,11 @@ struct proc* spawn_tty(tty_t t)
 	strncpy(p->cwd, "/", MAX_PATH_LEN);
 
 	/* Setup virtual memory */
-	p->pgdir = (pgdir*)palloc();
+	p->pgdir = (pgdir_t*)palloc();
 	vm_copy_kvm(p->pgdir);
 
-	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 
 	/* Map in a new kernel stack */
         vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 

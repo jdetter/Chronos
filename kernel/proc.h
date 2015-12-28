@@ -121,7 +121,7 @@ struct proc
         uint mmap_end; /* end of the mmap area */
         uint code_start; /* Start of the code area */
         uint code_end; /* end of the code area */
-	pgdir* pgdir; /* The page directory for the process */
+	pgdir_t* pgdir; /* The page directory for the process */
 	uint* sys_esp; /* Pointer to the start of the syscall argv */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
 	struct task_segment* tss; /* The task segment for this process */

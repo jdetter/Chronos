@@ -119,14 +119,18 @@ void panic(char* fmt, ...)
 	tty_t active = tty_active();
 	if(active)
 	{
+		int pos = 0;
 		tty_erase_display(active);
 		tty_set_cur_rc(active, 0, 0);
 		char buff[256];
 		va_list list;
 		va_start(list, fmt);
 		vsnprintf(buff, 256, fmt, list);
+
+		int len = strlen(buff);
+		for(pos = 0;pos < len;pos++)
+			console_putc(pos, buff[pos], 7, 1, 
+				(char*)active->mem_start);
 	}
-	asm volatile("addl $0x08, %esp");
-	asm volatile("call cprintf");
 	for(;;);
 }

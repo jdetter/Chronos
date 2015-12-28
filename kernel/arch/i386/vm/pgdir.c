@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "x86.h"
 #include "file.h"
@@ -42,23 +41,29 @@
 #define PGTBL_DIRTY (1 << 0x6)
 #define PGTBL_GLOBL (1 << 0x8)
 
+/* There are 3 available page table flags on x86. They are allocated below: */
+#define PGTBL_SHARE (1 << 0x9) /* Marks the page as shared */
+#define PGTBL_CONWR (1 << 0xa) /* Marks the page is copy on write (cow) */
+
 /** Default kernel directory and table flags for i386 */
 #define DEFAULT_DIRFLAGS (VM_DIR_PRES)
 #define DEFAULT_TBLFLAGS (VM_TBL_PRES)
 
-uchar __kvm_stack_check__(void);
-void __kvm_swap__(pgdir* kvm);
-uchar __check_paging__(void);
+/** Is paging enabled? */
+int __kvm_stack_check__(void);
+/** Switch to kernel memory and stack */
+void __kvm_swap__(pgdir_t* kvm);
+/** Check to see if paging is enabled */
+int __check_paging__(void);
 
-extern pgdir* k_pgdir;
-void mapping(uint phy, uint virt, uint sz, pgdir* dir, uchar user, uint flags);
+extern pgdir_t* k_pgdir;
 
-void vm_clear_uvm_kstack(pgdir* dir);
-void vm_set_uvm_kstack(pgdir* dir, pgdir* swap);
-
-pgflags_t vm_dir_flags(pgflags_t flags)
+/**
+ * Translate generic pgdir flags to i386 specific flags.
+ */
+vmflags_t vm_dir_flags(vmflags_t flags)
 {
-	pgflags_t result = 0;
+	vmflags_t result = 0;
         if(flags & VM_DIR_ACSS)
 		result |= PGDIR_ACESS;
         if(flags & VM_DIR_CACH)
@@ -77,9 +82,12 @@ pgflags_t vm_dir_flags(pgflags_t flags)
 	return result;
 }
 
-pgflags_t vm_tbl_flags(pgflags_t flags)
+/**
+ * Translate generic pgtbl flags to i386 specific flags.
+ */
+vmflags_t vm_tbl_flags(vmflags_t flags)
 {
-        pgflags_t result = 0;
+        vmflags_t result = 0;
         if(flags & VM_TBL_GLBL)
 		result |= PGTBL_GLOBL;
         if(flags & VM_TBL_DRTY)
@@ -96,17 +104,24 @@ pgflags_t vm_tbl_flags(pgflags_t flags)
 		result |= PGTBL_WRITE;
         if(flags & VM_TBL_PRES)
 		result |= PGTBL_PRSNT;
+	if(flags & VM_TBL_SHAR)
+		result |= PGTBL_SHARE;
+	if(flags & VM_TBL_COWR)
+		result |= PGTBL_CONWR;
 
 	return result;
 }
 
-pgdir* vm_push_pgdir(void)
+pgdir_t* vm_push_pgdir(void)
 {
+	/* If we are modifying the address space, turn of interrupts. */
+	push_cli();
+
 	/* Is paging even enabled? */
 	if(!__check_paging__()) return NULL;
-	pgdir* dir = vm_curr_pgdir();
+	pgdir_t* dir = vm_curr_pgdir();
 	if(dir == k_pgdir) return NULL;
-	push_cli();
+
 	/* Are we on the kernel stack? */
 	if(!__kvm_stack_check__())
 		__kvm_swap__(k_pgdir);
@@ -114,20 +129,19 @@ pgdir* vm_push_pgdir(void)
 	return dir;	
 }
 
-void vm_pop_pgdir(pgdir* dir)
+void vm_pop_pgdir(pgdir_t* dir)
 {
+	pop_cli();
 	if(dir == NULL) return;
 	if(!__check_paging__()) return;
         if(dir == k_pgdir) return;
-	//vm_clear_uvm_kstack(k_pgdir);
 	vm_enable_paging(dir);
-	pop_cli();
 }
 
-int vm_mappage_native(uintptr_t phy, uintptr_t virt, pgdir* dir,
-                pgflags_t dir_flags, pgflags_t tbl_flags)
+static int vm_mappage_native(pypage_t phy, vmpage_t virt, pgdir_t* dir,
+                vmflags_t dir_flags, vmflags_t tbl_flags)
 {
-        pgdir* save = vm_push_pgdir();
+        pgdir_t* save = vm_push_pgdir();
 
         phy = PGROUNDDOWN(phy);
         virt = PGROUNDDOWN(virt);
@@ -136,7 +150,7 @@ int vm_mappage_native(uintptr_t phy, uintptr_t virt, pgdir* dir,
         /* Do we need to allocate a new page table? */
         if(!dir[dir_index]) dir[dir_index] = palloc() | dir_flags;
 
-        pgtbl* tbl = (pgtbl*)(PGROUNDDOWN(dir[dir_index]));
+        pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
         if(!tbl[tbl_index])
         {
                 tbl[tbl_index] = phy | tbl_flags;
@@ -150,8 +164,8 @@ int vm_mappage_native(uintptr_t phy, uintptr_t virt, pgdir* dir,
         return 0;
 }
 
-int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir, 
-		pgflags_t dir_flags, pgflags_t tbl_flags)
+int vm_mappage(pypage_t phy, vmpage_t virt, pgdir_t* dir, 
+		vmflags_t dir_flags, vmflags_t tbl_flags)
 {
         dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
         tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
@@ -159,13 +173,13 @@ int vm_mappage(uintptr_t phy, uintptr_t virt, pgdir* dir,
         return vm_mappage_native(phy, virt, dir, dir_flags, tbl_flags);
 }
 
-int vm_mappages(uintptr_t va, size_t sz, pgdir* dir, 
-	pgflags_t dir_flags, pgflags_t tbl_flags)
+int vm_mappages(vmpage_t va, size_t sz, pgdir_t* dir, 
+	vmflags_t dir_flags, vmflags_t tbl_flags)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
         /* round va + sz up to a page */
-        uintptr_t end = PGROUNDUP(va + sz);
-        uintptr_t start = PGROUNDDOWN(va);
+        vmpage_t end = PGROUNDUP(va + sz);
+        vmpage_t start = PGROUNDDOWN(va);
 
         if(end <= start) 
 	{
@@ -173,10 +187,10 @@ int vm_mappages(uintptr_t va, size_t sz, pgdir* dir,
 		return -1;
 	}
 
-        uintptr_t x;
+        vmpage_t x;
         for(x = start;x != end;x += PGSIZE)
         {
-		uintptr_t page = palloc();
+		vmpage_t page = palloc();
 		if(!page) return -1;
 		if(vm_mappage(page, x, dir, dir_flags, tbl_flags))
 			return -1;
@@ -187,26 +201,25 @@ int vm_mappages(uintptr_t va, size_t sz, pgdir* dir,
 	return 0;
 }
 
-int vm_dir_mappages(uintptr_t start, uintptr_t end, pgdir* dir, 
-	pgflags_t dir_flags, pgflags_t tbl_flags)
+int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir, 
+	vmflags_t dir_flags, vmflags_t tbl_flags)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
         start = PGROUNDDOWN(start);
         end = PGROUNDUP(end);
-        uint x;
+        vmpage_t x;
         for(x = start;x < end;x += PGSIZE)
                 if(vm_mappage(x, x, dir, dir_flags, tbl_flags))
 			return -1;
-
 	vm_pop_pgdir(save);
 
 	return 0;
 }
 
-uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir)
+vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir)
 {
-        pgdir* save = vm_push_pgdir();
+        pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
         int dir_index = PGDIRINDEX(virt);
@@ -218,10 +231,10 @@ uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir)
                 return 0;
         }
 
-        pgtbl* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
+        pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
         if(tbl[tbl_index])
         {
-                uintptr_t page = PGROUNDDOWN(tbl[tbl_index]);
+                vmpage_t page = PGROUNDDOWN(tbl[tbl_index]);
                 tbl[tbl_index] = 0;
                 vm_pop_pgdir(save);
                 return page;
@@ -232,10 +245,10 @@ uintptr_t vm_unmappage(uintptr_t virt, pgdir* dir)
         return 0;
 }
 
-uintptr_t vm_findpg_native(uintptr_t virt, int create, pgdir* dir,
-	pgflags_t dir_flags, pgflags_t tbl_flags)
+static vmpage_t vm_findpg_native(vmpage_t virt, int create, pgdir_t* dir,
+	vmflags_t dir_flags, vmflags_t tbl_flags)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
        	int dir_index = PGDIRINDEX(virt);
@@ -252,8 +265,8 @@ uintptr_t vm_findpg_native(uintptr_t virt, int create, pgdir* dir,
 		}
         }
 
-        pgtbl* tbl = (uint*)(PGROUNDDOWN(dir[dir_index]));
-        uintptr_t page;
+        pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
+        vmpage_t page;
         if(!(page = tbl[tbl_index]))
         {
                 if(create) 
@@ -269,17 +282,17 @@ uintptr_t vm_findpg_native(uintptr_t virt, int create, pgdir* dir,
         return PGROUNDDOWN(page);
 }
 
-uintptr_t vm_findpg(uintptr_t virt, int create, pgdir* dir,
-        pgflags_t dir_flags, pgflags_t tbl_flags)
+vmpage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
+        vmflags_t dir_flags, vmflags_t tbl_flags)
 {
 	dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
         tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
 	return vm_findpg_native(virt, create, dir, dir_flags, tbl_flags);
 }
 
-pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir)
+vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir)
 {
-        pgdir* save = vm_push_pgdir();
+        pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
 	int dir_index = PGDIRINDEX(virt);
@@ -291,8 +304,8 @@ pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir)
 		return 0;
 	}
 
-	pgtbl* tbl = (pgtbl*)(PGROUNDDOWN(dir[dir_index]));
-	uintptr_t page;
+	pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
+	vmpage_t page;
 	if(!(page = tbl[tbl_index]))
 	{
 		vm_pop_pgdir(save);
@@ -304,9 +317,9 @@ pgflags_t vm_findpgflags(uintptr_t virt, pgdir* dir)
 	return page & (PGSIZE - 1);
 }
 
-pgflags_t vm_findtblflags(uintptr_t virt, pgdir* dir)
+vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir)
 {
-        pgdir* save = vm_push_pgdir();
+        pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
         int dir_index = PGDIRINDEX(virt);
@@ -320,10 +333,10 @@ pgflags_t vm_findtblflags(uintptr_t virt, pgdir* dir)
 	return dir[dir_index] & (PGSIZE - 1);
 }
 
-int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags)
+int vm_setpgflags(vmpage_t virt, pgdir_t* dir, vmflags_t pg_flags)
 {
-	pgdir* save = vm_push_pgdir();
-	tbl_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | tbl_flags);
+	pgdir_t* save = vm_push_pgdir();
+	pg_flags = vm_tbl_flags(DEFAULT_TBLFLAGS | pg_flags);
 
 	virt = PGROUNDDOWN(virt);
 	int dir_index = PGDIRINDEX(virt);
@@ -335,15 +348,15 @@ int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags)
 		return -1;
 	}
 
-	pgtbl* tbl = (pgtbl*)(PGROUNDDOWN(dir[dir_index]));
-	intptr_t page;
+	pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
+	vmpage_t page;
 	if(!(page = tbl[tbl_index]))
 	{
 		vm_pop_pgdir(save);
 		return -1;
 	} else {
 		page = PGROUNDDOWN(page);
-		page |= tbl_flags;
+		page |= pg_flags;
 		tbl[tbl_index] = page;
 	}
 
@@ -353,9 +366,9 @@ int vm_pgflags(uintptr_t virt, pgdir* dir, pgflags_t tbl_flags)
 }
 
 
-int vm_pgreadonly(uintptr_t virt, pgdir* dir)
+int vm_pgreadonly(vmpage_t virt, pgdir_t* dir)
 {
-        pgdir* save = vm_push_pgdir();
+        pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
         int dir_index = PGDIRINDEX(virt);
@@ -367,8 +380,8 @@ int vm_pgreadonly(uintptr_t virt, pgdir* dir)
                 return -1;
         }
 
-        pgtbl* tbl = (pgtbl*)(PGROUNDDOWN(dir[dir_index]));
-        intptr_t page;
+        pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
+        vmpage_t page;
         if(!(page = tbl[tbl_index]))
         {
                 vm_pop_pgdir(save);
@@ -382,12 +395,12 @@ int vm_pgreadonly(uintptr_t virt, pgdir* dir)
         return 0;
 }
 
-int vm_pgsreadonly(uintptr_t start, uintptr_t end, pgdir* dir)
+int vm_pgsreadonly(vmpage_t start, vmpage_t end, pgdir_t* dir)
 {
-	uintptr_t virt_start = PGROUNDDOWN(start);
-	uintptr_t virt_end = PGROUNDUP(end);
+	vmpage_t virt_start = PGROUNDDOWN(start);
+	vmpage_t virt_end = PGROUNDUP(end);
 
-	uintptr_t addr = virt_start;
+	vmpage_t addr = virt_start;
 	for(;addr < virt_end;addr += PGSIZE)
 		if(vm_pgreadonly(addr, dir))
 			return -1;
@@ -396,38 +409,48 @@ int vm_pgsreadonly(uintptr_t start, uintptr_t end, pgdir* dir)
 }
 
 size_t vm_memmove(void* dst, const void* src, size_t sz, 
-		pgdir* dst_pgdir, pgdir* src_pgdir,
-		pgflags_t dir_flags, pgflags_t tbl_flags)
+		pgdir_t* dst_pgdir, pgdir_t* src_pgdir,
+		vmflags_t dir_flags, vmflags_t tbl_flags)
 {
+	/* Check to see if this is just a normal transfer */
+	if((vm_curr_pgdir() == dst_pgdir) &&
+		dst_pgdir == src_pgdir)
+	{
+		memmove(dst, src, sz);
+		return sz;
+	}
+
+	/* Do we need to transfer anything? */
 	if(sz == 0) return 0;
-	pgdir* save = vm_push_pgdir();
+
+	pgdir_t * save = vm_push_pgdir();
 	size_t bytes = 0; /* bytes copied */
 
 	while(bytes != sz)
 	{
 		/* How many bytes are there left to copy? */
-		uint left = sz - bytes;
-		int to_copy = left;
+		size_t left = sz - bytes;
+		size_t to_copy = left;
 
 		/* The source page */
-		uintptr_t src_page = vm_findpg((uintptr_t)src + bytes, 0,
+		vmpage_t src_page = vm_findpg((vmpage_t)src + bytes, 0,
 			 src_pgdir, 0, 0);
-		off_t src_offset = ((uintptr_t)src + bytes) & (PGSIZE - 1);
+		size_t src_offset = ((vmpage_t)src + bytes) & (PGSIZE - 1);
 		size_t src_cpy = PGSIZE - src_offset;
 		if(!src_page) break;
 
 		/* Check destination page */
-		uintptr_t dst_page = vm_findpg((uintptr_t)dst + bytes, 1,
+		vmpage_t dst_page = vm_findpg((vmpage_t)dst + bytes, 1,
 			 dst_pgdir, dir_flags, tbl_flags);
-		off_t dst_offset = ((uintptr_t)dst + bytes) & (PGSIZE - 1);
+		size_t dst_offset = ((vmpage_t)dst + bytes) & (PGSIZE - 1);
 		size_t dst_cpy = PGSIZE - dst_offset;
 		if(!dst_page) break;
 
 		/* Make sure copy amount is okay */
 		if(src_cpy < to_copy) to_copy = src_cpy;
 		if(dst_cpy < to_copy) to_copy = dst_cpy;
-		memmove((void*)dst_page + dst_offset, 
-				(void*)src_page + src_offset, to_copy);
+		memmove((void*)(dst_page + dst_offset),
+				(void*)(src_page + src_offset), to_copy);
 		/* Adjust bytes */
 		bytes += to_copy;
 	}
@@ -436,16 +459,16 @@ size_t vm_memmove(void* dst, const void* src, size_t sz,
 	return bytes;
 }
 
-int vm_copy_kvm(pgdir* dir)
+int vm_copy_kvm(pgdir_t* dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
-	uintptr_t x;
+	vmpage_t x;
 	for(x = UVM_KVM_S;x < PGROUNDDOWN(UVM_KVM_E); x+= PGSIZE)
 	{
-		uintptr_t page = vm_findpg(x, 0, k_pgdir, 0, 0);
-		uintptr_t pg_flags = vm_findpgflags(x, k_pgdir);
-		uintptr_t tbl_flags = vm_findtblflags(x, k_pgdir);
+		vmpage_t page = vm_findpg(x, 0, k_pgdir, 0, 0);
+		vmflags_t pg_flags = vm_findpgflags(x, k_pgdir);
+		vmflags_t tbl_flags = vm_findtblflags(x, k_pgdir);
 		if(!page) continue;
 
 		if(vm_mappage_native(page, x, dir, tbl_flags, pg_flags))
@@ -457,16 +480,16 @@ int vm_copy_kvm(pgdir* dir)
 	return 0;
 }
 
-void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir)
+void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
-	uintptr_t x;
+	vmpage_t x;
 	for(x = 0;x < (UVM_KVM_S >> 22);x++)
 	{   
-		uintptr_t src_page = PGROUNDDOWN(src_dir[x]); 
+		vmpage_t src_page = PGROUNDDOWN(src_dir[x]); 
 		if(!src_page) continue;
-		pgflags_t tbl_flags = src_dir[x] & (PGSIZE - 1);
+		vmflags_t tbl_flags = src_dir[x] & (PGSIZE - 1);
 
 		if(!dst_dir[x]) dst_dir[x] = palloc() | tbl_flags;
 		memmove((void*)PGROUNDDOWN(dst_dir[x]), 
@@ -477,18 +500,18 @@ void vm_map_uvm(pgdir* dst_dir, pgdir* src_dir)
 	vm_pop_pgdir(save);
 }
 
-void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
+void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 {
-	pgdir* save = vm_push_pgdir();
-	uintptr_t x;
+	pgdir_t* save = vm_push_pgdir();
+	vmpage_t x;
 	for(x = 0;x < UVM_KVM_S;x += PGSIZE)
 	{
-		uintptr_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
+		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
 		if(!src_page) continue;
-		pgflags_t src_pgflags = vm_findpgflags(x, src_dir);
-		pgflags_t src_tblflags = vm_findtblflags(x, src_dir);
+		vmflags_t src_pgflags = vm_findpgflags(x, src_dir);
+		vmflags_t src_tblflags = vm_findtblflags(x, src_dir);
 		
-		uintptr_t dst_page = vm_findpg_native(x, 1, dst_dir, 
+		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
 			src_tblflags, src_pgflags);
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
@@ -500,13 +523,13 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	{
 		/* Remove old mapping */
 		vm_unmappage(x, dst_dir);
-		uintptr_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
-		pgflags_t src_pgflags = vm_findpgflags(x, src_dir);
-		pgflags_t src_tblflags = vm_findtblflags(x, src_dir);
+		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
+		vmflags_t src_pgflags = vm_findpgflags(x, src_dir);
+		vmflags_t src_tblflags = vm_findtblflags(x, src_dir);
 		if(!src_page) continue;
 
 		/* Create and map new page */
-		uintptr_t dst_page = vm_findpg_native(x, 1, dst_dir, 
+		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
 			src_tblflags, src_pgflags);
 		/* Copy the page contents */
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
@@ -515,34 +538,36 @@ void vm_copy_uvm(pgdir* dst_dir, pgdir* src_dir)
 	vm_pop_pgdir(save);
 }
 
-void vm_set_user_kstack(pgdir* dir, pgdir* kstack)
+void vm_set_user_kstack(pgdir_t* dir, pgdir_t* kstack)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
+
 	int x;
 	for(x = UVM_KSTACK_S;x < UVM_KSTACK_E;x += PGSIZE)
 	{
-		uintptr_t kstack_pg = vm_findpg(x, 0, kstack, 0, 0);
+		vmpage_t kstack_pg = vm_findpg(x, 0, kstack, 0, 0);
 		/* Make sure the mapping is clear */
 		vm_unmappage(x, dir);
 		/* Map the page */
 		vm_mappage(kstack_pg, x, dir, 0x0, 0x0);
 	}
+
 	vm_pop_pgdir(save);
 }
 
-void vm_set_swap_stack(pgdir* dir, pgdir* swap)
+void vm_set_swap_stack(pgdir_t* dir, pgdir_t* swap)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 	/* Make sure the swap stack is clear */
 	vm_clear_swap_stack(dir);
 
 	/* Map the new pages in */
-	uintptr_t start = PGROUNDDOWN(SVM_KSTACK_S);
-	uintptr_t end = PGROUNDUP(SVM_KSTACK_E);
-	uintptr_t pg;
+	vmpage_t start = PGROUNDDOWN(SVM_KSTACK_S);
+	vmpage_t end = PGROUNDUP(SVM_KSTACK_E);
+	vmpage_t pg;
 	for(pg = start;pg < end;pg += PGSIZE)
 	{
-		uintptr_t src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0, 0);
+		vmpage_t src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0, 0);
 		vm_mappage(src, pg, dir, 
 			VM_DIR_READ | VM_DIR_WRIT, 
 			VM_TBL_READ | VM_TBL_WRIT);
@@ -551,22 +576,22 @@ void vm_set_swap_stack(pgdir* dir, pgdir* swap)
 	vm_pop_pgdir(save);	
 }
 
-void vm_clear_swap_stack(pgdir* dir)
+void vm_clear_swap_stack(pgdir_t* dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
-	uintptr_t start = PGROUNDDOWN(SVM_KSTACK_S);
-	uintptr_t end = PGROUNDUP(SVM_KSTACK_E);
-	uintptr_t pg;
+	vmpage_t start = PGROUNDDOWN(SVM_KSTACK_S);
+	vmpage_t end = PGROUNDUP(SVM_KSTACK_E);
+	vmpage_t pg;
 	for(pg = start;pg < end;pg += PGSIZE)
 		vm_unmappage(pg, dir);
 
 	vm_pop_pgdir(save);
 }
 
-void vm_free_uvm(pgdir* dir)
+void vm_free_uvm(pgdir_t* dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
 	int x;
 	for(x = 0;x < (UVM_KVM_S >> 22);x++)
@@ -574,84 +599,84 @@ void vm_free_uvm(pgdir* dir)
 		/* See if the table is allocated */
 		if(!dir[x]) continue;
 
-		uintptr_t* table = (uintptr_t*)PGROUNDDOWN(dir[x]);
+		pgtbl_t* table = (pgtbl_t*)PGROUNDDOWN(dir[x]);
 
 		/* Table is allocated, free entries */
 		int entry;
-		for(entry = 0;entry < PGSIZE / sizeof(pgtbl);entry++)
+		for(entry = 0;entry < PGSIZE / sizeof(pgtbl_t);entry++)
 		{
 			if(!table[entry]) continue;
 			pfree(table[entry]);
 		}
 
 		/* Free the table itself */
-		pfree((uintptr_t)table);
+		pfree((vmpage_t)table);
 		dir[x] = 0x0; /* Unset directory entry */
 	}
 
 	vm_pop_pgdir(save);
 }
 
-void freepgdir(pgdir* dir)
+void freepgdir(pgdir_t* dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 	/* Free user pages */
 	vm_free_uvm(dir);
 
 	/* Unmap kernel stack */
-	uintptr_t pg;
+	vmpage_t pg;
 	for(pg = PGROUNDDOWN(UVM_KSTACK_S);
 			pg < PGROUNDUP(UVM_KSTACK_E);
 			pg += PGSIZE)
 	{
-		uintptr_t freed = vm_unmappage(pg, dir);
+		vmpage_t freed = vm_unmappage(pg, dir);
 		if(freed) pfree(freed);
 	}
 
 	/* Free directory pages */
-	uintptr_t x;
+	vmpage_t x;
 	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
 		if(dir[x]) pfree(dir[x]);
 
 	/* free directory */
-	pfree((uint)dir);
+	pfree((vmpage_t)dir);
 
 	vm_pop_pgdir(save);
 }
 
-void freepgdir_struct(pgdir* dir)
+void vm_freepgdir_struct(pgdir_t* dir)
 {
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
 	/* Free directory pages */
-	uintptr_t x;
+	vmpage_t x;
 	for(x = 0;x < (PGSIZE / sizeof(uint));x++)
 		if(dir[x]) pfree(dir[x]);
 
 	/* free directory */
-	pfree((uintptr_t)dir);
+	pfree((vmpage_t)dir);
 
 	vm_pop_pgdir(save);
 }
 
-int vm_print_pgdir(uintptr_t last_page, pgdir* dir)
+int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 {
 	int pgs = 0;
-	uintptr_t start = 0;
-	uintptr_t end = PGROUNDDOWN(VM_MAX);
+	vmpage_t start = 0;
+	vmpage_t end = PGROUNDDOWN(VM_MAX);
 	if(last_page) end = last_page;
 
 	int printed = 0;
 	for(;start < end;start += PGSIZE)
 	{
-		uintptr_t page = vm_findpg(start, 0, dir, 0, 0);
+		vmpage_t page = vm_findpg(start, 0, dir, 0, 0);
 
 		/* If the page is valid, print it out */
 		if(page)
 		{
 			cprintf("0x%x -> 0x%x || ", start, PGROUNDDOWN(page));
-			pgflags_t tbl_flags = vm_findtblflags(start, dir);
-			pgflags_t pg_flags = vm_findpgflags(start, dir);
+			vmflags_t tbl_flags = vm_findtblflags(start, dir);
+			vmflags_t pg_flags = vm_findpgflags(start, dir);
 			
 			if(tbl_flags & PGDIR_PRSNT)
 				cprintf("PRSNT ");
@@ -686,6 +711,10 @@ int vm_print_pgdir(uintptr_t last_page, pgdir* dir)
                                 cprintf("DIRTY ");
 			if(pg_flags & PGTBL_GLOBL)
                                 cprintf("GLOBL ");
+			if(tbl_flags & PGTBL_SHARE)
+				cprintf("SHARE ");
+			if(tbl_flags & PGTBL_CONWR)
+				cprintf("CONWR ");
 
 			cprintf("\n");
 			printed = 1;

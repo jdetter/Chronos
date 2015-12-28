@@ -318,8 +318,8 @@ int sig_handle(void)
 		/* set the return address to the sig handler */
 		rproc->tf->eip = (uint)sig_handler;
 
-		pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
-		pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
+		vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+		vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
 
 		/* Push argument (sig) */
 		stack -= sizeof(int);

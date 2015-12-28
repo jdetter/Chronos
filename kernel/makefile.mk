@@ -21,6 +21,7 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
+	vm/vm_share \
 	cpu \
 	pipe \
 	fsman \
@@ -53,7 +54,6 @@ KERNEL_DRIVERS := \
 	serial \
 	console \
         ext2 \
-	ramfs \
 	cmos \
 	rtc \
 	diskio \
@@ -61,6 +61,7 @@ KERNEL_DRIVERS := \
 	raid
 
 #        vsfs 
+#	ramfs \
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
@@ -147,7 +148,7 @@ BOOT_STAGE2_SECTORS := 140
 
 # What should be linked into the second stage boot loader?
 # NOTE: keep this list minimal!
-BOOT_STAGE2_DEPS := kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.o kernel/arch/$(BUILD_ARCH)/vm/asm.o kernel/cpu.o kernel/arch/$(BUILD_ARCH)/vm/pgdir.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
+BOOT_STAGE2_DEPS := kernel/boot/bootc.o kernel/boot/bootc_jmp.o  kernel/arch/$(BUILD_ARCH)/vm/asm.o kernel/cpu.o kernel/arch/$(BUILD_ARCH)/vm/pgdir.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
 
 
 .PHONY: kernel-symbols
@@ -170,6 +171,7 @@ kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) 
 	# Build special files for boot stage 2
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/ext2.o kernel/drivers/ext2.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/cache.o kernel/cache/cache.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/vm_alloc.o kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
 	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o $(BOOT_STAGE2_DEPS)
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
@@ -195,3 +197,6 @@ kernel/%.o: kernel/%.c
 
 kernel/drivers/%.o: kernel/drivers/%.c
 	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) $(BUILD_CFLAGS) -c -o $@ $<
+
+kernel/boot/%.o: kernel/%.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o $< $@

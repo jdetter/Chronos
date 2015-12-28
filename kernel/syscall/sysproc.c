@@ -46,7 +46,7 @@ int sys_fork(void)
 	new_proc->tid = 0; /* Not a thread */
 	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
-	new_proc->pgdir = (pgdir*) palloc();
+	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 
@@ -247,8 +247,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
-	pgflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
-        pgflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
+	vmflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
+        vmflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
 
 	/* Does the binary look ok? */
 	if(elf_check_binary_path(path))
@@ -266,7 +266,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	slock_acquire(&ptable_lock);
 
 	/* Create a temporary address space */
-	pgdir* tmp_pgdir = (pgdir*)palloc();
+	pgdir_t* tmp_pgdir = (pgdir_t*)palloc();
 
 	uint env_start = PGROUNDUP(UVM_TOP);
 	int null_buff = 0x0;
@@ -434,7 +434,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
         memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 
 	/* Free temporary space */
-	freepgdir_struct(tmp_pgdir);
+	vm_freepgdir_struct(tmp_pgdir);
 
 	 /* Reset all ticks */
         rproc->user_ticks = 0;

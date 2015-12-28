@@ -22,7 +22,6 @@
 #include "tty.h"
 #include "chronos.h"
 #include "proc.h"
-#include "ramfs.h"
 #include "panic.h"
 #include "ext2.h"
 #include "lwfs.h"

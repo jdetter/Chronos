@@ -95,8 +95,8 @@ int trap_pf(uintptr_t address)
 #ifdef DEBUG
 	cprintf("Fault address: 0x%x\n", address);
 #endif
-	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
 
 	uintptr_t stack_bottom = rproc->stack_end;
 	uintptr_t stack_tolerance = stack_bottom - STACK_TOLERANCE * PGSIZE;

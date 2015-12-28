@@ -212,10 +212,6 @@
 #define PGDIRINDEX(pg) ((PGROUNDDOWN(pg) >> 22) & 0x3FF)
 #define PGTBLINDEX(pg) ((PGROUNDDOWN(pg) >> 12) & 0x3FF)
 
-/** Memory mapped file systems
- *  < Will be updated when implemented >
- */
-
 #define MKVMSEG_NULL {0, 0, 0, 0, 0, 0}
 #define MKVMSEG(priv, exe_data, read_write, base, limit) \
         {((limit >> 12) & 0xFFFF),                         \
@@ -231,13 +227,20 @@
 #define TSS_AVAILABILITY	0x10
 #define TSS_DEFAULT_FLAGS	0x09
 
+/** Allow vm sharing */
+#ifndef __BOOT_STRAP__
+#define _ALLOW_VM_SHARE_
+#endif
+
 #ifndef __VM_ASM_ONLY__
 
 #include <stdint.h>
 
-typedef unsigned int pgflags_t;
-typedef uint32_t pgdir;
-typedef uint32_t pgtbl;
+typedef unsigned int vmflags_t;
+typedef uintptr_t pgdir_t;
+typedef uintptr_t pgtbl_t;
+typedef uintptr_t vmpage_t;
+typedef uintptr_t pypage_t;
 
 struct vm_segment_descriptor
 {
@@ -254,14 +257,14 @@ struct vm_segment_descriptor
  * page directory. Returns the correcponding flags for an i386 page
  * table.
  */
-pgflags_t vm_dir_flags(pgflags_t flags);
+vmflags_t vm_dir_flags(vmflags_t flags);
 
 /**
  * Turn generic flags for a page table into flags for an i386
  * page table. Returns the corresponding flags for an i386 page
  * table.
  */
-pgflags_t vm_tbl_flags(pgflags_t flags);
+vmflags_t vm_tbl_flags(vmflags_t flags);
 
 #endif
 

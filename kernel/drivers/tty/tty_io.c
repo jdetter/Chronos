@@ -425,7 +425,7 @@ void tty_signal_io_ready(tty_t t)
 	 * extremely hard to reproduce.
 	 */
 
-	pgdir* curr_dir = vm_curr_pgdir();
+	pgdir_t* curr_dir = vm_curr_pgdir();
 	int same_vm = 0;
 	if(p->pgdir == curr_dir)
 		same_vm = 1;

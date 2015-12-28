@@ -500,7 +500,7 @@ int sys_mprotect(void)
 
 	size_t x;
 	for(x = start;x < end;x += PGSIZE)
-		vm_pgflags(x, rproc->pgdir, flags);
+		vm_setpgflags(x, rproc->pgdir, flags);
 
 	return 0;
 }

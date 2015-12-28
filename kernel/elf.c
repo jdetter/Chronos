@@ -20,7 +20,7 @@ int elf_check_binary_path(const char* path)
 	return result;
 }
 
-uintptr_t elf_load_binary_path(const char* path, pgdir* pgdir, 
+uintptr_t elf_load_binary_path(const char* path, pgdir_t* pgdir, 
 	uintptr_t* start, uintptr_t* end, int user)
 {
         inode ino = fs_open(path, O_RDONLY, 0644, 0x0, 0x0);
@@ -54,7 +54,7 @@ int elf_check_binary_inode(inode ino)
 	return 0;
 }
 
-uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* seg_start, 
+uintptr_t elf_load_binary_inode(inode ino, pgdir_t* pgdir, uintptr_t* seg_start, 
 		uintptr_t* seg_end, int user)
 {
 	if(!ino) return 0;
@@ -101,8 +101,8 @@ uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* seg_start,
                         size_t mem_sz = curr_header.mem_sz;
 			/* Paging: allocate user pages */
 			
-			pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-			pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+			vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+			vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 			
 			if(user) 
 			{

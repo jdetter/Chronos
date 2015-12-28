@@ -1,6 +1,11 @@
 #ifndef _ELF_H_
 #define _ELF_H_
 
+#include <stdint.h>
+#include "stdlock.h"
+#include "fsman.h"
+#include "vm.h"
+
 #define ELF_MAGIC {0x7F, 'E', 'L', 'F'}
 
 /* os_abi options*/
@@ -34,26 +39,26 @@
 
 struct elf32_header
 {
-	uint_32  magic; /* This should be equal to ELF_MAGIC */
-	uint_8 exe_class; /* 1 = 32bit, 2 = 64bit*/
-	uint_8 endianess; /* 1 = little, 2 = big */
-	uint_8 version; /* Set to 1 */
-	uint_8 os_abi; /* This is often 0, reguardless of the target platform.*/
-	uint_32 padding_low_abi; /* Further defines abi */
-	uint_32  padding_high;
-	uint_16 e_type; /* See e_type definitions above */	
-	uint_16 e_machine; /* See e_machine definitions above */	
-	uint_32 e_version; /* Set to 1 */	
-	uint_32 e_entry; /* Entry point where the program should start */	
-	uint_32 e_phoff; /* Points to the start of the program header table */	
-	uint_32 e_shoff; /* Points to the start of the section header table */
-	uint_32 e_flags; /* Architecture dependant */
-	uint_16 e_ehsize; /* The size in bytes of this header */
-	uint_16 e_phentsize; /* The size of a program header table entry */
-	uint_16 e_phnum; /* Number of program headers */
-	uint_16 e_shentsize; /* The size of a section header table entry */
-	uint_16 e_shnum; /* Contains the number of sections  */
-	uint_16 e_shstrndx; /* pointer to section names */
+	uint32_t  magic; /* This should be equal to ELF_MAGIC */
+	uint8_t exe_class; /* 1 = 32bit, 2 = 64bit*/
+	uint8_t endianess; /* 1 = little, 2 = big */
+	uint8_t version; /* Set to 1 */
+	uint8_t os_abi; /* This is often 0, reguardless of the target platform.*/
+	uint32_t padding_low_abi; /* Further defines abi */
+	uint32_t padding_high;
+	uint16_t e_type; /* See e_type definitions above */	
+	uint16_t e_machine; /* See e_machine definitions above */	
+	uint32_t e_version; /* Set to 1 */	
+	uint32_t e_entry; /* Entry point where the program should start */	
+	uint32_t e_phoff; /* Points to the start of the program header table */	
+	uint32_t e_shoff; /* Points to the start of the section header table */
+	uint32_t e_flags; /* Architecture dependant */
+	uint16_t e_ehsize; /* The size in bytes of this header */
+	uint16_t e_phentsize; /* The size of a program header table entry */
+	uint16_t e_phnum; /* Number of program headers */
+	uint16_t e_shentsize; /* The size of a section header table entry */
+	uint16_t e_shnum; /* Contains the number of sections  */
+	uint16_t e_shstrndx; /* pointer to section names */
 };
 
 /* program header type options */
@@ -75,19 +80,15 @@ struct elf32_header
 
 struct elf32_program_header
 {
-	uint_32 type; /* The type of this program header */
-	uint_32 offset; /* The offset in the file where this segment starts */
-	uint_32 virt_addr; /* The virtual address where this segments is loaded */
-	uint_32 phy_addr; /* Physical addressing is not relevant. */
-	uint_32 file_sz; /* The size of this segment in the file */
-	uint_32 mem_sz; /* The size of this segment in memory. */
-	uint_32 flags; /* Read, Write Execute. See above. */
-	uint_32 align; /* The memory alignment requrired by this segment. */
+	uint32_t type; /* The type of this program header */
+	uint32_t offset; /* The offset in the file where this segment starts */
+	uint32_t virt_addr; /* The virtual address where this segments is loaded */
+	uint32_t phy_addr; /* Physical addressing is not relevant. */
+	uint32_t file_sz; /* The size of this segment in the file */
+	uint32_t mem_sz; /* The size of this segment in memory. */
+	uint32_t flags; /* Read, Write Execute. See above. */
+	uint32_t align; /* The memory alignment requrired by this segment. */
 };
-
-#include "stdlock.h"
-#include "fsman.h"
-#include "vm.h"
 
 /**
  * Check the binary denoted by the given path. Returns 0 if the binary 
@@ -107,7 +108,7 @@ int elf_check_binary_path(const char* path);
  * the code segment (high) is returned in end if it is not null. Returns 0
  * on success, non zero otherwise.
  */
-uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* start, 
+uintptr_t elf_load_binary_inode(inode ino, pgdir_t* pgdir, uintptr_t* start, 
 	uintptr_t* end, int user);
 
 /**
@@ -116,7 +117,7 @@ uintptr_t elf_load_binary_inode(inode ino, pgdir* pgdir, uintptr_t* start,
  * the code segment (high) is returned in end if it is not null. Returns 0
  * on success, non zero otherwise. DEPRICATED USE load_binary_inode.
  */
-uintptr_t elf_load_binary_path(const char* path, pgdir* pgdir, 
+uintptr_t elf_load_binary_path(const char* path, pgdir_t* pgdir, 
 	uintptr_t* start, uintptr_t* end, int user);
 
 #endif
