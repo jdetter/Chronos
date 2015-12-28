@@ -6,7 +6,6 @@ KERNEL_OBJECTS := \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
-	arch/$(BUILD_ARCH)/vm/vm_share \
 	cache/diskcache \
 	cache/cacheman \
 	cache/cache \
@@ -22,6 +21,7 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
+	vm/vm_share \
 	cpu \
 	pipe \
 	fsman \

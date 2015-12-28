@@ -206,6 +206,7 @@
 
 /* Some page table definitions */
 #define PGSIZE 4096
+#define PGSHIFT 12
 #define PGROUNDDOWN(pg) ((pg) & ~(PGSIZE - 1))  
 #define PGROUNDUP(pg)   ((pg + PGSIZE - 1) & ~(PGSIZE - 1))
 
@@ -257,14 +258,14 @@ struct vm_segment_descriptor
  * page directory. Returns the correcponding flags for an i386 page
  * table.
  */
-vmflags_t vm_dir_flags(vmflags_t flags);
+// vmflags_t vm_dir_flags(vmflags_t flags);
 
 /**
  * Turn generic flags for a page table into flags for an i386
  * page table. Returns the corresponding flags for an i386 page
  * table.
  */
-vmflags_t vm_tbl_flags(vmflags_t flags);
+// vmflags_t vm_tbl_flags(vmflags_t flags);
 
 #endif
 

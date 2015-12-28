@@ -59,9 +59,11 @@ int __check_paging__(void);
 extern pgdir_t* k_pgdir;
 
 /**
- * Translate generic pgdir flags to i386 specific flags.
+ * Turn generic flags for a page directory into flags for an i386
+ * page directory. Returns the correcponding flags for an i386 page
+ * table.
  */
-vmflags_t vm_dir_flags(vmflags_t flags)
+static vmflags_t vm_dir_flags(vmflags_t flags)
 {
 	vmflags_t result = 0;
         if(flags & VM_DIR_ACSS)
@@ -83,9 +85,38 @@ vmflags_t vm_dir_flags(vmflags_t flags)
 }
 
 /**
- * Translate generic pgtbl flags to i386 specific flags.
+ * Turn i386 flags for a page directory into generic vm flags.
  */
-vmflags_t vm_tbl_flags(vmflags_t flags)
+static vmflags_t vm_gen_dir_flags(vmflags_t flags)
+{
+        vmflags_t result = 0;
+        if(flags & PGDIR_ACESS)
+		result |= VM_DIR_ACSS;
+        if(flags & PGDIR_CACHD)
+                result |= VM_DIR_CACH;
+        if(flags & VM_DIR_WRTR)
+                result |= VM_DIR_WRTR;
+        if(flags & VM_DIR_USRP)
+                result |= VM_DIR_USRP;
+        if(flags & VM_DIR_WRIT)
+                result |= VM_DIR_WRIT;
+        if(flags & VM_DIR_PRES)
+                result |= VM_DIR_PRES;
+        if(flags & VM_DIR_LRGP)
+                result |= VM_DIR_LRGP;
+
+	/* Read cannot be disabled on i386 . */
+	result |= VM_DIR_READ;
+
+        return result;
+}
+
+/**
+ * Turn generic flags for a page table into flags for an i386
+ * page table. Returns the corresponding flags for an i386 page
+ * table.
+ */
+static vmflags_t vm_tbl_flags(vmflags_t flags)
 {
         vmflags_t result = 0;
         if(flags & VM_TBL_GLBL)
@@ -110,6 +141,38 @@ vmflags_t vm_tbl_flags(vmflags_t flags)
 		result |= PGTBL_CONWR;
 
 	return result;
+}
+
+static vmflags_t vm_gen_tbl_flags(vmflags_t flags)
+{
+        vmflags_t result = 0;
+        if(flags & PGTBL_GLOBL)
+                result |= VM_TBL_GLBL;
+        if(flags & PGTBL_DIRTY)
+                result |= VM_TBL_DRTY;
+        if(flags & PGTBL_ACESS)
+                result |= VM_TBL_ACSS;
+        if(flags & PGTBL_CACHD)
+                result |= VM_TBL_CACH;
+        if(flags & PGTBL_WRTHR)
+                result |= VM_TBL_WRTH;
+        if(flags & PGTBL_USERP)
+                result |= VM_TBL_USRP;
+        if(flags & PGTBL_WRITE)
+                result |= VM_TBL_WRIT;
+        if(flags & PGTBL_PRSNT)
+                result |= VM_TBL_PRES;
+        if(flags & PGTBL_SHARE)
+                result |= VM_TBL_SHAR;
+        if(flags & PGTBL_CONWR)
+                result |= VM_TBL_COWR;
+
+	/* All pages are read enabled in i386 */
+	flags |= VM_TBL_READ;
+	/* All pages are also executable in i386 */
+	flags |= VM_TBL_EXEC;
+	
+        return result;
 }
 
 pgdir_t* vm_push_pgdir(void)
@@ -282,7 +345,7 @@ static vmpage_t vm_findpg_native(vmpage_t virt, int create, pgdir_t* dir,
         return PGROUNDDOWN(page);
 }
 
-vmpage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
+pypage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
         vmflags_t dir_flags, vmflags_t tbl_flags)
 {
 	dir_flags = vm_dir_flags(DEFAULT_DIRFLAGS | dir_flags);
@@ -290,34 +353,39 @@ vmpage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
 	return vm_findpg_native(virt, create, dir, dir_flags, tbl_flags);
 }
 
-vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir)
+static vmflags_t vm_findpgflags_native(vmpage_t virt, pgdir_t* dir)
 {
-        pgdir_t* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
 
         virt = PGROUNDDOWN(virt);
-	int dir_index = PGDIRINDEX(virt);
-	int tbl_index = PGTBLINDEX(virt);
+        int dir_index = PGDIRINDEX(virt);
+        int tbl_index = PGTBLINDEX(virt);
 
-	if(!dir[dir_index])
-	{
-		vm_pop_pgdir(save);
-		return 0;
-	}
+        if(!dir[dir_index])
+        {
+                vm_pop_pgdir(save);
+                return 0;
+        }
 
-	pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
-	vmpage_t page;
-	if(!(page = tbl[tbl_index]))
-	{
-		vm_pop_pgdir(save);
-		return 0;
-	}
+        pgtbl_t* tbl = (pgtbl_t*)(PGROUNDDOWN(dir[dir_index]));
+        vmpage_t page;
+        if(!(page = tbl[tbl_index]))
+        {
+                vm_pop_pgdir(save);
+                return 0;
+        }
 
-	vm_pop_pgdir(save);
+        vm_pop_pgdir(save);
 
 	return page & (PGSIZE - 1);
 }
 
-vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir)
+vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir)
+{
+	return vm_gen_tbl_flags(vm_findpgflags_native(virt, dir));
+}
+
+static vmflags_t vm_findtblflags_native(vmpage_t virt, pgdir_t* dir)
 {
         pgdir_t* save = vm_push_pgdir();
 
@@ -331,6 +399,11 @@ vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir)
         }
 	
 	return dir[dir_index] & (PGSIZE - 1);
+}
+
+vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir)
+{
+	return vm_gen_dir_flags(vm_findtblflags_native(virt, dir));
 }
 
 int vm_setpgflags(vmpage_t virt, pgdir_t* dir, vmflags_t pg_flags)
@@ -467,8 +540,8 @@ int vm_copy_kvm(pgdir_t* dir)
 	for(x = UVM_KVM_S;x < PGROUNDDOWN(UVM_KVM_E); x+= PGSIZE)
 	{
 		vmpage_t page = vm_findpg(x, 0, k_pgdir, 0, 0);
-		vmflags_t pg_flags = vm_findpgflags(x, k_pgdir);
-		vmflags_t tbl_flags = vm_findtblflags(x, k_pgdir);
+		vmflags_t pg_flags = vm_findpgflags_native(x, k_pgdir);
+		vmflags_t tbl_flags = vm_findtblflags_native(x, k_pgdir);
 		if(!page) continue;
 
 		if(vm_mappage_native(page, x, dir, tbl_flags, pg_flags))
@@ -508,8 +581,8 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 	{
 		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
 		if(!src_page) continue;
-		vmflags_t src_pgflags = vm_findpgflags(x, src_dir);
-		vmflags_t src_tblflags = vm_findtblflags(x, src_dir);
+		vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
+		vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
 		
 		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
 			src_tblflags, src_pgflags);
@@ -524,8 +597,8 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		/* Remove old mapping */
 		vm_unmappage(x, dst_dir);
 		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
-		vmflags_t src_pgflags = vm_findpgflags(x, src_dir);
-		vmflags_t src_tblflags = vm_findtblflags(x, src_dir);
+		vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
+		vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
 		if(!src_page) continue;
 
 		/* Create and map new page */
@@ -675,8 +748,10 @@ int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 		if(page)
 		{
 			cprintf("0x%x -> 0x%x || ", start, PGROUNDDOWN(page));
-			vmflags_t tbl_flags = vm_findtblflags(start, dir);
-			vmflags_t pg_flags = vm_findpgflags(start, dir);
+			vmflags_t tbl_flags = 
+				vm_findtblflags_native(start, dir);
+			vmflags_t pg_flags = 
+				vm_findpgflags_native(start, dir);
 			
 			if(tbl_flags & PGDIR_PRSNT)
 				cprintf("PRSNT ");

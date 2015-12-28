@@ -161,11 +161,20 @@ vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir);
  * is 0, and the page is not found, return 0. Otherwise, return the address
  * of the mapped page.
  */
-vmpage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
+pypage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
 	vmflags_t dir_flags, vmflags_t tbl_flags);
 
 
+/**
+ * Get the flags for the table that this page lives in.
+ */
 vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir);
+
+/**
+ * Get the flags for the directory that this page lives in. 
+ */
+vmflags_t vm_finddirflags(vmpage_t virt, pgdir_t* dir);
+
 /**
  * Returns the flags for a virtual memory address. Returns -1 if the
  * page is not mapped in memory. 

@@ -104,16 +104,30 @@ void* mmap(void* hint, uint sz, int protection,
 {
 	/* Acquire locks */
 	slock_acquire(&rproc->mem_lock);
-	uint pagestart = 0;
+	vmpage_t pagestart = 0;
+	int hint_okay = 1;
+	if((uintptr_t)hint != PGROUNDDOWN((uintptr_t)hint))
+		hint_okay = 0;
 
-	if(flags & MAP_FIXED)
+	/* If a hint is provided and its not okay, return NULL */
+	if(hint && !hint_okay)
+		return NULL;
+
+	/* acquire the memory lock */	
+	slock_acquire(&rproc->mem_lock);
+
+	if(hint_okay && (flags & MAP_FIXED))
 	{
-		uint addr = (uint)hint;
+		vmpage_t addr = PGROUNDDOWN((vmpage_t)hint);
 		/* Is the address appropriate? */
 		if(addr >= PGROUNDUP(rproc->heap_end) + PGSIZE && 
 				addr < rproc->mmap_start && 
 				addr + sz < rproc->mmap_start)
 			pagestart = addr;
+		else {
+			slock_release(&rproc->mem_lock);
+			return NULL;
+		}
 	} else {
         	pagestart = (uint)mmap_find_space(sz);
 	}
@@ -121,18 +135,41 @@ void* mmap(void* hint, uint sz, int protection,
 	if(!pagestart) 
 	{
 		slock_release(&rproc->mem_lock);
-        	slock_release(&ptable_lock);
-		return 0; /* Not enough space */
+		return NULL;
 	}
+
 	if(pagestart < rproc->mmap_end)
 		rproc->mmap_end = pagestart;
 
 	vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
-	vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ;
+	vmflags_t tbl_flags = 0;
 	if(protection & PROT_WRITE)
 		tbl_flags |= VM_TBL_WRIT;
+	if(protection & PROT_EXEC)
+		tbl_flags |= VM_TBL_EXEC;
+	if(protection & PROT_READ)
+		tbl_flags |= VM_TBL_READ;
+	
+	if(!protection)
+	{
+		slock_release(&rproc->mem_lock);
+		return NULL;
+	}
+
+	/* Enable default flags */
+	tbl_flags |= VM_TBL_USRP | VM_TBL_READ;
 
         vm_mappages(pagestart, sz, rproc->pgdir, dir_flags, tbl_flags);
+
+	/* Is this mapping shared? */
+	if(flags & MAP_SHARED)
+	{
+		if(vm_pgsshare(pagestart, sz, rproc->pgdir))
+		{
+			slock_release(&rproc->mem_lock);
+			return NULL;
+		}
+	}
 
 	/* Release locks */
 	slock_release(&rproc->mem_lock);
