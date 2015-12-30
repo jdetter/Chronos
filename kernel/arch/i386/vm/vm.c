@@ -37,6 +37,7 @@ extern slock_t global_mem_lock;
 int vm_init(void)
 {
 	slock_init(&global_mem_lock);
+	vm_share_init(); /* Setup shared memory */
 
 	/** 
 	 * The boot loader has handled all of the messy work for us.

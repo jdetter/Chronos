@@ -94,15 +94,15 @@ static vmflags_t vm_gen_dir_flags(vmflags_t flags)
 		result |= VM_DIR_ACSS;
         if(flags & PGDIR_CACHD)
                 result |= VM_DIR_CACH;
-        if(flags & VM_DIR_WRTR)
+        if(flags & PGDIR_WRTHR)
                 result |= VM_DIR_WRTR;
-        if(flags & VM_DIR_USRP)
+        if(flags & PGDIR_USERP)
                 result |= VM_DIR_USRP;
-        if(flags & VM_DIR_WRIT)
+        if(flags & PGDIR_WRITE)
                 result |= VM_DIR_WRIT;
-        if(flags & VM_DIR_PRES)
+        if(flags & PGDIR_PRSNT)
                 result |= VM_DIR_PRES;
-        if(flags & VM_DIR_LRGP)
+        if(flags & PGDIR_LGPGS)
                 result |= VM_DIR_LRGP;
 
 	/* Read cannot be disabled on i386 . */
@@ -568,6 +568,21 @@ void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		memmove((void*)PGROUNDDOWN(dst_dir[x]), 
 				(void*)PGROUNDDOWN(src_dir[x]), 
 				PGSIZE);
+
+#ifdef _ALLOW_VM_SHARE_
+		pgtbl_t* table = (pgtbl_t*)(PGROUNDDOWN(dst_dir[x]));
+		/* Find shared pages */
+		int pg_index;
+		for(pg_index = 0;pg_index < PGSIZE / sizeof(int);pg_index++)
+		{
+			unsigned int entry = table[pg_index];
+			if(entry & PGTBL_SHARE)
+			{
+				/* Add a reference count */
+				vm_pgshare(x, dst_dir);
+			}
+		}
+#endif
 	}
 
 	vm_pop_pgdir(save);
@@ -583,9 +598,22 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		if(!src_page) continue;
 		vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
 		vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
-		
+
+#ifdef _ALLOW_VM_SHARE_
+		/* Is this page shared? */
+		if(src_pgflags & PGTBL_SHARE)
+		{
+			if(vm_mappage_native(src_page, x, dst_dir, 
+					src_pgflags, src_tblflags))
+				panic("Could not share page!\n");
+			/* Add a reference count */
+			vm_pgshare(x, dst_dir);
+			continue;
+		}
+#endif
+
 		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
-			src_tblflags, src_pgflags);
+				src_tblflags, src_pgflags);
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
 
@@ -603,7 +631,7 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 
 		/* Create and map new page */
 		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
-			src_tblflags, src_pgflags);
+				src_tblflags, src_pgflags);
 		/* Copy the page contents */
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
@@ -642,8 +670,8 @@ void vm_set_swap_stack(pgdir_t* dir, pgdir_t* swap)
 	{
 		vmpage_t src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0, 0);
 		vm_mappage(src, pg, dir, 
-			VM_DIR_READ | VM_DIR_WRIT, 
-			VM_TBL_READ | VM_TBL_WRIT);
+				VM_DIR_READ | VM_DIR_WRIT, 
+				VM_TBL_READ | VM_TBL_WRIT);
 	}
 
 	vm_pop_pgdir(save);	
@@ -752,7 +780,7 @@ int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 				vm_findtblflags_native(start, dir);
 			vmflags_t pg_flags = 
 				vm_findpgflags_native(start, dir);
-			
+
 			if(tbl_flags & PGDIR_PRSNT)
 				cprintf("PRSNT ");
 			if(tbl_flags & PGDIR_WRITE)
@@ -767,28 +795,28 @@ int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 				cprintf("ACESS ");
 			if(tbl_flags & PGDIR_LGPGS)
 				cprintf("LGPGS ");
-			
+
 			cprintf("|| ");
 
 			if(pg_flags & PGTBL_PRSNT)
-                                cprintf("PRSNT ");
+				cprintf("PRSNT ");
 			if(pg_flags & PGTBL_WRITE)
-                                cprintf("WRITE ");
+				cprintf("WRITE ");
 			if(pg_flags & PGTBL_USERP)
-                                cprintf("USERP ");
+				cprintf("USERP ");
 			if(pg_flags & PGTBL_WRTHR)
-                                cprintf("WRTHR ");
+				cprintf("WRTHR ");
 			if(pg_flags & PGTBL_CACHD)
-                                cprintf("CACHD ");
+				cprintf("CACHD ");
 			if(pg_flags & PGTBL_ACESS)
-                                cprintf("ACESS ");
+				cprintf("ACESS ");
 			if(pg_flags & PGTBL_DIRTY)
-                                cprintf("DIRTY ");
+				cprintf("DIRTY ");
 			if(pg_flags & PGTBL_GLOBL)
-                                cprintf("GLOBL ");
-			if(tbl_flags & PGTBL_SHARE)
+				cprintf("GLOBL ");
+			if(pg_flags & PGTBL_SHARE)
 				cprintf("SHARE ");
-			if(tbl_flags & PGTBL_CONWR)
+			if(pg_flags & PGTBL_CONWR)
 				cprintf("CONWR ");
 
 			cprintf("\n");

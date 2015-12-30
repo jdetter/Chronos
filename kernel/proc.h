@@ -197,4 +197,9 @@ void sched(void);
  */
 void scheduler(void);
 
+/**
+ * Debug function
+ */
+void proc_print_table(void);
+
 #endif

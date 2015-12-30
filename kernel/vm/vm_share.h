@@ -33,4 +33,9 @@ int vm_pgunshare(pypage_t page);
  */
 int vm_pgsshare(vmpage_t base, size_t sz, pgdir_t* pgdir);
 
+/**
+ * DEBUG FUNCTION: print the table and hashmap.
+ */
+void vm_share_print(void);
+
 #endif

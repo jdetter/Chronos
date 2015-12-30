@@ -152,6 +152,11 @@ void main_stack(void)
         if(tty_code_log_init())
                 cprintf("[FAIL]\n");
         else cprintf("[ OK ]\n");
+
+	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(0), "tty0.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
 #if 0
         cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
         if(tty_enable_logging(tty_find(0), "tty0-new.txt"))

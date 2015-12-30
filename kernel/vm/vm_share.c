@@ -8,7 +8,7 @@
 #include "panic.h"
 
 #define PARANOID
-#define DEBUG
+// #define DEBUG
 #define MAX_SHARE 16384
 #define SHARE_HASHMAP 128
 
@@ -27,6 +27,37 @@ static vm_share_t share_table[MAX_SHARE];
 static int table_clock;
 
 static vm_share_t* share_hashmap[SHARE_HASHMAP];
+
+void vm_share_print(void)
+{
+	cprintf("vV VM_SHARE_PRINTOUT Vv (TAB)\n");
+	int x;
+	for(x = 0;x < MAX_SHARE;x++)
+	{
+		if(share_table[x].valid)
+		{
+			pypage_t a = share_table[x].page;
+			int b = share_table[x].refs;
+			cprintf("|0x%x|%d|\n", a, b);
+		}
+	}
+	
+	cprintf("vV VM_SHARE_HASHMAP Vv (HASHMAP)\n");
+	for(x = 0;x < SHARE_HASHMAP;x++)
+	{
+		if(!share_hashmap[x]) continue;
+		
+		cprintf("Hash %d\n", x);
+		vm_share_t* curr = share_hashmap[x];
+		while(curr)
+		{
+			cprintf("|0x%x|%d|\n",
+				curr->page, curr->refs);
+			curr = curr->next;
+		}
+	}
+	
+}
 
 int vm_share_init(void)
 {
@@ -49,7 +80,6 @@ static int vm_share_hash(vmpage_t page)
  */
 static void vm_share_insert(vm_share_t* sh)
 {
-	slock_acquire(&share_table_lock);
 	vmpage_t page = sh->page;
 	page = PGROUNDDOWN(page);
 	int index = vm_share_hash(page);
@@ -57,7 +87,6 @@ static void vm_share_insert(vm_share_t* sh)
 	if(!share_hashmap[index])
 	{
 		share_hashmap[index] = sh;
-		slock_release(&share_table_lock);
 		return;
 	}
 
@@ -72,7 +101,6 @@ static void vm_share_insert(vm_share_t* sh)
 
 	/* Safety: zero the next pointer */
 	sh->next = NULL;
-	slock_release(&share_table_lock);
 }
 
 /**
@@ -80,7 +108,6 @@ static void vm_share_insert(vm_share_t* sh)
  */
 static void vm_share_remove(vm_share_t* sh)
 {
-	slock_acquire(&share_table_lock);
 	pypage_t page = PGROUNDDOWN(sh->page);
 	int index = vm_share_hash(page);
 
@@ -90,7 +117,6 @@ static void vm_share_remove(vm_share_t* sh)
 	{
 		/* we're removing the head */
 		share_hashmap[index] = sh->next;
-		slock_release(&share_table_lock);
 		return;
 	}
 
@@ -100,14 +126,10 @@ static void vm_share_remove(vm_share_t* sh)
 
 	/* Did we find it? */
 	if(!head) 
-	{
-		slock_release(&share_table_lock);
 		return;
-	}
 
 	/* Set this next equal to sh's next */
 	head->next = sh->next;
-	slock_release(&share_table_lock);
 }
 
 /**
@@ -115,7 +137,6 @@ static void vm_share_remove(vm_share_t* sh)
  */
 static vm_share_t* vm_share_lookup(pypage_t page)
 {
-	slock_acquire(&share_table_lock);
 	page = PGROUNDDOWN(page);
 	int index = vm_share_hash(page);
 	vm_share_t* pos = share_hashmap[index];
@@ -123,7 +144,6 @@ static vm_share_t* vm_share_lookup(pypage_t page)
 	while(pos && pos->page != page)
 		pos = pos->next;
 
-	slock_release(&share_table_lock);
 	return pos;
 }
 
@@ -131,9 +151,9 @@ static vm_share_t* vm_share_alloc(void)
 {
 	vm_share_t* result = NULL;
 
-	slock_acquire(&share_table_lock);
 	if(table_clock >= MAX_SHARE || table_clock < 0)
 		table_clock = 0;
+
 	int start = table_clock;
 	do
 	{
@@ -158,20 +178,21 @@ static vm_share_t* vm_share_alloc(void)
 		result = share_table + table_clock;
 	}
 
-	slock_release(&share_table_lock);
-	
 	return result;
 }
 
 static void vm_share_free(vm_share_t* s)
 {
 	/* sanity check */
-	if(!s || s < share_table || s + MAX_SHARE >= share_table) 
+	if(!s || s < share_table || s >= share_table + MAX_SHARE) 
+	{
+#ifdef DEBUG
+		cprintf("vm_share: ERROR: tried to free invalid share.\n");
+#endif
 		return;
+	}
 
-	slock_acquire(&share_table_lock);
 	memset(s, 0, sizeof(vm_share_t));
-	slock_release(&share_table_lock);
 }
 
 int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
@@ -225,8 +246,14 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 #endif
 
 	/* Adjust the page directory flags */
-	vmflags_t flags = vm_findtblflags(page, pgdir);
+	vmflags_t flags = vm_findpgflags(page, pgdir);
+#ifdef DEBUG
+	cprintf("vm_share: before flags: 0x%x\n", flags);
+#endif
 	flags |= VM_TBL_SHAR;
+#ifdef DEBUG
+	cprintf("vm_share: after flags:  0x%x\n", flags);
+#endif
 
 	/* Set the page table flags */
 	if(vm_setpgflags(page, pgdir, flags))
@@ -304,21 +331,19 @@ int vm_isshared(vmpage_t page, pgdir_t* pgdir)
 
 int vm_pgunshare(pypage_t py)
 {
+	py = PGROUNDDOWN(py);
 #ifdef DEBUG
 	cprintf("vm_share: starting unshare for page 0x%x.\n", py);
 #endif
 	slock_acquire(&share_table_lock);
-	py = PGROUNDDOWN(py);
 
 	/* Get the entry from the hash table */
 	vm_share_t* st = vm_share_lookup(py);
 	if(!st)
 	{
-#ifdef DEBUG
-		cprintf("vm_share: ERROR: page not in hashmap\n");
-#endif
+		/* Page isn't shared */
 		slock_release(&share_table_lock);
-		return -1;
+		return 0;
 	}
 
 	/* decrement references */
@@ -329,8 +354,6 @@ int vm_pgunshare(pypage_t py)
 #endif
 	if(st->refs <= 0)
 	{
-		/* Unallocate this page */
-		pfree(py);
 		/* Remove this from the hash table */
 		vm_share_remove(st);
 		/* Free this st */
@@ -346,7 +369,7 @@ int vm_pgunshare(pypage_t py)
 #endif
 
 	slock_release(&share_table_lock);
-	return 0;
+	return st->refs;
 }
 
 int vm_pgsshare(vmpage_t base, size_t sz, pgdir_t* pgdir)

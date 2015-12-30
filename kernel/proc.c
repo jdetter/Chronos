@@ -337,3 +337,27 @@ void scheduler(void)
 		slock_acquire(&ptable_lock);
 	}
 }
+
+void proc_print_table(void)
+{
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
+	{
+		if(!ptable[x].state) continue;
+
+		cprintf("%s %d\n", ptable[x].name, 
+				ptable[x].pid);
+		cprintf("Open Files\n");
+		int fd;
+		for(fd = 0;fd < PROC_MAX_FDS;fd++)
+		{
+			if(!ptable[x].file_descriptors[fd].type)
+				continue;
+			cprintf("\t%d: %s\n", fd, 
+					ptable[x].
+					file_descriptors[fd].path);
+		}
+		cprintf("Working directory: %s\n", 
+				ptable[x].cwd);
+	}
+}

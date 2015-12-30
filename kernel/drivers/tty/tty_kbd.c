@@ -13,6 +13,7 @@
 #include "tty.h"
 #include "proc.h"
 #include "serial.h"
+#include "vm.h"
 
 // #define DEBUG
 // #define KEY_DEBUG
@@ -248,6 +249,22 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	if(!special)
 		cprintf("    + character: %c\n", (char)val);
 #endif
+
+	/** SPECIAL DEBUGGING KEYS HERE */
+	if(ctrl && ascii >= '0' && ascii <= '9' && pressed)
+	{
+		switch(ascii)
+		{
+			case '1':
+				vm_share_print();
+				break;
+			case '2':
+				proc_print_table();
+				break;
+		}
+
+		return 0;
+	}
 
 	/* If the special event is CTRL-FX, switch to that tty */
 	if(special && ctrl && pressed &&

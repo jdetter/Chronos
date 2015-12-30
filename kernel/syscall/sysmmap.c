@@ -103,10 +103,9 @@ void* mmap(void* hint, uint sz, int protection,
 	int flags, int fd, off_t offset)
 {
 	/* Acquire locks */
-	slock_acquire(&rproc->mem_lock);
 	vmpage_t pagestart = 0;
 	int hint_okay = 1;
-	if((uintptr_t)hint != PGROUNDDOWN((uintptr_t)hint))
+	if((uintptr_t)hint != PGROUNDDOWN((uintptr_t)hint) || !hint)
 		hint_okay = 0;
 
 	/* If a hint is provided and its not okay, return NULL */
@@ -161,6 +160,7 @@ void* mmap(void* hint, uint sz, int protection,
 
         vm_mappages(pagestart, sz, rproc->pgdir, dir_flags, tbl_flags);
 
+#ifdef  _ALLOW_VM_SHARE_
 	/* Is this mapping shared? */
 	if(flags & MAP_SHARED)
 	{
@@ -170,6 +170,7 @@ void* mmap(void* hint, uint sz, int protection,
 			return NULL;
 		}
 	}
+#endif
 
 	/* Release locks */
 	slock_release(&rproc->mem_lock);

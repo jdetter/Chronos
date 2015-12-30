@@ -185,7 +185,10 @@ void pfree(vmpage_t pg)
 #ifdef _ALLOW_VM_SHARE_
 	/* Was this page shared? */
 	if(vm_pgunshare((pypage_t)pg))
+	{
+		slock_release(&global_mem_lock);
 		return; /* Something still needs this page */
+	}
 #endif
 
 	pg = PGROUNDDOWN(pg);
