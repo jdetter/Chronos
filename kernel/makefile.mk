@@ -1,19 +1,9 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
-	klog \
-	elf \
 	arch/$(BUILD_ARCH)/trap/trap \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
-	cache/diskcache \
-	cache/cacheman \
-	cache/cache \
-	netman \
-	main \
-	proc \
-	panic \
-	kcond \
 	syscall/syscall \
 	syscall/sysnet \
 	syscall/syssig \
@@ -21,7 +11,18 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
+	cache/diskcache \
+	cache/cacheman \
+	cache/cache \
 	vm/vm_share \
+	proc/proc \
+	proc/sched \
+	klog \
+	elf \
+	netman \
+	main \
+	panic \
+	kcond \
 	cpu \
 	pipe \
 	fsman \

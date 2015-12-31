@@ -8,6 +8,8 @@
 #include "vm.h"
 #include "fsman.h"
 #include "pipe.h"
+#include "devman.h"
+#include "tty.h"
 
 /* The amount of processes in the ptable */
 #define PTABLE_SIZE	50
