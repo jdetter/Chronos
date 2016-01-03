@@ -189,8 +189,6 @@ __kvm_swap__1:
 	jmp	__kvm_swap__1
 
 __kvm_swap__done:
-	/* Inner peace. */
-
 	/* flush TLB */
 	movl	%cr3, %eax
 	movl	%eax, %cr3
@@ -201,4 +199,3 @@ __kvm_swap__done:
         popl    %edx
         popl    %ebp
         ret
-

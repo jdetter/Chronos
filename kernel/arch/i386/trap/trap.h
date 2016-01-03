@@ -1,6 +1,19 @@
 #ifndef _ARCH_TRAP_H_
 #define _ARCH_TRAP_H_
 
+/* Segment descriptions */
+/* Null segment         0x00 */
+#define SEG_KERNEL_CODE 0x01
+#define SEG_KERNEL_DATA 0x02
+#define SEG_USER_CODE   0x03 /* data must be 1 away from code (sysexit) */
+#define SEG_USER_DATA   0x04
+#define SEG_TSS         0x05
+#define SEG_COUNT       0x06
+
+#define SYS_EXIT_BASE   ((SEG_USER_CODE << 3) - 16)
+
+#ifndef __ASM_ONLY__
+
 #define TF_REGISTERS (0x08 << 2)
 struct trap_frame
 {
@@ -55,5 +68,7 @@ struct context
 
         uint_32 eip;
 };
+
+#endif
 
 #endif

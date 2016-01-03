@@ -4,6 +4,7 @@ KERNEL_OBJECTS := \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
+	arch/$(BUILD_ARCH)/proc/elf \
 	syscall/syscall \
 	syscall/sysnet \
 	syscall/syssig \
@@ -18,7 +19,6 @@ KERNEL_OBJECTS := \
 	proc/proc \
 	proc/sched \
 	klog \
-	elf \
 	netman \
 	main \
 	panic \
@@ -38,7 +38,8 @@ KERNEL_OBJECTS := \
 # assembly files
 KERNEL_ASSEMBLY := \
 	arch/$(BUILD_ARCH)/vm/asm \
-	asm \
+	arch/$(BUILD_ARCH)/trap/asm \
+	arch/$(BUILD_ARCH)/context/asm \
 	idt
 
 # Specify driver files. Exclude all file extensions
