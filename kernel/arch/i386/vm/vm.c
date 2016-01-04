@@ -140,3 +140,8 @@ void switch_context(struct proc* p)
 	/* Go from kernel context to process context */
 	__context_restore__(&k_context, p->context);
 }
+
+int vm_try_swap(void)
+{
+	return 0;	
+}
