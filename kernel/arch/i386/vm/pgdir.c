@@ -2,7 +2,6 @@
  * Author: John Detter <john@detter.com>
  *
  * Page directory functions.
- *
  */
 
 #include <stdlib.h>

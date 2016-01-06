@@ -114,12 +114,18 @@ pgdir_t* vm_curr_pgdir(void);
 void vm_disable_paging(void);
 
 /**
- * Save the current page directory and disable interrupts on this cpu.
+ * Save the current page directory and disable interrupts on this cpu. This
+ * is to prevent a situation where the current thread is interrupted while
+ * we are changing the page directory.
  */
 pgdir_t* vm_push_pgdir(void);
 
 /**
- * Restore the previous page directory and pop_cli.
+ * Restore the previous page directory and pop_cli. This does the opposite
+ * action of vm_push_pgdir. Even if vm_push_pgdir didn't change the current
+ * page directory, vm_pop_pgdir should still be called. Not calling 
+ * vm_pop_pgdir after a vm_push_pgdir could cause the cpu to lose 
+ * interrupts.
  */
 void vm_pop_pgdir(pgdir_t* dir);
 
@@ -143,7 +149,8 @@ int vm_mappages(vmpage_t va, size_t sz, pgdir_t* dir,
 	vmflags_t dir_flags, vmflags_t tbl_flags);
 
 /**
- * Directly map the pages into the page table.
+ * Directly map the pages into the page table. Returns 0 on success, non
+ * zero otherwise.
  */
 int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir, 
 	vmflags_t dir_flags, vmflags_t tbl_flags);

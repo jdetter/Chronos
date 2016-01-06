@@ -54,16 +54,18 @@ int sys_fork(void)
 	int i;
 	for(i = 0;i < PROC_MAX_FDS;i++)
 	{
-		switch(new_proc->file_descriptors[i].type)
+		switch(new_proc->fdtab[i]->type)
 		{
 			case FD_TYPE_FILE:
-				fs_add_inode_reference(new_proc->file_descriptors[i].i);
+				fs_add_inode_reference(new_proc->fdtab[i]->i);
 				break;
 			case FD_TYPE_PIPE:
-				if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_WRITE)
-					rproc->file_descriptors[i].pipe->write_ref++;
-				if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_READ)
-					rproc->file_descriptors[i].pipe->read_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_WRITE)
+					rproc->fdtab[i]->pipe->write_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_READ)
+					rproc->fdtab[i]->pipe->read_ref++;
 				break;
 		}
 	}

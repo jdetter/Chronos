@@ -1,6 +1,7 @@
 #ifndef _KERN_SIGNAL_H_
 #define _KERN_SIGNAL_H_
 
+#include "kern/types.h"
 #include <signal.h>
 
                       /* SIG */

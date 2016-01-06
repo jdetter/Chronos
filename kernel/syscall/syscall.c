@@ -274,7 +274,7 @@ int sys_isatty(void)
         for(x = 0;x < MAX_TTYS;x++)
         {
                 tty_t t = tty_find(x);
-                if(t->driver == rproc->file_descriptors[fd].device)
+                if(t->driver == rproc->fdtab[fd]->device)
                         return 1;
         }
 

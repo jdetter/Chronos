@@ -19,8 +19,8 @@
 #include "proc.h"
 #include "panic.h"
 
-// #define DEBUG_SELECT
-// #define DEBUG
+#define DEBUG_SELECT
+#define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -85,8 +85,8 @@ int sys_open(void)
 #ifdef O_PATH
 	if(flags & O_PATH)
 	{
-		strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
-		rproc->file_descriptors[fd].type = FD_TYPE_PATH;
+		strncpy(rproc->fdtab[fd].path, path, FILE_MAX_PATH);
+		rproc->fdtab[fd].type = FD_TYPE_PATH;
 		return -1;
 	}
 #endif
@@ -102,41 +102,42 @@ int sys_open(void)
 	if((flags & O_CREAT) && (flags & O_EXCL) && created)
 		return -1;
 
-	rproc->file_descriptors[fd].type = FD_TYPE_FILE;
-	strncpy(rproc->file_descriptors[fd].path, path, FILE_MAX_PATH);
-	rproc->file_descriptors[fd].flags = flags;
-	rproc->file_descriptors[fd].i = fs_open((char*) path, flags,
+	rproc->fdtab[fd]->type = FD_TYPE_FILE;
+	strncpy(rproc->fdtab[fd]->path, path, FILE_MAX_PATH);
+	rproc->fdtab[fd]->flags = flags;
+	rproc->fdtab[fd]->i = fs_open((char*) path, flags,
 			mode, rproc->uid, rproc->uid);
 
-	if(rproc->file_descriptors[fd].i == NULL)
+	if(rproc->fdtab[fd]->i == NULL)
 	{
-		memset(rproc->file_descriptors + fd, 0, 
+		memset(rproc->fdtab + fd, 0, 
 			sizeof(struct file_descriptor));
 		return -1;
 	}
 
 	struct stat st;
-	fs_stat(rproc->file_descriptors[fd].i, &st);
+	fs_stat(rproc->fdtab[fd]->i, &st);
 
 	if(S_ISDEV(st.st_mode))
 	{
 		/* Get the driver open */
-		rproc->file_descriptors[fd].type = FD_TYPE_DEVICE;
+		rproc->fdtab[fd]->type = FD_TYPE_DEVICE;
 		struct devnode node;
-		fs_read(rproc->file_descriptors[fd].i, &node, sizeof(struct devnode), 0);
-		rproc->file_descriptors[fd].device = dev_lookup(node.dev);
+		fs_read(rproc->fdtab[fd]->i, &node, 
+				sizeof(struct devnode), 0);
+		rproc->fdtab[fd]->device = dev_lookup(node.dev);
 	}
 
 	if(flags & O_DIRECTORY && !S_ISDIR(st.st_mode))
 	{
-		memset(rproc->file_descriptors + fd, 0, sizeof(struct file_descriptor));
+		memset(rproc->fdtab + fd, 0, sizeof(struct file_descriptor));
 		return -1;
 	}
 
 	if(flags & O_TRUNC && S_ISREG(st.st_mode))
-		fs_truncate(rproc->file_descriptors[fd].i, 0);
+		fs_truncate(rproc->fdtab[fd]->i, 0);
 
-	rproc->file_descriptors[fd].seek = 0;
+	rproc->fdtab[fd]->seek = 0;
 #ifdef DEBUG
 	cprintf("%s: opened file %s with fd %d\n", rproc->name, path, fd);
 #endif
@@ -159,26 +160,26 @@ int sys_close(void)
 int close(int fd)
 {
 	if(fd >= PROC_MAX_FDS || fd < 0){return -1;}
-	if(rproc->file_descriptors[fd].type == FD_TYPE_FILE)
+	if(rproc->fdtab[fd]->type == FD_TYPE_FILE)
 	{
 #ifdef DEBUG
 		cprintf("%s: closing file %s\n",
-			rproc->name, rproc->file_descriptors[fd].path);
+			rproc->name, rproc->fdtab[fd]->path);
 #endif
-		fs_close(rproc->file_descriptors[fd].i);
-	}else if(rproc->file_descriptors[fd].type == FD_TYPE_PIPE)
+		fs_close(rproc->fdtab[fd]->i);
+	}else if(rproc->fdtab[fd]->type == FD_TYPE_PIPE)
 	{
 		/* Do we need to free the pipe? */
-		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
-			rproc->file_descriptors[fd].pipe->write_ref--;
-		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
-			rproc->file_descriptors[fd].pipe->read_ref--;
+		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_WRITE)
+			rproc->fdtab[fd]->pipe->write_ref--;
+		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_READ)
+			rproc->fdtab[fd]->pipe->read_ref--;
 
-		if(!rproc->file_descriptors[fd].pipe->write_ref ||
-				!rproc->file_descriptors[fd].pipe->read_ref)
-			rproc->file_descriptors[fd].pipe->faulted = 1;
+		if(!rproc->fdtab[fd]->pipe->write_ref ||
+				!rproc->fdtab[fd]->pipe->read_ref)
+			rproc->fdtab[fd]->pipe->faulted = 1;
 	}
-	rproc->file_descriptors[fd].type = 0x00;
+	rproc->fdtab[fd]->type = 0x00;
 	return 0;
 }
 
@@ -197,7 +198,7 @@ int sys_read(void)
 		rproc->name, sz);
 #endif
 
-	switch(rproc->file_descriptors[fd].type)
+	switch(rproc->fdtab[fd]->type)
 	{
 	case 0x00:
 #ifdef DEBUG
@@ -205,8 +206,8 @@ int sys_read(void)
 #endif 
 		return -1;
 	case FD_TYPE_FILE:
-		if((sz = fs_read(rproc->file_descriptors[fd].i, dst, sz,
-				rproc->file_descriptors[fd].seek)) < 0) 
+		if((sz = fs_read(rproc->fdtab[fd]->i, dst, sz,
+				rproc->fdtab[fd]->seek)) < 0) 
 		{
 #ifdef DEBUG
 			cprintf("READ FAILURE!\n");
@@ -220,30 +221,28 @@ int sys_read(void)
 		break;
 	case FD_TYPE_DEVICE:
 		/* Check for read support */
-		if(rproc->file_descriptors[fd].device->io_driver.read)
+		if(rproc->fdtab[fd]->device->io_driver.read)
 		{
 			/* read is supported */
-			sz = rproc->file_descriptors[fd].device->
-				io_driver.read(dst,
-				rproc->file_descriptors[fd].seek, sz,
-				rproc->file_descriptors[fd].device->
-				io_driver.context);
+			sz = rproc->fdtab[fd]->device->io_driver.read(dst,
+				rproc->fdtab[fd]->seek, sz,
+				rproc->fdtab[fd]->device->io_driver.context);
 		} else return -1;
 		break;
 	case FD_TYPE_PIPE:
-		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_READ)
-			pipe_read(dst, sz, rproc->file_descriptors[fd].pipe);
+		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_READ)
+			pipe_read(dst, sz, rproc->fdtab[fd]->pipe);
 		else return -1;
 		break;
 	default: return -1;
 	}
 
-	rproc->file_descriptors[fd].seek += sz;
+	rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
 	cprintf("%s: CONTENTS |%s|\n", rproc->name, dst);
 	cprintf("%s: new position in file: %d\n", 
-		rproc->name, rproc->file_descriptors[fd].seek);
+		rproc->name, rproc->fdtab[fd]->seek);
 #endif
 
 	return sz;
@@ -265,7 +264,7 @@ int sys_write(void)
 #endif
 
 
-	switch(rproc->file_descriptors[fd].type)
+	switch(rproc->fdtab[fd]->type)
 	{
 	default:
 #ifdef DEBUG
@@ -273,37 +272,35 @@ int sys_write(void)
 #endif 
 		return -1;
 	case FD_TYPE_FILE:
-		if(fs_write(rproc->file_descriptors[fd].i, src, sz,
-				rproc->file_descriptors[fd].seek) == -1)
+		if(fs_write(rproc->fdtab[fd]->i, src, sz,
+				rproc->fdtab[fd]->seek) == -1)
 		{
 #ifdef DEBUG
 			cprintf("%s: write to file %s failed!\n",
 				rproc->name, 
-				rproc->file_descriptors[fd].path);
+				rproc->fdtab[fd]->path);
 #endif
 			return -1;
 		}
 		break;
 	case FD_TYPE_PIPE:
-		if(rproc->file_descriptors[fd].pipe_type == FD_PIPE_MODE_WRITE)
-			pipe_write(src, sz, rproc->file_descriptors[fd].pipe);
+		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_WRITE)
+			pipe_write(src, sz, rproc->fdtab[fd]->pipe);
 		else return -1;
 	case FD_TYPE_DEVICE:
-		if(rproc->file_descriptors[fd].device->io_driver.write)
-			sz = rproc->file_descriptors[fd].device->
-				io_driver.write(src,
-				rproc->file_descriptors[fd].seek, sz, 
-				rproc->file_descriptors[fd].device->
-				io_driver.context);
+		if(rproc->fdtab[fd]->device->io_driver.write)
+			sz = rproc->fdtab[fd]->device->io_driver.write(src,
+				rproc->fdtab[fd]->seek, sz, 
+				rproc->fdtab[fd]->device->io_driver.context);
 		else return -1;
 		break;
 	}
 
-	rproc->file_descriptors[fd].seek += sz;
+	rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
 	cprintf("New position in file: %d\n", 
-		rproc->file_descriptors[fd].seek);
+		rproc->fdtab[fd]->seek);
 #endif
 	return sz;
 }
@@ -317,7 +314,7 @@ int sys_lseek(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int((int*)&offset, 1)) return -1;
 	if(syscall_get_int(&whence, 2)) return -1;
-	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE){
+	if(rproc->fdtab[fd]->type != FD_TYPE_FILE){
 		return -1;
 	}
 #ifdef DEBUG
@@ -326,21 +323,21 @@ int sys_lseek(void)
 
 	int seek_pos;
 	if(whence == SEEK_CUR){
-		seek_pos = rproc->file_descriptors[fd].seek + offset;
+		seek_pos = rproc->fdtab[fd]->seek + offset;
 	}
 	else if(whence == SEEK_SET){
 		seek_pos = offset;
 	}
 	else if(whence == SEEK_END){
 		struct stat stat;
-		fs_stat(rproc->file_descriptors[fd].i, &stat);
+		fs_stat(rproc->fdtab[fd]->i, &stat);
 		seek_pos = stat.st_size + offset;
 	} else {
 		return -1;
 	}
 
 	if(seek_pos < 0){ seek_pos = 0;}
-	rproc->file_descriptors[fd].seek = seek_pos;
+	rproc->fdtab[fd]->seek = seek_pos;
 
 	return seek_pos;
 }
@@ -446,21 +443,21 @@ int sys_fstat(void)
 	int close_on_exit = 0;
 	inode i = NULL;
 	/* Check file descriptor type */
-	switch(rproc->file_descriptors[fd].type)
+	switch(rproc->fdtab[fd]->type)
 	{
 	case FD_TYPE_FILE:
-		i = rproc->file_descriptors[fd].i;
+		i = rproc->fdtab[fd]->i;
 		break;
 	case FD_TYPE_DEVICE:
 	case FD_TYPE_PIPE:
-		i = fs_open(rproc->file_descriptors[fd].device->node, 
+		i = fs_open(rproc->fdtab[fd]->device->node, 
 			O_RDONLY, 0x0, 0x0, 0x0);
 		if(!i) return -1;
 		close_on_exit = 1;
 		break;
 	default:
 #ifdef DEBUG
-		cprintf("Fstat called on: %d\n", rproc->file_descriptors[fd].type); 
+		cprintf("Fstat called on: %d\n", rproc->fdtab[fd]->type); 
 #endif
 		return -1;
 	}
@@ -490,22 +487,22 @@ int sys_readdir(void)
 			sizeof(struct old_linux_dirent), 1))
 		return -1;
 	if(fd_ok(fd)) return -1;
-	if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
+	if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
 		return -1;
 
 	struct dirent dir;
-	int result = fs_readdir(rproc->file_descriptors[fd].i, 
-		rproc->file_descriptors[fd].seek, &dir);
+	int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
+			&dir);
 	if(result < 0) return -1;
 	if(result == 1) return 0;
 
 	/* Convert to old structure */
 	dirp->d_ino = dir.d_ino;
-	dirp->d_off = rproc->file_descriptors[fd].seek;
+	dirp->d_off = rproc->fdtab[fd]->seek;
 	dirp->d_reclen = FILE_MAX_NAME;
 	strncpy(dirp->d_name, dir.d_name, FILE_MAX_NAME);
 
-	rproc->file_descriptors[fd].seek++; /* Increment seek */
+	rproc->fdtab[fd]->seek++; /* Increment seek */
 	return 1;
 }
 
@@ -522,16 +519,16 @@ int sys_getdents(void)
         if(syscall_get_buffer_ptr((void**)&dirp, count, 1))
                 return -1;
         if(fd_ok(fd)) return -1;
-        if(rproc->file_descriptors[fd].type != FD_TYPE_FILE)
+        if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
                 return -1;
 
-        int result = fs_readdir(rproc->file_descriptors[fd].i,
-                rproc->file_descriptors[fd].seek, dirp);
+        int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
+			dirp);
         if(result < 0) return -1;
         if(result == 1) return 0;
 
         /* Convert to old structure */
-        rproc->file_descriptors[fd].seek++; /* Increment seek */
+        rproc->fdtab[fd]->seek++; /* Increment seek */
         return sizeof(struct dirent);
 }
 
@@ -550,26 +547,26 @@ int sys_pipe(void)
 	int read = find_fd();
 	if(read >= 0)
 	{
-		rproc->file_descriptors[read].type = FD_TYPE_PIPE;
-		rproc->file_descriptors[read].pipe_type = FD_PIPE_MODE_READ;
-		rproc->file_descriptors[read].pipe = t;
+		rproc->fdtab[read]->type = FD_TYPE_PIPE;
+		rproc->fdtab[read]->pipe_type = FD_PIPE_MODE_READ;
+		rproc->fdtab[read]->pipe = t;
 	}
 
 	/* Get a write fd */
 	int write = find_fd();
 	if(write >= 0)
 	{
-		rproc->file_descriptors[write].type = FD_TYPE_PIPE;
-		rproc->file_descriptors[write].pipe_type = FD_PIPE_MODE_WRITE;
-		rproc->file_descriptors[write].pipe = t;
+		rproc->fdtab[write]->type = FD_TYPE_PIPE;
+		rproc->fdtab[write]->pipe_type = FD_PIPE_MODE_WRITE;
+		rproc->fdtab[write]->pipe = t;
 	}
 
 	if(read < 0 || write < 0)
 	{
 		if(read >= 0)
-			rproc->file_descriptors[read].type = 0x0;
+			rproc->fdtab[read]->type = 0x0;
 		if(write >= 0)
-			rproc->file_descriptors[write].type = 0x0;
+			rproc->fdtab[write]->type = 0x0;
 		pipe_free(t);
 		return -1;
 	}
@@ -606,29 +603,22 @@ int dup2(int new_fd, int old_fd)
 	if(old_fd < 0 || old_fd >= PROC_MAX_FDS) return -1;
 	/* Make sure new_fd is closed */
 	close(new_fd);
-	memmove(rproc->file_descriptors + new_fd,
-			rproc->file_descriptors + old_fd,
+	memmove(rproc->fdtab + new_fd, rproc->fdtab + old_fd,
 			sizeof(struct file_descriptor));
-	switch(rproc->file_descriptors[old_fd].type)
+	switch(rproc->fdtab[old_fd]->type)
 	{
 	default: return -1;
 	case FD_TYPE_FILE:
-		rproc->file_descriptors[old_fd].i->references++;
+		rproc->fdtab[old_fd]->i->references++;
 		break;
 	case FD_TYPE_DEVICE:break;
 	case FD_TYPE_PIPE:
-		slock_acquire(&rproc->
-				file_descriptors[old_fd].pipe->guard);
-		if(rproc->file_descriptors[old_fd].pipe_type ==
-				FD_PIPE_MODE_WRITE)
-			rproc->file_descriptors[old_fd].
-			pipe->write_ref++;
-		if(rproc->file_descriptors[old_fd].pipe_type
-				== FD_PIPE_MODE_READ)
-			rproc->file_descriptors[old_fd].
-			pipe->read_ref++;
-		slock_release(&rproc->
-				file_descriptors[old_fd].pipe->guard);
+		slock_acquire(&rproc->fdtab[old_fd]->pipe->guard);
+		if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_WRITE)
+			rproc->fdtab[old_fd]->pipe->write_ref++;
+		if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_READ)
+			rproc->fdtab[old_fd]->pipe->read_ref++;
+		slock_release(&rproc->fdtab[old_fd]->pipe->guard);
 		break;
 	}
 
@@ -648,7 +638,7 @@ int sys_fchdir(int fd)
 	default:
 		return -1;
 	}
-	strncpy(rproc->cwd, rproc->file_descriptors[fd].path, FILE_MAX_PATH);
+	strncpy(rproc->cwd, rproc->fdtab[fd]->path, FILE_MAX_PATH);
 	return 0;
 }
 
@@ -671,7 +661,7 @@ int sys_fchmod(void)
 	default:
 		return -1;
 	}
-	return fs_chmod(rproc->file_descriptors[fd].path, mode);
+	return fs_chmod(rproc->fdtab[fd]->path, mode);
 }
 
 int sys_fchown(void)
@@ -695,7 +685,7 @@ int sys_fchown(void)
 	default:
 		return -1;
 	}
-	return fs_chown(rproc->file_descriptors[fd].path, owner, group);
+	return fs_chown(rproc->fdtab[fd]->path, owner, group);
 }
 
 int lchown(const char *pathname, uid_t owner, gid_t group)
@@ -720,15 +710,15 @@ int sys_ioctl(void)
 	if(fd_ok(fd)) return -1;
 
 	/* Is this a device? */
-	if(rproc->file_descriptors[fd].type != FD_TYPE_DEVICE)
+	if(rproc->fdtab[fd]->type != FD_TYPE_DEVICE)
 		return -1;
 
 	/* Does this device support ioctl? */
-	if(!rproc->file_descriptors[fd].device->io_driver.ioctl)
+	if(!rproc->fdtab[fd]->device->io_driver.ioctl)
 		return -1;
 
-	return rproc->file_descriptors[fd].device->io_driver.ioctl(request, 
-		arg, rproc->file_descriptors[fd].device->io_driver.context);
+	return rproc->fdtab[fd]->device->io_driver.ioctl(request, 
+		arg, rproc->fdtab[fd]->device->io_driver.context);
 }
 
 int sys_access(void)
@@ -765,13 +755,14 @@ int sys_ttyname(void)
 	if(fd_ok(fd)) return -1;
 
 	/* Check to make sure the file descriptor is actually a device */
-	if(rproc->file_descriptors[fd].type != FD_TYPE_DEVICE) return -1;
+	if(rproc->fdtab[fd]->type != FD_TYPE_DEVICE) return -1;
 
 	/* See if the device is a tty. */
-	if(!tty_check(rproc->file_descriptors[fd].device)) return -1;
+	if(!tty_check(rproc->fdtab[fd]->device)) return -1;
 
 	/* Move the mount point into buf */
-	memmove(buf, rproc->file_descriptors[fd].device->node, sz);
+	memmove(buf, rproc->fdtab[fd]->device->node, sz);
+
 	return 0;
 }
 
@@ -792,21 +783,21 @@ int sys_fpathconf(void)
 			return LINK_MAX;
 		case _PC_NAME_MAX:
 		case _PC_PATH_MAX:
-			if(!rproc->file_descriptors[fd].type)
+			if(!rproc->fdtab[fd]->type)
 				return -1;
-			return FILE_MAX_NAME - 1 -
-				strlen(rproc->file_descriptors[fd].path);
+			return FILE_MAX_NAME - 1 - 
+					strlen(rproc->fdtab[fd]->path);
 		case _PC_PIPE_BUF:
 			return PIPE_DATA;
 		case _PC_CHOWN_RESTRICTED:
-			if(!rproc->file_descriptors[fd].type)
+			if(!rproc->fdtab[fd]->type)
                                 return -1;
 			return FILE_MAX_NAME - 1 -
-                                strlen(rproc->file_descriptors[fd].path);
+                                strlen(rproc->fdtab[fd]->path);
 		case _PC_NO_TRUNC:
 			return 1;
 		case _PC_VDISABLE:
-			if(!tty_check(rproc->file_descriptors[fd].device))
+			if(!tty_check(rproc->fdtab[fd]->device))
 				return -1;
 			return 1;
 		default:
@@ -831,13 +822,13 @@ int sys_pathconf(void)
 			return LINK_MAX;
 		case _PC_NAME_MAX:
 		case _PC_PATH_MAX:
-			//if(!rproc->file_descriptors[fd].type)
+			//if(!rproc->fdtab[fd]->type)
 			//	return -1;
 			return FILE_MAX_NAME - 1 - strlen(path);
 		case _PC_PIPE_BUF:
 			return PIPE_DATA;
 		case _PC_CHOWN_RESTRICTED:
-			//if(!rproc->file_descriptors[fd].type)
+			//if(!rproc->fdtab[fd]->type)
 			//	return -1;
 			return FILE_MAX_NAME - 1 - strlen(path);
 		case _PC_NO_TRUNC:
@@ -910,16 +901,16 @@ int sys_fcntl(void)
                         if(i_arg <= 0) return -1;
                         result = dup2(i_arg, fd);
 			/* Also set the close on exec flag */
-			rproc->file_descriptors[i_arg].flags |= O_CLOEXEC;
+			rproc->fdtab[i_arg]->flags |= O_CLOEXEC;
                         break;
 		case F_GETFD:
-			result = rproc->file_descriptors[fd].flags;
+			result = rproc->fdtab[fd]->flags;
 			break;
 		case F_SETFD:
-			rproc->file_descriptors[fd].flags = i_arg;
+			rproc->fdtab[fd]->flags = i_arg;
 			break;
 		case F_GETFL:
-			result = rproc->file_descriptors[fd].flags;
+			result = rproc->fdtab[fd]->flags;
 			break;
 		default:
 			cprintf("UNIMPLEMENTED FCNTL: %d\n", action);
@@ -1038,7 +1029,7 @@ int sys_select(void)
 			fd = 0;
 			while((fd = sys_select_next_fd(fd, readfds, nfds)) != -1)
 			{
-				switch(rproc->file_descriptors[fd].type)
+				switch(rproc->fdtab[fd]->type)
 				{
 					case FD_TYPE_FILE:
 						/** 
@@ -1051,11 +1042,11 @@ int sys_select(void)
 					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
 
 						/* Does this device support read 'peek'? */
-						if(rproc->file_descriptors[fd].device->io_driver.ready_read)
+						if(rproc->fdtab[fd]->device->io_driver.ready_read)
 						{
 							/* Does the device have something for us? */
-							if(rproc->file_descriptors[fd].device->io_driver.ready_read(
-										rproc->file_descriptors[fd].device->io_driver.context))
+							if(rproc->fdtab[fd]->device->io_driver.ready_read(
+										rproc->fdtab[fd]->device->io_driver.context))
 							{
 								FD_SET(fd, &ret_readfds);
 								dev_found = 1;
@@ -1077,7 +1068,7 @@ int sys_select(void)
 			fd = 0;
 			while((fd = sys_select_next_fd(fd, writefds, nfds)) != -1)
 			{
-				switch(rproc->file_descriptors[fd].type)
+				switch(rproc->fdtab[fd]->type)
 				{
 					case FD_TYPE_FILE:
 						/** 
@@ -1090,11 +1081,11 @@ int sys_select(void)
 					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
 
 						/* Does this device support write 'peek'? */
-						if(rproc->file_descriptors[fd].device->io_driver.ready_write)
+						if(rproc->fdtab[fd]->device->io_driver.ready_write)
 						{
 							/* Is this output device ready? */
-							if(rproc->file_descriptors[fd].device->io_driver.ready_write(
-										rproc->file_descriptors[fd].device->io_driver.context))
+							if(rproc->fdtab[fd]->device->io_driver.ready_write(
+										rproc->fdtab[fd]->device->io_driver.context))
 							{
 								FD_SET(fd, &ret_writefds);
 								dev_found = 1;

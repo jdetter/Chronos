@@ -48,6 +48,11 @@ uint k_ticks;
 /* Current system time */
 struct rtc_t k_time;
 
+/* Table for all of the file descriptors */
+struct file_descriptor fds_table[FDS_TABLE_SZ];
+/* Lock needed to touch the fds_table */
+slock_t fds_table_lock;
+
 void proc_init()
 {
 	next_pid = 0;
@@ -55,7 +60,27 @@ void proc_init()
 	rproc = NULL;
 	k_ticks = 0;
 	memset(&k_time, 0, sizeof(struct rtc_t));
+	memset(fds_table, 0, sizeof(struct file_descriptor) * FDS_TABLE_SZ);
 	slock_init(&ptable_lock);
+	slock_init(&fds_table_lock);
+}
+
+struct file_descriptor* fd_alloc(void)
+{
+	struct file_descriptor* result = NULL;
+	slock_acquire(&fds_table_lock);
+
+	int x;
+	for(x = 0;x < FDS_TABLE_SZ;x++)
+	{
+		if(fds_table[x].type) continue;
+
+		
+	}
+
+	slock_release(&fds_table_lock);
+
+	return result;
 }
 
 struct proc* alloc_proc()
@@ -92,16 +117,15 @@ struct proc* spawn_tty(tty_t t)
 	p->pid = next_pid++;
 	p->uid = 0; /* init is owned by root */
 	p->gid = 0; /* group is also root */
-	memset(p->file_descriptors, 0,
-		sizeof(struct file_descriptor) * PROC_MAX_FDS);
+	memset(p->fdtab, 0, sizeof(struct file_descriptor) * PROC_MAX_FDS);
 
 	/* Setup stdin, stdout and stderr */
-	p->file_descriptors[0].type = FD_TYPE_DEVICE;
-	p->file_descriptors[0].device = t->driver;
-	p->file_descriptors[1].type = FD_TYPE_DEVICE;
-	p->file_descriptors[1].device = t->driver;
-	p->file_descriptors[2].type = FD_TYPE_DEVICE;
-	p->file_descriptors[2].device = t->driver;
+	p->fdtab[0]->type = FD_TYPE_DEVICE;
+	p->fdtab[0]->device = t->driver;
+	p->fdtab[1]->type = FD_TYPE_DEVICE;
+	p->fdtab[1]->device = t->driver;
+	p->fdtab[2]->type = FD_TYPE_DEVICE;
+	p->fdtab[2]->device = t->driver;
 
 	p->stack_start = PGROUNDUP(UVM_TOP);
 	p->stack_end = p->stack_start - PGSIZE;
@@ -198,9 +222,9 @@ void proc_disconnect(struct proc* p)
 {
 	slock_acquire(&ptable_lock);
 	/* disconnect stdin, stdout and stderr */
-	p->file_descriptors[0].device = dev_null;
-	p->file_descriptors[1].device = dev_null;
-	p->file_descriptors[2].device = dev_null;
+	p->fdtab[0]->device = dev_null;
+	p->fdtab[1]->device = dev_null;
+	p->fdtab[2]->device = dev_null;
 
 	tty_t t = p->t;
 
@@ -226,12 +250,12 @@ void proc_set_ctty(struct proc* p, tty_t t)
 {
 	slock_acquire(&ptable_lock);
 	rproc->t = t;
-	rproc->file_descriptors[0].device = t->driver;
-	rproc->file_descriptors[0].type = FD_TYPE_DEVICE;
-	rproc->file_descriptors[1].device = t->driver;
-	rproc->file_descriptors[1].type = FD_TYPE_DEVICE;
-	rproc->file_descriptors[2].device = t->driver;
-	rproc->file_descriptors[2].type = FD_TYPE_DEVICE;
+	rproc->fdtab[0]->device = t->driver;
+	rproc->fdtab[0]->type = FD_TYPE_DEVICE;
+	rproc->fdtab[1]->device = t->driver;
+	rproc->fdtab[1]->type = FD_TYPE_DEVICE;
+	rproc->fdtab[2]->device = t->driver;
+	rproc->fdtab[2]->type = FD_TYPE_DEVICE;
 	slock_release(&ptable_lock);
 }
 
@@ -261,11 +285,9 @@ void proc_print_table(void)
 		int fd;
 		for(fd = 0;fd < PROC_MAX_FDS;fd++)
 		{
-			if(!ptable[x].file_descriptors[fd].type)
+			if(!ptable[x].fdtab[fd]->type)
 				continue;
-			cprintf("\t%d: %s\n", fd, 
-					ptable[x].
-					file_descriptors[fd].path);
+			cprintf("\t%d: %s\n", fd, ptable[x].fdtab[fd]->path);
 		}
 		cprintf("Working directory: %s\n", 
 				ptable[x].cwd);

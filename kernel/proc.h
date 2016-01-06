@@ -12,7 +12,8 @@
 #include "tty.h"
 
 /* The amount of processes in the ptable */
-#define PTABLE_SIZE	50
+#define PTABLE_SIZE	0x40
+#define FDS_TABLE_SZ	0x1000
 #define MAX_PROC_NAME 	0x20
 #define MAX_PATH_LEN	0x60
 
@@ -79,7 +80,7 @@ struct proc
 	gid_t rgid; /* The gid of the user that started the task. */
 
 	/** Open files for this process */
-	struct file_descriptor file_descriptors[PROC_MAX_FDS];
+	struct file_descriptor* fdtab[PROC_MAX_FDS];
 	mode_t umask; /* File creation mask */
 	
 	/** Process state parameters */
