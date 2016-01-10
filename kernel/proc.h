@@ -76,7 +76,10 @@ struct proc
 	pid_t sid; /* The session id*/
 	pid_t pid; /* The id of the process */
 	pid_t pgid; /* The process group */
-	pid_t tid; /* The ID of this thread (if its a thread) */
+	pid_t ppid; /* The id of the process that started this process */
+	pid_t tid; /* The ID of this thread */
+	pid_t tgid; /* The id of the main proces in this group */
+	pid_t next_tid; /* The tid the next thread should take */
 	uid_t uid; /* The id of the user running the process */
 	uid_t euid; /* The effective uid of the process */
 	uid_t suid; /* The saved uid */
@@ -136,7 +139,7 @@ struct proc
 	uint* sys_esp; /* Pointer to the start of the syscall argv */
 	uchar* k_stack; /* A pointer to the kernel stack for this process. */
 	struct task_segment* tss; /* The task segment for this process */
-	struct trap_frame* tf; /* A pointer to the trap frame from the int. */	
+	struct trap_frame* tf; /* A pointer to the trap frame from the int.*/
 	uint entry_point; /* The address of the first instruction */
 	uint context; /* The address at the top of the saved stack */
 

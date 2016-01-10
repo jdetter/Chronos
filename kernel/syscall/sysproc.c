@@ -27,6 +27,7 @@
 #include "signal.h"
 #include "context.h"
 #include "elf.h"
+#include "sched.h"
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -48,9 +49,11 @@ int sys_fork(void)
 	new_proc->fdtab = fdtab;
 	new_proc->fdtab_lock = fdtab_lock;
 	new_proc->pid = next_pid++;
-	new_proc->tid = new_proc->pid;
-	new_proc->parent = rproc;
 	new_proc->ppid = rproc->pid;
+	new_proc->tid = new_proc->pid;
+	new_proc->tgid = new_proc->pid;
+	new_proc->next_tid = new_proc->pid + 1;
+	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
@@ -126,17 +129,19 @@ int sys_clone(void)
 	void* ctid;
 	struct pt_regs* regs;
 
-	if(syscall_get_long(&flags, 0)) return -1;
+	if(syscall_get_long((long*)&flags, 0)) return -1;
 	int start_pos = sizeof(long) / sizeof(int);
-	if(syscall_get_ptr(&child_stack, start_pos))
+	if(syscall_get_buffer_ptr(&child_stack, 0x1000, start_pos))
 		return -1;
-	if(syscall_get_ptr(&ptid, start_pos + 1))
+	if(syscall_get_buffer_ptr(&ptid, sizeof(pid_t), start_pos + 1))
 		return -1;
-	if(syscall_get_ptr(&ctid, start_pos + 2))
+	if(syscall_get_buffer_ptr(&ctid, sizeof(pid_t), start_pos + 2))
 		return -1;
-	if(syscall_get_ptr(&regs, start_pos + 3))
+	if(syscall_get_buffer_ptr((void*)&regs, sizeof(struct pt_regs), 
+				start_pos + 3))
 		return -1;
 
+	struct proc* main_proc = get_proc_pid(rproc->tgid);
 	struct proc* new_proc = alloc_proc();
 	if(!new_proc) return -1;
 	slock_acquire(&ptable_lock);
@@ -144,16 +149,19 @@ int sys_clone(void)
 	fdtab_t fdtab = new_proc->fdtab;
 	slock_t* fdtab_lock = new_proc->fdtab_lock;
 	/* Copy the entire process */
-	memmove(new_proc, rproc, sizeof(struct proc));
+	memmove(new_proc, main_proc, sizeof(struct proc));
 	new_proc->fdtab = fdtab;
 	new_proc->fdtab_lock = fdtab_lock;
-	new_proc->pid = rproc->pid++;
-	new_proc->tid = new_proc->pid;
-	new_proc->parent = rproc;
-	new_proc->ppid = rproc->pid;
+	new_proc->pid = next_pid++;
+	new_proc->tid = main_proc->next_tid++;
 	new_proc->state = PROC_RUNNABLE;
 
+	/* Should we use our parent's fd table? */
+
+
 	slock_release(&ptable_lock);
+
+	return -1;
 }
 
 /* int waitpid(int pid, int* status, int options) */
@@ -165,7 +173,7 @@ int sys_waitpid(void)
 	if(syscall_get_int(&pid, 0)) return -1;
 	if(syscall_get_int((int*)&status, 1)) return -1;
 	if(status != NULL && syscall_get_buffer_ptr(
-			(void**)&status, sizeof(int), 1))
+				(void**)&status, sizeof(int), 1))
 		return -1;
 	if(syscall_get_int(&options, 2)) return -1;
 
@@ -240,9 +248,9 @@ int sys_wait(void)
 {
 	int* status;
 	if(syscall_get_int((int*)&status, 0)) return -1;
-        if(status != NULL && syscall_get_buffer_ptr(
-                        (void**)&status, sizeof(int), 0))
-                return -1;
+	if(status != NULL && syscall_get_buffer_ptr(
+				(void**)&status, sizeof(int), 0))
+		return -1;
 	return waitpid(-1, status, 0);
 }
 
@@ -293,15 +301,15 @@ int sys_execve(void)
 int execve(const char* path, char* const argv[], char* const envp[])
 {
 	/* Create a copy of the path */
-        char program_path[MAX_PATH_LEN];
-        memset(program_path, 0, MAX_PATH_LEN);
-        strncpy(program_path, path, MAX_PATH_LEN);
+	char program_path[MAX_PATH_LEN];
+	memset(program_path, 0, MAX_PATH_LEN);
+	strncpy(program_path, path, MAX_PATH_LEN);
 
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
 	vmflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
-        vmflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
+	vmflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
 
 	/* Does the binary look ok? */
 	if(elf_check_binary_path(path))
@@ -361,7 +369,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	} else {
 		env_start -= sizeof(int);
 		vm_memmove((void*)env_start, &null_buff, sizeof(int),
-                                tmp_pgdir, rproc->pgdir,
+				tmp_pgdir, rproc->pgdir,
 				dir_flags, tbl_flags);
 	}
 
@@ -395,11 +403,11 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	int arg_count = x;
 
 	/* Push envp */
-        uvm_stack -= sizeof(int);
-        vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
-                        tmp_pgdir, rproc->pgdir,
+	uvm_stack -= sizeof(int);
+	vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
+			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
-	
+
 	/* Push argv */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_arr_ptr, sizeof(int),
@@ -436,7 +444,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	uintptr_t code_start;
 	uintptr_t code_end;
 	uintptr_t entry = elf_load_binary_path(program_path, rproc->pgdir,
-		&code_start, &code_end, 1);
+			&code_start, &code_end, 1);
 
 	if(entry == 0)
 	{
@@ -485,21 +493,21 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		rproc->egid = rproc->gid = st.st_gid;
 
 	/* restore cwd */
-        memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 
 	/* Free temporary space */
 	vm_freepgdir_struct(tmp_pgdir);
 
-	 /* Reset all ticks */
-        rproc->user_ticks = 0;
-        rproc->kernel_ticks = 0;
+	/* Reset all ticks */
+	rproc->user_ticks = 0;
+	rproc->kernel_ticks = 0;
 
 	/* unset signal stack info */
 	rproc->sig_stack_start = 0;
 	sig_clear(rproc);
-	
+
 	/* Set mmap area start */
-        rproc->mmap_end = rproc->mmap_start = 
+	rproc->mmap_end = rproc->mmap_start = 
 		PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
 
 	/* Release the ptable lock */
@@ -518,9 +526,9 @@ int sys_exit(void)
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 
-        int return_code = 1;
-        if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
-        rproc->return_code = return_code;
+	int return_code = 1;
+	if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
+	rproc->return_code = return_code;
 
 	/* Set state to zombie */
 	rproc->state = PROC_ZOMBIE;
