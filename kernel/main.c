@@ -33,7 +33,6 @@ void main_stack(void);
 uint __get_cr0__(void);
 
 extern struct rtc_t k_time;
-extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
 
@@ -191,9 +190,6 @@ void main_stack(void)
 	{
 		tty_t t = tty_find(tty_num);
 		if(!t) break;
-
-		/* Setup an init process */
-		init_proc = spawn_tty(t);
 	}
 	cprintf("[ OK ]\n");
 

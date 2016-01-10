@@ -18,6 +18,7 @@
 #define MAX_PATH_LEN	0x60
 
 #define FD_TYPE_NULL 	0x00
+#define FD_TYPE_INUSE 	0x01 /* In use but not initilized */
 // #define FD_TYPE_STDIN 	0x01
 // #define FD_TYPE_STDOUT 	0x02
 // #define FD_TYPE_STDERR 	0x03
@@ -32,16 +33,19 @@
 
 struct file_descriptor
 {
-	int type;
-	int flags;
-	int seek;
-	inode i;
-	struct DeviceDriver* device;
-	pipe_t pipe;
-	uchar pipe_type;
-	char path[FILE_MAX_PATH];
+	int type; /* The type of this file descriptor */
+	slock_t lock; /* The lock for this fd (read/write) */
+	int refs; /* How many fdtabs reference this? */
+	int flags; /* Any flags needed by the descriptor */
+	int seek; /* What is the offset into the file? */
+	inode i; /* The inode pointer */
+	struct DeviceDriver* device; /* The device driver (if dev) */
+	pipe_t pipe; /* The pointer to the pipe (if pipe) */
+	uchar pipe_type; /* The type of pipe (if pipe) */
+	char path[FILE_MAX_PATH]; /* Mount point on the file system */
 };
 
+/* Maximum amount of file descriptors a process can have */
 #define PROC_MAX_FDS 0x20
 
 /* States for processes */
@@ -63,6 +67,9 @@ struct file_descriptor
 #define PROC_BLOCKED_IO   0x03 /* The process is waiting on io to finish */
 #define PROC_BLOCKED_SLEEP 0x04 /* The process is waiting on sleep  */
 
+/* File descriptor table */
+typedef struct file_descriptor** fdtab_t;
+
 struct proc
 {
 	/** Process priviliges (all of the ids of this process) */
@@ -80,7 +87,8 @@ struct proc
 	gid_t rgid; /* The gid of the user that started the task. */
 
 	/** Open files for this process */
-	struct file_descriptor* fdtab[PROC_MAX_FDS];
+	fdtab_t fdtab;
+	slock_t* fdtab_lock;
 	mode_t umask; /* File creation mask */
 	
 	/** Process state parameters */
@@ -178,6 +186,60 @@ void proc_tty_disconnect(tty_t t);
  * Set the controlling terminal for a process.
  */
 void proc_set_ctty(struct proc* p, tty_t t);
+
+/** Some FD table functions (desc.c) */
+
+/**
+ * Initilize a fdtab. This zeros all entries in the table.
+ */
+void fdtab_init(fdtab_t tab);
+
+/**
+ * Free the given file descriptor for the given process. This will clear the
+ * fd table entry.
+ */
+void fd_free(struct proc* p, int fd);
+
+/**
+ * Frees all of the file descriptors in the given process's fdtab. Returns
+ * 0 on success.
+ */
+int fd_tab_free(struct proc* p);
+
+/**
+ * Allocate a new file descriptor for a process. The result will be at pos
+ * or after. If there is an error, -1 is returned. 0 is a valid file
+ * descriptor.
+ */
+int fd_next_at(struct proc* p, int pos);
+
+/**
+ * Get any free file descriptor for the given process. On success, a
+ * non negative integer is returned. Otherwise, -1 is returned.
+ */
+#define fd_next(process) fd_next_at(process, 0)
+
+/**
+ * Make dst and src share the same fdtab. Dst's fdtab will now point to
+ * src's fd tab. Returns 0 on success, nonzero otherwise.
+ */
+int fd_tab_map(struct proc* dst, struct proc* src);
+
+/**
+ * Copy src's fdtab into dst's fdtab. All of the file descriptors in
+ * dst's table are freed before they are overwritten. returns 0 on
+ * success, nonzero otherwise.
+ */
+int fd_tab_copy(struct proc* dst, struct proc* src);
+
+/**
+ * Create a new file descriptor at the given index. free is whether or not 
+ * the file descriptor should be freed if there was already a file descriptor
+ * at the give position. Returns 0 if there was no file descriptor at this
+ * index, otherwise returns 1 if there was a file descriptor at the given
+ * position or -1 on error.
+ */
+int fd_new(struct proc* p, int index, int free);
 
 /**
  * Surrender a scheduling round.

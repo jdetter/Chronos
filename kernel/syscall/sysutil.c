@@ -14,36 +14,14 @@
 
 extern struct proc* rproc;
 
-/**
- * Find an available file descriptor.
- */
-int find_fd(void)
-{
-        int x;
-        for(x = 3;x < PROC_MAX_FDS;x++)
-                if(rproc->fdtab[x]->type == 0x0)
-                        return x;
-        return -1;
-}
-
-/**
- * Find an available file descriptor that is > val
- */
-int find_fd_gt(int val)
-{
-        int x;
-        for(x = val;x < PROC_MAX_FDS;x++)
-                if(rproc->fdtab[x]->type == 0x0)
-                        return x;
-        return -1;
-}
-
 /** Check to see if an fd is valid */
 int fd_ok(int fd)
 {
         if(fd < 0 || fd >= PROC_MAX_FDS)
-                return 1;
-        if(rproc->fdtab[fd]->type)
+                return 0;
+	if(!rproc->fdtab[fd])
+		return 0;
+        if(!rproc->fdtab[fd]->type)
                 return 0;
         return 1;
 }

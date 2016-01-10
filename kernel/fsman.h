@@ -377,7 +377,8 @@ int fs_rename(const char* src, const char* dst);
 int fs_unlink(const char* file);
 
 /**
- * Read the directory entry at the specified index.
+ * Read the directory entry at the specified index. Returns 0 on success,
+ * -1 otherwise.
  */
 int fs_readdir(inode i, int index, struct dirent* dst);
 

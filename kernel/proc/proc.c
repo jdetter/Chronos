@@ -37,8 +37,6 @@ extern struct vsfs_context context;
 slock_t ptable_lock;
 /* The process table */
 struct proc ptable[PTABLE_SIZE];
-/* A pointer into the ptable for the init process */
-struct proc* init_proc;
 /* A pointer into the ptable of the running process */
 struct proc* rproc;
 /* The next available pid */
@@ -48,10 +46,8 @@ uint k_ticks;
 /* Current system time */
 struct rtc_t k_time;
 
-/* Table for all of the file descriptors */
-struct file_descriptor fds_table[FDS_TABLE_SZ];
-/* Lock needed to touch the fds_table */
-slock_t fds_table_lock;
+extern struct file_descriptor* fd_tables[PTABLE_SIZE][PROC_MAX_FDS];
+extern slock_t fd_tables_locks[];
 
 void proc_init()
 {
@@ -60,27 +56,7 @@ void proc_init()
 	rproc = NULL;
 	k_ticks = 0;
 	memset(&k_time, 0, sizeof(struct rtc_t));
-	memset(fds_table, 0, sizeof(struct file_descriptor) * FDS_TABLE_SZ);
 	slock_init(&ptable_lock);
-	slock_init(&fds_table_lock);
-}
-
-struct file_descriptor* fd_alloc(void)
-{
-	struct file_descriptor* result = NULL;
-	slock_acquire(&fds_table_lock);
-
-	int x;
-	for(x = 0;x < FDS_TABLE_SZ;x++)
-	{
-		if(fds_table[x].type) continue;
-
-		
-	}
-
-	slock_release(&fds_table_lock);
-
-	return result;
 }
 
 struct proc* alloc_proc()
@@ -93,6 +69,8 @@ struct proc* alloc_proc()
 		{
 			memset(ptable + x, 0, sizeof(struct proc));
 			ptable[x].state = PROC_EMBRYO;
+			ptable[x].fdtab = fd_tables[x];
+			ptable[x].fdtab_lock = &fd_tables_locks[x];
 			break;
 		}
 	}
@@ -117,13 +95,15 @@ struct proc* spawn_tty(tty_t t)
 	p->pid = next_pid++;
 	p->uid = 0; /* init is owned by root */
 	p->gid = 0; /* group is also root */
-	memset(p->fdtab, 0, sizeof(struct file_descriptor) * PROC_MAX_FDS);
 
 	/* Setup stdin, stdout and stderr */
+	if(fd_next(p) != 0) panic("spawn_tty: wrong fd for stdin\n");
 	p->fdtab[0]->type = FD_TYPE_DEVICE;
 	p->fdtab[0]->device = t->driver;
+	if(fd_next(p) != 1) panic("spawn_tty: wrong fd for stdout\n");
 	p->fdtab[1]->type = FD_TYPE_DEVICE;
 	p->fdtab[1]->device = t->driver;
+	if(fd_next(p) != 2) panic("spawn_tty: wrong fd for stderr\n");
 	p->fdtab[2]->type = FD_TYPE_DEVICE;
 	p->fdtab[2]->device = t->driver;
 
@@ -222,9 +202,9 @@ void proc_disconnect(struct proc* p)
 {
 	slock_acquire(&ptable_lock);
 	/* disconnect stdin, stdout and stderr */
-	p->fdtab[0]->device = dev_null;
-	p->fdtab[1]->device = dev_null;
-	p->fdtab[2]->device = dev_null;
+	fd_free(p, 0);
+	fd_free(p, 1);
+	fd_free(p, 2);
 
 	tty_t t = p->t;
 
@@ -250,6 +230,10 @@ void proc_set_ctty(struct proc* p, tty_t t)
 {
 	slock_acquire(&ptable_lock);
 	rproc->t = t;
+	if(fd_new(p, 0, 1) == -1) return;
+	if(fd_new(p, 1, 1) == -1) return;
+	if(fd_new(p, 2, 1) == -1) return;
+
 	rproc->fdtab[0]->device = t->driver;
 	rproc->fdtab[0]->type = FD_TYPE_DEVICE;
 	rproc->fdtab[1]->device = t->driver;
@@ -285,6 +269,7 @@ void proc_print_table(void)
 		int fd;
 		for(fd = 0;fd < PROC_MAX_FDS;fd++)
 		{
+			if(!ptable[x].fdtab[fd]) continue;
 			if(!ptable[x].fdtab[fd]->type)
 				continue;
 			cprintf("\t%d: %s\n", fd, ptable[x].fdtab[fd]->path);

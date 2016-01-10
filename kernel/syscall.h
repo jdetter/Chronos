@@ -65,12 +65,7 @@ int syscall_get_str_ptr(const char** dst, int arg_num);
  */
 int syscall_get_optional_ptr(void** ptr, int arg_num);
 
-/**
- * Find an available file descriptor.
- */
-int find_fd(void);
-
-/** Check to see if an fd is valid */
+/* Check to see if an fd is valid */
 int fd_ok(int fd);
 
 /**

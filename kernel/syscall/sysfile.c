@@ -73,34 +73,47 @@ int sys_open(void)
 
 	if(syscall_get_str_ptr(&path, 0)) return -1; 
 	if(syscall_get_int(&flags, 1)) return -1;
-	int fd = find_fd();
-	if(fd == -1){
-		return -1;
-	}
+	int fd = fd_next(rproc);
+	if(fd == -1) return -1;
 
 #ifdef DEBUG
 	cprintf("%s: opening file %s\n", rproc->name, path);
 #endif
+
+	/* Lock this file descriptor */
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 #ifdef O_PATH
 	if(flags & O_PATH)
 	{
 		strncpy(rproc->fdtab[fd].path, path, FILE_MAX_PATH);
 		rproc->fdtab[fd].type = FD_TYPE_PATH;
-		return -1;
+		slock_release(&rproc->fdtab[fd]->lock);
+		return fd;
 	}
 #endif
 
 	int created = 0;
 	if(flags & O_CREAT)
 	{
-		if(syscall_get_int((int*)&mode, 2)) return -1;
-		created = fs_create(path, flags, mode, rproc->uid, rproc->gid);
+		if(syscall_get_int((int*)&mode, 2)) 
+		{
+			slock_release(&rproc->fdtab[fd]->lock);
+			fd_free(rproc, fd);
+			return -1;
+		}
+
+		created = fs_create(path, flags, mode, 
+				rproc->uid, rproc->gid);
 	}
 
 	/* Check for O_EXCL */
 	if((flags & O_CREAT) && (flags & O_EXCL) && created)
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
+		fd_free(rproc, fd);
 		return -1;
+	}
 
 	rproc->fdtab[fd]->type = FD_TYPE_FILE;
 	strncpy(rproc->fdtab[fd]->path, path, FILE_MAX_PATH);
@@ -110,8 +123,8 @@ int sys_open(void)
 
 	if(rproc->fdtab[fd]->i == NULL)
 	{
-		memset(rproc->fdtab + fd, 0, 
-			sizeof(struct file_descriptor));
+		slock_release(&rproc->fdtab[fd]->lock);
+		fd_free(rproc, fd);
 		return -1;
 	}
 
@@ -130,7 +143,8 @@ int sys_open(void)
 
 	if(flags & O_DIRECTORY && !S_ISDIR(st.st_mode))
 	{
-		memset(rproc->fdtab + fd, 0, sizeof(struct file_descriptor));
+		slock_release(&rproc->fdtab[fd]->lock);
+		fd_free(rproc, fd);
 		return -1;
 	}
 
@@ -141,6 +155,9 @@ int sys_open(void)
 #ifdef DEBUG
 	cprintf("%s: opened file %s with fd %d\n", rproc->name, path, fd);
 #endif
+
+	slock_release(&rproc->fdtab[fd]->lock);
+
 	return fd;
 }
 
@@ -159,12 +176,14 @@ int sys_close(void)
 
 int close(int fd)
 {
-	if(fd >= PROC_MAX_FDS || fd < 0){return -1;}
+	if(!fd_ok(fd)) return -1;
+
+	slock_acquire(&rproc->fdtab[fd]->lock);
 	if(rproc->fdtab[fd]->type == FD_TYPE_FILE)
 	{
 #ifdef DEBUG
 		cprintf("%s: closing file %s\n",
-			rproc->name, rproc->fdtab[fd]->path);
+				rproc->name, rproc->fdtab[fd]->path);
 #endif
 		fs_close(rproc->fdtab[fd]->i);
 	}else if(rproc->fdtab[fd]->type == FD_TYPE_PIPE)
@@ -179,7 +198,9 @@ int close(int fd)
 				!rproc->fdtab[fd]->pipe->read_ref)
 			rproc->fdtab[fd]->pipe->faulted = 1;
 	}
-	rproc->fdtab[fd]->type = 0x00;
+
+	slock_release(&rproc->fdtab[fd]->lock);
+	fd_free(rproc, fd);
 	return 0;
 }
 
@@ -195,55 +216,65 @@ int sys_read(void)
 
 #ifdef DEBUG
 	cprintf("%s: doing read for %d bytes.\n",
-		rproc->name, sz);
+			rproc->name, sz);
 #endif
+
+	/* Make sure this fd is valid */
+	if(!fd_ok(fd)) return -1;
+
+	/* Acquire the lock */
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	switch(rproc->fdtab[fd]->type)
 	{
-	case 0x00:
+		default:
 #ifdef DEBUG
-		cprintf("%s: invalid fd %d\n", rproc->name, fd);
+			cprintf("%s: invalid fd %d\n", rproc->name, fd);
 #endif 
-		return -1;
-	case FD_TYPE_FILE:
-		if((sz = fs_read(rproc->fdtab[fd]->i, dst, sz,
-				rproc->fdtab[fd]->seek)) < 0) 
-		{
+			sz = -1;
+			break;
+		case FD_TYPE_FILE:
+			if((sz = fs_read(rproc->fdtab[fd]->i, dst, sz,
+							rproc->fdtab[fd]->seek)) < 0) 
+			{
 #ifdef DEBUG
-			cprintf("READ FAILURE!\n");
+				cprintf("READ FAILURE!\n");
 #endif
-			return -1;
-		}
+				sz = -1;
+				break;
+			}
 
 #ifdef DEBUG
-		cprintf("%s: got %d bytes from read.\n", rproc->name, sz);
+			cprintf("%s: got %d bytes from read.\n", rproc->name, sz);
 #endif
-		break;
-	case FD_TYPE_DEVICE:
-		/* Check for read support */
-		if(rproc->fdtab[fd]->device->io_driver.read)
-		{
-			/* read is supported */
-			sz = rproc->fdtab[fd]->device->io_driver.read(dst,
-				rproc->fdtab[fd]->seek, sz,
-				rproc->fdtab[fd]->device->io_driver.context);
-		} else return -1;
-		break;
-	case FD_TYPE_PIPE:
-		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_READ)
-			pipe_read(dst, sz, rproc->fdtab[fd]->pipe);
-		else return -1;
-		break;
-	default: return -1;
+			break;
+		case FD_TYPE_DEVICE:
+			/* Check for read support */
+			if(rproc->fdtab[fd]->device->io_driver.read)
+			{
+				/* read is supported */
+				sz = rproc->fdtab[fd]->device->io_driver.read(dst,
+						rproc->fdtab[fd]->seek, sz,
+						rproc->fdtab[fd]->device->io_driver.context);
+			} else sz = -1;
+			break;
+		case FD_TYPE_PIPE:
+			if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_READ)
+				pipe_read(dst, sz, rproc->fdtab[fd]->pipe);
+			else sz = -1;
+			break;
 	}
 
-	rproc->fdtab[fd]->seek += sz;
+	if(sz > 0)
+		rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
 	cprintf("%s: CONTENTS |%s|\n", rproc->name, dst);
 	cprintf("%s: new position in file: %d\n", 
-		rproc->name, rproc->fdtab[fd]->seek);
+			rproc->name, rproc->fdtab[fd]->seek);
 #endif
+
+	slock_release(&rproc->fdtab[fd]->lock);
 
 	return sz;
 }
@@ -259,49 +290,55 @@ int sys_write(void)
 	if(syscall_get_buffer_ptr((void**)&src, sz, 1)) return -1;
 
 #ifdef DEBUG
-        cprintf("%s: doing write for %d bytes.\n",
-                rproc->name, sz);
+	cprintf("%s: doing write for %d bytes.\n",
+			rproc->name, sz);
 #endif
 
+	if(!fd_ok(fd)) return -1;
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	switch(rproc->fdtab[fd]->type)
 	{
-	default:
+		default:
 #ifdef DEBUG
-                cprintf("%s: invalid fd %d\n", rproc->name, fd);
+			cprintf("%s: invalid fd %d\n", rproc->name, fd);
 #endif 
-		return -1;
-	case FD_TYPE_FILE:
-		if(fs_write(rproc->fdtab[fd]->i, src, sz,
-				rproc->fdtab[fd]->seek) == -1)
-		{
+			sz = -1;
+			break;
+		case FD_TYPE_FILE:
+			if((sz = fs_write(rproc->fdtab[fd]->i, src, sz,
+						rproc->fdtab[fd]->seek)) < 0)
+			{
 #ifdef DEBUG
-			cprintf("%s: write to file %s failed!\n",
-				rproc->name, 
-				rproc->fdtab[fd]->path);
+				cprintf("%s: write to file %s failed!\n",
+						rproc->name, 
+						rproc->fdtab[fd]->path);
 #endif
-			return -1;
-		}
-		break;
-	case FD_TYPE_PIPE:
-		if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_WRITE)
-			pipe_write(src, sz, rproc->fdtab[fd]->pipe);
-		else return -1;
-	case FD_TYPE_DEVICE:
-		if(rproc->fdtab[fd]->device->io_driver.write)
-			sz = rproc->fdtab[fd]->device->io_driver.write(src,
-				rproc->fdtab[fd]->seek, sz, 
-				rproc->fdtab[fd]->device->io_driver.context);
-		else return -1;
-		break;
+				sz = -1;
+			}
+			break;
+		case FD_TYPE_PIPE:
+			if(rproc->fdtab[fd]->pipe_type == FD_PIPE_MODE_WRITE)
+				pipe_write(src, sz, rproc->fdtab[fd]->pipe);
+			else sz = -1;
+			break;
+		case FD_TYPE_DEVICE:
+			if(rproc->fdtab[fd]->device->io_driver.write)
+				sz = rproc->fdtab[fd]->device->io_driver.write(src,
+						rproc->fdtab[fd]->seek, sz, 
+						rproc->fdtab[fd]->device->io_driver.context);
+			else sz = -1;
+			break;
 	}
 
-	rproc->fdtab[fd]->seek += sz;
+	if(sz > 0)
+		rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
 	cprintf("New position in file: %d\n", 
-		rproc->fdtab[fd]->seek);
+			rproc->fdtab[fd]->seek);
 #endif
+	slock_release(&rproc->fdtab[fd]->lock);
 	return sz;
 }
 
@@ -314,9 +351,8 @@ int sys_lseek(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int((int*)&offset, 1)) return -1;
 	if(syscall_get_int(&whence, 2)) return -1;
-	if(rproc->fdtab[fd]->type != FD_TYPE_FILE){
-		return -1;
-	}
+	if(!fd_ok(fd)) return -1;
+	slock_acquire(&rproc->fdtab[fd]->lock);
 #ifdef DEBUG
 	cprintf("%s: Seeking in file\n", rproc->name);
 #endif
@@ -333,11 +369,11 @@ int sys_lseek(void)
 		fs_stat(rproc->fdtab[fd]->i, &stat);
 		seek_pos = stat.st_size + offset;
 	} else {
-		return -1;
+		seek_pos = -1;
 	}
 
-	if(seek_pos < 0){ seek_pos = 0;}
-	rproc->fdtab[fd]->seek = seek_pos;
+	if(seek_pos >= 0)
+		rproc->fdtab[fd]->seek = seek_pos;
 
 	return seek_pos;
 }
@@ -355,6 +391,7 @@ int sys_chmod(void)
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_int((int*)&mode, 1)) return -1;
+
 	return fs_chmod(path, mode);
 }
 
@@ -390,8 +427,7 @@ int sys_mkdir(void)
 	uint permissions;
 	if(syscall_get_str_ptr(&dir, 0)) return -1;
 	if(syscall_get_int((int*)&permissions, 1)) return -1;
-	fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
-	return 0;
+	return fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
 }
 
 /* int unlink(const char* file) */
@@ -403,7 +439,7 @@ int sys_unlink(void)
 #ifdef DEBUG
 	if(file) 
 		cprintf("%s: unlinking file %s\n", rproc->name,
-			file);
+				file);
 #endif
 
 	return fs_unlink(file);
@@ -434,37 +470,44 @@ int sys_fstat(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
-	if(fd < 0 || fd >= PROC_MAX_FDS) return -1;
 
 #ifdef DEBUG
 	cprintf("%s: fstat on file %d\n", rproc->name, fd);
 #endif
+
+	if(!fd_ok(fd)) return -1;
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	int close_on_exit = 0;
 	inode i = NULL;
 	/* Check file descriptor type */
 	switch(rproc->fdtab[fd]->type)
 	{
-	case FD_TYPE_FILE:
-		i = rproc->fdtab[fd]->i;
-		break;
-	case FD_TYPE_DEVICE:
-	case FD_TYPE_PIPE:
-		i = fs_open(rproc->fdtab[fd]->device->node, 
-			O_RDONLY, 0x0, 0x0, 0x0);
-		if(!i) return -1;
-		close_on_exit = 1;
-		break;
-	default:
+		case FD_TYPE_FILE:
+			i = rproc->fdtab[fd]->i;
+			break;
+		case FD_TYPE_DEVICE:
+		case FD_TYPE_PIPE:
+			i = fs_open(rproc->fdtab[fd]->device->node, 
+					O_RDONLY, 0x0, 0x0, 0x0);
+			close_on_exit = 1;
+			break;
+		default:
 #ifdef DEBUG
-		cprintf("Fstat called on: %d\n", rproc->fdtab[fd]->type); 
+			cprintf("Fstat called on: %d\n", rproc->fdtab[fd]->type); 
 #endif
-		return -1;
+			break;
 	}
 
-	int result = fs_stat(i, dst);
+	int result = -1;
+	if(i)
+	{
+		result = fs_stat(i, dst);
+		if(close_on_exit)
+			fs_close(i);
+	}
 
-	if(close_on_exit)fs_close(i);
+	slock_release(&rproc->fdtab[fd]->lock);
 
 	return result;
 }
@@ -484,17 +527,23 @@ int sys_readdir(void)
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dirp, 
-			sizeof(struct old_linux_dirent), 1))
+				sizeof(struct old_linux_dirent), 1))
 		return -1;
-	if(fd_ok(fd)) return -1;
+	if(!fd_ok(fd)) return -1;
 	if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
 		return -1;
+
+	/* Acquire lock */
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	struct dirent dir;
 	int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
 			&dir);
-	if(result < 0) return -1;
-	if(result == 1) return 0;
+	if(result < 0) 
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
+		return -1;
+	}
 
 	/* Convert to old structure */
 	dirp->d_ino = dir.d_ino;
@@ -503,33 +552,39 @@ int sys_readdir(void)
 	strncpy(dirp->d_name, dir.d_name, FILE_MAX_NAME);
 
 	rproc->fdtab[fd]->seek++; /* Increment seek */
+	slock_release(&rproc->fdtab[fd]->lock);
 	return 1;
 }
 
 /* int getdents(int fd, struct chronos_dirent* dirp, uint count) */
 int sys_getdents(void)
 {
-        int fd;
+	int fd;
 	struct dirent* dirp;
 	uint count;
 
-        if(syscall_get_int(&fd, 0)) return -1;
-        if(syscall_get_int((int*)&count, 2)) return -1;
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(syscall_get_int((int*)&count, 2)) return -1;
 	if(count < sizeof(struct dirent)) return -1;
-        if(syscall_get_buffer_ptr((void**)&dirp, count, 1))
-                return -1;
-        if(fd_ok(fd)) return -1;
-        if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
-                return -1;
+	if(syscall_get_buffer_ptr((void**)&dirp, count, 1))
+		return -1;
+	if(!fd_ok(fd)) return -1;
+	if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
+		return -1;
 
-        int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
+	slock_acquire(&rproc->fdtab[fd]->lock);
+	int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
 			dirp);
-        if(result < 0) return -1;
-        if(result == 1) return 0;
+	if(result < 0) 
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
+		return -1;
+	}
 
-        /* Convert to old structure */
-        rproc->fdtab[fd]->seek++; /* Increment seek */
-        return sizeof(struct dirent);
+	/* Convert to old structure */
+	rproc->fdtab[fd]->seek++; /* Increment seek */
+	slock_release(&rproc->fdtab[fd]->lock);
+	return sizeof(struct dirent);
 }
 
 /* int pipe(int fd[2]) */
@@ -544,7 +599,15 @@ int sys_pipe(void)
 	if(!t) return -1;
 
 	/* Get a read fd */
-	int read = find_fd();
+	int read = fd_next(rproc);
+	if(!fd_ok(read))
+		return -1;
+	int write = fd_next(rproc);
+	if(!fd_ok(write))
+		return -1;
+	slock_acquire(&rproc->fdtab[read]->lock);
+	slock_acquire(&rproc->fdtab[write]->lock);
+
 	if(read >= 0)
 	{
 		rproc->fdtab[read]->type = FD_TYPE_PIPE;
@@ -553,7 +616,6 @@ int sys_pipe(void)
 	}
 
 	/* Get a write fd */
-	int write = find_fd();
 	if(write >= 0)
 	{
 		rproc->fdtab[write]->type = FD_TYPE_PIPE;
@@ -561,20 +623,14 @@ int sys_pipe(void)
 		rproc->fdtab[write]->pipe = t;
 	}
 
-	if(read < 0 || write < 0)
-	{
-		if(read >= 0)
-			rproc->fdtab[read]->type = 0x0;
-		if(write >= 0)
-			rproc->fdtab[write]->type = 0x0;
-		pipe_free(t);
-		return -1;
-	}
 	t->write_ref = 1;
 	t->read_ref = 1;
 	pipefd[0] = read;
 	pipefd[1] = write;
-
+	
+	slock_release(&rproc->fdtab[read]->lock);
+	slock_release(&rproc->fdtab[write]->lock);
+	
 	return 0;
 }
 
@@ -583,7 +639,8 @@ int sys_dup(void)
 {
 	int fd;
 	if(syscall_get_int(&fd, 0)) return -1;
-	int new_fd = find_fd();
+	if(!fd_ok(fd)) return -1;
+	int new_fd = fd_next(rproc);
 	return dup2(new_fd, fd);
 }
 
@@ -594,51 +651,67 @@ int sys_dup2(void)
 	int old_fd;
 	if(syscall_get_int(&new_fd, 0)) return -1;
 	if(syscall_get_int(&old_fd, 1)) return -1;
+	if(!fd_ok(old_fd)) return 1; /* old_fd must be valid */
 	return dup2(new_fd, old_fd);
 }
 
 int dup2(int new_fd, int old_fd)
 {
-	if(new_fd < 0 || new_fd >= PROC_MAX_FDS) return -1;
-	if(old_fd < 0 || old_fd >= PROC_MAX_FDS) return -1;
+	if(!fd_ok(old_fd))
+		return -1;
 	/* Make sure new_fd is closed */
 	close(new_fd);
-	memmove(rproc->fdtab + new_fd, rproc->fdtab + old_fd,
-			sizeof(struct file_descriptor));
+	/* Lock the old fd */
+	slock_acquire(&rproc->fdtab[old_fd]->lock);
+	/* Added a reference for this fd */
+	rproc->fdtab[new_fd]->refs++;
+	/* Create the mapping */
+	rproc->fdtab[new_fd] = rproc->fdtab[old_fd];
+
+	/* Modify references for other mechanisms */
 	switch(rproc->fdtab[old_fd]->type)
 	{
-	default: return -1;
-	case FD_TYPE_FILE:
-		rproc->fdtab[old_fd]->i->references++;
-		break;
-	case FD_TYPE_DEVICE:break;
-	case FD_TYPE_PIPE:
-		slock_acquire(&rproc->fdtab[old_fd]->pipe->guard);
-		if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_WRITE)
-			rproc->fdtab[old_fd]->pipe->write_ref++;
-		if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_READ)
-			rproc->fdtab[old_fd]->pipe->read_ref++;
-		slock_release(&rproc->fdtab[old_fd]->pipe->guard);
-		break;
+		default: break;
+		case FD_TYPE_FILE:
+			/* Increment inode references */
+			rproc->fdtab[old_fd]->i->references++;
+			break;
+		case FD_TYPE_DEVICE:
+			break;
+		case FD_TYPE_PIPE:
+			slock_acquire(&rproc->fdtab[old_fd]->pipe->guard);
+			if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_WRITE)
+				rproc->fdtab[old_fd]->pipe->write_ref++;
+			if(rproc->fdtab[old_fd]->pipe_type == FD_PIPE_MODE_READ)
+				rproc->fdtab[old_fd]->pipe->read_ref++;
+			slock_release(&rproc->fdtab[old_fd]->pipe->guard);
+			break;
 	}
 
+	/* Release the fd lock */
+	slock_release(&rproc->fdtab[old_fd]->lock);
 	return 0;
 }
 
-int sys_fchdir(int fd)
+int sys_fchdir(void)
 {
-	if(fd < 0) return -1;
-	if(fd >= PROC_MAX_FDS) return -1;
+	int fd;
+	if(syscall_get_int(&fd, 0)) return -1;
+	if(!fd_ok(fd)) return -1;
+	slock_acquire(&rproc->fdtab[fd]->lock);
 	switch(fd)
 	{
-	case FD_TYPE_FILE:
-	case FD_TYPE_DEVICE:
-	case FD_TYPE_PATH:
-		break;
-	default:
-		return -1;
+		case FD_TYPE_FILE:
+		case FD_TYPE_DEVICE:
+		case FD_TYPE_PATH:
+			break;
+		default:
+			slock_release(&rproc->fdtab[fd]->lock);
+			return -1;
 	}
+
 	strncpy(rproc->cwd, rproc->fdtab[fd]->path, FILE_MAX_PATH);
+	slock_release(&rproc->fdtab[fd]->lock);
 	return 0;
 }
 
@@ -649,19 +722,24 @@ int sys_fchmod(void)
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int((int*)&mode, 1)) return -1;
+	if(!fd_ok(fd));
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
-	if(fd < 0) return -1;
-	if(fd >= PROC_MAX_FDS) return -1;
 	switch(fd)
 	{
-	case FD_TYPE_FILE:
-	case FD_TYPE_DEVICE:
-	case FD_TYPE_PATH:
-		break;
-	default:
-		return -1;
+		case FD_TYPE_FILE:
+		case FD_TYPE_DEVICE:
+		case FD_TYPE_PATH:
+			break;
+		default:
+			slock_release(&rproc->fdtab[fd]->lock);
+			return -1;
 	}
-	return fs_chmod(rproc->fdtab[fd]->path, mode);
+			
+	int result = fs_chmod(rproc->fdtab[fd]->path, mode);
+	slock_release(&rproc->fdtab[fd]->lock);
+
+	return result;
 }
 
 int sys_fchown(void)
@@ -673,31 +751,35 @@ int sys_fchown(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_short((short*)&owner, 1)) return -1;
 	if(syscall_get_short((short*)&group, 2)) return -1;
+	if(!fd_ok(fd)) return -1;
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
-	if(fd < 0) return -1;
-	if(fd >= PROC_MAX_FDS) return -1;
 	switch(fd)
 	{
-	case FD_TYPE_FILE:
-	case FD_TYPE_DEVICE:
-	case FD_TYPE_PATH:
-		break;
-	default:
-		return -1;
+		case FD_TYPE_FILE:
+		case FD_TYPE_DEVICE:
+		case FD_TYPE_PATH:
+			break;
+		default:
+			slock_release(&rproc->fdtab[fd]->lock);
+			return -1;
 	}
-	return fs_chown(rproc->fdtab[fd]->path, owner, group);
+
+	int result = fs_chown(rproc->fdtab[fd]->path, owner, group);
+	slock_release(&rproc->fdtab[fd]->lock);
+	return result;
 }
 
 int lchown(const char *pathname, uid_t owner, gid_t group)
 {
-	cprintf("Implementation needed for lchown.\n");
+	panic("Implementation needed for lchown.\n");
 	return -1;
 }
 
 int sys_ioctl(void)
 {
 	int fd;
-	ulong request;
+	unsigned long request;
 	void* arg;
 
 	if(syscall_get_int(&fd, 0)) return -1;
@@ -705,20 +787,30 @@ int sys_ioctl(void)
 	if(sizeof(long) == sizeof(int))
 	{
 		if(syscall_get_int((int*)&arg, 2)) return -1;
-	}else if(syscall_get_int((int*)&arg, 3)) return -1;
+	} else if(syscall_get_int((int*)&arg, 3)) return -1;
 
-	if(fd_ok(fd)) return -1;
+	if(!fd_ok(fd)) return -1;
 
+	slock_acquire(&rproc->fdtab[fd]->lock);
 	/* Is this a device? */
 	if(rproc->fdtab[fd]->type != FD_TYPE_DEVICE)
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
 		return -1;
+	}
 
 	/* Does this device support ioctl? */
 	if(!rproc->fdtab[fd]->device->io_driver.ioctl)
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
 		return -1;
+	}
 
-	return rproc->fdtab[fd]->device->io_driver.ioctl(request, 
-		arg, rproc->fdtab[fd]->device->io_driver.context);
+	int result = rproc->fdtab[fd]->device->io_driver.ioctl(request, 
+			arg, rproc->fdtab[fd]->device->io_driver.context);
+
+	slock_release(&rproc->fdtab[fd]->lock);
+	return result;
 }
 
 int sys_access(void)
@@ -730,8 +822,8 @@ int sys_access(void)
 	if(syscall_get_int((int*)&mode, 1)) return -1;
 
 	inode i = fs_open(pathname, O_RDONLY, 0x0, 
-		rproc->ruid, rproc->rgid);
-	
+			rproc->ruid, rproc->rgid);
+
 	if(!i) return -1; /* If the file dne, we can't open it! */
 
 	struct stat st;
@@ -752,17 +844,24 @@ int sys_ttyname(void)
 	if(syscall_get_buffer_ptr((void**)&buf, sz, 1)) return -1;
 
 	/* see if the fd is okay */
-	if(fd_ok(fd)) return -1;
+	if(!fd_ok(fd)) return -1;
 
+	/* Lock this fd */
+	slock_acquire(&rproc->fdtab[fd]->lock);
 	/* Check to make sure the file descriptor is actually a device */
-	if(rproc->fdtab[fd]->type != FD_TYPE_DEVICE) return -1;
-
-	/* See if the device is a tty. */
-	if(!tty_check(rproc->fdtab[fd]->device)) return -1;
+	if(rproc->fdtab[fd]->type != FD_TYPE_DEVICE
+		|| !tty_check(rproc->fdtab[fd]->device)) 
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
+		return -1;
+	}
 
 	/* Move the mount point into buf */
-	memmove(buf, rproc->fdtab[fd]->device->node, sz);
+	if(sz > FILE_MAX_PATH)
+		sz = FILE_MAX_PATH;
+	strncpy(buf, rproc->fdtab[fd]->device->node, sz);
 
+	slock_release(&rproc->fdtab[fd]->lock);
 	return 0;
 }
 
@@ -774,8 +873,7 @@ int sys_fpathconf(void)
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int(&name, 1)) return -1;
-
-	if(fd_ok(fd)) return -1;
+	if(!fd_ok(fd)) return -1;
 
 	switch(name)
 	{
@@ -786,14 +884,14 @@ int sys_fpathconf(void)
 			if(!rproc->fdtab[fd]->type)
 				return -1;
 			return FILE_MAX_NAME - 1 - 
-					strlen(rproc->fdtab[fd]->path);
+				strlen(rproc->fdtab[fd]->path);
 		case _PC_PIPE_BUF:
 			return PIPE_DATA;
 		case _PC_CHOWN_RESTRICTED:
 			if(!rproc->fdtab[fd]->type)
-                                return -1;
+				return -1;
 			return FILE_MAX_NAME - 1 -
-                                strlen(rproc->fdtab[fd]->path);
+				strlen(rproc->fdtab[fd]->path);
 		case _PC_NO_TRUNC:
 			return 1;
 		case _PC_VDISABLE:
@@ -810,8 +908,8 @@ int sys_fpathconf(void)
 int sys_pathconf(void)
 {
 	/* TODO: improve the limit checking here */
-        char* path;
-        int name;
+	char* path;
+	int name;
 
 	if(syscall_get_str_ptr((const char**)&path, 0)) return -1;
 	if(syscall_get_int(&name, 1)) return -1;
@@ -844,17 +942,17 @@ int sys_pathconf(void)
 
 int sys_lstat(void)
 {
-        const char* path;
-        struct stat* st;
-        if(syscall_get_str_ptr(&path, 0)) return -1;
-        if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
-        inode i = fs_open(path, O_RDONLY, 0, 0, 0);
-        if(i == NULL) return -1;
-        /* TODO: Handle symbolic links here! */
+	const char* path;
+	struct stat* st;
+	if(syscall_get_str_ptr(&path, 0)) return -1;
+	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
+	if(i == NULL) return -1;
+	/* TODO: Handle symbolic links here! */
 
 	fs_stat(i, st);
-        fs_close(i);
-        return 0;
+	fs_close(i);
+	return 0;
 
 }
 
@@ -880,29 +978,37 @@ int sys_fcntl(void)
 
 	int i_arg;
 	if(syscall_get_int(&i_arg, 2)) return -1;
+	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
 	cprintf("%s: fcntl on fd %d, action %d, iarg: %d\n", 
 			rproc->name, fd, action, i_arg);
 #endif
-
-	slock_acquire(&ptable_lock);
+	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	int result = 0;
 	switch(action)
 	{
 		case F_DUPFD:
-			i_arg = find_fd_gt(i_arg);
-			if(i_arg <= 0) return -1;
+			i_arg = fd_next_at(rproc, i_arg);
+			if(i_arg <= 0)
+			{
+				result = -1;
+				break;
+			}
 			result = dup2(i_arg, fd);		
 			break;
 		case F_DUPFD_CLOEXEC:
-                        i_arg = find_fd_gt(i_arg);
-                        if(i_arg <= 0) return -1;
-                        result = dup2(i_arg, fd);
+			i_arg = fd_next_at(rproc, i_arg);
+			if(i_arg <= 0)
+			{
+				result = -1;
+				break;
+			}
+			result = dup2(i_arg, fd);
 			/* Also set the close on exec flag */
 			rproc->fdtab[i_arg]->flags |= O_CLOEXEC;
-                        break;
+			break;
 		case F_GETFD:
 			result = rproc->fdtab[fd]->flags;
 			break;
@@ -915,11 +1021,10 @@ int sys_fcntl(void)
 		default:
 			cprintf("UNIMPLEMENTED FCNTL: %d\n", action);
 			result = -1;
-			break;;
+			break;
 	}
-	
-	slock_release(&ptable_lock);
 
+	slock_release(&rproc->fdtab[fd]->lock);
 	return result;
 }
 
@@ -1029,6 +1134,16 @@ int sys_select(void)
 			fd = 0;
 			while((fd = sys_select_next_fd(fd, readfds, nfds)) != -1)
 			{
+				/* Make sure this fd is okay */
+				if(!fd_ok(fd)) 
+				{
+					fd++;
+					continue;
+				}
+
+				/* Acquire the lock for this fd */
+				slock_acquire(&rproc->fdtab[fd]->lock);
+
 				switch(rproc->fdtab[fd]->type)
 				{
 					case FD_TYPE_FILE:
@@ -1056,9 +1171,11 @@ int sys_select(void)
 						break;
 					case FD_TYPE_PATH:
 					case FD_TYPE_NULL:
+					default:
 						break;
 				}
 
+				slock_release(&rproc->fdtab[fd]->lock);
 				fd++;
 			}
 		}
@@ -1068,6 +1185,16 @@ int sys_select(void)
 			fd = 0;
 			while((fd = sys_select_next_fd(fd, writefds, nfds)) != -1)
 			{
+				/* Make sure this fd is okay */
+                                if(!fd_ok(fd))
+                                {
+                                        fd++;
+                                        continue;
+                                }
+
+                                /* Acquire the lock for this fd */
+                                slock_acquire(&rproc->fdtab[fd]->lock);
+
 				switch(rproc->fdtab[fd]->type)
 				{
 					case FD_TYPE_FILE:
@@ -1098,6 +1225,7 @@ int sys_select(void)
 						break;
 				}
 
+				slock_release(&rproc->fdtab[fd]->lock);
 				fd++;
 			}
 		}
@@ -1107,7 +1235,7 @@ int sys_select(void)
 		{
 			/* yield for a cycle */
 			yield();
-	
+
 			/* Is our timeout up? */
 			if(timeout && ktime_seconds() >= endtime)
 			{
