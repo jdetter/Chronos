@@ -19,7 +19,7 @@
 #include "proc.h"
 #include "panic.h"
 
-#define DEBUG_SELECT
+// #define DEBUG_SELECT
 #define DEBUG
 
 extern slock_t ptable_lock;
@@ -375,6 +375,7 @@ int sys_lseek(void)
 	if(seek_pos >= 0)
 		rproc->fdtab[fd]->seek = seek_pos;
 
+	slock_release(&rproc->fdtab[fd]->lock);
 	return seek_pos;
 }
 

@@ -40,8 +40,13 @@ int sys_fork(void)
 	struct proc* new_proc = alloc_proc();
 	if(!new_proc) return -1;
 	slock_acquire(&ptable_lock);
+	/* Save the fdtab and lock */
+	fdtab_t fdtab = new_proc->fdtab;
+	slock_t* fdtab_lock = new_proc->fdtab_lock;
 	/* Copy the entire process */
 	memmove(new_proc, rproc, sizeof(struct proc));
+	new_proc->fdtab = fdtab;
+	new_proc->fdtab_lock = fdtab_lock;
 	new_proc->pid = next_pid++;
 	new_proc->tid = 0; /* Not a thread */
 	new_proc->parent = rproc;
@@ -50,10 +55,14 @@ int sys_fork(void)
 	vm_copy_kvm(new_proc->pgdir);
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 
+	/* Copy the table (NO MAP) */
+	fd_tab_copy(new_proc, rproc);
+
 	/* Increment file references for all inodes */
 	int i;
 	for(i = 0;i < PROC_MAX_FDS;i++)
 	{
+		if(!fd_ok(i)) continue;
 		switch(new_proc->fdtab[i]->type)
 		{
 			case FD_TYPE_FILE:
@@ -264,6 +273,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 			return -1;
 		}
 	}
+
 	/* acquire ptable lock */
 	slock_acquire(&ptable_lock);
 
@@ -360,7 +370,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
 
-	/* Add bogus return address (solved by crt0 in stdlibc)*/
+	/* Add bogus return address for _start */
 	uvm_stack -= sizeof(int);
 	uint ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),

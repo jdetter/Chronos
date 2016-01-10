@@ -188,7 +188,9 @@ void main_stack(void)
 	int tty_num;
 	for(tty_num = 1;;tty_num++)
 	{
+		if(tty_num == 2) break;
 		tty_t t = tty_find(tty_num);
+		spawn_tty(t);
 		if(!t) break;
 	}
 	cprintf("[ OK ]\n");

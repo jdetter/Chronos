@@ -40,7 +40,7 @@
 #include "proc.h"
 #include "panic.h"
 
-#define DEBUG
+// #define DEBUG
 
 /* Table for all of the file descriptors */
 struct file_descriptor fds[FDS_TABLE_SZ];
@@ -117,25 +117,30 @@ void fd_free(struct proc* p, int fd)
 	slock_release(p->fdtab_lock);
 }
 
-int fd_tab_free(struct proc* p)
+int fd_tab_free_native(struct proc* p)
 {
+	if(!p || !p->fdtab) return -1;
 #ifdef DEBUG
-	cprintf("desc: freeing table for proc %s\n", p->name);
+        cprintf("desc: freeing table for proc %s\n", p->name);
 #endif
 
+	int x;
+        for(x = 0;x < PROC_MAX_FDS;x++)
+        {
+                if(!p->fdtab[x]) continue;
+                fd_free_native(p->fdtab[x]);
+                p->fdtab[x] = NULL;
+        }
+	return 0;
+}
+
+int fd_tab_free(struct proc* p)
+{
 	if(!p || !p->fdtab) return -1;
 	slock_acquire(p->fdtab_lock);
-
-	int x;
-	for(x = 0;x < PROC_MAX_FDS;x++)
-	{
-		if(!p->fdtab[x]) continue;
-		fd_free_native(p->fdtab[x]);
-		p->fdtab[x] = NULL;
-	}
-
+	int result = fd_tab_free_native(p);
 	slock_release(p->fdtab_lock);
-	return 0;
+	return result;
 }
 
 int fd_next_at(struct proc* p, int pos)
@@ -204,7 +209,7 @@ int fd_tab_copy(struct proc* dst, struct proc* src)
 	}
 
 	/* Free the dst table */
-	fd_tab_free(dst);
+	fd_tab_free_native(dst);
 
 	/* Copy all valid descriptors */
 	int x;
