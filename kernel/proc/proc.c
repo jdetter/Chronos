@@ -272,7 +272,9 @@ void proc_print_table(void)
 			if(!ptable[x].fdtab[fd]) continue;
 			if(!ptable[x].fdtab[fd]->type)
 				continue;
-			cprintf("\t%d: %s\n", fd, ptable[x].fdtab[fd]->path);
+			cprintf("\t%d: name: %s refs: %d\n", 
+				fd, ptable[x].fdtab[fd]->path,
+				ptable[x].fdtab[fd]->refs);
 		}
 		cprintf("Working directory: %s\n", 
 				ptable[x].cwd);

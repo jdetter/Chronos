@@ -263,6 +263,9 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 			case '2':
 				proc_print_table();
 				break;
+			case '3':
+				fd_print_table();
+				break;
 		}
 
 		return 0;

@@ -244,3 +244,44 @@ int fd_new(struct proc* p, int index, int free)
 	slock_release(p->fdtab_lock);
 	return result;
 }
+
+void fd_print_table(void)
+{
+	cprintf("+------------------------------+\n");
+	cprintf("|---------- FD TABLE ----------|\n");
+	cprintf("+------------------------------+\n\n");
+
+	int x;
+	for(x = 0;x < FDS_TABLE_SZ;x++)
+	{
+		if(fds[x].type)
+		{
+			cprintf("%d: %s\n", x, fds[x].path);
+			cprintf("\ttype:   ");
+			switch(fds[x].type)
+			{
+				case FD_TYPE_INUSE:
+					cprintf("LEAKED\n");
+					break;
+				case FD_TYPE_FILE:
+					cprintf("FILE\n");
+					break;
+				case FD_TYPE_DEVICE:
+					cprintf("DEVICE\n");
+					break;
+				case FD_TYPE_PIPE:
+					cprintf("PIPE\n");
+					break;
+				case FD_TYPE_PATH:
+					cprintf("PATH\n");
+					break;
+			}
+			cprintf("\trefs:   %d\n", fds[x].refs);
+			cprintf("\tflags:  %d\n", fds[x].flags);
+			cprintf("\tseek:   %d\n", fds[x].seek);
+			cprintf("\ti:      0x%x\n", fds[x].i);
+			cprintf("\tdevice: 0x%x\n", fds[x].device);
+			cprintf("\tpath:   %s\n", fds[x].path);
+		}
+	}
+}

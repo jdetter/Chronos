@@ -48,8 +48,9 @@ int sys_fork(void)
 	new_proc->fdtab = fdtab;
 	new_proc->fdtab_lock = fdtab_lock;
 	new_proc->pid = next_pid++;
-	new_proc->tid = 0; /* Not a thread */
+	new_proc->tid = new_proc->pid;
 	new_proc->parent = rproc;
+	new_proc->ppid = rproc->pid;
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
@@ -112,6 +113,47 @@ int sys_fork(void)
 	slock_release(&ptable_lock);
 
 	return new_proc->pid;
+}
+
+/* int clone(unsigned long flags, void* child_stack, 
+ *		void* ptid, void* ctid,
+ *		struct pt_regs* regs) */
+int sys_clone(void)
+{
+	unsigned long flags;
+	void* child_stack;
+	void* ptid;
+	void* ctid;
+	struct pt_regs* regs;
+
+	if(syscall_get_long(&flags, 0)) return -1;
+	int start_pos = sizeof(long) / sizeof(int);
+	if(syscall_get_ptr(&child_stack, start_pos))
+		return -1;
+	if(syscall_get_ptr(&ptid, start_pos + 1))
+		return -1;
+	if(syscall_get_ptr(&ctid, start_pos + 2))
+		return -1;
+	if(syscall_get_ptr(&regs, start_pos + 3))
+		return -1;
+
+	struct proc* new_proc = alloc_proc();
+	if(!new_proc) return -1;
+	slock_acquire(&ptable_lock);
+	/* Save the fdtab and lock */
+	fdtab_t fdtab = new_proc->fdtab;
+	slock_t* fdtab_lock = new_proc->fdtab_lock;
+	/* Copy the entire process */
+	memmove(new_proc, rproc, sizeof(struct proc));
+	new_proc->fdtab = fdtab;
+	new_proc->fdtab_lock = fdtab_lock;
+	new_proc->pid = rproc->pid++;
+	new_proc->tid = new_proc->pid;
+	new_proc->parent = rproc;
+	new_proc->ppid = rproc->pid;
+	new_proc->state = PROC_RUNNABLE;
+
+	slock_release(&ptable_lock);
 }
 
 /* int waitpid(int pid, int* status, int options) */

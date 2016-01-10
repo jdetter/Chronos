@@ -242,6 +242,11 @@ int fd_tab_copy(struct proc* dst, struct proc* src);
 int fd_new(struct proc* p, int index, int free);
 
 /**
+ * Function descriptor debugging function
+ */
+void fd_print_table(void);
+
+/**
  * Surrender a scheduling round.
  */
 void yield(void);
