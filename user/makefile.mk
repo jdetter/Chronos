@@ -1,5 +1,6 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	thread-test \
 	exercise \
 	shared \
 	select-test \
