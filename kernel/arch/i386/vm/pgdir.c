@@ -554,12 +554,19 @@ int vm_copy_kvm(pgdir_t* dir)
 		vmflags_t tbl_flags = vm_findtblflags_native(x, k_pgdir);
 		if(!page) continue;
 
+		/* Don't map in the user stack or the swap stack */
+		if(x >= SVM_KSTACK_S && x < SVM_KSTACK_E)
+			continue;
+		if(x >= UVM_KSTACK_S && x < UVM_KSTACK_E)
+			continue;
+		
+
 		if(vm_mappage_native(page, x, dir, tbl_flags, pg_flags))
 			return -1;
 	}
 
 	vm_pop_pgdir(save);
-
+	
 	return 0;
 }
 
@@ -632,7 +639,7 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 {
 	pgdir_t* save = vm_push_pgdir();
 	vmpage_t x;
-	for(x = 0;x < UVM_KVM_S;x += PGSIZE)
+	for(x = 0;x < UVM_TOP;x += PGSIZE)
 	{
 		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
 		if(!src_page) continue;

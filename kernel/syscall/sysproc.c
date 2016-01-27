@@ -64,13 +64,14 @@ int sys_fork(void)
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
+	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 
 	/* vm_copy_uvm(new_proc->pgdir, rproc->pgdir); */
-	vm_uvm_cow(rproc->pgdir);
+	// vm_uvm_cow(rproc->pgdir);
 	/* Create mappings for the user land pages */
-	vm_map_uvm(new_proc->pgdir, rproc->pgdir);
+	// vm_map_uvm(new_proc->pgdir, rproc->pgdir);
 	/* Create a kernel stack */
-	vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
+	// vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
 
 	/* Copy the table (NO MAP) */
 	fd_tab_copy(new_proc, rproc);

@@ -23,7 +23,7 @@
 #include "panic.h"
 
 #ifdef _ALLOW_VM_SHARE_
-#define DEBUG
+// #define DEBUG
 #endif
 #define KVM_MAGIC 0x55AA55AA
 
@@ -182,9 +182,6 @@ void pfree(vmpage_t pg)
 	if(!pg) return;
 	slock_acquire(&global_mem_lock);
 	pgdir_t* save = vm_push_pgdir();
-#ifdef DEBUG
-        cprintf("Page freed: 0x%x\n", pg);
-#endif
         k_pages++;
 	/* Make sure that the page doesn't have any flags: */
 
@@ -204,6 +201,10 @@ void pfree(vmpage_t pg)
         head = new_free;
 	vm_pop_pgdir(save);
 	slock_release(&global_mem_lock);
+
+#ifdef DEBUG
+        cprintf("Page freed: 0x%x\n", pg);
+#endif
 }
 
 void setup_kvm(void)
