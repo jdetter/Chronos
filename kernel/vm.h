@@ -163,6 +163,11 @@ int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir,
 vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir);
 
 /**
+ * Copy the contents of the src page into the dst page. Returns 0 on success.
+ */
+int vm_cpy_page(pypage_t dst, pypage_t src);
+
+/**
  * Find a page in a page directory. If the page is not mapped, and create is 1,
  * add a new page to the page directory and return the new address. If create
  * is 0, and the page is not found, return 0. Otherwise, return the address
@@ -189,7 +194,7 @@ vmflags_t vm_finddirflags(vmpage_t virt, pgdir_t* dir);
 vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir);
 
 /**
- * Set the flags for a page in a page table.
+ * Set the flags for a page in a page table. Returns 0 on success.
  */
 int vm_setpgflags(vmpage_t virt, pgdir_t* dir, vmflags_t pg_flags);
 
@@ -236,11 +241,15 @@ void vm_free_uvm(pgdir_t* dir);
  */
 void switch_kvm(void);
 
-
 /**
  * Map another process's kstack into another process's address space.
  */
 void vm_set_user_kstack(pgdir_t* dir, pgdir_t* kstack);
+
+/**
+ * Copy the kernel stack from src_dir and put it into dst_dir.
+ */
+void vm_cpy_user_kstack(pgdir_t* dst_dir, pgdir_t* src_dir);
 
 /**
  * Map another process's stack into a process's stack swap space.

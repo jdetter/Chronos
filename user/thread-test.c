@@ -9,12 +9,15 @@ int main(int argc, char** argv)
 	args[1] = "Child done.";
 	args[2] = NULL;
 
+	char* env[1];
+	env[0] = NULL;
+
 	printf("About to fork...\n");
 	int pid = vfork();
 
 	if(pid == 0)
 	{
-		execv(args[0], args);
+		execve(args[0], args, env);
 	} else {
 		printf("Parent done.\n");
 	}

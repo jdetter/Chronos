@@ -22,7 +22,9 @@
 #include "vm.h"
 #include "panic.h"
 
-// #define DEBUG
+#ifdef _ALLOW_VM_SHARE_
+#define DEBUG
+#endif
 #define KVM_MAGIC 0x55AA55AA
 
 struct kvm_region {vmpage_t start_addr; vmpage_t end_addr;};
@@ -155,6 +157,8 @@ vmpage_t palloc(void)
         vmpage_t addr = (vmpage_t)head;
         if(head->magic != (int)KVM_MAGIC)
                 panic("KVM is currupt!\n");
+	if(addr < PGSIZE)
+		panic("FVM is currupt! - NULL\n");
 
         head = (struct vm_free_node*)head->next;
         memset((void*)addr, 0, PGSIZE);
@@ -170,6 +174,8 @@ vmpage_t palloc(void)
 
 void pfree(vmpage_t pg)
 {
+	pg = PGROUNDDOWN(pg);
+
 #ifdef DEBUG
 	if(!pg) panic("Freed null page!!\n");
 #endif

@@ -64,7 +64,13 @@ int sys_fork(void)
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
-	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+
+	/* vm_copy_uvm(new_proc->pgdir, rproc->pgdir); */
+	vm_uvm_cow(rproc->pgdir);
+	/* Create mappings for the user land pages */
+	vm_map_uvm(new_proc->pgdir, rproc->pgdir);
+	/* Create a kernel stack */
+	vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
 
 	/* Copy the table (NO MAP) */
 	fd_tab_copy(new_proc, rproc);
@@ -542,8 +548,24 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->stack_start = PGROUNDUP(uvm_start);
 	rproc->stack_end = PGROUNDDOWN(uvm_stack);
 
-	/* Free user memory */
-	vm_free_uvm(rproc->pgdir);
+	/* Is this a thread? */
+	if(rproc->pid == rproc->tgid)
+	{
+		/* Free user memory */
+		vm_free_uvm(rproc->pgdir);
+	} else {
+		cprintf("Thread called exec!\n");
+		/* Create new page directory */
+		pgdir_t* dir = (pgdir_t*)palloc();
+		/* Copy over the kvm */
+		vm_copy_kvm(dir);
+		/* Copy over the current kstack */
+		vm_set_user_kstack(dir, rproc->pgdir);
+		/* Assign the new page directory */
+		rproc->pgdir = dir;
+		/* Clear the TLB */
+		// switch_uvm(rproc);
+	}
 
 	/* Map user pages */
 	vm_map_uvm(rproc->pgdir, tmp_pgdir);

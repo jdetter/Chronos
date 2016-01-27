@@ -299,12 +299,23 @@ vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir)
                 vmpage_t page = PGROUNDDOWN(tbl[tbl_index]);
                 tbl[tbl_index] = 0;
                 vm_pop_pgdir(save);
+
                 return page;
         }
 
         vm_pop_pgdir(save);
 
         return 0;
+}
+
+int vm_cpy_page(pypage_t dst, pypage_t src)
+{
+	pgdir_t* save = vm_push_pgdir();
+	char* src_c = (char*)src;
+	char* dst_c = (char*)dst;
+	memmove(dst_c, src_c, PGSIZE);
+	vm_pop_pgdir(save);
+	return 0;
 }
 
 static vmpage_t vm_findpg_native(vmpage_t virt, int create, pgdir_t* dir,
@@ -575,16 +586,46 @@ void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		for(pg_index = 0;pg_index < PGSIZE / sizeof(int);pg_index++)
 		{
 			unsigned int entry = table[pg_index];
+			vmpage_t pg = (x << 22) | (pg_index << 12);
 			if(entry & PGTBL_SHARE)
 			{
 				/* Add a reference count */
-				vm_pgshare(x, dst_dir);
+				vm_pgshare(pg, dst_dir);
 			}
 		}
 #endif
 	}
 
 	vm_pop_pgdir(save);
+}
+
+void vm_cpy_user_kstack(pgdir_t* dst_dir, pgdir_t* src_dir)
+{
+	pgdir_t* save = vm_push_pgdir();
+
+	vmpage_t x;
+	/* Create new kstack */
+        for(x = PGROUNDDOWN(UVM_KSTACK_S);
+                        x < PGROUNDUP(UVM_KSTACK_E);
+                        x += PGSIZE)
+        {
+                /* Remove old mapping */
+                vmpage_t pg = vm_unmappage(x, dst_dir);
+		if(pg) pfree(pg);
+
+                vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
+                vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
+                vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
+                if(!src_page) continue;
+
+                /* Create and map new page */
+                vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir,
+                                src_tblflags, src_pgflags);
+                /* Copy the page contents */
+                memmove((void*)dst_page, (void*)src_page, PGSIZE);
+        }	
+
+	vm_pop_pgdir(save);	
 }
 
 void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
@@ -616,24 +657,8 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		memmove((void*)dst_page, (void*)src_page, PGSIZE);
 	}
 
-	/* Create new kstack */
-	for(x = PGROUNDDOWN(UVM_KSTACK_S);
-			x < PGROUNDUP(UVM_KSTACK_E);
-			x += PGSIZE)
-	{
-		/* Remove old mapping */
-		vm_unmappage(x, dst_dir);
-		vmpage_t src_page = vm_findpg(x, 0, src_dir, 0, 0);
-		vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
-		vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
-		if(!src_page) continue;
-
-		/* Create and map new page */
-		vmpage_t dst_page = vm_findpg_native(x, 1, dst_dir, 
-				src_tblflags, src_pgflags);
-		/* Copy the page contents */
-		memmove((void*)dst_page, (void*)src_page, PGSIZE);
-	}
+	/* Map in a new user kstack */
+	vm_cpy_user_kstack(dst_dir, src_dir);
 
 	vm_pop_pgdir(save);
 }

@@ -230,7 +230,7 @@
 
 /** Allow vm sharing */
 #ifndef __BOOT_STRAP__
-// #define _ALLOW_VM_SHARE_
+#define _ALLOW_VM_SHARE_
 #endif
 
 #ifndef __VM_ASM_ONLY__

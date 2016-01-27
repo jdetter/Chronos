@@ -16,6 +16,7 @@ KERNEL_OBJECTS := \
 	cache/cacheman \
 	cache/cache \
 	vm/vm_share \
+	vm/vm_cow \
 	proc/desc \
 	proc/proc \
 	proc/sched \

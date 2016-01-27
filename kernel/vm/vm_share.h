@@ -38,4 +38,25 @@ int vm_pgsshare(vmpage_t base, size_t sz, pgdir_t* pgdir);
  */
 void vm_share_print(void);
 
+/**
+ * Mark the user pages as copy on write. Returns 0 on success, -1 on failure.
+ */
+int vm_uvm_cow(pgdir_t* dir);
+
+/**
+ * Check to see if the given page is marked as copy on write. Returns 0 if
+ * the page is not copy on write, returns 1 if the page is copy on write. This
+ * function can safely be called on the same address space more than once.
+ */
+int vm_is_cow(pgdir_t* dir, vmpage_t page);
+
+/**
+ * Remove the copy on write property from the page. This will also allocated
+ * a new page (if needed) and copy over the data. If this is the last reference
+ * to the page, the page will just be marked as writable. The result of this
+ * function will always be a page at the given address that is writable. Returns
+ * 0 on success, nonzero otherwise.
+ */
+int vm_uncow(pgdir_t* dir, vmpage_t page);
+
 #endif

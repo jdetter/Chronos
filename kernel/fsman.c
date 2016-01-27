@@ -620,6 +620,9 @@ int fs_write(inode i, void* src, uint sz, uint start)
 	/* The file properties may have changed */
 	fs_sync_inode(i);
 
+	/* TODO: Temporary: write disk after every write */
+	// fs_sync();
+
 	return bytes;
 }
 
