@@ -287,7 +287,8 @@ TRAP_DONE:
 		{
 			_exit(1);
 		} else {
-			// fs_sync();
+			/* Write everything to disk so logs can be extracted */
+			fs_sync();
 			// cprintf("chronos: kernel panic\n");
 			for(;;);
 		}

@@ -63,15 +63,23 @@ int sys_fork(void)
 	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
 	new_proc->pgdir = (pgdir_t*) palloc();
+	cprintf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^1  0x%x\n", vm_curr_pgdir());
 	vm_copy_kvm(new_proc->pgdir);
-	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+	cprintf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^2  0x%x\n", vm_curr_pgdir());
 
+#ifndef _ALLOW_VM_SHARE_
+	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+#else
 	/* vm_copy_uvm(new_proc->pgdir, rproc->pgdir); */
-	// vm_uvm_cow(rproc->pgdir);
+	vm_uvm_cow(rproc->pgdir);
+	cprintf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^3  0x%x\n", vm_curr_pgdir());
 	/* Create mappings for the user land pages */
-	// vm_map_uvm(new_proc->pgdir, rproc->pgdir);
+	vm_map_uvm(new_proc->pgdir, rproc->pgdir);
+	cprintf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^4  0x%x\n", vm_curr_pgdir());
 	/* Create a kernel stack */
-	// vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
+	vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
+	cprintf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^5  0x%x\n", vm_curr_pgdir());
+#endif
 
 	/* Copy the table (NO MAP) */
 	fd_tab_copy(new_proc, rproc);
@@ -108,8 +116,14 @@ int sys_fork(void)
 	 * process and modifying the contents without changing page directories.
 	 */
 
+	vm_print_pgdir(UVM_KSTACK_E, new_proc->pgdir);
+	vm_print_pgdir(UVM_KSTACK_E, rproc->pgdir);
+
 	/* Map the new process's stack into our swap space */
 	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
+	
+	vm_print_pgdir(UVM_KSTACK_E, new_proc->pgdir);
+	vm_print_pgdir(UVM_KSTACK_E, rproc->pgdir);
 
 	struct trap_frame* tf = (struct trap_frame*)
 		((char*)new_proc->tf - SVM_DISTANCE);

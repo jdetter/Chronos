@@ -132,5 +132,7 @@ void panic(char* fmt, ...)
 			console_putc(pos, buff[pos], 7, 1, 
 				(char*)active->mem_start);
 	}
+
+	fs_sync();
 	for(;;);
 }

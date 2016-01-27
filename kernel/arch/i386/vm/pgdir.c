@@ -407,6 +407,8 @@ static vmflags_t vm_findtblflags_native(vmpage_t virt, pgdir_t* dir)
                 vm_pop_pgdir(save);
                 return 0;
         }
+                
+	vm_pop_pgdir(save);
 	
 	return dir[dir_index] & (PGSIZE - 1);
 }
@@ -562,7 +564,7 @@ int vm_copy_kvm(pgdir_t* dir)
 		
 
 		if(vm_mappage_native(page, x, dir, tbl_flags, pg_flags))
-			return -1;
+			panic("vm: native map failed.\n");
 	}
 
 	vm_pop_pgdir(save);
@@ -700,6 +702,10 @@ void vm_set_swap_stack(pgdir_t* dir, pgdir_t* swap)
 	for(pg = start;pg < end;pg += PGSIZE)
 	{
 		vmpage_t src = vm_findpg(pg + SVM_DISTANCE, 0, swap, 0, 0);
+		if(!src) 
+		{
+			panic("vm: invalid swap stack!\n");
+		}
 		vm_mappage(src, pg, dir, 
 				VM_DIR_READ | VM_DIR_WRIT, 
 				VM_TBL_READ | VM_TBL_WRIT);

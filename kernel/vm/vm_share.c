@@ -8,7 +8,7 @@
 #include "panic.h"
 
 #define PARANOID
-// #define DEBUG
+#define DEBUG
 #define MAX_SHARE 16384
 #define SHARE_HASHMAP 128
 

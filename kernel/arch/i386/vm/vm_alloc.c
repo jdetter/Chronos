@@ -23,7 +23,7 @@
 #include "panic.h"
 
 #ifdef _ALLOW_VM_SHARE_
-// #define DEBUG
+#define DEBUG
 #endif
 #define KVM_MAGIC 0x55AA55AA
 
