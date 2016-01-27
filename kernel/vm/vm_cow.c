@@ -51,7 +51,7 @@ int vm_is_cow(pgdir_t* dir, vmpage_t page)
 	/* Does the page exist? */
 	if(!vm_findpg(page, 0, dir, 0, 0))
 		return 0;
-	if(vm_findtblflags(page, dir) & VM_TBL_COWR)
+	if(vm_findpgflags(page, dir) & VM_TBL_COWR)
 		return 1;
 	return 0;
 }
@@ -81,6 +81,7 @@ int vm_uncow(pgdir_t* dir, vmpage_t page)
 		cprintf("cow: there weren't any refs left for 0x%x\n", phy);
 #endif
 		/* Just mark the page as writable */
+		flags &= ~VM_TBL_COWR;
 		if(vm_setpgflags(page, dir, flags | VM_TBL_WRIT))
 			return -1;
 	} else {

@@ -137,7 +137,10 @@ static vmflags_t vm_tbl_flags(vmflags_t flags)
 	if(flags & VM_TBL_SHAR)
 		result |= PGTBL_SHARE;
 	if(flags & VM_TBL_COWR)
+	{
 		result |= PGTBL_CONWR;
+		result &= ~(PGTBL_WRITE);
+	}
 
 	return result;
 }
@@ -164,13 +167,16 @@ static vmflags_t vm_gen_tbl_flags(vmflags_t flags)
         if(flags & PGTBL_SHARE)
                 result |= VM_TBL_SHAR;
         if(flags & PGTBL_CONWR)
+	{
                 result |= VM_TBL_COWR;
+		result &= ~(VM_TBL_WRIT);
+	}
 
 	/* All pages are read enabled in i386 */
 	flags |= VM_TBL_READ;
 	/* All pages are also executable in i386 */
 	flags |= VM_TBL_EXEC;
-	
+
         return result;
 }
 
@@ -407,10 +413,12 @@ static vmflags_t vm_findtblflags_native(vmpage_t virt, pgdir_t* dir)
                 vm_pop_pgdir(save);
                 return 0;
         }
-                
+               
+	vmflags_t result = dir[dir_index] & (PGSIZE - 1); 
+
 	vm_pop_pgdir(save);
 	
-	return dir[dir_index] & (PGSIZE - 1);
+	return result;
 }
 
 vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir)
