@@ -38,7 +38,7 @@
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
 #define STACK_TOLERANCE 16
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define TRAP_NAME_SZ 20
@@ -111,11 +111,16 @@ int trap_pf(uintptr_t address)
 			dir_flags, tbl_flags);
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
-	}else{
+	} else {
+#ifdef _ALLOW_VM_SHARE_
 		/* Is this copy on write? */
 		if(vm_is_cow(rproc->pgdir, address))
+		{
 			vm_uncow(rproc->pgdir, address);
-		else return 1;
+			return 0;
+		}
+#endif
+		return 1;
 	}
 
 	return 0;

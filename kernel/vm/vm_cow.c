@@ -14,6 +14,10 @@
 
 int vm_uvm_cow(pgdir_t* dir)
 {
+#ifdef DEBUG
+	cprintf("cow: Marking page directory 0x%x as cow.\n", dir);
+#endif
+
 	vmpage_t p;
 	for(p = 0;p < UVM_TOP;p += PGSIZE)
 	{
@@ -24,6 +28,9 @@ int vm_uvm_cow(pgdir_t* dir)
 		/* Is this page already cow? */
 		if(flags & VM_TBL_COWR)
 		{
+#ifdef DEBUG
+			cprintf("cow: 0x%x was already cow.", p);
+#endif
 			/* Add a ref to this page */
 			vm_pgshare(p, dir);
 			continue;
