@@ -40,9 +40,11 @@
 #define PGTBL_DIRTY (1 << 0x6)
 #define PGTBL_GLOBL (1 << 0x8)
 
+#ifdef _ALLOW_VM_SHARE_
 /* There are 3 available page table flags on x86. They are allocated below: */
 #define PGTBL_SHARE (1 << 0x9) /* Marks the page as shared */
 #define PGTBL_CONWR (1 << 0xa) /* Marks the page is copy on write (cow) */
+#endif
 
 /** Default kernel directory and table flags for i386 */
 #define DEFAULT_DIRFLAGS (VM_DIR_PRES)
@@ -134,6 +136,8 @@ static vmflags_t vm_tbl_flags(vmflags_t flags)
 		result |= PGTBL_WRITE;
         if(flags & VM_TBL_PRES)
 		result |= PGTBL_PRSNT;
+
+#ifdef _ALLOW_VM_SHARE_
 	if(flags & VM_TBL_SHAR)
 		result |= PGTBL_SHARE;
 	if(flags & VM_TBL_COWR)
@@ -141,6 +145,7 @@ static vmflags_t vm_tbl_flags(vmflags_t flags)
 		result |= PGTBL_CONWR;
 		result &= ~(PGTBL_WRITE);
 	}
+#endif
 
 	return result;
 }
@@ -164,6 +169,8 @@ static vmflags_t vm_gen_tbl_flags(vmflags_t flags)
                 result |= VM_TBL_WRIT;
         if(flags & PGTBL_PRSNT)
                 result |= VM_TBL_PRES;
+
+#ifdef _ALLOW_VM_SHARE_
         if(flags & PGTBL_SHARE)
                 result |= VM_TBL_SHAR;
         if(flags & PGTBL_CONWR)
@@ -171,6 +178,7 @@ static vmflags_t vm_gen_tbl_flags(vmflags_t flags)
                 result |= VM_TBL_COWR;
 		result &= ~(VM_TBL_WRIT);
 	}
+#endif
 
 	/* All pages are read enabled in i386 */
 	flags |= VM_TBL_READ;
@@ -859,10 +867,12 @@ int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 				cprintf("DIRTY ");
 			if(pg_flags & PGTBL_GLOBL)
 				cprintf("GLOBL ");
+#ifdef _ALLOW_VM_SHARE_
 			if(pg_flags & PGTBL_SHARE)
 				cprintf("SHARE ");
 			if(pg_flags & PGTBL_CONWR)
 				cprintf("CONWR ");
+#endif
 
 			cprintf("\n");
 			printed = 1;

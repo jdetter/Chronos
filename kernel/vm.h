@@ -91,8 +91,11 @@
 #define VM_TBL_WRIT 0x0100 /* Mark the page as writable */
 #define VM_TBL_PRES 0x0200 /* Mark the page as present */
 #define VM_TBL_EXEC 0x0400 /* Mark the page as executable */
+
+#ifdef _ALLOW_VM_SHARE_
 #define VM_TBL_SHAR 0x1000 /* Mark the page as shared */
 #define VM_TBL_COWR 0x2000 /* Mark the page as copy on write */
+#endif
 
 #ifndef __VM_ASM_ONLY__
 
