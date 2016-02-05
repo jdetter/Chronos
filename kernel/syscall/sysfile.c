@@ -20,7 +20,7 @@
 #include "panic.h"
 
 // #define DEBUG_SELECT
-// #define DEBUG
+#define DEBUG
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -1037,6 +1037,10 @@ int sys_sysconf(void)
 	long result = -1;
 	switch(name)
 	{
+		case _SC_PAGESIZE:
+			return PGSIZE;
+		case _SC_PHYS_PAGES:
+			return (int)(1 << 22);
 		default:
 #ifdef DEBUG
 			cprintf("kernel: no such limit: %d\n", name);

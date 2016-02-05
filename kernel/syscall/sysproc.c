@@ -187,22 +187,54 @@ int clone(unsigned long flags, void* child_stack,
 	new_proc->tid = main_proc->next_tid++;
 	new_proc->parent = main_proc;
 
+#ifndef _ALLOW_VM_SHARE_
+	/* Create a new page directory */
+	new_proc->pgdir = (pgdir_t*)palloc();
+	vm_copy_kvm(new_proc->pgdir);
+	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+
+	/* Copy the table (NO MAP) */
+	fd_tab_copy(new_proc, rproc);
+
+	/* Increment file references for all inodes */
+	int i;
+	for(i = 0;i < PROC_MAX_FDS;i++)
+	{
+		if(!fd_ok(i)) continue;
+		switch(new_proc->fdtab[i]->type)
+		{
+			case FD_TYPE_FILE:
+				fs_add_inode_reference(new_proc->fdtab[i]->i);
+				break;
+			case FD_TYPE_PIPE:
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_WRITE)
+					rproc->fdtab[i]->pipe->write_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_READ)
+					rproc->fdtab[i]->pipe->read_ref++;
+				break;
+		}
+	}
+#endif
+
 	/* Create a copy of the kernel stack */
 	/* Map the new process's stack into our swap space */
-        vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
-        struct trap_frame* tf = (struct trap_frame*)
-                ((char*)new_proc->tf - SVM_DISTANCE);
-        tf->eax = 0; /* The child should return 0 */
-        /* new proc needs a context */
-        struct context* c = (struct context*)
-                ((char*)tf - sizeof(struct context));
+	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
+	struct trap_frame* tf = (struct trap_frame*)
+		((char*)new_proc->tf - SVM_DISTANCE);
+	tf->eax = 0; /* The child should return 0 */
+	/* new proc needs a context */
+	struct context* c = (struct context*)
+		((char*)tf - sizeof(struct context));
 	/* Set the return to fork_return */
-        c->eip = (uintptr_t)fork_return;
-        c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
-        c->cr0 = (uintptr_t)new_proc->pgdir;
-        new_proc->context = (uintptr_t)c + SVM_DISTANCE;
-        /* Clear the swap stack now */
-        vm_clear_swap_stack(rproc->pgdir);
+	c->eip = (uintptr_t)fork_return;
+	c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
+	c->cr0 = (uintptr_t)new_proc->pgdir;
+	new_proc->context = (uintptr_t)c + SVM_DISTANCE;
+
+	/* Clear the swap stack now */
+	vm_clear_swap_stack(rproc->pgdir);
 
 	if(flags & CLONE_VFORK)
 	{
@@ -210,15 +242,22 @@ int clone(unsigned long flags, void* child_stack,
 		new_proc->fdtab = main_proc->fdtab;
 		new_proc->fdtab_lock = main_proc->fdtab_lock;
 
-		/* Copy the page directory */
+#ifdef _ALLOW_VM_SHARE_
+		/* Map the page directory */
 		new_proc->pgdir = main_proc->pgdir;
+#endif
 
 		/* Allow the child to run */
 		new_proc->state = PROC_RUNNABLE;
 
+#ifdef _ALLOW_VM_SHARE_
 		/* Wait for the child to exit */
 		while(waitpid_nolock_noharvest(new_proc->pid) 
-			!= new_proc->pid);
+				!= new_proc->pid);
+#else
+		while(waitpid_nolock(new_proc->pid, NULL, 0) 
+				!= new_proc->pid);
+#endif
 
 		/* Harvest the child */
 		memset(new_proc, 0, sizeof(struct proc));
@@ -270,58 +309,58 @@ int waitpid(int pid, int* status, int options)
 
 int waitpid_nolock(int pid, int* status, int options)
 {
-        int ret_pid = 0;
-        struct proc* p = NULL;
-        while(1)
-        {
-                int process;
-                for(process = 0;process < PTABLE_SIZE;process++)
-                {
-                        if(ptable[process].state == PROC_ZOMBIE
-                                        && ptable[process].parent == rproc)
-                        {
-                                if(pid == -1 || ptable[process].pid == pid)
-                                {
-                                        p = ptable + process;
-                                        break;
-                                }
-                        }
-                }
+	int ret_pid = 0;
+	struct proc* p = NULL;
+	while(1)
+	{
+		int process;
+		for(process = 0;process < PTABLE_SIZE;process++)
+		{
+			if(ptable[process].state == PROC_ZOMBIE
+					&& ptable[process].parent == rproc)
+			{
+				if(pid == -1 || ptable[process].pid == pid)
+				{
+					p = ptable + process;
+					break;
+				}
+			}
+		}
 
-                if(p)
-                {
-                        /* Harvest the child */
-                        ret_pid = p->pid;
-                        if(status)
-                                *status = p->return_code;
-                        /* Free used memory */
-                        freepgdir(p->pgdir);
+		if(p)
+		{
+			/* Harvest the child */
+			ret_pid = p->pid;
+			if(status)
+				*status = p->return_code;
+			/* Free used memory */
+			freepgdir(p->pgdir);
 
-                        /* pushcli here */
-                        /* change rproc to the child process so that we can close its files. */
-                        struct proc* current = rproc;
-                        rproc = p;
-                        /* Close open files */
-                        int file;
-                        for(file = 0;file < PROC_MAX_FDS;file++)
-                                close(file);
-                        rproc = current;
+			/* pushcli here */
+			/* change rproc to the child process so that we can close its files. */
+			struct proc* current = rproc;
+			rproc = p;
+			/* Close open files */
+			int file;
+			for(file = 0;file < PROC_MAX_FDS;file++)
+				close(file);
+			rproc = current;
 
-                        memset(p, 0, sizeof(struct proc));
-                        p->state = PROC_UNUSED;
+			memset(p, 0, sizeof(struct proc));
+			p->state = PROC_UNUSED;
 
-                        break;
-                } else {
-                        /* Lets block ourself */
-                        rproc->block_type = PROC_BLOCKED_WAIT;
-                        rproc->b_pid = pid;
-                        rproc->state = PROC_BLOCKED;
-                        /* Wait for a signal. */
-                        yield_withlock();
-                        /* Reacquire ptable lock */
-                        slock_acquire(&ptable_lock);
-                }
-        }
+			break;
+		} else {
+			/* Lets block ourself */
+			rproc->block_type = PROC_BLOCKED_WAIT;
+			rproc->b_pid = pid;
+			rproc->state = PROC_BLOCKED;
+			/* Wait for a signal. */
+			yield_withlock();
+			/* Reacquire ptable lock */
+			slock_acquire(&ptable_lock);
+		}
+	}
 
 	return ret_pid;
 }
@@ -329,39 +368,39 @@ int waitpid_nolock(int pid, int* status, int options)
 int waitpid_nolock_noharvest(int pid)
 {
 	int ret_pid = 0;
-        struct proc* p = NULL;
-        while(1)
-        {
-                int process;
-                for(process = 0;process < PTABLE_SIZE;process++)
-                {
-                        if(ptable[process].state == PROC_ZOMBIE
-                                        && ptable[process].parent == rproc)
-                        {               
-                                if(pid == -1 || ptable[process].pid == pid)
-                                {
-                                        p = ptable + process;
-                                        break;
-                                }
-                        }
-                }
+	struct proc* p = NULL;
+	while(1)
+	{
+		int process;
+		for(process = 0;process < PTABLE_SIZE;process++)
+		{
+			if(ptable[process].state == PROC_ZOMBIE
+					&& ptable[process].parent == rproc)
+			{               
+				if(pid == -1 || ptable[process].pid == pid)
+				{
+					p = ptable + process;
+					break;
+				}
+			}
+		}
 
-                if(p)
-                {
-                        break;
-                } else {
-                        /* Lets block ourself */
-                        rproc->block_type = PROC_BLOCKED_WAIT;
-                        rproc->b_pid = pid; 
-                        rproc->state = PROC_BLOCKED;
-                        /* Wait for a signal. */
-                        yield_withlock();
-                        /* Reacquire ptable lock */
-                        slock_acquire(&ptable_lock);
-                }
-        }
+		if(p)
+		{
+			break;
+		} else {
+			/* Lets block ourself */
+			rproc->block_type = PROC_BLOCKED_WAIT;
+			rproc->b_pid = pid; 
+			rproc->state = PROC_BLOCKED;
+			/* Wait for a signal. */
+			yield_withlock();
+			/* Reacquire ptable lock */
+			slock_acquire(&ptable_lock);
+		}
+	}
 
-        return ret_pid;	
+	return ret_pid;	
 }
 
 /* int wait(int* status) */
@@ -553,7 +592,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->stack_end = PGROUNDDOWN(uvm_stack);
 
 	/* Is this a thread? */
-	if(rproc->pid == rproc->tgid)
+	if(rproc->pid == rproc->tgid || 1)
 	{
 		/* Free user memory */
 		vm_free_uvm(rproc->pgdir);

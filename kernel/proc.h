@@ -10,11 +10,12 @@
 #include "pipe.h"
 #include "devman.h"
 #include "tty.h"
+#include "file.h"
 
 /* The amount of processes in the ptable */
 #define PTABLE_SIZE	0x40
 #define FDS_TABLE_SZ	0x1000
-#define MAX_PROC_NAME 	0x20
+#define MAX_PROC_NAME 	FILE_MAX_PATH
 #define MAX_PATH_LEN	0x60
 
 #define FD_TYPE_NULL 	0x00

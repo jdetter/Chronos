@@ -36,7 +36,7 @@ BUILD_ASFLAGS += $(BUILD_CFLAGS)
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
 FS_DD_BS := 4096
-FS_DD_COUNT := 131072
+FS_DD_COUNT := 262144
 FS_START := 2048
 
 .PHONY: all

@@ -28,7 +28,7 @@
 #include "diskio.h"
 #include "diskcache.h"
 
-// #define DEBUG
+#define DEBUG
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
