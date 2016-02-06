@@ -297,8 +297,9 @@ static void tty_tab(tty_t t)
 	int new_pos = t->cursor_pos + t->tab_stop;
 	/* Round to the closest tab */
 	new_pos -= new_pos % t->tab_stop;
+	int spaces = new_pos - t->cursor_pos;
 	int x;
-	for(x = 0;t->cursor_pos < new_pos;x++)
+	for(x = 0;x < spaces;x++)
 		tty_putc(t, ' ');
 }
 

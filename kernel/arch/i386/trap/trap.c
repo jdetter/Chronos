@@ -126,13 +126,6 @@ int trap_pf(uintptr_t address)
 	return 0;
 }
 
-void debug_func(void)
-{
-	int i = 0;
-	if(i > 0)
-		for(;;);
-}
-
 void trap_handler(struct trap_frame* tf, void* ret_frame)
 {
 	rproc->tf = tf;
@@ -322,6 +315,7 @@ TRAP_DONE:
 		{
 			_exit(1);
 		} else {
+			cprintf("\n\nKERNEL FAULT\n");
 			/* Write everything to disk so logs can be extracted */
 			fs_sync();
 			// cprintf("chronos: kernel panic\n");
@@ -341,12 +335,6 @@ TRAP_DONE:
 
 	/* Make sure that the interrupt flags is set */
 	tf->eflags |= EFLAGS_IF;
-	
-	if(tf->eax == 20115456)
-	{
-		debug_func();
-		tf->eflags &= ~(EFLAGS_IF);
-	}
 
 	//cprintf("Process %d is leaving trap handler.\n", rproc->pid);
 

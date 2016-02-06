@@ -320,9 +320,14 @@ int waitpid_nolock(int pid, int* status, int options)
 	struct proc* p = NULL;
 	while(1)
 	{
+		int found = 0;
 		int process;
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
+			/* Did we find the process? */
+			if(pid == ptable[process].pid)
+				found = 1;
+
 			if(ptable[process].state == PROC_ZOMBIE
 					&& ptable[process].parent == rproc)
 			{
@@ -332,6 +337,12 @@ int waitpid_nolock(int pid, int* status, int options)
 					break;
 				}
 			}
+		}
+
+		/* If no process exists, this process will wait forever */
+		if(!found)
+		{
+			return -1;
 		}
 
 		if(p)
@@ -374,7 +385,7 @@ int waitpid_nolock(int pid, int* status, int options)
 
 int waitpid_nolock_noharvest(int pid)
 {
-	int ret_pid = 0;
+	int ret_pid = -1;
 	struct proc* p = NULL;
 	while(1)
 	{
@@ -394,6 +405,7 @@ int waitpid_nolock_noharvest(int pid)
 
 		if(p)
 		{
+			ret_pid = p->pid;
 			break;
 		} else {
 			/* Lets block ourself */
@@ -1415,5 +1427,31 @@ int sys_alarm(void)
 
 int sys_vfork(void)
 {
+#ifdef _ALLOW_VM_SHARE_
 	return clone(CLONE_VFORK, NULL, NULL, NULL, NULL);
+#else
+	/* Create a new child */
+	pid_t p = sys_fork();
+
+	if(p > 0)
+	{
+		slock_acquire(&ptable_lock);
+		if(waitpid_nolock_noharvest(p) != p)
+		{
+#ifdef DEBUG
+			cprintf("chronos: vfork failed! 2\n");	
+			slock_release(&ptable_lock);
+			return -1;
+#endif
+		}
+		slock_release(&ptable_lock);
+	} else {
+#ifdef DEBUG
+		cprintf("chronos: vfork failed!\n");
+		return -1;
+#endif
+	}
+
+	return p;
+#endif
 }

@@ -21,6 +21,7 @@
 
 // #define DEBUG_SELECT
 #define DEBUG
+// #define DEBUG_CONTENT
 
 extern slock_t ptable_lock;
 extern struct proc* rproc;
@@ -174,6 +175,12 @@ int sys_close(void)
 	return close(fd);
 }
 
+void debug_func(void)
+{
+	int i = 0;
+	for(i = 0;i < 100;i++);
+}
+
 int close(int fd)
 {
 	if(!fd_ok(fd)) return -1;
@@ -184,6 +191,9 @@ int close(int fd)
 #ifdef DEBUG
 		cprintf("%s: closing file %s\n",
 				rproc->name, rproc->fdtab[fd]->path);
+
+		if(!strcmp(rproc->fdtab[fd]->path, "./cc000005.ld"))
+			debug_func();
 #endif
 		fs_close(rproc->fdtab[fd]->i);
 	}else if(rproc->fdtab[fd]->type == FD_TYPE_PIPE)
@@ -268,7 +278,7 @@ int sys_read(void)
 	if(sz > 0)
 		rproc->fdtab[fd]->seek += sz;
 
-#ifdef DEBUG
+#ifdef DEBUG_CONTENT
 	cprintf("%s: CONTENTS |%s|\n", rproc->name, dst);
 	cprintf("%s: new position in file: %d\n", 
 			rproc->name, rproc->fdtab[fd]->seek);
@@ -665,7 +675,7 @@ int dup2(int new_fd, int old_fd)
 	/* Lock the old fd */
 	slock_acquire(&rproc->fdtab[old_fd]->lock);
 	/* Added a reference for this fd */
-	rproc->fdtab[new_fd]->refs++;
+	rproc->fdtab[old_fd]->refs++;
 	/* Create the mapping */
 	rproc->fdtab[new_fd] = rproc->fdtab[old_fd];
 
