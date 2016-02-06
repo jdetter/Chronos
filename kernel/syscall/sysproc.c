@@ -29,7 +29,7 @@
 #include "elf.h"
 #include "sched.h"
 
-// #define DEBUG
+#define DEBUG
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
