@@ -27,6 +27,7 @@
 #include "netman.h"
 #include "signal.h"
 #include "cacheman.h"
+#include "fpu.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
@@ -89,6 +90,11 @@ void main_stack(void)
         cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
         pic_init();
         cprintf("[ OK ]\n");
+
+	/* Enable the floating point unit */
+	cprintf("Enabling the floating point unit.\t\t\t\t\t");
+	fpu_init();
+	cprintf("[ OK ]\n");
 
         /* Initilize CMOS */
         cprintf("Initilizing cmos...\t\t\t\t\t\t\t");

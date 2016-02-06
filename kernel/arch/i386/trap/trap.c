@@ -38,7 +38,7 @@
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
 #define STACK_TOLERANCE 16
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define TRAP_NAME_SZ 20
@@ -128,7 +128,9 @@ int trap_pf(uintptr_t address)
 
 void debug_func(void)
 {
-	cprintf("a");
+	int i = 0;
+	if(i > 0)
+		for(;;);
 }
 
 void trap_handler(struct trap_frame* tf, void* ret_frame)
