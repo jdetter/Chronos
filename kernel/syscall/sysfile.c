@@ -481,12 +481,13 @@ int sys_fstat(void)
 	if(syscall_get_buffer_ptr((void**)&dst, sizeof(struct stat), 1)) 
 		return -1;
 	if(syscall_get_int(&fd, 0)) return -1;
+	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s: fstat on file %d\n", rproc->name, fd);
+	cprintf("%s:%d: fstat on file %s\n", rproc->name, rproc->pid, 
+		rproc->fdtab[fd]->path);
 #endif
 
-	if(!fd_ok(fd)) return -1;
 	slock_acquire(&rproc->fdtab[fd]->lock);
 
 	int close_on_exit = 0;
@@ -832,6 +833,11 @@ int sys_access(void)
 	if(syscall_get_str_ptr(&pathname, 0)) return -1;
 	if(syscall_get_int((int*)&mode, 1)) return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: checking access to %s\n", rproc->name, rproc->pid,
+		pathname);
+#endif
+
 	inode i = fs_open(pathname, O_RDONLY, 0x0, 
 			rproc->ruid, rproc->rgid);
 
@@ -955,11 +961,25 @@ int sys_lstat(void)
 {
 	const char* path;
 	struct stat* st;
-	if(syscall_get_str_ptr(&path, 0)) return -1;
-	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
+	if(syscall_get_str_ptr(&path, 0)) 
+		return -1;
+	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) 
+		return -1;
+
+#ifdef DEBUG
+	cprintf("%s:%d: lstatting file %s\n", rproc->name, rproc->pid,
+		path);
+#endif
+
 	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
-	if(i == NULL) return -1;
-	/* TODO: Handle symbolic links here! */
+	if(i == NULL) 
+	{
+#ifdef DEBUG
+		cprintf("%s:%d: Permission Denied.\n", 
+			rproc->name, rproc->pid);
+#endif
+		return -1;
+	}
 
 	fs_stat(i, st);
 	fs_close(i);

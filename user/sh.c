@@ -38,6 +38,7 @@ int main(int argc, char** argv)
 	putenv("TERM=xterm-color");
 	putenv("C_INCLUDE_PATH=/usr/include");
 	putenv("CPLUS_INCLUDE_PATH=/usr/include");
+	putenv("PATH=/bin:/usr/bin:/usr/i686-pc-chronos/bin");
 
 	char in_buff[2048];
 	while(1){

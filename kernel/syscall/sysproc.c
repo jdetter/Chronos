@@ -434,9 +434,11 @@ int sys_wait(void)
 }
 
 
+/* int execvp(const char* path, const char* args[]) */
 int sys_execvp(void)
 {
-	cprintf("kernel: execvp not implemented yet.\n");
+	//return execve(path, argv, NULL);
+	cprintf("chronos: execvp not implemented!\n");
 	return -1;
 }
 
@@ -469,8 +471,8 @@ int sys_execve(void)
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;;
 	if(syscall_get_buffer_ptrs((void***)&argv, 1)) return -1;
-	if(syscall_get_int((int*)&envp, 2)) return -1;
-	if(envp && syscall_get_buffer_ptrs((void***)&envp, 2)) return -1;
+	if(syscall_get_optional_ptr((void**)&envp, 2))
+		return -1;
 
 	return execve(path, (char* const*)argv, (char* const*)envp);
 }
@@ -489,12 +491,18 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		cprintf("\t%d: %s\n", t, argv[t]);
 	}
 
-	cprintf("Environment:\n");
-	for(t = 0;t < 50;t++)
-        {
-                if(!envp[t]) break;
-                cprintf("\t%d: %s\n", t, envp[t]);
-        }
+	if(envp)
+	{
+		cprintf("Environment:\n");
+		for(t = 0;t < 50;t++)
+		{
+			if(!envp[t]) break;
+			cprintf("\t%d: %s\n", t, envp[t]);
+		}
+		cprintf("Program CWD: %s\n", rproc->cwd);
+	} else {
+		cprintf("ERROR: environment pointer is bad.\n");
+	}
 #endif
 
 	/* Create a copy of the path */
@@ -520,7 +528,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 
 #ifdef DEBUG
 			cprintf("%s:%d: Binary not found! %s\n", 
-				rproc->name, rproc->pid, path);
+					rproc->name, rproc->pid, path);
 #endif
 			return -1;
 		}
@@ -751,7 +759,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 
 #ifdef DEBUG
 	cprintf("%s:%d: Binary load success.\n",
-		rproc->name, rproc->pid);
+			rproc->name, rproc->pid);
 #endif
 
 	return 0;
@@ -766,7 +774,7 @@ int sys_exit(void)
 {
 #ifdef DEBUG
 	cprintf("\n\n%s:%d $$$exiting$$$ -- standard exit call\n\n",
-		rproc->name, rproc->pid);
+			rproc->name, rproc->pid);
 #endif
 
 	/* Acquire the ptable lock */
@@ -850,22 +858,22 @@ int sys_brk(void)
 
 	/* Check to make sure the address is okay */
 	if((uintptr_t)addr < rproc->code_end || 
-		(uintptr_t)addr > rproc->stack_end)
+			(uintptr_t)addr > rproc->stack_end)
 	{
 #ifdef DEBUG
 		cprintf("%s:%d: ERROR: program gave bad brk addr: 0x%x\n",
-			rproc->name, rproc->pid, addr);
+				rproc->name, rproc->pid, addr);
 #endif
 
 		slock_release(&ptable_lock);
 		return old;
 	}
-	
+
 	rproc->heap_end = (uintptr_t)addr;
 
 #ifdef DEBUG
 	cprintf("%s:%d: Old program break: 0x%x\n", 
-		rproc->name, rproc->pid, rproc->heap_end);
+			rproc->name, rproc->pid, rproc->heap_end);
 #endif
 
 	/* Unmap pages */
@@ -883,7 +891,7 @@ int sys_brk(void)
 
 #ifdef DEBUG
 	cprintf("%s:%d: New program break: 0x%x\n", 
-		rproc->name, rproc->pid, rproc->heap_end);
+			rproc->name, rproc->pid, rproc->heap_end);
 #endif
 
 	/* Release lock */
@@ -902,7 +910,7 @@ int sys_sbrk(void)
 	{
 #ifdef DEBUG
 		cprintf("%s:%d: checked program break: 0x%x\n",
-			rproc->name, rproc->pid, rproc->heap_end);
+				rproc->name, rproc->pid, rproc->heap_end);
 #endif
 		return rproc->heap_end;
 	}
@@ -951,10 +959,10 @@ int sys_sbrk(void)
 
 #ifdef DEBUG
 	cprintf("%s:%d: Program used sbrk    0x%x --> 0x%x\n",
-		rproc->name, rproc->pid, old_end,
-		old_end + increment);
+			rproc->name, rproc->pid, old_end,
+			old_end + increment);
 	cprintf("%s:%d:\t\tHeap size change: %d KB\n", 
-		rproc->name, rproc->pid, (increment >> 12));
+			rproc->name, rproc->pid, (increment >> 12));
 #endif
 
 	/* Change heap end */
