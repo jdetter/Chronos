@@ -29,6 +29,8 @@
 #include "elf.h"
 #include "sched.h"
 
+#define DEBUG
+
 extern pid_t next_pid;
 extern slock_t ptable_lock;
 extern uint k_ticks;
@@ -293,6 +295,11 @@ int sys_waitpid(void)
 		return -1;
 	if(syscall_get_int(&options, 2)) return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: Waiting for child %d.\n",
+		rproc->name, rproc->pid, pid);
+#endif
+
 	return waitpid(pid, status, options);
 }
 
@@ -440,8 +447,6 @@ int sys_execl(void)
 	return execve(path, argv, NULL);
 }
 
-
-
 /* int execve(const char* path, char* const argv[], char* const envp[]) */
 int sys_execve(void)
 {
@@ -460,6 +465,26 @@ int sys_execve(void)
 
 int execve(const char* path, char* const argv[], char* const envp[])
 {
+#ifdef DEBUG
+	cprintf("%s:%d: executing program %s\n", 
+		rproc->name, rproc->pid, path);
+
+	cprintf("Arguments: \n");
+	int t;
+	for(t = 0;t < 50;t++)
+	{
+		if(!argv[t]) break;
+		cprintf("\t%d: %s\n", t, argv[t]);
+	}
+
+	cprintf("Environment:\n");
+	for(t = 0;t < 50;t++)
+        {
+                if(!envp[t]) break;
+                cprintf("\t%d: %s\n", t, envp[t]);
+        }
+#endif
+
 	/* Create a copy of the path */
 	char program_path[MAX_PATH_LEN];
 	memset(program_path, 0, MAX_PATH_LEN);
@@ -480,6 +505,11 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		{
 			/* It really doesn't exist. */
 			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+
+#ifdef DEBUG
+			cprintf("%s:%d: Binary not found! %s\n", 
+				rproc->name, rproc->pid, path);
+#endif
 			return -1;
 		}
 	}
@@ -649,13 +679,31 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->heap_start = PGROUNDUP(code_end);
 	rproc->heap_end = rproc->heap_start;
 
+#ifdef DEBUG
+	cprintf("Code Segment:\n");
+	cprintf("\tBinary size: %d KB\n", (code_end - code_start) >> 10);
+	cprintf("\tCode Boundaries: 0x%x -> 0x%x\n", code_start, code_end);
+	cprintf("\tStart of heap: 0x%x\n", rproc->heap_start);
+#endif
+
 	uchar setuid = 0;
 	uchar setgid = 0;
 	/* Check for setuid and setgid */
 	inode i = fs_open(program_path, O_RDONLY, 0x0, 0x0, 0x0);
-	if(!i) return -1;
+
+	if(!i) 
+	{
+		cprintf("exec: file was deleted while reading.\n");
+		slock_release(&ptable_lock);
+		return -1;
+	}
+
 	struct stat st;
-	if(fs_stat(i, &st)) return -1;
+	if(fs_stat(i, &st)) 
+	{
+		slock_release(&ptable_lock);
+		return -1;
+	}
 	if(st.st_mode & S_ISUID)
 		setuid = 1;
 	if(st.st_mode & S_ISGID)
@@ -689,6 +737,11 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
 
+#ifdef DEBUG
+	cprintf("%s:%d: Binary load success.\n",
+		rproc->name, rproc->pid);
+#endif
+
 	return 0;
 }
 
@@ -699,6 +752,11 @@ int sys_getpid(void)
 
 int sys_exit(void)
 {
+#ifdef DEBUG
+	cprintf("\n\n%s:%d $$$exiting$$$ -- standard exit call\n\n",
+		rproc->name, rproc->pid);
+#endif
+
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 
@@ -767,7 +825,7 @@ int sys_brk(void)
 
 	slock_acquire(&ptable_lock);
 	/* see if the address makes sense */
-	uint check_addr = (uint)addr;
+	uintptr_t check_addr = (uintptr_t)addr;
 	if(PGROUNDUP(check_addr) >= rproc->stack_end
 			|| check_addr < rproc->heap_start)
 	{
@@ -776,21 +834,49 @@ int sys_brk(void)
 	}
 
 	/* Change the address break */
-	uint old = rproc->heap_end;
-	rproc->heap_end = (uint)addr;
+	uintptr_t old = rproc->heap_end;
+
+	/* Check to make sure the address is okay */
+	if((uintptr_t)addr < rproc->code_end || 
+		(uintptr_t)addr > rproc->stack_end)
+	{
+#ifdef DEBUG
+		cprintf("%s:%d: ERROR: program gave bad brk addr: 0x%x\n",
+			rproc->name, rproc->pid, addr);
+#endif
+
+		slock_release(&ptable_lock);
+		return old;
+	}
+	
+	rproc->heap_end = (uintptr_t)addr;
+
+#ifdef DEBUG
+	cprintf("%s:%d: Old program break: 0x%x\n", 
+		rproc->name, rproc->pid, rproc->heap_end);
+#endif
+
 	/* Unmap pages */
 	old = PGROUNDUP(old);
-	uint page = PGROUNDUP(rproc->heap_end);
+	vmpage_t page = PGROUNDUP(rproc->heap_end);
 	for(;page != old;page += PGSIZE)
 	{
 		/* Free the page */
 		uintptr_t pg = vm_unmappage(page, rproc->pgdir);
-		if(pg) pfree(pg);
+		if(pg) 
+		{
+			pfree(pg);
+		}
 	}
+
+#ifdef DEBUG
+	cprintf("%s:%d: New program break: 0x%x\n", 
+		rproc->name, rproc->pid, rproc->heap_end);
+#endif
 
 	/* Release lock */
 	slock_release(&ptable_lock);
-	return 0;
+	return (int)addr;
 }
 
 /* void* sys_sbrk(uint increment) */
@@ -798,6 +884,16 @@ int sys_sbrk(void)
 {
 	intptr_t increment;
 	if(syscall_get_int((int*)&increment, 0)) return -1;
+
+	/* See if they are just checking for the program break */
+	if(increment == 0)
+	{
+#ifdef DEBUG
+		cprintf("%s:%d: checked program break: 0x%x\n",
+			rproc->name, rproc->pid, rproc->heap_end);
+#endif
+		return rproc->heap_end;
+	}
 
 	slock_acquire(&ptable_lock);
 	uintptr_t old_end = rproc->heap_end;
@@ -840,6 +936,14 @@ int sys_sbrk(void)
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}
+
+#ifdef DEBUG
+	cprintf("%s:%d: Program used sbrk    0x%x --> 0x%x\n",
+		rproc->name, rproc->pid, old_end,
+		old_end + increment);
+	cprintf("%s:%d:\t\tHeap size change: %d KB\n", 
+		rproc->name, rproc->pid, (increment >> 12));
+#endif
 
 	/* Change heap end */
 	rproc->heap_end = old_end + increment;

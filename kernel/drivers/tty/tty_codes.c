@@ -15,7 +15,7 @@
 #include "fsman.h"
 #include "klog.h"
 
-#define DEBUG 1
+// #define DEBUG 1
 #define cprintf ___cprintf
 
 klog_t code_log;

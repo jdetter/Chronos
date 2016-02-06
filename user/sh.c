@@ -36,6 +36,8 @@ int main(int argc, char** argv)
 {
 	/* We need to set the TERM environment variable */
 	putenv("TERM=xterm-color");
+	putenv("C_INCLUDE_PATH=/usr/include");
+	putenv("CPLUS_INCLUDE_PATH=/usr/include");
 
 	char in_buff[2048];
 	while(1){

@@ -22,9 +22,8 @@
 #include "vm.h"
 #include "panic.h"
 
-#ifdef _ALLOW_VM_SHARE_
-#define DEBUG
-#endif
+// #define DEBUG
+
 #define KVM_MAGIC 0x55AA55AA
 
 struct kvm_region {vmpage_t start_addr; vmpage_t end_addr;};

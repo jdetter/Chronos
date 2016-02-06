@@ -30,6 +30,7 @@
 #include "time.h"
 #include "rtc.h"
 #include "context.h"
+#include "fpu.h"
 
 extern struct vsfs_context context;
 
@@ -174,6 +175,9 @@ struct proc* spawn_tty(tty_t t)
 	/* Set the mmap area start */
 	p->mmap_end = p->mmap_start = 
 		PGROUNDUP(UVM_TOP) - UVM_MIN_STACK;
+
+	/* Setup our floating point unit */
+	fpu_reset();
 
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);

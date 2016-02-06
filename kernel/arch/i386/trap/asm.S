@@ -1,6 +1,18 @@
 #define __ASM_ONLY__
 #include "trap.h"
 
+# void fpu_reset(void)
+.globl fpu_reset
+fpu_reset:
+	pushl	%ebp
+	movl	%esp, %ebp
+
+	fninit
+
+	movl	%ebp, %esp
+	popl	%ebp
+	ret
+
 # Make a trap frame on the current stack.
 .globl mktf
 mktf:
@@ -12,6 +24,7 @@ mktf:
         pushl   %es
         pushl   %fs
         pushl   %gs
+
         # Push registers
         pushal
 
@@ -24,7 +37,15 @@ mktf:
         movw    %ax, %fs
         movw    %ax, %gs
 
-        pushl   %esp # start of the trap frame
+	# move to the next 512 byte boundary
+	andl	$~0x1FF, %esp # Round down to 512 byte boundary
+	subl	$0x200, %esp  # Subtract 512
+
+	# Save the floating point registers
+	fxsave	(%esp)
+	
+	# push the saved esp (trap frame without floats)
+	pushl	%esp
         call    trap_handler
 
 .globl fork_return
@@ -36,6 +57,12 @@ fork_return:
 
 .globl trap_return
 trap_return:
+	# Restore the floating point registers
+	fxrstor (%esp)
+
+	# Add (floats + padding) = (512 + 436) = 0x3b4
+	addl	$0x3b4, %esp
+
         # pop registers
         popal
 

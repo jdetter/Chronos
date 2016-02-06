@@ -38,7 +38,7 @@
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
 #define STACK_TOLERANCE 16
 
-// #define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define TRAP_NAME_SZ 20
@@ -126,7 +126,12 @@ int trap_pf(uintptr_t address)
 	return 0;
 }
 
-void trap_handler(struct trap_frame* tf)
+void debug_func(void)
+{
+	cprintf("a");
+}
+
+void trap_handler(struct trap_frame* tf, void* ret_frame)
 {
 	rproc->tf = tf;
 	
@@ -136,6 +141,11 @@ void trap_handler(struct trap_frame* tf)
 	int handled = 0;
 	int user_problem = 0;
 	int kernel_fault = 0;
+
+#ifdef DEBUG
+	/* Save the current eip for testing */	
+	uintptr_t ret_eip = tf->eip;
+#endif
 
 	if(!(tf->cs & 0x3))
 		kernel_fault = 1;
@@ -289,9 +299,22 @@ void trap_handler(struct trap_frame* tf)
 
 TRAP_DONE:
 
+#ifdef DEBUG
+	if(ret_eip != rproc->tf->eip)
+	{
+		cprintf("%s:%d: WARNING: eip has changed!!\n",
+			rproc->name, rproc->pid);
+		cprintf("\t\t0x%x --> 0x%x\n",
+			ret_eip, rproc->tf->eip);
+	}
+#endif
+
 	if(!handled)
 	{
 		cprintf("%s: 0x%x", fault_string, tf->error);
+		cprintf("%s: EIP: 0x%x ESP: 0x%x EBP: 0x%x\n",
+			rproc->name, rproc->tf->eip,
+			rproc->tf->esp, rproc->tf->ebp);
 
 		if(user_problem && rproc && !kernel_fault)
 		{
@@ -304,6 +327,7 @@ TRAP_DONE:
 		}
 	}
 
+
 	/* Do we have any signals waiting? */
 	if(rproc->sig_queue && !rproc->sig_handling)
 	{
@@ -315,6 +339,12 @@ TRAP_DONE:
 
 	/* Make sure that the interrupt flags is set */
 	tf->eflags |= EFLAGS_IF;
+	
+	if(tf->eax == 20115456)
+	{
+		debug_func();
+		tf->eflags &= ~(EFLAGS_IF);
+	}
 
 	//cprintf("Process %d is leaving trap handler.\n", rproc->pid);
 
@@ -325,7 +355,7 @@ TRAP_DONE:
 	/* Force return */
 	asm volatile("movl %ebp, %esp");
 	asm volatile("popl %ebp");
-	/* add return address and arguments */
+	/* add return address */
 	asm volatile("addl $0x08, %esp");
 	asm volatile("jmp trap_return");
 }

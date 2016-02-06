@@ -10,7 +10,7 @@
 
 #include "panic.h"
 
-#define DEBUG
+// #define DEBUG
 
 int vm_uvm_cow(pgdir_t* dir)
 {
