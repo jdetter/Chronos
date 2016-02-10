@@ -18,26 +18,29 @@
 static struct tty ttys[MAX_TTYS];
 struct tty* active_tty = NULL;
 
-tty_t tty_find(uint index)
+tty_t tty_find(int index)
 {
 	if(index >= MAX_TTYS) return NULL;
 	return ttys + index;
 }
 
-void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled, 
-		uint mem_start)
+void tty_reset_sgr(tty_t t);
+void tty_init(tty_t t, int num, char type, int cursor_enabled, 
+		uintptr_t mem_start)
 {
 	memset(t, 0, sizeof(tty_t));
 
 	t->num = num;
 	t->active = 0; /* 1: This tty is in the foreground, 0: background*/
 	t->type = type;
-	t->color = TTY_BACK_BLACK|TTY_FORE_GREY;
+	t->tab_stop = 8;
+	tty_reset_sgr(t); /* Reset the display properties */
+	t->saved = 0;
 	int i;
 	for(i = 0; i<TTY_BUFFER_SZ; i+=2)/*sets text and graphics buffers*/
 	{
 		t->buffer[i]= ' ';
-		t->buffer[i+1]= t->color;
+		t->buffer[i+1]= t->sgr.color;
 	}
 	t->cursor_pos = 0; /* Text mode position of the cursor. */
 	t->cursor_enabled= cursor_enabled; /* Whether or not to show the cursor (text)*/
@@ -60,20 +63,29 @@ void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled,
 	memset(t->term.c_cc, 0, NCCS);
 }
 
-uint tty_num(tty_t t)
+int tty_num(tty_t t)
 {
-	return t->num;
+	if((char*)t >= (char*)ttys && (char*)t < (char*)(ttys + MAX_TTYS))
+		return t->num;
+	else panic("Invalid tty given to tty_num\n");
+}
+
+int tty_enable_code_logging(tty_t t)
+{
+	t->codes_logged = 1;
+	return 0;
 }
 
 int tty_enable_logging(tty_t t, char* file)
 {
-	void* ino = fs_open(file, O_CREAT | O_RDWR, 0600, 0, 0);
-	if(!ino)
+	t->tty_log = klog_alloc(0, file);
+
+	/* Did it get opened? */
+	if(!t->tty_log)
 		return -1;
 
 	t->out_logged = 1;
-	t->out_inode = ino;
-	
+
 	return 0;
 }
 
@@ -85,51 +97,56 @@ void tty_enable(tty_t t)
 
 	t->active = 1;
 	active_tty = t;
+
 	if(t->type==TTY_TYPE_SERIAL)
 	{
 		return;
 	}
+
 	if(t->type == TTY_TYPE_MONO || t->type == TTY_TYPE_COLOR)
 	{
 		tty_print_screen(t, t->buffer);
 		console_update_cursor(t->cursor_pos);
 	}
 }
+
+tty_t tty_active(void)
+{
+	return active_tty;
+}
+
 void tty_disable(tty_t t)
 {
 	t->active=0;
 }
 
 void tty_putc_native(char c, tty_t t);
+
 void tty_putc(tty_t t, char c)
 {
 	/* Write out to the serial connection */
-        if(t->type==TTY_TYPE_SERIAL)
-        {
-                if(t->active) serial_write(&c,1);
-                return;
-        }
+	if(t->type==TTY_TYPE_SERIAL)
+	{
+		if(t->active) serial_write(&c,1);
+		return;
+	}
+
+	/* Is this tty logged? */
+	if(t->out_logged)
+		klog_write(t->tty_log, &c, 1);
 
 	/* Process console codes */
 	if(tty_parse_code(t, c))
 		return;
-
-	/* Is this tty logged? */
-	if(t->out_logged)
-	{
-		int res = fs_write(t->out_inode, &c, 1, 
-			t->out_file_pos);
-		if(res == 1) t->out_file_pos++;
-	}
 
 	if(t->type==TTY_TYPE_MONO||t->type==TTY_TYPE_COLOR)
 	{
 		/* If this tty is active, output the char */
 		if(t->active)
 		{
-			console_putc(t->cursor_pos, c, t->color, 
+			console_putc(t->cursor_pos, c, t->sgr.color, 
 					t->type==TTY_TYPE_COLOR, 
-					(uchar*)t->mem_start);
+					(char*)t->mem_start);
 		}
 
 		/* Update the back buffer */
@@ -138,7 +155,7 @@ void tty_putc(tty_t t, char c)
 			char* vid_addr = t->buffer
 				+ (t->cursor_pos * 2);
 			*(vid_addr)     = c;
-			*(vid_addr + 1) = t->color;
+			*(vid_addr + 1) = t->sgr.color;
 		}
 		else
 		{
@@ -169,8 +186,8 @@ void tty_putc(tty_t t, char c)
 
 tty_t tty_check(struct DeviceDriver* driver)
 {
-	uint addr = (uint)driver->io_driver.context;
-	if(addr >= (uint)ttys && addr < (uint)ttys + MAX_TTYS)
+	uintptr_t addr = (uintptr_t)driver->io_driver.context;
+	if(addr >= (uintptr_t)ttys && addr < (uintptr_t)ttys + MAX_TTYS)
 	{
 		/**
 		 * addr points into the table so this is most
@@ -187,9 +204,9 @@ void tty_scroll(tty_t t)
 	if(!t->type==TTY_TYPE_MONO && !t->type==TTY_TYPE_COLOR)
 		return;
 	/* Bytes per row */
-	uint bpr = CONSOLE_COLS * 2;
+	int bpr = CONSOLE_COLS * 2;
 	/* Rows on the screen */
-	uint rows = CONSOLE_ROWS;
+	int rows = CONSOLE_ROWS;
 	/* Back buffer */
 	char* buffer = t->buffer;
 
@@ -231,19 +248,14 @@ void tty_print_screen(tty_t t, char* buffer)
 	}
 }
 
-uchar tty_set_cursor(tty_t t, uchar enabled)
+char tty_set_cursor(tty_t t, char enabled)
 {
 	t->cursor_enabled = enabled;
 	return 0;
 }
 
-uchar tty_set_cursor_pos(tty_t t, uint pos)
+char tty_set_cursor_pos(tty_t t, int pos)
 {
 	t->cursor_pos = pos;
 	return 0;
-}
-
-void tty_set_color(tty_t t, uchar color)
-{
-	t->color = color;
 }

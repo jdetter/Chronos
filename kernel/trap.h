@@ -8,7 +8,4 @@
 #error "Invalid architecture selected."
 #endif
 
-void push_cli(void);
-void pop_cli(void);
-
 #endif

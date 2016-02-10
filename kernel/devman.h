@@ -30,6 +30,12 @@ struct IODriver
 	 */
         int (*write)(void* src, uint start_write, size_t sz, void* context);
 	int (*ioctl)(unsigned long request, void* arg, void* context);
+
+	/**
+	 * Optional methods for checking if the IO will block.
+	 */
+	int (*ready_read)(void* context);
+	int (*ready_write)(void* context);
 };
 
 struct DeviceDriver

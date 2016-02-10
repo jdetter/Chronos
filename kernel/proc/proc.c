@@ -30,6 +30,7 @@
 #include "time.h"
 #include "rtc.h"
 #include "context.h"
+#include "fpu.h"
 
 extern struct vsfs_context context;
 
@@ -37,19 +38,17 @@ extern struct vsfs_context context;
 slock_t ptable_lock;
 /* The process table */
 struct proc ptable[PTABLE_SIZE];
-/* A pointer into the ptable for the init process */
-struct proc* init_proc;
 /* A pointer into the ptable of the running process */
 struct proc* rproc;
 /* The next available pid */
 pid_t next_pid;
-/* The context of the scheduler right before user process gets scheduled. */
-extern uint  k_context;
-extern uint k_stack;
 /* How many ticks have there been since boot? */
 uint k_ticks;
 /* Current system time */
 struct rtc_t k_time;
+
+extern struct file_descriptor* fd_tables[PTABLE_SIZE][PROC_MAX_FDS];
+extern slock_t fd_tables_locks[];
 
 void proc_init()
 {
@@ -71,6 +70,8 @@ struct proc* alloc_proc()
 		{
 			memset(ptable + x, 0, sizeof(struct proc));
 			ptable[x].state = PROC_EMBRYO;
+			ptable[x].fdtab = fd_tables[x];
+			ptable[x].fdtab_lock = &fd_tables_locks[x];
 			break;
 		}
 	}
@@ -95,16 +96,17 @@ struct proc* spawn_tty(tty_t t)
 	p->pid = next_pid++;
 	p->uid = 0; /* init is owned by root */
 	p->gid = 0; /* group is also root */
-	memset(p->file_descriptors, 0,
-		sizeof(struct file_descriptor) * MAX_FILES);
 
 	/* Setup stdin, stdout and stderr */
-	p->file_descriptors[0].type = FD_TYPE_DEVICE;
-	p->file_descriptors[0].device = t->driver;
-	p->file_descriptors[1].type = FD_TYPE_DEVICE;
-	p->file_descriptors[1].device = t->driver;
-	p->file_descriptors[2].type = FD_TYPE_DEVICE;
-	p->file_descriptors[2].device = t->driver;
+	if(fd_next(p) != 0) panic("spawn_tty: wrong fd for stdin\n");
+	p->fdtab[0]->type = FD_TYPE_DEVICE;
+	p->fdtab[0]->device = t->driver;
+	if(fd_next(p) != 1) panic("spawn_tty: wrong fd for stdout\n");
+	p->fdtab[1]->type = FD_TYPE_DEVICE;
+	p->fdtab[1]->device = t->driver;
+	if(fd_next(p) != 2) panic("spawn_tty: wrong fd for stderr\n");
+	p->fdtab[2]->type = FD_TYPE_DEVICE;
+	p->fdtab[2]->device = t->driver;
 
 	p->stack_start = PGROUNDUP(UVM_TOP);
 	p->stack_end = p->stack_start - PGSIZE;
@@ -118,11 +120,11 @@ struct proc* spawn_tty(tty_t t)
 	strncpy(p->cwd, "/", MAX_PATH_LEN);
 
 	/* Setup virtual memory */
-	p->pgdir = (pgdir*)palloc();
+	p->pgdir = (pgdir_t*)palloc();
 	vm_copy_kvm(p->pgdir);
 
-	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 
 	/* Map in a new kernel stack */
         vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 
@@ -174,6 +176,9 @@ struct proc* spawn_tty(tty_t t)
 	p->mmap_end = p->mmap_start = 
 		PGROUNDUP(UVM_TOP) - UVM_MIN_STACK;
 
+	/* Setup our floating point unit */
+	fpu_reset();
+
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);
 
@@ -201,9 +206,9 @@ void proc_disconnect(struct proc* p)
 {
 	slock_acquire(&ptable_lock);
 	/* disconnect stdin, stdout and stderr */
-	p->file_descriptors[0].device = dev_null;
-	p->file_descriptors[1].device = dev_null;
-	p->file_descriptors[2].device = dev_null;
+	fd_free(p, 0);
+	fd_free(p, 1);
+	fd_free(p, 2);
 
 	tty_t t = p->t;
 
@@ -229,25 +234,17 @@ void proc_set_ctty(struct proc* p, tty_t t)
 {
 	slock_acquire(&ptable_lock);
 	rproc->t = t;
-	rproc->file_descriptors[0].device = t->driver;
-	rproc->file_descriptors[0].type = FD_TYPE_DEVICE;
-	rproc->file_descriptors[1].device = t->driver;
-	rproc->file_descriptors[1].type = FD_TYPE_DEVICE;
-	rproc->file_descriptors[2].device = t->driver;
-	rproc->file_descriptors[2].type = FD_TYPE_DEVICE;
-	slock_release(&ptable_lock);
-}
+	if(fd_new(p, 0, 1) == -1) return;
+	if(fd_new(p, 1, 1) == -1) return;
+	if(fd_new(p, 2, 1) == -1) return;
 
-void sched_init()
-{
-	/* Zero all of the processes (unused) */
-	int x;
-	for(x = 0;x < PTABLE_SIZE;x++)
-		memset(ptable + x, 0, sizeof(struct proc));
-	/* No process is running right now. */
-	rproc = NULL;
-	/* Initilize our process table lock */
-	slock_init(&ptable_lock);
+	rproc->fdtab[0]->device = t->driver;
+	rproc->fdtab[0]->type = FD_TYPE_DEVICE;
+	rproc->fdtab[1]->device = t->driver;
+	rproc->fdtab[1]->type = FD_TYPE_DEVICE;
+	rproc->fdtab[2]->device = t->driver;
+	rproc->fdtab[2]->type = FD_TYPE_DEVICE;
+	slock_release(&ptable_lock);
 }
 
 struct proc* get_proc_pid(int pid)
@@ -263,77 +260,27 @@ struct proc* get_proc_pid(int pid)
 	return NULL;
 }
 
-void __context_restore__(uint* current, uint old);
-void yield(void)
+void proc_print_table(void)
 {
-	/* We are about to enter the scheduler again, reacquire lock. */
-	slock_acquire(&ptable_lock);
-
-	/* Set state to runnable. */
-	rproc->state = PROC_RUNNABLE;
-
-	/* Give up cpu for a scheduling round */
-	__context_restore__(&rproc->context, k_context);
-
-	/* When we get back here, we no longer have the ptable lock. */
-}
-
-void yield_withlock(void)
-{
-	/* We have the lock, just enter the scheduler. */
-	/* We are also not changing the state of the process here. */
-
-	/* Give up cpu for a scheduling round */
-	__context_restore__(&rproc->context, k_context);
-
-	/* When we get back here, we no longer have the ptable lock. */
-}
-
-
-void sched(void)
-{
-	/* Acquire ptable lock */
-	slock_acquire(&ptable_lock);
-	scheduler();	
-}
-
-void scheduler(void)
-{
-	/* WARNING: ptable lock must be held here.*/
-
-	while(1)
+	int x;
+	for(x = 0;x < PTABLE_SIZE;x++)
 	{
-		int x;
-		for(x = 0;x < PTABLE_SIZE;x++)
+		if(!ptable[x].state) continue;
+
+		cprintf("%s %d\n", ptable[x].name, 
+				ptable[x].pid);
+		cprintf("Open Files\n");
+		int fd;
+		for(fd = 0;fd < PROC_MAX_FDS;fd++)
 		{
-			if(ptable[x].state == PROC_RUNNABLE
-					|| ptable[x].state == PROC_READY)
-			{
-				/* Found a process! */
-				rproc = ptable + x;
-
-				/* release lock */
-				slock_release(&ptable_lock);
-
-				//int p = ptable[x].pid;
-				//cprintf("Process %d has been selected!\n", p);
-				/* Make the context switch */
-				switch_context(rproc);
-				//cprintf("Process is done for now.\n");
-
-				// The new process is now scheduled.
-				/* The process is done for now. */
-				rproc = NULL;
-
-				/* The process has reacquired the lock. */
-			}
+			if(!ptable[x].fdtab[fd]) continue;
+			if(!ptable[x].fdtab[fd]->type)
+				continue;
+			cprintf("\t%d: name: %s refs: %d\n", 
+				fd, ptable[x].fdtab[fd]->path,
+				ptable[x].fdtab[fd]->refs);
 		}
-
-		/* We still have the process table lock */
-		slock_release(&ptable_lock);
-		/* run io scheduler */
-		iosched_check();
-		/* Reacquire the lock */
-		slock_acquire(&ptable_lock);
+		cprintf("Working directory: %s\n", 
+				ptable[x].cwd);
 	}
 }

@@ -6,6 +6,9 @@
 /* Some dependant headers */
 #include <sys/stat.h>
 #include <dirent.h>
+#include "kern/types.h"
+#include "file.h"
+#include "stdlock.h"
 #include "cache.h"
 
 /* Some cache tunables */
@@ -14,7 +17,7 @@
 
 struct FSHardwareDriver
 {
-	uchar valid; /* 1 = valid, 0 = invalid. */
+	char valid; /* 1 = valid, 0 = invalid. */
 	uint sectmax;
 	uint sectshifter;
 	uint sectsize;
@@ -374,7 +377,8 @@ int fs_rename(const char* src, const char* dst);
 int fs_unlink(const char* file);
 
 /**
- * Read the directory entry at the specified index.
+ * Read the directory entry at the specified index. Returns 0 on success,
+ * -1 otherwise.
  */
 int fs_readdir(inode i, int index, struct dirent* dst);
 

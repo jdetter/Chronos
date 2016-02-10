@@ -1,6 +1,9 @@
 #ifndef _KTIME_H_
 #define _KTIME_H_
 
+/* dependant headers */
+#include "rtc.h"
+
 /**
  * Initilize the kernel time keeping mechanism.
  */

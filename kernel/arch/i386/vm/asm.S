@@ -3,7 +3,7 @@
 #include "vm.h"
 #include "x86.h"
 
-/* vm_enable_paging(pgdir* pgdir)*/
+/* vm_enable_paging(pgdir_t* pgdir)*/
 #define CR0_PGENABLE (1<<31)
 .globl vm_enable_paging
 vm_enable_paging:
@@ -118,7 +118,7 @@ __kvm_stack_check__fail:
 #define PGDIR_DIR_MASK	0xFFC00000
 #define PGDIR_TBL_MASK 	0x003ff000
 #define PGDIR_MASK	0xFFFFF000
-# void __kvm_swap__(pgdir* kvm)
+# void __kvm_swap__(pgdir_t* kvm)
 .globl __kvm_swap__
 __kvm_swap__:
 # move kernel page directory into ecx
@@ -189,8 +189,6 @@ __kvm_swap__1:
 	jmp	__kvm_swap__1
 
 __kvm_swap__done:
-	/* Inner peace. */
-
 	/* flush TLB */
 	movl	%cr3, %eax
 	movl	%eax, %cr3
@@ -201,4 +199,3 @@ __kvm_swap__done:
         popl    %edx
         popl    %ebp
         ret
-

@@ -149,7 +149,7 @@ int __chronos_syscall(int num, ...);
 #define PROT_NONE	0x00
 #define PROT_READ	0x01
 #define PROT_WRITE	0x02
-#define PROT_EXE	0x04
+#define PROT_EXEC	0x04
 #define PROT_GROWSDOWN  0x01000000
 #define PROT_GROWSUP    0x02000000
 

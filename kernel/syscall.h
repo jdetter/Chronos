@@ -2,17 +2,18 @@
 #define _SYSCALL_H_
 
 /* syscall utility functions */
+
 /**
  * Checks whether or not the pointer points to a valid byte in memory.
  * Returns 0 if the address is ok, 1 otherwise.
  */
-uchar syscall_addr_safe(void* address);
+int syscall_addr_safe(void* address);
 
 /**
  * Checks to see if the pointer is safe to access. Returns 0 if the
  * pointer is safe to access, 1 otherwise.
  */
-uchar syscall_ptr_safe(void* address);
+int syscall_ptr_safe(void* address);
 
 /**
  * Gets an int argument from the stack of the running process.
@@ -22,32 +23,32 @@ int syscall_get_int(int* dst, int arg_num);
 /**
  * Gets a long argument from the stack of the running process.
  */
-uchar syscall_get_long(long* dst, int arg_num);
+int syscall_get_long(long* dst, int arg_num);
 
 /**
  * Gets a long argument from the stack of the running process.
  */
-uchar syscall_get_short(short* dst, int arg_num);
+int syscall_get_short(short* dst, int arg_num);
 
 /**
  * Get a string from a user stack and put it into dst. A maximum amount
  * of sz_kern bytes will be copied. arg_num specifies the argument
  * position on the stack.
  */
-uchar syscall_get_str(char* dst, uint sz_kern, int arg_num);
+int syscall_get_str(char* dst, int sz_kern, int arg_num);
 
 
 /**
  * Puts a pointer to a buffer into ptr. The buffer will be verified to
  * be at least sz bytes long. Returns 0 on sucess, 1 otherwise.
  */
-uchar syscall_get_buffer_ptr(void** ptr, uint sz, int arg_num);
+int syscall_get_buffer_ptr(void** ptr, int sz, int arg_num);
 
 /**
  * Get a pointer to a list of pointers. The pointer addresses are NOT
  * checked for validity. Returns 0 on success, 1 otherwise.
  */
-uchar syscall_get_buffer_ptrs(uchar*** ptr, int arg_num);
+int syscall_get_buffer_ptrs(void*** ptr, int arg_num);
 
 /**
  * Safetly get a pointer to a string on the user stack. The pointer
@@ -55,14 +56,16 @@ uchar syscall_get_buffer_ptrs(uchar*** ptr, int arg_num);
  * the position on the stack of the pointer. Returns 0 on sucess,
  * 1 otherwise.
  */
-uchar syscall_get_str_ptr(const char** dst, int arg_num);
+int syscall_get_str_ptr(const char** dst, int arg_num);
 
 /**
- * Find an available file descriptor.
+ * Probe an argument on the stack. If the pointer is reachable
+ * and non zero, 0 is returned. Otherwise 1 is returned and
+ * ptr is undefined.
  */
-int find_fd(void);
+int syscall_get_optional_ptr(void** ptr, int arg_num);
 
-/** Check to see if an fd is valid */
+/* Check to see if an fd is valid */
 int fd_ok(int fd);
 
 /**

@@ -22,20 +22,14 @@ int sys_sigaction(void)
 	/* Assign the handler */
 	int signum;
 	struct sigaction* act;
-	struct sigaction* old;
+	struct sigaction* old = NULL;
 
 	if(syscall_get_int(&signum, 0))
 		return -1;
 	if(syscall_get_buffer_ptr((void**)&act, 
-			sizeof(struct sigaction),
-			1))
+			sizeof(struct sigaction), 1))
 		return -1;
-	if(syscall_get_int((int*)&old, 2))
-		return -1;
-
-	if(old != NULL && syscall_get_buffer_ptr((void**)&old,
-			sizeof(struct sigaction), 2))
-		return -1;
+	syscall_get_optional_ptr((void**)&old, 2);
 
 	if(signum < 0 || signum >= NSIG)
 		return -1;

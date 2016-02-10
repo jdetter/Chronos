@@ -13,7 +13,9 @@
 #include "tty.h"
 #include "proc.h"
 #include "serial.h"
+#include "vm.h"
 
+// #define DEBUG
 // #define KEY_DEBUG
 
 extern struct tty* active_tty;
@@ -94,19 +96,49 @@ void tty_keyboard_interrupt_handler(void)
 		tty_handle_char(c, active_tty);
 	} while(1);
 
+	/* Can anyone be woken up? */
+	tty_t t = tty_find(0);
+	int x;
+	for(x = 0;x < MAX_TTYS;x++)
+	{
+		if((t + x)->io_queue && (t + x)->driver->io_driver.ready_read(t + x))
+		{
+#ifdef KEY_DEBUG
+			cprintf("tty: tty %d needed to be woken up again!\n", x);
+#endif
+			
+			tty_signal_io_ready(t + x);
+		}
+	}
 
 	slock_release(&ptable_lock);
 	slock_release(&active_tty->key_lock);
 }
 
+int tty_handle_raw(char c, tty_t t)
+{
+	char raw = !(t->term.c_lflag & ICANON);
+	if(!raw)  return -1;
+	/* Write a character to the keyboard buffer */
+	if(tty_keyboard_write_buff(&t->kbd_line, c))
+	{
+		cprintf("Warning: keyboard buffer is full.\n");
+	}
+
+	return 0;
+}
+
 static int tty_handle_char(char c, tty_t t)
 {
+	if(!t)
+		panic("tty: invalid tty passed to handle char.\n");
+
 	/* Preprocess the input (canonical mode only!) */
-	uchar canon = t->term.c_lflag & ICANON;
+	char canon = t->term.c_lflag & ICANON;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: tty %d received char %c.\n",
-		tty_num(y), c);
+	cprintf("tty: tty %d received char %c\n",
+			tty_num(t), c);
 	cprintf("tty: Canonical mode: %d\n", canon);
 #endif
 
@@ -148,7 +180,7 @@ static int tty_handle_char(char c, tty_t t)
 			{
 #ifdef KEY_DEBUG
 				cprintf("tty: swapped upper case letter for"
-					" lower case letter.\n");
+						" lower case letter.\n");
 #endif
 				c += ('a' - 'A');
 			}
@@ -185,15 +217,8 @@ static int tty_handle_char(char c, tty_t t)
 		if(t->term.c_lflag & ECHO)
 			tty_putc(t, c);
 	} else {
-		/* Write a character to the keyboard buffer */
-		if(tty_keyboard_write_buff(&t->kbd_line, c))
-		{
-			cprintf("Warning: keyboard buffer is full.\n");
-		}
-
-		/* signal anyone waiting for anything */
+		tty_handle_raw(c, t);
 		tty_signal_io_ready(t);
-
 	}
 
 #ifdef KEY_DEBUG
@@ -208,7 +233,7 @@ static int tty_handle_char(char c, tty_t t)
 }
 
 static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
-		int shift, int caps)
+		int shift, int caps, char ascii)
 {
 #ifdef DEBUG
 	cprintf("tty: special key received:\n");
@@ -219,10 +244,32 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 	cprintf("    + alt:       %d\n", alt);
 	cprintf("    + shift:     %d\n", shift);
 	cprintf("    + caps:      %d\n", caps);
+	cprintf("    + ascii:     %d  %c\n", ascii, ascii);
 
 	if(!special)
 		cprintf("    + character: %c\n", (char)val);
 #endif
+
+	/** SPECIAL DEBUGGING KEYS HERE */
+	if(ctrl && ascii >= '0' && ascii <= '9' && pressed)
+	{
+		switch(ascii)
+		{
+			case '1':
+#ifdef _ALLOW_VM_SHARE_
+				vm_share_print();
+#endif
+				break;
+			case '2':
+				proc_print_table();
+				break;
+			case '3':
+				fd_print_table();
+				break;
+		}
+
+		return 0;
+	}
 
 	/* If the special event is CTRL-FX, switch to that tty */
 	if(special && ctrl && pressed &&
@@ -237,6 +284,60 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 
 		/* Put that tty in the foreground */
 		tty_enable(t);
+
+		return 0;
+	}
+
+	tty_t t = tty_active();
+
+	if(!t || !pressed) return 0;
+
+
+	char raw = !(t->term.c_lflag & ICANON);
+	if(raw)
+	{
+		if(ctrl)
+		{
+			/* Is this a letter? */
+			if(ascii >= 'a' && ascii <= 'z')
+			{
+				ascii -= 'a';
+				ascii++;
+				/* Send this new character */
+				tty_handle_raw((char)ascii, t);
+				return 0;
+			}
+		} else {
+			switch(val)
+			{
+				case SKEY_LARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x44, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_RARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x43, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_UARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x41, t);
+					tty_signal_io_ready(t);
+					break;
+				case SKEY_DARROW:
+					tty_handle_raw(t->sgr.cs_prefix[0], t);
+					tty_handle_raw(t->sgr.cs_prefix[1], t);
+					tty_handle_raw((char)0x42, t);
+					tty_signal_io_ready(t);
+					break;
+				default: /* special character unhandled */
+					break;
+			}
+		}
 	}
 
 	return 0;

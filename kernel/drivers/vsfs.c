@@ -25,9 +25,12 @@ typedef unsigned long ulong;
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdio.h>
 
 #undef CACHE_WATCH
 #undef CACHE_PANIC
+
+#define cprintf printf
 #endif
 
 #include "file.h"
@@ -459,7 +462,7 @@ struct vsfs_inode* vsfs_alloc_inode(struct vsfs_context* context)
 	}
 
 #ifdef CACHE_PANIC
-	if(!result) panic("VSFS: out of free inodes!\n");
+	if(!result) cprintf("VSFS: out of free inodes!\n");
 #endif
 
 	slock_release(&context->cache_lock);

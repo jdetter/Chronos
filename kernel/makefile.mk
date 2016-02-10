@@ -1,18 +1,10 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 KERNEL_OBJECTS := \
-	elf \
 	arch/$(BUILD_ARCH)/trap/trap \
 	arch/$(BUILD_ARCH)/vm/vm \
 	arch/$(BUILD_ARCH)/vm/vm_alloc \
 	arch/$(BUILD_ARCH)/vm/pgdir \
-	cache/diskcache \
-	cache/cacheman \
-	cache/cache \
-	netman \
-	main \
-	proc \
-	panic \
-	kcond \
+	arch/$(BUILD_ARCH)/proc/elf \
 	syscall/syscall \
 	syscall/sysnet \
 	syscall/syssig \
@@ -20,6 +12,19 @@ KERNEL_OBJECTS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
+	cache/diskcache \
+	cache/cacheman \
+	cache/cache \
+	vm/vm_share \
+	vm/vm_cow \
+	proc/desc \
+	proc/proc \
+	proc/sched \
+	klog \
+	netman \
+	main \
+	panic \
+	kcond \
 	cpu \
 	pipe \
 	fsman \
@@ -36,9 +41,9 @@ KERNEL_OBJECTS := \
 # assembly files
 KERNEL_ASSEMBLY := \
 	arch/$(BUILD_ARCH)/vm/asm \
-	asm \
-	idt \
-	boot/bootc_jmp
+	arch/$(BUILD_ARCH)/trap/asm \
+	arch/$(BUILD_ARCH)/context/asm \
+	idt
 
 # Specify driver files. Exclude all file extensions
 KERNEL_DRIVERS := \
@@ -53,14 +58,11 @@ KERNEL_DRIVERS := \
 	serial \
 	console \
         ext2 \
-	ramfs \
 	cmos \
 	rtc \
 	diskio \
 	lwfs \
 	raid
-
-#        vsfs 
 
 # Add kernel/ before all of the kernel targets
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
@@ -73,33 +75,6 @@ KERNEL_ASSEMBLY_OBJECTS := $(addsuffix .o, $(KERNEL_ASSEMBLY_OBJECTS))
 # put drivers into the form kernel/drivers/file.o
 KERNEL_DRIVERS := $(addprefix kernel/drivers/, $(KERNEL_DRIVERS))
 KERNEL_DRIVERS := $(addsuffix .o, $(KERNEL_DRIVERS))
-
-# Specify files to clean
-KERNEL_CLEAN := \
-        $(KERNEL_OBJECTS) \
-        $(KERNEL_DRIVERS) \
-	$(KERNEL_ASSEMBLY_OBJECTS) \
-        kernel/chronos.img \
-        kernel/chronos.o \
-        kernel/boot/bootasm.o \
-	kernel/boot/ata-read.o \
-        kernel/boot/boot-stage1.img \
-        kernel/boot/boot-stage1.o \
-	kernel/boot/bootc.o \
-	kernel/boot/bootc_jmp.o \
-	kernel/boot/boot-stage2.img \
-	kernel/boot/boot-stage2.o \
-	kernel/boot/boot-stage2.data \
-	kernel/boot/boot-stage2.rodata \
-	kernel/boot/boot-stage2.text \
-	kernel/boot/boot-stage2.bss \
-	kernel/boot/ext2.o \
-	kernel/boot/cache.o \
-	kernel/idt.S \
-	ata-read.sym \
-	boot-stage1.sym \
-	boot-stage2.sym \
-	chronos.sym
 
 # Include files
 KERNEL_CFLAGS += -I kernel/include
@@ -147,8 +122,55 @@ BOOT_STAGE2_SECTORS := 140
 
 # What should be linked into the second stage boot loader?
 # NOTE: keep this list minimal!
-BOOT_STAGE2_DEPS := kernel/boot/bootc.o kernel/boot/bootc_jmp.o kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.o kernel/arch/$(BUILD_ARCH)/vm/asm.o kernel/cpu.o kernel/arch/$(BUILD_ARCH)/vm/pgdir.o kernel/boot/ext2.o kernel/drivers/serial.o kernel/drivers/ata.o kernel/stdlock.o kernel/drivers/pic.o kernel/file.o kernel/stdlib.o kernel/boot/cache.o kernel/drivers/diskio.o kernel/cache/diskcache.o kernel/cache/cacheman.o
+BOOT_STAGE2_DEPS := \
+	kernel/arch/$(BUILD_ARCH)/vm/asm.o \
+	kernel/drivers/serial.o \
+	kernel/drivers/ata.o \
+	kernel/drivers/pic.o \
+	kernel/drivers/diskio.o \
+	kernel/cache/diskcache.o \
+	kernel/cache/cacheman.o \
+	kernel/cpu.o \
+	kernel/stdlock.o \
+	kernel/file.o \
+	kernel/stdlib.o 
 
+BOOT_STAGE2_SPECIAL := \
+	kernel/boot/bootc.o \
+	kernel/boot/bootc_jmp.o \
+	kernel/boot/ext2.o \
+	kernel/boot/cache.o \
+	kernel/boot/vm_alloc.o \
+	kernel/boot/pgdir.o
+
+# Specify files to clean
+KERNEL_CLEAN := \
+        $(KERNEL_OBJECTS) \
+        $(KERNEL_DRIVERS) \
+        $(KERNEL_ASSEMBLY_OBJECTS) \
+	$(BOOT_STAGE2_DEPS) \
+	$(BOOT_STAGE2_SPECIAL) \
+        kernel/chronos.img \
+        kernel/chronos.o \
+        kernel/boot/bootasm.o \
+        kernel/boot/ata-read.o \
+        kernel/boot/boot-stage1.img \
+        kernel/boot/boot-stage1.o \
+        kernel/boot/bootc.o \
+        kernel/boot/bootc_jmp.o \
+        kernel/boot/boot-stage2.img \
+        kernel/boot/boot-stage2.o \
+        kernel/boot/boot-stage2.data \
+        kernel/boot/boot-stage2.rodata \
+        kernel/boot/boot-stage2.text \
+        kernel/boot/boot-stage2.bss \
+        kernel/boot/ext2.o \
+        kernel/boot/cache.o \
+        kernel/idt.S \
+        ata-read.sym \
+        boot-stage1.sym \
+        boot-stage2.sym \
+        chronos.sym
 
 .PHONY: kernel-symbols
 kernel-symbols: kernel/chronos.o kernel/boot/ata-read.o
@@ -168,10 +190,15 @@ kernel/boot/boot-stage1.img: kernel/boot/ata-read.o
 
 kernel/boot/boot-stage2.img: $(KERNEL_DRIVERS) $(TOOLS_BUILD) $(KERNEL_OBJECTS) $(KERNEL_ASSEMBLY_OBJECTS)
 	# Build special files for boot stage 2
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/bootc.o kernel/boot/bootc.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/bootc_jmp.o kernel/boot/bootc_jmp.S
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/ext2.o kernel/drivers/ext2.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/cache.o kernel/cache/cache.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -c -o kernel/boot/bootc.o kernel/boot/bootc.c
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o $(BOOT_STAGE2_DEPS)
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/vm_alloc.o \
+		kernel/arch/$(BUILD_ARCH)/vm/vm_alloc.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_STAGE2_CFLAGS) -D__BOOT_STRAP__ -c -o kernel/boot/pgdir.o \
+		kernel/arch/$(BUILD_ARCH)/vm/pgdir.c
+	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o kernel/boot/boot-stage2.o $(BOOT_STAGE2_SPECIAL) $(BOOT_STAGE2_DEPS)
 	$(CROSS_OBJCOPY) -O binary -j .text kernel/boot/boot-stage2.o kernel/boot/boot-stage2.text	
 	$(CROSS_OBJCOPY) -O binary -j .data kernel/boot/boot-stage2.o kernel/boot/boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata kernel/boot/boot-stage2.o kernel/boot/boot-stage2.rodata	

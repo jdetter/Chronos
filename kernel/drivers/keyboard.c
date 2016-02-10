@@ -185,9 +185,10 @@ char* scan_set_special;
  * alt: whether or not alt was enabled at the time of the event.
  * shift: whether or not shift was enabled at the time of the event.
  * caps: whether or not caps lock was enabled at the time of the event.
+ * ascii: The ascii code for the value 
  */
 int (*shandle)(int pressed, int special, int val, int ctrl, int alt, 
-		int shift, int caps);
+		int shift, int caps, char ascii);
 
 #define CHAR_FROM_SET(code) scan_set_alpha[code]
 #define CHAR_FROM_SET_SHIFT(code) scan_set_alpha_shift[code]
@@ -267,12 +268,17 @@ get_key:
 
 	/* Before any processing, check if it is a special key */
 	char special_val = (unsigned char)CHAR_SPECIAL(scancode);
+#ifdef DEBUG
+	if(special_val)cprintf("kbd: Value was special!\n");
+#endif
 	if((alt_enabled || ctrl_enabled || special_val) && shandle)
 	{
 		int uns = (unsigned char) special_val;
+		char ascii = CHAR_FROM_SET(scancode);
 		shandle(!released, 1, uns, 
 			ctrl_enabled, alt_enabled, 
-			shift_enabled, caps_enabled);
+			shift_enabled, caps_enabled, ascii);
+		special_val = 1; /* Consume this event */
 	}
 
 	/*** Modify active modifiers */
@@ -356,26 +362,12 @@ get_key:
 			result = TO_LOWERCASE(result);
 	}
 
-
-	/* this key is a character, if there are mods it is special */
-        if(alt_enabled || ctrl_enabled || caps_enabled)
-        {
-		int uns = (unsigned char)result;
-                if(shandle)
-                {
-                        shandle(!released, 0, uns,
-                                        ctrl_enabled, alt_enabled,
-                                        shift_enabled, caps_enabled);
-                }
-
-                goto get_key;
-        }
-
 	return result;
 }
 
 void kbd_event_handler(int (*handle) (int pressed, int special, 
-			int val, int ctrl, int alt, int shift, int caps))
+			int val, int ctrl, int alt, int shift, int caps,
+			char ascii))
 {
 	/* assign the handler */
 	shandle = handle;

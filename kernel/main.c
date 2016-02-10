@@ -27,13 +27,13 @@
 #include "netman.h"
 #include "signal.h"
 #include "cacheman.h"
+#include "fpu.h"
 
 void __set_stack__(uint stack, uint function);
 void main_stack(void);
 uint __get_cr0__(void);
 
 extern struct rtc_t k_time;
-extern struct proc* init_proc;
 extern struct proc* rproc;
 extern uint k_stack;
 
@@ -91,6 +91,11 @@ void main_stack(void)
         pic_init();
         cprintf("[ OK ]\n");
 
+	/* Enable the floating point unit */
+	cprintf("Enabling the floating point unit.\t\t\t\t\t");
+	fpu_init();
+	cprintf("[ OK ]\n");
+
         /* Initilize CMOS */
         cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
         cmos_init();
@@ -144,25 +149,55 @@ void main_stack(void)
 	sched_init();
 	cprintf("[ OK ]\n");
 
-	/* Create /var/log if it doesn't exist */
-	fs_mkdir("/var", 0, 0, 0, 0700);
-	fs_mkdir("/var/log", 0, 0, 0, 0700);
+	cprintf("Initilizing kernel logger...\t\t\t\t\t\t");
+	klog_init();
+	cprintf("[ OK ]\n");
 
-	cprintf("Starting logging on tty0...\t\t\t\t\t\t");
-	if(tty_enable_logging(tty_find(0), "/var/log/tty0.txt"))
+	cprintf("Starting all logs...\t\t\t\t\t\t\t");
+        if(tty_code_log_init())
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+
+	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(0), "tty0.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+#if 0
+        cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(0), "tty0-new.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+
+	cprintf("Enabling logging on tty1...\t\t\t\t\t\t");
+        if(tty_enable_logging(tty_find(1), "tty1-new.txt"))
+                cprintf("[FAIL]\n");
+        else cprintf("[ OK ]\n");
+
+	cprintf("Starting all logs...\t\t\t\t\t\t\t");
+	if(tty_code_log_init())
 		cprintf("[FAIL]\n");
 	else cprintf("[ OK ]\n");
+
+	cprintf("Enabling logging on tty1...\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(1), "tty1.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
+
+	cprintf("Enabling console code logging on tty1...\t\t\t\t");
+	if(tty_enable_code_logging(tty_find(1)))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
+#endif
 
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
-	for(tty_num = 0;;tty_num++)
+	for(tty_num = 1;;tty_num++)
 	{
+		if(tty_num == 2) break;
 		tty_t t = tty_find(tty_num);
+		spawn_tty(t);
 		if(!t) break;
-
-		/* Setup an init process */
-        	init_proc = spawn_tty(t);
 	}
 	cprintf("[ OK ]\n");
 

@@ -14,8 +14,8 @@
  * print to the colored video memory. If you are printing to mono color, set
  * both color and colored to 0.
  */
-void console_putc(uint position, char character, char color, 
-	uchar colored, uchar* base_addr);
+void console_putc(int position, char character, char color, 
+	char colored, char* base_addr);
 
 /**
  * Update the cursor position. 
@@ -25,6 +25,6 @@ void console_update_cursor(int pos);
 /**
  * Copy to buffer to video memory.
  */
-void console_print_buffer(char* buffer, uchar colored, uint vid_mem_i);
+void console_print_buffer(char* buffer, char colored, uintptr_t vid_mem_i);
 
 #endif

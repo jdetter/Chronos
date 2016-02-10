@@ -51,7 +51,7 @@ char* fail = "[FAIL]\n";
 #define EXT2_SECT_SIZE 512
 #define EXT2_INODE_CACHE_SZ 0x10000
 
-extern pgdir* k_pgdir;
+extern pgdir_t* k_pgdir;
 extern struct FSHardwareDriver* ata_drivers[];
 struct FSDriver fs;
 
@@ -184,8 +184,8 @@ int main(void)
 			size_t mem_sz = curr_header.mem_sz;
 			size_t needed_sz = PGROUNDUP(mem_sz);
 
-			pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-			pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+			vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+			vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 
 			/* map some pages in for this space */
 			vm_mappages(hd_addr, needed_sz, k_pgdir, 
@@ -243,21 +243,21 @@ void panic(char* fmt, ...)
 void vm_stable_page_pool(void);
 void setup_boot2_pgdir(void)
 {
-	k_pgdir = (pgdir*)KVM_KPGDIR;
+	k_pgdir = (pgdir_t*)KVM_KPGDIR;
 	memset(k_pgdir, 0, PGSIZE);
 	/* Do page pool */
 	vm_stable_page_pool();
 	vm_init_page_pool();
 	
-	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT;
 
 	/* Start by directly mapping the boot stage 2 pages */
 	vm_dir_mappages(KVM_BOOT2_S, KVM_BOOT2_E, k_pgdir, 
 		dir_flags, tbl_flags);
 
 	/* Map the current stack */
-	vm_pgflags(PGROUNDDOWN(KVM_BOOT2_S), k_pgdir, tbl_flags);
+	vm_setpgflags(PGROUNDDOWN(KVM_BOOT2_S), k_pgdir, tbl_flags);
 
 	/* Directly map the kernel page directory */
 	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 

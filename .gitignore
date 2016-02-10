@@ -28,3 +28,4 @@ tools/build
 
 # Exported log files
 logs/
+save/

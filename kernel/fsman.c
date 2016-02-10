@@ -22,14 +22,13 @@
 #include "tty.h"
 #include "chronos.h"
 #include "proc.h"
-#include "ramfs.h"
 #include "panic.h"
 #include "ext2.h"
 #include "lwfs.h"
 #include "diskio.h"
 #include "diskcache.h"
 
-#define DEBUG
+// #define DEBUG
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -620,6 +619,9 @@ int fs_write(inode i, void* src, uint sz, uint start)
 
 	/* The file properties may have changed */
 	fs_sync_inode(i);
+
+	/* TODO: Temporary: write disk after every write */
+	// fs_sync();
 
 	return bytes;
 }

@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "kern/types.h"
@@ -56,8 +57,9 @@ void cprintf(char* fmt, ...)
 	tty_t t0 = tty_find(0);
         void** argument = (void**)(&fmt + 1);
 
+	int len = strlen(fmt);
         uint x;
-        for(x = 0;x < strlen(fmt);x++)
+        for(x = 0;x < len;x++)
         {
                 if(fmt[x] == '%' && x + 1 < strlen(fmt))
                 {
@@ -110,9 +112,17 @@ void cprintf(char* fmt, ...)
 	}
 }
 
+void tty_erase_display(tty_t t);
+void tty_set_cur_rc(tty_t t, int row, int col);
 void panic(char* fmt, ...)
 {
-	asm volatile("addl $0x08, %esp");
-	asm volatile("call cprintf");
+	char buff[256];
+	va_list list;
+	va_start(list, fmt);
+	vsnprintf(buff, 256, fmt, list);
+
+	cprintf("%s\n", buff);
+
+	fs_sync();
 	for(;;);
 }

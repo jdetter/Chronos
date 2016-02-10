@@ -28,12 +28,11 @@
 #include "console.h"
 #include "keyboard.h"
 #include "pic.h"
-#include "ramfs.h"
 #include "device.h"
 #include "cacheman.h"
 #include "diskcache.h"
 
-extern pgdir* k_pgdir;
+extern pgdir_t* k_pgdir;
 extern uint video_mode;
 slock_t driver_table_lock;
 static struct DeviceDriver drivers[MAX_DEVICES];
@@ -64,8 +63,8 @@ static struct DeviceDriver* dev_alloc(void)
 
 void* dev_new_mapping(uint phy, uint sz)
 {
-	pgflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT 
+	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT 
 		| VM_TBL_CACH | VM_TBL_WRTH;
 
 	uint v_start = curr_mapping;
@@ -163,8 +162,6 @@ int dev_init()
 		disk_cache_hardware_init(ata_drivers[x]);
 	}
 
-	/* Bring up ramfs */
-	ramfs_init();
 
 	serial_init(0);
 	/* Find serial port */

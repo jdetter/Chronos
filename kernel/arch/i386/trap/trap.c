@@ -32,6 +32,7 @@
 #include "rtc.h"
 #include "vm.h"
 #include "signal.h"
+#include "vm.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -95,8 +96,8 @@ int trap_pf(uintptr_t address)
 #ifdef DEBUG
 	cprintf("Fault address: 0x%x\n", address);
 #endif
-	pgflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
-	pgflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
+	vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
+	vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
 
 	uintptr_t stack_bottom = rproc->stack_end;
 	uintptr_t stack_tolerance = stack_bottom - STACK_TOLERANCE * PGSIZE;
@@ -110,13 +111,22 @@ int trap_pf(uintptr_t address)
 			dir_flags, tbl_flags);
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
-		return 0;
-	}else{
+	} else {
+#ifdef _ALLOW_VM_SHARE_
+		/* Is this copy on write? */
+		if(vm_is_cow(rproc->pgdir, address))
+		{
+			vm_uncow(rproc->pgdir, address);
+			return 0;
+		}
+#endif
 		return 1;
 	}
+
+	return 0;
 }
 
-void trap_handler(struct trap_frame* tf)
+void trap_handler(struct trap_frame* tf, void* ret_frame)
 {
 	rproc->tf = tf;
 	
@@ -126,6 +136,11 @@ void trap_handler(struct trap_frame* tf)
 	int handled = 0;
 	int user_problem = 0;
 	int kernel_fault = 0;
+
+#ifdef DEBUG
+	/* Save the current eip for testing */	
+	uintptr_t ret_eip = tf->eip;
+#endif
 
 	if(!(tf->cs & 0x3))
 		kernel_fault = 1;
@@ -279,15 +294,35 @@ void trap_handler(struct trap_frame* tf)
 
 TRAP_DONE:
 
+#ifdef DEBUG
+	if(ret_eip != rproc->tf->eip)
+	{
+		cprintf("%s:%d: WARNING: eip has changed!!\n",
+			rproc->name, rproc->pid);
+		cprintf("\t\t0x%x --> 0x%x\n",
+			ret_eip, rproc->tf->eip);
+	}
+#endif
+
 	if(!handled)
 	{
 		cprintf("%s: 0x%x", fault_string, tf->error);
+		cprintf("%s: EIP: 0x%x ESP: 0x%x EBP: 0x%x\n",
+			rproc->name, rproc->tf->eip,
+			rproc->tf->esp, rproc->tf->ebp);
 
 		if(user_problem && rproc && !kernel_fault)
 		{
 			_exit(1);
-		} else for(;;);
+		} else {
+			cprintf("\n\nKERNEL FAULT\n");
+			/* Write everything to disk so logs can be extracted */
+			fs_sync();
+			// cprintf("chronos: kernel panic\n");
+			for(;;);
+		}
 	}
+
 
 	/* Do we have any signals waiting? */
 	if(rproc->sig_queue && !rproc->sig_handling)
@@ -310,7 +345,7 @@ TRAP_DONE:
 	/* Force return */
 	asm volatile("movl %ebp, %esp");
 	asm volatile("popl %ebp");
-	/* add return address and arguments */
+	/* add return address */
 	asm volatile("addl $0x08, %esp");
 	asm volatile("jmp trap_return");
 }

@@ -1,14 +1,16 @@
 #include <stdio.h>
+#include <unistd.h>
 
-int main(int argc, char** argv, char** env)
+int main(int argc, char** argv)
 {
-	printf("Argument array:\n");
-	int x;
-	for(x = 0;x < argc;x++)
-		printf("    %d: %s\n", x, argv[x]);
-	printf("Environment:\n");
-	for(x = 0;env[x];x++)
-		printf("    %d: %s\n", x, env[x]);
+	char* args[3];
+	args[0] = "/bin/echo";
+	args[1] = "exec worked.";
+	args[2] = NULL;
+
+	printf("Running execvp...\n");
+	execvp(args[0], args);
+	printf("FAILED");
 		
 	return 0;
 }

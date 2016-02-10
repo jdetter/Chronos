@@ -142,88 +142,25 @@ int memcmp(void* buff1, void* buff2, uint sz)
 	return 0; /* if buff1 equals buff2, return 0 */
 }
 
-int atoi(char* str, int radix)
+int atoi(const char* str)
 {
-	int x;
 	int negative = 1;
-	int total = 0;
-	//int num = 0;
-	if(str[0]=='-')
-	{
+	if(*str == '-')
 		negative = -1;
-	}
-	if(radix==16)
+
+	int num = 0;
+
+	const char* ptr = str;
+	while(*ptr && *ptr >= '0' && *ptr <= '9')
 	{
-		for(x=0; x<strlen(str); x++)
-		{
-			if(str[x] >= 'A' && str[x] <= 'Z')/* if str1 is a capital letter of the alphabet */
-			{
-				str[x] += 32; /* convert to lower case */
-			}
-			if((str[x]<'a' && str[x] > 'f')&&(str[x]> '9' || str[x] <'0'))
-			{
-				break;
-			}
-			if(str[x]=='a')
-			{
-				total *= radix;
-				total = total + 10;
-			}
-			else if(str[x]=='b')
-			{
-				total *= radix;
-				total = total + 11;
-			}
-			else if(str[x]=='c')
-			{
-				total *= radix;
-				total = total + 12;
-			}
-			else if(str[x]=='d')
-			{
-				total *= radix;
-				total = total + 13;
-			}
-			else if(str[x]=='e')
-			{
-				total *= radix;
-				total = total + 14;
-			}
-			else if(str[x]=='f')
-			{
-				total *= radix;
-				total = total + 15;
-			}
-			else if(str[x]<='9'&&str[x]>='0')
-			{
-				total *= radix;
-				total = total + str[x]-'0';
-			}
-		}
-
+		int digit = *ptr - '0';
+		num *= 10;
+		num += digit;
+		ptr++;
 	}
-	else
-	{
-		for(x=0; x<strlen(str); x++)
-		{
+	
+	return negative * num;
 
-			if(radix == 2 && str[x]!= '0' && str[x]!= '1')
-			{
-				break;
-			}
-			else if(radix == 10 && (str[x]> '9' || str[x] <'0'))
-			{
-				break;
-			}
-			else
-			{
-				total *= radix;
-				total = total + str[x]-'0';
-			}
-
-		}
-	}
-	return total * negative;
 }
 
 float atof(char* str)
@@ -281,71 +218,71 @@ void kitoa(int val_signed, char* dst_c, uint sz, uint radix)
 
 int vsnprintf(char* dst, size_t sz, const char* fmt, va_list list)
 {
-        int fmt_index = 0;
-        int dst_index = 0;
-        for(;dst_index < sz;fmt_index++, dst_index++)
-        {
+	int fmt_index = 0;
+	int dst_index = 0;
+	for(;dst_index < sz;fmt_index++, dst_index++)
+	{
 		if(fmt[fmt_index] == 0)
 		{
 			dst[dst_index] = 0;
 			break;
 		}
 
-                if(fmt[fmt_index] == '%')
-                {
-                        if(fmt[fmt_index + 1] == '%')
-                        {
-                                dst[dst_index] = '%';
-                        } else if(fmt[fmt_index + 1] == 'd')
-                        {
-                                char num_buff[64];
-                                int val = va_arg(list, int);
-                                kitoa(val, num_buff, 64, 10);
-                                int num_pos;
-                                for(num_pos = 0;num_buff[num_pos];num_pos++)
-                                        dst[dst_index + num_pos] =
-                                                num_buff[num_pos];
-                                dst_index += num_pos - 1;
-                        } else if(fmt[fmt_index + 1] == 'x'
-				|| fmt[fmt_index + 1] == 'p')
-                        {
-                                char num_buff[64];
-                                int val = va_arg(list, int);
-                                kitoa(val, num_buff, 64, 16);
-                                int num_pos;
-                                for(num_pos = 0;num_buff[num_pos];num_pos++)
-                                        dst[dst_index + num_pos] =
-                                                num_buff[num_pos];
-                                dst_index += num_pos - 1;
-                        } else if(fmt[fmt_index + 1] == 'c')
+		if(fmt[fmt_index] == '%')
+		{
+			if(fmt[fmt_index + 1] == '%')
+			{
+				dst[dst_index] = '%';
+			} else if(fmt[fmt_index + 1] == 'd')
+			{
+				char num_buff[64];
+				int val = va_arg(list, int);
+				kitoa(val, num_buff, 64, 10);
+				int num_pos;
+				for(num_pos = 0;num_buff[num_pos];num_pos++)
+					dst[dst_index + num_pos] =
+						num_buff[num_pos];
+				dst_index += num_pos - 1;
+			} else if(fmt[fmt_index + 1] == 'x'
+					|| fmt[fmt_index + 1] == 'p')
+			{
+				char num_buff[64];
+				int val = va_arg(list, int);
+				kitoa(val, num_buff, 64, 16);
+				int num_pos;
+				for(num_pos = 0;num_buff[num_pos];num_pos++)
+					dst[dst_index + num_pos] =
+						num_buff[num_pos];
+				dst_index += num_pos - 1;
+			} else if(fmt[fmt_index + 1] == 'c')
 			{
 				char c = (char)va_arg(list, int);
 				dst[dst_index] = c;
 			} else if(fmt[fmt_index + 1] == 's')
 			{
 				char* s = va_arg(list, char*);
-                                int s_len = strncat(dst, s, sz);
+				int s_len = strncat(dst, s, sz);
 				dst_index = s_len - 1;
 			} else {
 				dst[dst_index] = fmt[fmt_index];
 				if(dst_index + 1 == sz) break;
 				dst[dst_index + 1] = fmt[fmt_index + 1];
 				dst_index++;
-                        }
+			}
 
 			fmt_index++;
-                } else dst[dst_index] = fmt[fmt_index];
-        }
+		} else dst[dst_index] = fmt[fmt_index];
+	}
 
-        dst[sz - 1] = 0;
-        return dst_index;
+	dst[sz - 1] = 0;
+	return dst_index;
 }
 
 int snprintf(char* dst, uint sz, char* fmt, ...)
 {
 	va_list list;
 	va_start(list, fmt);
-        int result =  vsnprintf(dst, sz, fmt, list);
+	int result =  vsnprintf(dst, sz, fmt, list);
 	va_end(list);
 
 	return result;
@@ -353,13 +290,13 @@ int snprintf(char* dst, uint sz, char* fmt, ...)
 
 int trim(char* str)
 {
-        int x;
-        for(x = 0;x < strlen(str);x++)
-                if(str[x] != ' ')break;
-        strncpy(str, str + x, strlen(str) + 1);
-        for(x = strlen(str) - 1;x >= 0;x--)
-                if(str[x] != ' ') break;
-        str[x + 1] = 0;
+	int x;
+	for(x = 0;x < strlen(str);x++)
+		if(str[x] != ' ')break;
+	strncpy(str, str + x, strlen(str) + 1);
+	for(x = strlen(str) - 1;x >= 0;x--)
+		if(str[x] != ' ') break;
+	str[x + 1] = 0;
 	return strlen(str);
 }
 
@@ -369,7 +306,7 @@ int ascii_char(char c)
 	if(c == 127) return 0;
 	if(c == 255) return 0;
 	return 1;
-	
+
 }
 
 uchar bcdtobin(uchar val)

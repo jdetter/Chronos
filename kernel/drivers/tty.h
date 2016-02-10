@@ -39,15 +39,19 @@
  * All of the available foreground and background colors for the tty. Bitwise
  * or a background and foreground color together to get a complete color.
  */
-#define TTY_FORE_BLACK		0x0
-#define TTY_FORE_BLUE		0x1
-#define TTY_FORE_GREEN		0x2
-#define TTY_FORE_CYAN		0x3
-#define TTY_FORE_RED		0x4
-#define TTY_FORE_MAGENTA	0x5
-#define TTY_FORE_BROWN		0x6
-#define TTY_FORE_GREY		0x7
+#define TTY_FORE_MASK		0x0F
+#define TTY_FORE_COLOR_MASK	0x07
+#define TTY_FORE_BLACK		0x00
+#define TTY_FORE_BLUE		0x01
+#define TTY_FORE_GREEN		0x02
+#define TTY_FORE_CYAN		0x03
+#define TTY_FORE_RED		0x04
+#define TTY_FORE_MAGENTA	0x05
+#define TTY_FORE_BROWN		0x06
+#define TTY_FORE_GREY		0x07
 
+#define TTY_BACK_MASK		0xF0
+#define TTY_BACK_COLOR_MASK	0x70
 #define TTY_BACK_BLACK          (TTY_FORE_BLACK << 4)
 #define TTY_BACK_BLUE           (TTY_FORE_BLUE << 4)
 #define TTY_BACK_GREEN          (TTY_FORE_GREEN << 4)
@@ -57,40 +61,62 @@
 #define TTY_BACK_BROWN          (TTY_FORE_BROWN << 4)
 #define TTY_BACK_GREY           (TTY_FORE_GREY << 4)
 
+/**
+ * Bright bits
+ */
+#define TTY_FORE_BRIGHT		0x04
+#define TTY_BACK_BRIGHT		0x40
+#define TTY_BACK_BLINK		0x40
+
 #ifndef NPAR
 #define NPAR 16
 #endif
 
-#include "ioctl.h"
+#include "klog.h"
+#include <sys/ioctl.h>
 
 struct kbd_buff
 {
 	char buffer[TTY_KEYBUFFER_SZ]; /* Keyboard input buffer */
-	uint key_write; /* Write position */
-	uint key_read; /* Read position */
-	uint key_full; /* Whether the buffer is full */
-	uint key_nls; /* line delimiter characters in the current buff */
+	int key_write; /* Write position */
+	int key_read; /* Read position */
+	int key_full; /* Whether the buffer is full */
+	int key_nls; /* line delimiter characters in the current buff */
 };
+
+struct sgr_attr
+{
+	char bold;
+	char underscore;
+	char reversed;
+	char color;
+	char cs_prefix[2];
+};
+
+#define ESC_TYPE_ESC 0x01
+#define ESC_TYPE_CSI 0x02
+#define ESC_TYPE_SGR 0x03
+#define ESC_TYPE_DEC 0x04
 
 /* tty structure. Contains all of the metadata for a tty. */
 struct tty
 {
-	uint num; /* The number of this tty */
-	uint active; /* 1: This tty is in the foreground, 0: background*/
-	uchar type; /* The type of this tty. (see above.)*/
+	int num; /* The number of this tty */
+	int active; /* 1: This tty is in the foreground, 0: background*/
+	char type; /* The type of this tty. (see above.)*/
 	char buffer[TTY_BUFFER_SZ]; /* Text buffer */
-	uint cursor_pos; /* Text mode position of the cursor. */
-	uint cursor_enabled; /* Whether or not to show the cursor (text)*/
-	uint mem_start; /* The start of video memory. (color, mono only)*/
-	uchar color; /* The current printing color of the terminal. */
+	int cursor_pos; /* Text mode position of the cursor. */
+	int cursor_enabled; /* Whether or not to show the cursor (text)*/
+	uintptr_t mem_start; /* The start of video memory. (color, mono)*/
 	pid_t cpgid; /* The process group id of the controlling process. */
-	uchar exclusive; /* Whether or not this tty can be opened */
-	uchar out_logged; /* Is the output of this tty being logged? */
-	void* out_inode; /* The inode to write the log to. */
-	uint out_file_pos; /* The output file position */
+	char exclusive; /* Whether or not this tty can be opened */
+	char out_logged; /* Is the output of this tty being logged? */
+	char codes_logged; /* Are the console codes logged for this tty? */
+	klog_t tty_log; /* The log for this tty */
 	
 	/* Escape sequence parameters */
 	int escape_seq; /* The input is processing an escape sequence */
+	int escape_type; /* The type of escape sequence we are processing */
 	char escape_chars[NPAR]; /* The current escape chars seen so far */
 	int escape_count; /* How many escape characters are in the buffer? */
 
@@ -100,7 +126,6 @@ struct tty
 	 * of characters in the buffer.
 	 */
 	struct kbd_buff kbd_line; /* Current line buffer */
-	// struct kbd_buff keyboard; /* Total keyboard buffer */
 	slock_t key_lock; /* The lock needed in order to read from keybaord */
 
 	struct DeviceDriver* driver; /* driver for standard in/out */
@@ -109,19 +134,42 @@ struct tty
 
 	/* Terminal operating settings */
 	struct termios term;
-	uchar termios_locked; /* 0 = unlocked, 1 = locked */
+	char termios_locked; /* 0 = unlocked, 1 = locked */
 
 	/* Window size parameters */
 	struct winsize window;
+	
+	/* Some console config settings */
+	int tab_stop;
+	struct sgr_attr sgr;
+
+	/* Attributes to save */
+	int saved;
+	int save_cursor_pos;
+	int save_cursor_enabled;
+	struct termios save_term;
+	struct winsize save_window;
+	int save_tab_stop;
+	int save_sgr;
+
 };
 
 typedef struct tty* tty_t;
+
+int tty_enable_code_logging(tty_t t);
+int tty_enable_logging(tty_t t, char* file);
+int tty_code_log_init(void);
 
 /**
  * Return a tty object type for the tty at the index. NULL is returned if
  * index is out of bounds.
  */
-tty_t tty_find(uint index);
+tty_t tty_find(int index);
+
+/**
+ * Return the terminal that is in the foreground.
+ */
+tty_t tty_active(void);
 
 /**
  * Init a blank tty. The position of the cursor should start at 0. This
@@ -129,18 +177,18 @@ tty_t tty_find(uint index);
  * cleared. The default color is grey on black. The tty should start in
  * text mode.
  */
-void tty_init(tty_t t, uint num, uchar type, uint cursor_enabled, 
-	uint mem_start);
+void tty_init(tty_t t, int num, char type, int cursor_enabled, 
+	uintptr_t mem_start);
 
 /**
  * Setup an io driver for a specific tty.
  */
-int tty_io_setup(struct IODriver* driver, uint tty_num);
+int tty_io_setup(struct IODriver* driver, int tty_num);
 
 /**
  * Returns the number of this tty.
  */
-uint tty_num(tty_t t);
+int tty_num(tty_t t);
 
 /**
  * Enable this tty. This tty is now in the foreground and visible to the user.
@@ -187,17 +235,12 @@ int tty_gets(char* dst, int sz, tty_t t);
 /**
  * Sets whether or not the cursor should appear on the screen.
  */
-uchar tty_set_cursor(tty_t t, uchar enabled);
+char tty_set_cursor(tty_t t, char enabled);
 
 /**
  * Sets the current position of the cursor for the specified mode.
  */
-uchar tty_set_cursor_pos(tty_t t, uint pos);
-
-/**
- * Sets the current color of the tty output (text mode only).
- */
-void tty_set_color(tty_t t, uchar color);
+char tty_set_cursor_pos(tty_t t, int pos);
 
 /**
  * Scroll down one line in the console.

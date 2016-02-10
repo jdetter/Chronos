@@ -22,10 +22,12 @@
 #include "vm.h"
 #include "panic.h"
 
+// #define DEBUG
+
 #define KVM_MAGIC 0x55AA55AA
 
-struct kvm_region {uint start_addr; uint end_addr;};
-struct vm_free_node{uint next; uint magic;};
+struct kvm_region {vmpage_t start_addr; vmpage_t end_addr;};
+struct vm_free_node{vmpage_t next; int magic;};
 
 #define E820_UNUSED     0x01
 #define E820_RESERVED   0x02
@@ -40,12 +42,12 @@ struct vm_free_node{uint next; uint magic;};
  */
 struct e820_entry
 {
-        uint_32 addr_low;
-        uint_32 addr_high;
-        uint_32 length_low;
-        uint_32 length_high;
-        uint_32 type;
-        uint_32 acpi_attr;
+        uint32_t addr_low;
+        uint32_t addr_high;
+        uint32_t length_low;
+        uint32_t length_high;
+        uint32_t type;
+        uint32_t acpi_attr;
 };
 
 #define VM_IGNORE_TABLE_COUNT 0x04
@@ -53,19 +55,19 @@ struct kvm_region vm_ignore_table[] = {
         {PGROUNDDOWN(UVM_KVM_S), PGROUNDUP(UVM_KVM_E)}, /* Kernel mapping */
 	/* Boot strap location */
 	{PGROUNDDOWN(KVM_BOOT2_S), PGROUNDUP(KVM_BOOT2_E)},
-        {0x00000000, 0x00002000} /* Null page + k_pgdir*/
+        {0x00000000, 0x00002000} /* Null page + k_pgdir_t*/
 };
 
-uint k_start_pages; /* How many pages did the vm start with? */
-uint k_pages; /* How many pages are left? */
-pgdir* k_pgdir; /* Kernel page directory */
+int k_start_pages; /* How many pages did the vm start with? */
+int k_pages; /* How many pages are left? */
+pgdir_t* k_pgdir; /* Kernel page directory */
 static struct vm_free_node* head;
-uint video_mode; /* The video mode during bootup */
+int video_mode; /* The video mode during bootup */
 
-uchar __check_paging__(void);
-void __enable_paging__(uint* pgdir);
-pgdir* __get_cr3__(void);
-void vm_add_page(uint pg, pgdir* dir);
+int __check_paging__(void);
+void __enable_paging__(pgdir_t* pgdir);
+// pgdir_t* __get_cr3__(void);
+static void vm_add_page(vmpage_t pg, pgdir_t* dir);
 slock_t global_mem_lock;
 
 void vm_stable_page_pool(void)
@@ -94,7 +96,7 @@ void vm_init_page_pool(void)
 	slock_init(&global_mem_lock);
 	k_pages = 0;
 	head = NULL;
-	k_pgdir = (pgdir*)KVM_KPGDIR;
+	k_pgdir = (pgdir_t*)KVM_KPGDIR;
 
         /* Get the information from the memory map. */
         int x = E820_MAP_START;
@@ -107,8 +109,8 @@ void vm_init_page_pool(void)
                 if(e->type != E820_UNUSED) continue;
 
                 /* The entry is free to use! */
-                uint addr_start = e->addr_low;
-                uint addr_end = addr_start + e->length_low;
+                vmpage_t addr_start = e->addr_low;
+                vmpage_t addr_end = addr_start + e->length_low;
 
 		if(addr_start == 0x0) addr_start += 0x1000;
                 vm_add_pages(addr_start, addr_end, k_pgdir);
@@ -117,7 +119,7 @@ void vm_init_page_pool(void)
 }
 
 /* Take pages from start to end and add them to the free list. */
-void vm_add_pages(uint start, uint end, pgdir* dir)
+void vm_add_pages(vmpage_t start, vmpage_t end, pgdir_t* dir)
 {
         /* Make sure the start and end are page aligned. */
         start = PGROUNDDOWN((start + PGSIZE - 1));
@@ -128,7 +130,7 @@ void vm_add_pages(uint start, uint end, pgdir* dir)
         for(x = start;x != end;x += PGSIZE) vm_add_page(x, dir);
 }
 
-void vm_add_page(uint pg, pgdir* dir)
+static void vm_add_page(vmpage_t pg, pgdir_t* dir)
 {
 	/* Should we ignore this page? */
         int x;
@@ -144,58 +146,79 @@ void vm_add_page(uint pg, pgdir* dir)
 		VM_DIR_WRIT, VM_TBL_WRIT);
 }
 
-uint palloc(void)
+vmpage_t palloc(void)
 {
 	slock_acquire(&global_mem_lock);
-	pgdir* save = vm_push_pgdir();
+	pgdir_t* save = vm_push_pgdir();
         if(head == NULL) panic("No more free pages");
 
         k_pages--;
-        uint addr = (uint)head;
-        if(head->magic != (uint)KVM_MAGIC)
-        {
+        vmpage_t addr = (vmpage_t)head;
+        if(head->magic != (int)KVM_MAGIC)
                 panic("KVM is currupt!\n");
-        }
-        head = (struct vm_free_node*)head->next;
-        memset((uchar*)addr, 0, PGSIZE);
+	if(addr < PGSIZE)
+		panic("FVM is currupt! - NULL\n");
 
-        if(debug) cprintf("Page allocated: 0x%x\n", addr);
+        head = (struct vm_free_node*)head->next;
+        memset((void*)addr, 0, PGSIZE);
+
+#ifdef DEBUG
+        cprintf("Page allocated: 0x%x\n", addr);
+#endif
 
 	vm_pop_pgdir(save);
 	slock_release(&global_mem_lock);
         return addr;
 }
 
-void pfree(uint pg)
+void pfree(vmpage_t pg)
 {
+	pg = PGROUNDDOWN(pg);
+
+#ifdef DEBUG
+	if(!pg) panic("Freed null page!!\n");
+#endif
+	if(!pg) return;
 	slock_acquire(&global_mem_lock);
-	pgdir* save = vm_push_pgdir();
-        if(debug) cprintf("Page freed: 0x%x\n", pg);
-        if(pg == 0) panic("Free null page.\n");
+	pgdir_t* save = vm_push_pgdir();
         k_pages++;
 	/* Make sure that the page doesn't have any flags: */
+
+#ifdef _ALLOW_VM_SHARE_
+	/* Was this page shared? */
+	if(vm_pgunshare((pypage_t)pg))
+	{
+		slock_release(&global_mem_lock);
+		return; /* Something still needs this page */
+	}
+#endif
+
 	pg = PGROUNDDOWN(pg);
         struct vm_free_node* new_free = (struct vm_free_node*)pg;
-        new_free->next = (uint)head;
-        new_free->magic = (uint)KVM_MAGIC;
+        new_free->next = (vmpage_t)head;
+        new_free->magic = (int)KVM_MAGIC;
         head = new_free;
 	vm_pop_pgdir(save);
 	slock_release(&global_mem_lock);
+
+#ifdef DEBUG
+        cprintf("Page freed: 0x%x\n", pg);
+#endif
 }
 
 void setup_kvm(void)
 {
 	/* The kernel is now loaded, setup everything we need. */
-	k_pgdir = (pgdir*)KVM_KPGDIR;
+	k_pgdir = (pgdir_t*)KVM_KPGDIR;
 	head = *(struct vm_free_node**)KVM_POOL_PTR;
-	k_pages = *(uint*)KVM_PAGE_CT;
-	video_mode = *(uint*)KVM_VMODE;
+	k_pages = *(int*)KVM_PAGE_CT;
+	video_mode = *(int*)KVM_VMODE;
 	k_start_pages = k_pages;
 }
 
 void vm_save_vm(void)
 {
 	*(struct vm_free_node**)KVM_POOL_PTR = head;
-	*(uint*)KVM_PAGE_CT = k_pages;
-	*(uint*)KVM_VMODE = (uint)((*(const uint_16*)0x410) & 0x30);
+	*(int*)KVM_PAGE_CT = k_pages;
+	*(int*)KVM_VMODE = (int)((*(const uint16_t*)0x410) & 0x30);
 }

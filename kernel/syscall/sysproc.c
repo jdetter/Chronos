@@ -27,6 +27,9 @@
 #include "signal.h"
 #include "context.h"
 #include "elf.h"
+#include "sched.h"
+
+// #define DEBUG
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
@@ -34,36 +37,67 @@ extern uint k_ticks;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
+int waitpid_nolock(int pid, int* status, int options);
 void fork_return(void);
+int clone(unsigned long flags, void* child_stack,
+                void* ptid, void* ctid,
+                struct pt_regs* regs);
+int waitpid_nolock_noharvest(int pid);
+
+
 int sys_fork(void)
 {
 	struct proc* new_proc = alloc_proc();
 	if(!new_proc) return -1;
 	slock_acquire(&ptable_lock);
+	/* Save the fdtab and lock */
+	fdtab_t fdtab = new_proc->fdtab;
+	slock_t* fdtab_lock = new_proc->fdtab_lock;
 	/* Copy the entire process */
 	memmove(new_proc, rproc, sizeof(struct proc));
+	new_proc->fdtab = fdtab;
+	new_proc->fdtab_lock = fdtab_lock;
 	new_proc->pid = next_pid++;
-	new_proc->tid = 0; /* Not a thread */
+	new_proc->ppid = rproc->pid;
+	new_proc->tid = new_proc->pid;
+	new_proc->tgid = new_proc->pid;
+	new_proc->next_tid = new_proc->pid + 1;
 	new_proc->parent = rproc;
 	new_proc->state = PROC_RUNNABLE;
-	new_proc->pgdir = (pgdir*) palloc();
+	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
+
+#ifndef _ALLOW_VM_SHARE_
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+#else
+	/* vm_copy_uvm(new_proc->pgdir, rproc->pgdir); */
+	vm_uvm_cow(rproc->pgdir);
+	/* Create mappings for the user land pages */
+	vm_map_uvm(new_proc->pgdir, rproc->pgdir);
+	/* Create a kernel stack */
+	vm_cpy_user_kstack(new_proc->pgdir, rproc->pgdir);
+#endif
+
+	/* Copy the table (NO MAP) */
+	fd_tab_copy(new_proc, rproc);
 
 	/* Increment file references for all inodes */
 	int i;
-	for(i = 0;i < MAX_FILES;i++)
+	for(i = 0;i < PROC_MAX_FDS;i++)
 	{
-		switch(new_proc->file_descriptors[i].type)
+		if(!fd_ok(i)) continue;
+		switch(new_proc->fdtab[i]->type)
 		{
 			case FD_TYPE_FILE:
-				fs_add_inode_reference(new_proc->file_descriptors[i].i);
+				fs_add_inode_reference(new_proc->fdtab[i]->i);
 				break;
 			case FD_TYPE_PIPE:
-				if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_WRITE)
-					rproc->file_descriptors[i].pipe->write_ref++;
-				if(rproc->file_descriptors[i].pipe_type == FD_PIPE_MODE_READ)
-					rproc->file_descriptors[i].pipe->read_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_WRITE)
+					rproc->fdtab[i]->pipe->write_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_READ)
+					rproc->fdtab[i]->pipe->read_ref++;
 				break;
 		}
 	}
@@ -81,7 +115,7 @@ int sys_fork(void)
 
 	/* Map the new process's stack into our swap space */
 	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
-
+	
 	struct trap_frame* tf = (struct trap_frame*)
 		((char*)new_proc->tf - SVM_DISTANCE);
 	tf->eax = 0; /* The child should return 0 */
@@ -89,10 +123,10 @@ int sys_fork(void)
 	/* new proc needs a context */
 	struct context* c = (struct context*)
 		((char*)tf - sizeof(struct context));
-	c->eip = (uint)fork_return;
-	c->esp = (uint)tf - 4 + SVM_DISTANCE;
-	c->cr0 = (uint)new_proc->pgdir;
-	new_proc->context = (uint)c + SVM_DISTANCE;
+	c->eip = (uintptr_t)fork_return;
+	c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
+	c->cr0 = (uintptr_t)new_proc->pgdir;
+	new_proc->context = (uintptr_t)c + SVM_DISTANCE;
 
 	/* Clear the swap stack now */
 	vm_clear_swap_stack(rproc->pgdir);
@@ -101,6 +135,151 @@ int sys_fork(void)
 	slock_release(&ptable_lock);
 
 	return new_proc->pid;
+}
+
+/* int clone(unsigned long flags, void* child_stack, 
+ *		void* ptid, void* ctid,
+ *		struct pt_regs* regs) */
+int sys_clone(void)
+{
+	unsigned long flags;
+	void* child_stack;
+	void* ptid;
+	void* ctid;
+	struct pt_regs* regs;
+
+	if(syscall_get_long((long*)&flags, 0)) return -1;
+	int start_pos = sizeof(long) / sizeof(int);
+	if(syscall_get_buffer_ptr(&child_stack, 0x1000, start_pos))
+		return -1;
+	if(syscall_get_buffer_ptr(&ptid, sizeof(pid_t), start_pos + 1))
+		return -1;
+	if(syscall_get_buffer_ptr(&ctid, sizeof(pid_t), start_pos + 2))
+		return -1;
+	if(syscall_get_buffer_ptr((void*)&regs, sizeof(struct pt_regs), 
+				start_pos + 3))
+		return -1;
+
+	return clone(flags, child_stack, ptid, ctid, regs);
+}
+
+int clone(unsigned long flags, void* child_stack,
+		void* ptid, void* ctid,
+		struct pt_regs* regs)
+{	
+	struct proc* new_proc = alloc_proc();
+	if(!new_proc) return -1;
+
+#ifdef DEBUG
+	cprintf("%d: creating thread.\n", rproc->pid);
+	cprintf("%d has thread group %d\n", rproc->tgid);
+#endif
+
+	struct proc* main_proc = get_proc_pid(rproc->tgid);
+	slock_acquire(&ptable_lock);
+	/* Save the fdtab and lock */
+	fdtab_t fdtab = new_proc->fdtab;
+	slock_t* fdtab_lock = new_proc->fdtab_lock;
+	/* Copy the entire process */
+	memmove(new_proc, main_proc, sizeof(struct proc));
+	new_proc->state = PROC_EMBRYO;
+	new_proc->fdtab = fdtab;
+	new_proc->fdtab_lock = fdtab_lock;
+	new_proc->pid = next_pid++;
+	new_proc->tid = main_proc->next_tid++;
+	new_proc->parent = main_proc;
+
+#ifndef _ALLOW_VM_SHARE_
+	/* Create a new page directory */
+	new_proc->pgdir = (pgdir_t*)palloc();
+	vm_copy_kvm(new_proc->pgdir);
+	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
+
+	/* Copy the table (NO MAP) */
+	fd_tab_copy(new_proc, rproc);
+
+	/* Increment file references for all inodes */
+	int i;
+	for(i = 0;i < PROC_MAX_FDS;i++)
+	{
+		if(!fd_ok(i)) continue;
+		switch(new_proc->fdtab[i]->type)
+		{
+			case FD_TYPE_FILE:
+				fs_add_inode_reference(new_proc->fdtab[i]->i);
+				break;
+			case FD_TYPE_PIPE:
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_WRITE)
+					rproc->fdtab[i]->pipe->write_ref++;
+				if(rproc->fdtab[i]->pipe_type 
+						== FD_PIPE_MODE_READ)
+					rproc->fdtab[i]->pipe->read_ref++;
+				break;
+		}
+	}
+#endif
+
+	/* Create a copy of the kernel stack */
+	/* Map the new process's stack into our swap space */
+	vm_set_swap_stack(rproc->pgdir, new_proc->pgdir);
+	struct trap_frame* tf = (struct trap_frame*)
+		((char*)new_proc->tf - SVM_DISTANCE);
+	tf->eax = 0; /* The child should return 0 */
+	/* new proc needs a context */
+	struct context* c = (struct context*)
+		((char*)tf - sizeof(struct context));
+	/* Set the return to fork_return */
+	c->eip = (uintptr_t)fork_return;
+	c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
+	c->cr0 = (uintptr_t)new_proc->pgdir;
+	new_proc->context = (uintptr_t)c + SVM_DISTANCE;
+
+	/* Clear the swap stack now */
+	vm_clear_swap_stack(rproc->pgdir);
+
+	if(flags & CLONE_VFORK)
+	{
+		/* Copy the file table over */
+		new_proc->fdtab = main_proc->fdtab;
+		new_proc->fdtab_lock = main_proc->fdtab_lock;
+
+#ifdef _ALLOW_VM_SHARE_
+		/* Map the page directory */
+		new_proc->pgdir = main_proc->pgdir;
+#endif
+
+		/* Allow the child to run */
+		new_proc->state = PROC_RUNNABLE;
+
+#ifdef _ALLOW_VM_SHARE_
+		/* Wait for the child to exit */
+		while(waitpid_nolock_noharvest(new_proc->pid) 
+				!= new_proc->pid);
+#else
+		while(waitpid_nolock(new_proc->pid, NULL, 0) 
+				!= new_proc->pid);
+#endif
+
+		/* Harvest the child */
+		memset(new_proc, 0, sizeof(struct proc));
+		new_proc->state = PROC_UNUSED;
+
+		/* Parent is allowed to return now */
+		slock_release(&ptable_lock);
+		return new_proc->tid;
+	}
+
+	/* Should we use our parent's fd table? */
+	if(flags & CLONE_FILES)
+	{
+		new_proc->fdtab = main_proc->fdtab;
+		new_proc->fdtab_lock = main_proc->fdtab_lock;
+	}
+
+
+	slock_release(&ptable_lock);
+	return -1;
 }
 
 /* int waitpid(int pid, int* status, int options) */
@@ -112,9 +291,14 @@ int sys_waitpid(void)
 	if(syscall_get_int(&pid, 0)) return -1;
 	if(syscall_get_int((int*)&status, 1)) return -1;
 	if(status != NULL && syscall_get_buffer_ptr(
-			(void**)&status, sizeof(int), 1))
+				(void**)&status, sizeof(int), 1))
 		return -1;
 	if(syscall_get_int(&options, 2)) return -1;
+
+#ifdef DEBUG
+	cprintf("%s:%d: Waiting for child %d.\n",
+		rproc->name, rproc->pid, pid);
+#endif
 
 	return waitpid(pid, status, options);
 }
@@ -123,13 +307,27 @@ int waitpid(int pid, int* status, int options)
 {
 	slock_acquire(&ptable_lock);
 
+	int result = waitpid_nolock(pid, status, options);
+	/* Release the ptable lock */
+	slock_release(&ptable_lock);
+
+	return result;
+}
+
+int waitpid_nolock(int pid, int* status, int options)
+{
 	int ret_pid = 0;
 	struct proc* p = NULL;
 	while(1)
 	{
+		int found = 0;
 		int process;
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
+			/* Did we find the process? */
+			if(pid == ptable[process].pid)
+				found = 1;
+
 			if(ptable[process].state == PROC_ZOMBIE
 					&& ptable[process].parent == rproc)
 			{
@@ -139,6 +337,12 @@ int waitpid(int pid, int* status, int options)
 					break;
 				}
 			}
+		}
+
+		/* If no process exists, this process will wait forever */
+		if(!found)
+		{
+			return -1;
 		}
 
 		if(p)
@@ -156,7 +360,7 @@ int waitpid(int pid, int* status, int options)
 			rproc = p;
 			/* Close open files */
 			int file;
-			for(file = 0;file < MAX_FILES;file++)
+			for(file = 0;file < PROC_MAX_FDS;file++)
 				close(file);
 			rproc = current;
 
@@ -176,10 +380,46 @@ int waitpid(int pid, int* status, int options)
 		}
 	}
 
-	/* Release the ptable lock */
-	slock_release(&ptable_lock);
-
 	return ret_pid;
+}
+
+int waitpid_nolock_noharvest(int pid)
+{
+	int ret_pid = -1;
+	struct proc* p = NULL;
+	while(1)
+	{
+		int process;
+		for(process = 0;process < PTABLE_SIZE;process++)
+		{
+			if(ptable[process].state == PROC_ZOMBIE
+					&& ptable[process].parent == rproc)
+			{               
+				if(pid == -1 || ptable[process].pid == pid)
+				{
+					p = ptable + process;
+					break;
+				}
+			}
+		}
+
+		if(p)
+		{
+			ret_pid = p->pid;
+			break;
+		} else {
+			/* Lets block ourself */
+			rproc->block_type = PROC_BLOCKED_WAIT;
+			rproc->b_pid = pid; 
+			rproc->state = PROC_BLOCKED;
+			/* Wait for a signal. */
+			yield_withlock();
+			/* Reacquire ptable lock */
+			slock_acquire(&ptable_lock);
+		}
+	}
+
+	return ret_pid;	
 }
 
 /* int wait(int* status) */
@@ -187,16 +427,18 @@ int sys_wait(void)
 {
 	int* status;
 	if(syscall_get_int((int*)&status, 0)) return -1;
-        if(status != NULL && syscall_get_buffer_ptr(
-                        (void**)&status, sizeof(int), 0))
-                return -1;
+	if(status != NULL && syscall_get_buffer_ptr(
+				(void**)&status, sizeof(int), 0))
+		return -1;
 	return waitpid(-1, status, 0);
 }
 
 
+/* int execvp(const char* path, const char* args[]) */
 int sys_execvp(void)
 {
-	cprintf("kernel: execvp not implemented yet.\n");
+	//return execve(path, argv, NULL);
+	cprintf("chronos: execvp not implemented!\n");
 	return -1;
 }
 
@@ -219,8 +461,6 @@ int sys_execl(void)
 	return execve(path, argv, NULL);
 }
 
-
-
 /* int execve(const char* path, char* const argv[], char* const envp[]) */
 int sys_execve(void)
 {
@@ -230,43 +470,67 @@ int sys_execve(void)
 	/* envp is allowed to be null */
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;;
-	if(syscall_get_buffer_ptrs((uchar***)&argv, 1)) return -1;
-	if(syscall_get_int((int*)&envp, 2)) return -1;
-	if(envp && syscall_get_buffer_ptrs((uchar***)&envp, 2)) return -1;
+	if(syscall_get_buffer_ptrs((void***)&argv, 1)) return -1;
+	if(syscall_get_optional_ptr((void**)&envp, 2))
+		return -1;
 
 	return execve(path, (char* const*)argv, (char* const*)envp);
 }
 
 int execve(const char* path, char* const argv[], char* const envp[])
 {
+#ifdef DEBUG
+	cprintf("%s:%d: executing program %s\n", 
+		rproc->name, rproc->pid, path);
+
+	cprintf("Arguments: \n");
+	int t;
+	for(t = 0;t < 50;t++)
+	{
+		if(!argv[t]) break;
+		cprintf("\t%d: %s\n", t, argv[t]);
+	}
+
+	if(envp)
+	{
+		cprintf("Environment:\n");
+		for(t = 0;t < 50;t++)
+		{
+			if(!envp[t]) break;
+			cprintf("\t%d: %s\n", t, envp[t]);
+		}
+		cprintf("Program CWD: %s\n", rproc->cwd);
+	} else {
+		cprintf("ERROR: environment pointer is bad.\n");
+	}
+#endif
+
 	/* Create a copy of the path */
-        char program_path[MAX_PATH_LEN];
-        memset(program_path, 0, MAX_PATH_LEN);
-        strncpy(program_path, path, MAX_PATH_LEN);
+	char program_path[MAX_PATH_LEN];
+	memset(program_path, 0, MAX_PATH_LEN);
+	strncpy(program_path, path, MAX_PATH_LEN);
 
 	char cwd_tmp[MAX_PATH_LEN];
 	memmove(cwd_tmp, rproc->cwd, MAX_PATH_LEN);
 
-	pgflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
-        pgflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
+	vmflags_t dir_flags = VM_DIR_WRIT | VM_DIR_READ | VM_DIR_USRP;
+	vmflags_t tbl_flags = VM_TBL_WRIT | VM_TBL_READ | VM_TBL_USRP;
 
 	/* Does the binary look ok? */
 	if(elf_check_binary_path(path))
 	{
-		/* see if it is available in /bin */
-		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(elf_check_binary_path(path))
-		{
-			/* It really doesn't exist. */
-			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
-			return -1;
-		}
+#ifdef DEBUG
+		cprintf("%s:%d: Binary not found! %s\n", 
+				rproc->name, rproc->pid, path);
+#endif
+		return -1;
 	}
+
 	/* acquire ptable lock */
 	slock_acquire(&ptable_lock);
 
 	/* Create a temporary address space */
-	pgdir* tmp_pgdir = (pgdir*)palloc();
+	pgdir_t* tmp_pgdir = (pgdir_t*)palloc();
 
 	uint env_start = PGROUNDUP(UVM_TOP);
 	int null_buff = 0x0;
@@ -307,7 +571,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	} else {
 		env_start -= sizeof(int);
 		vm_memmove((void*)env_start, &null_buff, sizeof(int),
-                                tmp_pgdir, rproc->pgdir,
+				tmp_pgdir, rproc->pgdir,
 				dir_flags, tbl_flags);
 	}
 
@@ -341,11 +605,11 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	int arg_count = x;
 
 	/* Push envp */
-        uvm_stack -= sizeof(int);
-        vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
-                        tmp_pgdir, rproc->pgdir,
+	uvm_stack -= sizeof(int);
+	vm_memmove((void*)uvm_stack, &env_start, sizeof(int),
+			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
-	
+
 	/* Push argv */
 	uvm_stack -= sizeof(int);
 	vm_memmove((void*)uvm_stack, &arg_arr_ptr, sizeof(int),
@@ -358,7 +622,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
 
-	/* Add bogus return address (solved by crt0 in stdlibc)*/
+	/* Add bogus return address for _start */
 	uvm_stack -= sizeof(int);
 	uint ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
@@ -369,8 +633,24 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->stack_start = PGROUNDUP(uvm_start);
 	rproc->stack_end = PGROUNDDOWN(uvm_stack);
 
-	/* Free user memory */
-	vm_free_uvm(rproc->pgdir);
+	/* Is this a thread? */
+	if(rproc->pid == rproc->tgid || 1)
+	{
+		/* Free user memory */
+		vm_free_uvm(rproc->pgdir);
+	} else {
+		cprintf("Thread called exec!\n");
+		/* Create new page directory */
+		pgdir_t* dir = (pgdir_t*)palloc();
+		/* Copy over the kvm */
+		vm_copy_kvm(dir);
+		/* Copy over the current kstack */
+		vm_set_user_kstack(dir, rproc->pgdir);
+		/* Assign the new page directory */
+		rproc->pgdir = dir;
+		/* Clear the TLB */
+		// switch_uvm(rproc);
+	}
 
 	/* Map user pages */
 	vm_map_uvm(rproc->pgdir, tmp_pgdir);
@@ -382,7 +662,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	uintptr_t code_start;
 	uintptr_t code_end;
 	uintptr_t entry = elf_load_binary_path(program_path, rproc->pgdir,
-		&code_start, &code_end, 1);
+			&code_start, &code_end, 1);
 
 	if(entry == 0)
 	{
@@ -411,13 +691,31 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	rproc->heap_start = PGROUNDUP(code_end);
 	rproc->heap_end = rproc->heap_start;
 
+#ifdef DEBUG
+	cprintf("Code Segment:\n");
+	cprintf("\tBinary size: %d KB\n", (code_end - code_start) >> 10);
+	cprintf("\tCode Boundaries: 0x%x -> 0x%x\n", code_start, code_end);
+	cprintf("\tStart of heap: 0x%x\n", rproc->heap_start);
+#endif
+
 	uchar setuid = 0;
 	uchar setgid = 0;
 	/* Check for setuid and setgid */
 	inode i = fs_open(program_path, O_RDONLY, 0x0, 0x0, 0x0);
-	if(!i) return -1;
+
+	if(!i) 
+	{
+		cprintf("exec: file was deleted while reading.\n");
+		slock_release(&ptable_lock);
+		return -1;
+	}
+
 	struct stat st;
-	if(fs_stat(i, &st)) return -1;
+	if(fs_stat(i, &st)) 
+	{
+		slock_release(&ptable_lock);
+		return -1;
+	}
 	if(st.st_mode & S_ISUID)
 		setuid = 1;
 	if(st.st_mode & S_ISGID)
@@ -431,25 +729,30 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		rproc->egid = rproc->gid = st.st_gid;
 
 	/* restore cwd */
-        memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
+	memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
 
 	/* Free temporary space */
-	freepgdir_struct(tmp_pgdir);
+	vm_freepgdir_struct(tmp_pgdir);
 
-	 /* Reset all ticks */
-        rproc->user_ticks = 0;
-        rproc->kernel_ticks = 0;
+	/* Reset all ticks */
+	rproc->user_ticks = 0;
+	rproc->kernel_ticks = 0;
 
 	/* unset signal stack info */
 	rproc->sig_stack_start = 0;
 	sig_clear(rproc);
-	
+
 	/* Set mmap area start */
-        rproc->mmap_end = rproc->mmap_start = 
+	rproc->mmap_end = rproc->mmap_start = 
 		PGROUNDDOWN(uvm_stack) - UVM_MIN_STACK;
 
 	/* Release the ptable lock */
 	slock_release(&ptable_lock);
+
+#ifdef DEBUG
+	cprintf("%s:%d: Binary load success.\n",
+			rproc->name, rproc->pid);
+#endif
 
 	return 0;
 }
@@ -461,12 +764,17 @@ int sys_getpid(void)
 
 int sys_exit(void)
 {
+#ifdef DEBUG
+	cprintf("\n\n%s:%d $$$exiting$$$ -- standard exit call\n\n",
+			rproc->name, rproc->pid);
+#endif
+
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 
-        int return_code = 1;
-        if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
-        rproc->return_code = return_code;
+	int return_code = 1;
+	if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
+	rproc->return_code = return_code;
 
 	/* Set state to zombie */
 	rproc->state = PROC_ZOMBIE;
@@ -529,7 +837,7 @@ int sys_brk(void)
 
 	slock_acquire(&ptable_lock);
 	/* see if the address makes sense */
-	uint check_addr = (uint)addr;
+	uintptr_t check_addr = (uintptr_t)addr;
 	if(PGROUNDUP(check_addr) >= rproc->stack_end
 			|| check_addr < rproc->heap_start)
 	{
@@ -538,21 +846,49 @@ int sys_brk(void)
 	}
 
 	/* Change the address break */
-	uint old = rproc->heap_end;
-	rproc->heap_end = (uint)addr;
+	uintptr_t old = rproc->heap_end;
+
+	/* Check to make sure the address is okay */
+	if((uintptr_t)addr < rproc->code_end || 
+			(uintptr_t)addr > rproc->stack_end)
+	{
+#ifdef DEBUG
+		cprintf("%s:%d: ERROR: program gave bad brk addr: 0x%x\n",
+				rproc->name, rproc->pid, addr);
+#endif
+
+		slock_release(&ptable_lock);
+		return old;
+	}
+
+	rproc->heap_end = (uintptr_t)addr;
+
+#ifdef DEBUG
+	cprintf("%s:%d: Old program break: 0x%x\n", 
+			rproc->name, rproc->pid, rproc->heap_end);
+#endif
+
 	/* Unmap pages */
 	old = PGROUNDUP(old);
-	uint page = PGROUNDUP(rproc->heap_end);
+	vmpage_t page = PGROUNDUP(rproc->heap_end);
 	for(;page != old;page += PGSIZE)
 	{
 		/* Free the page */
 		uintptr_t pg = vm_unmappage(page, rproc->pgdir);
-		if(pg) pfree(pg);
+		if(pg) 
+		{
+			pfree(pg);
+		}
 	}
+
+#ifdef DEBUG
+	cprintf("%s:%d: New program break: 0x%x\n", 
+			rproc->name, rproc->pid, rproc->heap_end);
+#endif
 
 	/* Release lock */
 	slock_release(&ptable_lock);
-	return 0;
+	return (int)addr;
 }
 
 /* void* sys_sbrk(uint increment) */
@@ -560,6 +896,16 @@ int sys_sbrk(void)
 {
 	intptr_t increment;
 	if(syscall_get_int((int*)&increment, 0)) return -1;
+
+	/* See if they are just checking for the program break */
+	if(increment == 0)
+	{
+#ifdef DEBUG
+		cprintf("%s:%d: checked program break: 0x%x\n",
+				rproc->name, rproc->pid, rproc->heap_end);
+#endif
+		return rproc->heap_end;
+	}
 
 	slock_acquire(&ptable_lock);
 	uintptr_t old_end = rproc->heap_end;
@@ -602,6 +948,14 @@ int sys_sbrk(void)
 		/* Zero space (security) */
 		memset((void*)old_end, 0, increment);
 	}
+
+#ifdef DEBUG
+	cprintf("%s:%d: Program used sbrk    0x%x --> 0x%x\n",
+			rproc->name, rproc->pid, old_end,
+			old_end + increment);
+	cprintf("%s:%d:\t\tHeap size change: %d KB\n", 
+			rproc->name, rproc->pid, (increment >> 12));
+#endif
 
 	/* Change heap end */
 	rproc->heap_end = old_end + increment;
@@ -1071,14 +1425,33 @@ int sys_alarm(void)
 	return -1;
 }
 
-int sys_select(void)
-{
-	panic("WARNING: select system call unimplemented.\n");
-	return -1;
-}
-
 int sys_vfork(void)
 {
-	panic("WARNING: vfork system call unimplemented.\n");
-	return -1;
+#ifdef _ALLOW_VM_SHARE_
+	return clone(CLONE_VFORK, NULL, NULL, NULL, NULL);
+#else
+	/* Create a new child */
+	pid_t p = sys_fork();
+
+	if(p > 0)
+	{
+		slock_acquire(&ptable_lock);
+		if(waitpid_nolock_noharvest(p) != p)
+		{
+#ifdef DEBUG
+			cprintf("chronos: vfork failed! 2\n");	
+			slock_release(&ptable_lock);
+			return -1;
+#endif
+		}
+		slock_release(&ptable_lock);
+	} else {
+#ifdef DEBUG
+		cprintf("chronos: vfork failed!\n");
+		return -1;
+#endif
+	}
+
+	return p;
+#endif
 }

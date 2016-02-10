@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include "kern/types.h"
 #include "file.h"
@@ -21,8 +22,10 @@ static int tty_io_init(struct IODriver* driver);
 static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
 static int tty_io_write(void* src, uint start_write, size_t sz, void* context);
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
+static int tty_io_ready_read(void* context);
+static int tty_io_ready_write(void* context);
 
-int tty_io_setup(struct IODriver* driver, uint tty_num)
+int tty_io_setup(struct IODriver* driver, int tty_num)
 {
 	/* Get the tty */
 	tty_t t = tty_find(tty_num);
@@ -31,7 +34,48 @@ int tty_io_setup(struct IODriver* driver, uint tty_num)
 	driver->read = tty_io_read;
 	driver->write = tty_io_write;
 	driver->ioctl = (int (*)(unsigned long, void*, void*))tty_io_ioctl;
+	driver->ready_read = tty_io_ready_read;
+	driver->ready_write = tty_io_ready_write;
 	return 0;
+}
+
+static int tty_io_ready_read(void* context)
+{
+	tty_t t = context;
+	/* Are we in canonical mode? */
+	int canon = t->term.c_lflag & ICANON;
+	if(canon)
+	{
+		/* There needs to be a newline in the buffer */
+		if(t->kbd_line.key_nls)
+		{
+#ifdef DEBUG
+			cprintf("TTY READY!\n");
+#endif
+			return 1;
+		}
+	} else {
+		if(t->kbd_line.key_full || 
+			t->kbd_line.key_write !=
+				t->kbd_line.key_read)
+		{
+#ifdef DEBUG
+			cprintf("TTY READY!\n");
+#endif
+			return 1;
+		}
+	}
+
+#ifdef DEBUG
+	// cprintf("*******************TTY UNREADY\n");
+#endif
+
+	return 0; /* Not ready for read */
+}
+
+static int tty_io_ready_write(void* context)
+{
+	return 1; /* Always ready for write */
 }
 
 static int tty_io_init(struct IODriver* driver)
@@ -342,8 +386,8 @@ io_sleep:
 	}
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s:%d received: %s\n",
-                rproc->name, rproc->pid, dst);
+        cprintf("tty: %s:%d received %d 0x%x %c\n",
+                rproc->name, rproc->pid, *dst, *dst, *dst);
 #endif
 	slock_release(&ptable_lock);
 
@@ -361,8 +405,8 @@ void tty_signal_io_ready(tty_t t)
 	{
 #ifdef KEY_DEBUG
 		cprintf("tty: signaled, nobody is waiting!\n");
-		return;
 #endif
+		return;
 	}
 
 	/* Read into the destination buffer */
@@ -381,7 +425,7 @@ void tty_signal_io_ready(tty_t t)
 	 * extremely hard to reproduce.
 	 */
 
-	pgdir* curr_dir = vm_curr_pgdir();
+	pgdir_t* curr_dir = vm_curr_pgdir();
 	int same_vm = 0;
 	if(p->pgdir == curr_dir)
 		same_vm = 1;
@@ -437,6 +481,6 @@ void tty_signal_io_ready(tty_t t)
 		p->block_type = PROC_BLOCKED_NONE;
 	} else {
 		cprintf("tty: why wasn't I woken up?\n");
-		for(;;);
+		// for(;;);
 	}
 }

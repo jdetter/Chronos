@@ -240,24 +240,26 @@ int syscall_handler(uint* esp)
 	if(!syscall_table[syscall_number])
 	{
 		cprintf("Warning: invalid system call: 0x%x\n", 
-			syscall_number);
+				syscall_number);
 		return -1;
 	}
 
 #ifdef DEBUG
 	if(syscall_table_names[syscall_number])
-		cprintf("syscall: %s\n", 
-			syscall_table_names[syscall_number]);
-		else cprintf("syscall: no information for this syscall.\n");
+	{
+		cprintf("%s:%d: syscall: %s\n", rproc->name, rproc->pid, 
+				syscall_table_names[syscall_number]);
+	} else cprintf("syscall: no information for this syscall.\n");
+
+	fs_sync();
 #endif
 
 	return_value = syscall_table[syscall_number]();
 
 #ifdef DEBUG
-	cprintf("syscall: return value: %d\n", return_value);
+	cprintf("%s:%d: syscall: return value: %d\n", rproc->name,
+		rproc->pid, return_value);
 #endif
-
-	// cprintf("syscall return value: 0x%x\n", return_value);
 
 	return return_value; /* Syscall successfully handled. */
 }
@@ -265,20 +267,20 @@ int syscall_handler(uint* esp)
 /* int isatty(int fd); */
 int sys_isatty(void)
 {
-        int fd;
-        if(syscall_get_int(&fd, 0)) return 1;
+	int fd;
+	if(syscall_get_int(&fd, 0)) return 1;
 
-        if(fd < 0 || fd > MAX_FILES) return 1;
+	if(fd < 0 || fd > PROC_MAX_FDS) return 1;
 
-        int x;
-        for(x = 0;x < MAX_TTYS;x++)
-        {
-                tty_t t = tty_find(x);
-                if(t->driver == rproc->file_descriptors[fd].device)
-                        return 1;
-        }
+	int x;
+	for(x = 0;x < MAX_TTYS;x++)
+	{
+		tty_t t = tty_find(x);
+		if(t->driver == rproc->fdtab[fd]->device)
+			return 1;
+	}
 
-        return 0;
+	return 0;
 }
 
 /* int wait_s(struct cond* c, struct slock* lock) */
@@ -369,24 +371,39 @@ int sys_semctl(void)
 	
 	if(syscall_get_int(&semid, 0))
 		return -1;
-	if(syscall_get_int(&semid, 1))
+	if(syscall_get_int(&semnum, 1))
 		return -1;
-	if(syscall_get_int(&semid, 2))
+	if(syscall_get_int(&cmd, 2))
 		return -1;
 
 	return -1;
 }
 
+/* int semget(key_t key, int nsems, int semflg); */
 int sys_semget(void)
 {
+	int key;
+	int nsems;
+	int semflg;
+
+	if(syscall_get_int(&key, 0))
+                return -1;
+        if(syscall_get_int(&nsems, 1))
+                return -1;
+        if(syscall_get_int(&semflg, 2))
+                return -1;
+
 	return -1;
 }
 
+/* int semop(int semid, struct sembuf *sops, size_t nsops); */
 int sys_semop(void)
 {
 	return -1;
 }
 
+/* int semtimedop(int semid, struct sembuf *sops, size_t nsops,
+                      const struct timespec *timeout); */
 int sys_semtimedop(void)
 {
 	return -1;
@@ -397,110 +414,110 @@ extern uint k_pages;
 int sys_proc_dump(void)
 {
 	/*
-	tty_print_string(rproc->t, "Running processes:\n");
-	int x;
-	for(x = 0;x < PTABLE_SIZE;x++)
-	{
-		struct proc* p = ptable + x;
-		if(p->state == PROC_UNUSED) continue;
-		tty_print_string(rproc->t, "++++++++++++++++++++\n");
-		tty_print_string(rproc->t, "Name: %s\n", p->name);
-		tty_print_string(rproc->t, "DIR: %s\n", p->cwd);
-		tty_print_string(rproc->t, "PID: %d\n", p->pid);
-		tty_print_string(rproc->t, "UID: %d\n", p->uid);
-		tty_print_string(rproc->t, "GID: %d\n", p->gid);
+	   tty_print_string(rproc->t, "Running processes:\n");
+	   int x;
+	   for(x = 0;x < PTABLE_SIZE;x++)
+	   {
+	   struct proc* p = ptable + x;
+	   if(p->state == PROC_UNUSED) continue;
+	   tty_print_string(rproc->t, "++++++++++++++++++++\n");
+	   tty_print_string(rproc->t, "Name: %s\n", p->name);
+	   tty_print_string(rproc->t, "DIR: %s\n", p->cwd);
+	   tty_print_string(rproc->t, "PID: %d\n", p->pid);
+	   tty_print_string(rproc->t, "UID: %d\n", p->uid);
+	   tty_print_string(rproc->t, "GID: %d\n", p->gid);
 
-		tty_print_string(rproc->t, "state: ");
-		switch(p->state)
-		{
-			case PROC_EMBRYO:	
-				tty_print_string(rproc->t, "EMBRYO");
-				break;
-			case PROC_READY:	
-				tty_print_string(rproc->t, "READY TO RUN");
-				break;
-			case PROC_RUNNABLE:	
-				tty_print_string(rproc->t, "RUNNABLE");
-				break;
-			case PROC_RUNNING:	
-				tty_print_string(rproc->t, "RUNNING - "
-						"CURRENT PROCESS");
-				break;
-			case PROC_BLOCKED:	
-				tty_print_string(rproc->t, "BLOCKED\n");
-				tty_print_string(rproc->t, "Reason: ");
-				if(p->block_type == PROC_BLOCKED_WAIT)
-				{
-					tty_print_string(rproc->t, "CHILD WAIT");
-				} else if(p->block_type == PROC_BLOCKED_COND)
-				{
-					tty_print_string(rproc->t, "CONDITION");
-				} else {
+	   tty_print_string(rproc->t, "state: ");
+	   switch(p->state)
+	   {
+	   case PROC_EMBRYO:	
+	   tty_print_string(rproc->t, "EMBRYO");
+	   break;
+	   case PROC_READY:	
+	   tty_print_string(rproc->t, "READY TO RUN");
+	   break;
+	   case PROC_RUNNABLE:	
+	   tty_print_string(rproc->t, "RUNNABLE");
+	   break;
+	   case PROC_RUNNING:	
+	   tty_print_string(rproc->t, "RUNNING - "
+	   "CURRENT PROCESS");
+	   break;
+	   case PROC_BLOCKED:	
+	   tty_print_string(rproc->t, "BLOCKED\n");
+	   tty_print_string(rproc->t, "Reason: ");
+	   if(p->block_type == PROC_BLOCKED_WAIT)
+	   {
+	   tty_print_string(rproc->t, "CHILD WAIT");
+	   } else if(p->block_type == PROC_BLOCKED_COND)
+	   {
+	   tty_print_string(rproc->t, "CONDITION");
+	   } else {
 
-					tty_print_string(rproc->t, "INDEFINITLY\n");
-				}
-				break;
-			case PROC_ZOMBIE:	
-				tty_print_string(rproc->t, "ZOMBIE");
-				break;
-			case PROC_KILLED:	
-				tty_print_string(rproc->t, "KILLED");
-				break;
-			default: 
-				tty_print_string(rproc->t, "CURRUPT!");
-		}
-		tty_print_string(rproc->t, "\n");
+	   tty_print_string(rproc->t, "INDEFINITLY\n");
+	   }
+	   break;
+	   case PROC_ZOMBIE:	
+	   tty_print_string(rproc->t, "ZOMBIE");
+	   break;
+	   case PROC_KILLED:	
+	   tty_print_string(rproc->t, "KILLED");
+	   break;
+	   default: 
+	   tty_print_string(rproc->t, "CURRUPT!");
+	   }
+	   tty_print_string(rproc->t, "\n");
 
-		tty_print_string(rproc->t, "Open Files:\n");
-		int file;
-		for(file = 0;file < MAX_FILES;file++)
-		{
-			struct file_descriptor* fd = 
-				p->file_descriptors + file;
-			if(fd->type == 0x0) continue;
-			tty_print_string(rproc->t, "%d: ", file);
-			switch(fd->type)
-			{
-				case FD_TYPE_FILE:
-					tty_print_string(rproc->t, "FILE");
-					break;
-				case FD_TYPE_DEVICE:
-					tty_print_string(rproc->t, "DEVICE");
-					break;
-				case FD_TYPE_PIPE:
-					tty_print_string(rproc->t, "PIPE");
-					break;
-				default:
-					tty_print_string(rproc->t, 							"CURRUPT");
-			}
-			tty_print_string(rproc->t, "\n");
+	   tty_print_string(rproc->t, "Open Files:\n");
+	   int file;
+	   for(file = 0;file < MAX_FILES;file++)
+	   {
+	   struct file_descriptor* fd = 
+	   p->file_descriptors + file;
+	   if(fd->type == 0x0) continue;
+	   tty_print_string(rproc->t, "%d: ", file);
+	   switch(fd->type)
+	   {
+	   case FD_TYPE_FILE:
+	   tty_print_string(rproc->t, "FILE");
+	   break;
+	   case FD_TYPE_DEVICE:
+	   tty_print_string(rproc->t, "DEVICE");
+	   break;
+	case FD_TYPE_PIPE:
+		tty_print_string(rproc->t, "PIPE");
+		break;
+	default:
+		tty_print_string(rproc->t, 							"CURRUPT");
+}
+tty_print_string(rproc->t, "\n");
 
-		}
-		tty_print_string(rproc->t, "Virtual Memory: ");
-		uint stack = p->stack_start - p->stack_end;
-		uint heap = p->heap_end - p->heap_start;
-		uint code = p->heap_start - 0x1000;
-		uint total = (stack + heap + code) / 1024;
-		tty_print_string(rproc->t, "%dK\n", total);	
-	}
+}
+tty_print_string(rproc->t, "Virtual Memory: ");
+uint stack = p->stack_start - p->stack_end;
+uint heap = p->heap_end - p->heap_start;
+uint code = p->heap_start - 0x1000;
+uint total = (stack + heap + code) / 1024;
+tty_print_string(rproc->t, "%dK\n", total);	
+}
 
-	tty_print_string(rproc->t, "\n");
+tty_print_string(rproc->t, "\n");
 
-	fs_fsstat();
+fs_fsstat();
 
-	int divisor = 1024 * 1024;
-	uint used_pages = k_start_pages - k_pages;
-	tty_print_string(rproc->t, "Used memory:  %dM\n", 
+int divisor = 1024 * 1024;
+uint used_pages = k_start_pages - k_pages;
+tty_print_string(rproc->t, "Used memory:  %dM\n", 
 		(used_pages * PGSIZE) / divisor);
-	tty_print_string(rproc->t, "Free memory:  %dM\n", 
-                (k_pages * PGSIZE) / divisor);
-	tty_print_string(rproc->t, "Total memory: %dM\n", 
-                (k_start_pages * PGSIZE) / divisor);
-	tty_print_string(rproc->t, "Used percent:  %d%%\n",
-                (used_pages * 100) / k_start_pages);
-        tty_print_string(rproc->t, "Free percent:  %d%%\n",
-                (k_pages * 100) / k_start_pages); */
-	return 0;
+tty_print_string(rproc->t, "Free memory:  %dM\n", 
+		(k_pages * PGSIZE) / divisor);
+tty_print_string(rproc->t, "Total memory: %dM\n", 
+		(k_start_pages * PGSIZE) / divisor);
+tty_print_string(rproc->t, "Used percent:  %d%%\n",
+		(used_pages * 100) / k_start_pages);
+tty_print_string(rproc->t, "Free percent:  %d%%\n",
+		(k_pages * 100) / k_start_pages); */
+return 0;
 }
 
 /* int mprotect(void* addr, size_t len, int prot)*/
@@ -532,7 +549,7 @@ int sys_mprotect(void)
 
 	size_t x;
 	for(x = start;x < end;x += PGSIZE)
-		vm_pgflags(x, rproc->pgdir, flags);
+		vm_setpgflags(x, rproc->pgdir, flags);
 
 	return 0;
 }

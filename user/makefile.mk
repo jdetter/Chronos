@@ -1,5 +1,11 @@
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
+	float-test \
+	thread-test \
+	exercise \
+	shared \
+	select-test \
+	nc \
 	kill \
 	tty-test \
 	dd \
@@ -44,6 +50,8 @@ USER_TARGETS := \
 
 # stat
 
+LIBS := -lncurses
+
 # Binary files
 USER_BINARIES := $(addprefix user/bin/, $(USER_TARGETS))
 # Add user/ before all of the program names
@@ -86,7 +94,7 @@ user/syscall.o:
 
 # Recipe for binary files
 user/bin/%: user/%.c
-	$(CROSS_CC) $(CFLAGS) -o $@ $< -I user/include -I user/bin
+	$(CROSS_CC) $(CFLAGS) -o $@ $< -I user/include -I user/bin $(LIBS)
 
 # Recipe for symbole files
 user/bin/%.sym: user/bin/%
