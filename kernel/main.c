@@ -158,11 +158,11 @@ void main_stack(void)
                 cprintf("[FAIL]\n");
         else cprintf("[ OK ]\n");
 
+#if 0
 	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
         if(tty_enable_logging(tty_find(0), "tty0.txt"))
                 cprintf("[FAIL]\n");
         else cprintf("[ OK ]\n");
-#if 0
         cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
         if(tty_enable_logging(tty_find(0), "tty0-new.txt"))
                 cprintf("[FAIL]\n");
@@ -192,9 +192,8 @@ void main_stack(void)
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
-	for(tty_num = 1;;tty_num++)
+	for(tty_num = 0;tty_num < 4;tty_num++)
 	{
-		if(tty_num == 2) break;
 		tty_t t = tty_find(tty_num);
 		spawn_tty(t);
 		if(!t) break;
