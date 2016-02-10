@@ -360,6 +360,38 @@ int sys_signal_cv(void)
 	return 0;
 }
 
+/* int semctl(int semid, int semnum, int cmd, ...); */
+int sys_semctl(void)
+{
+	int semid;
+	int semnum;
+	int cmd;
+	
+	if(syscall_get_int(&semid, 0))
+		return -1;
+	if(syscall_get_int(&semid, 1))
+		return -1;
+	if(syscall_get_int(&semid, 2))
+		return -1;
+
+	return -1;
+}
+
+int sys_semget(void)
+{
+	return -1;
+}
+
+int sys_semop(void)
+{
+	return -1;
+}
+
+int sys_semtimedop(void)
+{
+	return -1;
+}
+
 extern uint k_start_pages;
 extern uint k_pages;
 int sys_proc_dump(void)

@@ -17,37 +17,37 @@ uchar syscall_ptr_safe(void* address);
 /**
  * Gets an int argument from the stack of the running process.
  */
-int syscall_get_int(int* dst, uint arg_num);
+int syscall_get_int(int* dst, int arg_num);
 
 /**
  * Gets a long argument from the stack of the running process.
  */
-uchar syscall_get_long(long* dst, uint arg_num);
+uchar syscall_get_long(long* dst, int arg_num);
 
 /**
  * Gets a long argument from the stack of the running process.
  */
-uchar syscall_get_short(short* dst, uint arg_num);
+uchar syscall_get_short(short* dst, int arg_num);
 
 /**
  * Get a string from a user stack and put it into dst. A maximum amount
  * of sz_kern bytes will be copied. arg_num specifies the argument
  * position on the stack.
  */
-uchar syscall_get_str(char* dst, uint sz_kern, uint arg_num);
+uchar syscall_get_str(char* dst, uint sz_kern, int arg_num);
 
 
 /**
  * Puts a pointer to a buffer into ptr. The buffer will be verified to
  * be at least sz bytes long. Returns 0 on sucess, 1 otherwise.
  */
-uchar syscall_get_buffer_ptr(void** ptr, uint sz, uint arg_num);
+uchar syscall_get_buffer_ptr(void** ptr, uint sz, int arg_num);
 
 /**
  * Get a pointer to a list of pointers. The pointer addresses are NOT
  * checked for validity. Returns 0 on success, 1 otherwise.
  */
-uchar syscall_get_buffer_ptrs(uchar*** ptr, uint arg_num);
+uchar syscall_get_buffer_ptrs(uchar*** ptr, int arg_num);
 
 /**
  * Safetly get a pointer to a string on the user stack. The pointer
@@ -55,7 +55,7 @@ uchar syscall_get_buffer_ptrs(uchar*** ptr, uint arg_num);
  * the position on the stack of the pointer. Returns 0 on sucess,
  * 1 otherwise.
  */
-uchar syscall_get_str_ptr(const char** dst, uint arg_num);
+uchar syscall_get_str_ptr(const char** dst, int arg_num);
 
 /**
  * Find an available file descriptor.
@@ -162,8 +162,12 @@ int sys_signal(void);
 int sys_sigsuspend(void);
 int sys_setegid(void);
 int sys_sync(void);
+int sys_semctl(void);
+int sys_semget(void);
+int sys_semop(void);
+int sys_semtimedop(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_sync /* System call with the greatest value*/
+#define SYS_MAX SYS_semtimedop /* System call with the greatest value*/
 
 #endif
