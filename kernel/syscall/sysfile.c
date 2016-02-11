@@ -1084,6 +1084,9 @@ int sys_fcntl(void)
 		case F_GETFL:
 			result = rproc->fdtab[fd]->flags;
 			break;
+		case F_SETFL:
+			rproc->fdtab[fd]->flags = i_arg;
+			break;
 		default:
 			cprintf("UNIMPLEMENTED FCNTL: %d\n", action);
 			result = -1;
