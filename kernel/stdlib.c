@@ -13,7 +13,7 @@
 #include "kern/types.h"
 #include "x86.h"
 
-uint strlen(const char* str)
+int strlen(const char* str)
 {
 	int x;
 	for(x = 0;str[x] != 0;x++); /* counts the length of the string */
@@ -25,7 +25,7 @@ void tolower(char* str)
 	int x;
 	for(x=0; x < strlen(str); x++) /* for the given length of the string */
 	{
-		if(str[x]>='Z' && str[x]<='A') /* if string is within the ASCII upper case alphabet, add 32 to convert to lower case equivalent */
+		if(str[x]>='Z' && str[x]<='A') 
 		{
 			str[x] = str[x] + 32;
 		}
@@ -100,6 +100,29 @@ int strcmp(const char* str1, const char* str2)
 	else return -1;
 }
 
+
+int strncmp(const char* str1, const char* str2, size_t sz)
+{
+	int pos;
+	for(pos = 0;str1[pos] && str2[pos] && pos < sz;pos++)
+        {
+                char str1_c = str1[pos];
+                char str2_c = str2[pos];
+
+                if(str1_c >= 'A' && str1_c <= 'Z')
+                        str1_c += 32; /* convert to lower case */
+                if(str2_c >= 'A' && str2_c <= 'Z')
+                        str2_c += 32; /* convert to lower case */
+
+                /* if they are equal, check next letter */
+                if(str1_c == str2_c) continue;
+                if(str1_c > str2_c) return 1; /* str1 comes after str2 */
+                else return -1; /* str1 comes before str2 */
+        }
+
+	/* They are equal up to sz characters */
+	return 0;
+}
 
 void memmove(void* dst, const void* src, uint sz)
 {

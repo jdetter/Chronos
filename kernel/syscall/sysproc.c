@@ -316,6 +316,11 @@ int waitpid(int pid, int* status, int options)
 
 int waitpid_nolock(int pid, int* status, int options)
 {
+#ifdef DEBUG
+	cprintf("%s:%d: Waiting for pid %d\n", rproc->name, rproc->pid,
+		pid);
+#endif
+
 	int ret_pid = 0;
 	struct proc* p = NULL;
 	while(1)
@@ -325,7 +330,8 @@ int waitpid_nolock(int pid, int* status, int options)
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
 			/* Did we find the process? */
-			if(pid == ptable[process].pid)
+			if((pid == ptable[process].pid || pid == -1)
+				&& ptable[process].parent == rproc)
 				found = 1;
 
 			if(ptable[process].state == PROC_ZOMBIE
@@ -342,6 +348,10 @@ int waitpid_nolock(int pid, int* status, int options)
 		/* If no process exists, this process will wait forever */
 		if(!found)
 		{
+#ifdef DEBUG
+			cprintf("%s:%d: NO SUCH PROCESS FOUND.\n",
+				rproc->name, rproc->pid);
+#endif
 			return -1;
 		}
 

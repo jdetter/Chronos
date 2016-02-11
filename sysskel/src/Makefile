@@ -1,4 +1,5 @@
 AS=as
+LD=ld
 
 BINS := \
 	program
@@ -11,4 +12,6 @@ clean:
 	rm -f $(BINS)
 
 program:
-	$(AS) $(ASFLAGS) program.S -o program
+	$(AS) $(ASFLAGS) program.S
+	$(LD) a.out -o program
+	rm ./a.out

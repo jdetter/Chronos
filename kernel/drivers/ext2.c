@@ -2598,7 +2598,7 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 		pos += diren.size;
 	}
 
-	return -1;
+	return 1;
 }
 
 int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count, 

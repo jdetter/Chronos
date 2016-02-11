@@ -262,30 +262,50 @@ int fs_path_resolve(const char* path, char* dst, uint sz)
 
 static struct FSDriver* fs_find_fs(const char* path)
 {
-	uint match_len = 0;
+	int match_len = 0;
 	struct FSDriver* fs = NULL;
 	int x;
 	for(x = 0;x < FS_TABLE_MAX;x++)
 	{
+		/* Skip all invalid filesystems */
 		if(fstable[x].valid == 0) continue;
-		uint mp_strlen = strlen(fstable[x].mount_point);
-		if(!memcmp(fstable[x].mount_point, (char*)path, mp_strlen))
+
+		/* Get the length of the mount point of this fs */
+		int mp_strlen = strlen(fstable[x].mount_point);
+
+		/* If this ends in a slash, and it's not root, subtract one */
+		if(mp_strlen > 1 &&fstable[x].mount_point[mp_strlen - 1]=='/')
+			mp_strlen--;
+
+		if(!strncmp(fstable[x].mount_point, (char*)path, mp_strlen))
 		{
-			/* They are equal */
+			/* Find the longest match */
 			if(match_len < mp_strlen)
                         {
 				match_len = mp_strlen;
 				fs = fstable + x;
 			}
+
+			continue;
 		}
 	}
+
 	return fs;
 }
 
 static int fs_get_path(struct FSDriver* fs, const char* path, 
-		char* dst, uint sz)
+		char* dst, size_t sz)
 {
 	char* mount = fs->mount_point;
+
+	/* Check to see if we're looking for the root */
+	if(strlen(mount) - 1 == strlen(path)
+		&& mount[strlen(mount - 1)] == '/')
+	{
+		strncpy(dst, "/", sz);
+		return 0;
+	}
+
 	int pos = strlen(mount);
 	if(pos > strlen(path)) return -1;
 	/* We want to keep the trailing slash. */
@@ -363,6 +383,10 @@ static void fs_sync_inode(inode i)
 inode fs_open(const char* path, uint flags, uint permissions,
 	uint uid, uint gid)
 {
+
+#ifdef DEBUG
+	cprintf("fsman: opening %s\n", path);
+#endif
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
 	char tmp_path[FILE_MAX_PATH];
@@ -374,14 +398,28 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	if(file_path_file(dst_path))
 		return NULL;
 
+#ifdef DEBUG
+	cprintf("fsman: after resolving file: %s\n", dst_path);
+#endif
+
 	/* Find the file system for this path */
 	struct FSDriver* fs = fs_find_fs(dst_path);
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
+#ifdef DEBUG
+	cprintf("fsman: file lives on device mounted at %s\n",
+		fs->mount_point);
+#endif
+
         char fs_path[FILE_MAX_PATH];
         if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
                 return NULL; /* Bad path */
+
+#ifdef DEBUG
+	cprintf("fsman: Final resolved path for file: %s\n",
+		fs_path);
+#endif
 
 	/* See if this file is already opened. */
 	void* inp = NULL;

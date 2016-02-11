@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/fcntl.h>
 #include <sys/select.h>
+#include <dirent.h>
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
@@ -608,7 +609,7 @@ int sys_getdents(void)
 {
 	int fd;
 	struct dirent* dirp;
-	uint count;
+	int count;
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int((int*)&count, 2)) return -1;
@@ -619,14 +620,36 @@ int sys_getdents(void)
 	if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
 		return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: getdents on fd {%d} file: %s\n", 
+		rproc->name, rproc->pid, fd, rproc->fdtab[fd]->path);
+#endif
+
 	slock_acquire(&rproc->fdtab[fd]->lock);
-	int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
-			dirp);
+	int result = fs_readdir(rproc->fdtab[fd]->i, 
+		rproc->fdtab[fd]->seek, dirp);
 	if(result < 0) 
 	{
+#ifdef DEBUG
+		cprintf("%s:%d: ERROR READING DIRECTORY ENTRY\n",
+				rproc->name, rproc->pid);
+#endif
 		slock_release(&rproc->fdtab[fd]->lock);
 		return -1;
 	}
+
+	if(result > 0)
+	{
+#ifdef DEBUG
+		slock_release(&rproc->fdtab[fd]->lock);
+		cprintf("%s:%d: END OF DIRECTORY\n",
+			rproc->name, rproc->pid);
+#endif
+		return 0;
+	}
+
+	/* Update the record length */
+	dirp->d_reclen = sizeof(struct dirent);
 
 	/* Convert to old structure */
 	rproc->fdtab[fd]->seek++; /* Increment seek */
