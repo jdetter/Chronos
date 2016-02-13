@@ -224,16 +224,19 @@ int sys_read(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 1)) return -1;
 
-#ifdef DEBUG
-	cprintf("%s: doing read for %d bytes.\n",
-			rproc->name, sz);
-#endif
-
 	/* Make sure this fd is valid */
 	if(!fd_ok(fd)) return -1;
 
 	/* Acquire the lock */
 	slock_acquire(&rproc->fdtab[fd]->lock);
+
+#ifdef DEBUG
+	cprintf("%s:%d: doing read  for %d bytes.\n",
+			rproc->name, rproc->pid, sz);
+	cprintf("%s:%d: reading {%d} from file %s\n",
+		rproc->name, rproc->pid,
+		fd, rproc->fdtab[fd]->path);
+#endif
 
 	switch(rproc->fdtab[fd]->type)
 	{
@@ -299,13 +302,16 @@ int sys_write(void)
 	if(syscall_get_int(&sz, 2)) return -1;
 	if(syscall_get_buffer_ptr((void**)&src, sz, 1)) return -1;
 
-#ifdef DEBUG
-	cprintf("%s: doing write for %d bytes.\n",
-			rproc->name, sz);
-#endif
-
 	if(!fd_ok(fd)) return -1;
 	slock_acquire(&rproc->fdtab[fd]->lock);
+
+#ifdef DEBUG
+	cprintf("%s:%d: doing write for %d bytes.\n",
+			rproc->name, rproc->pid, sz);
+	cprintf("%s:%d: Writing {%d} file: %s\n",
+		rproc->name, rproc->pid,
+		fd, rproc->fdtab[fd]->path);
+#endif
 
 	switch(rproc->fdtab[fd]->type)
 	{
@@ -345,7 +351,8 @@ int sys_write(void)
 		rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
-	cprintf("New position in file: %d\n", 
+	cprintf("%s:%d: New position in file: %d\n", 
+			rproc->name, rproc->pid,
 			rproc->fdtab[fd]->seek);
 #endif
 	slock_release(&rproc->fdtab[fd]->lock);
@@ -364,31 +371,59 @@ int sys_lseek(void)
 	if(!fd_ok(fd)) return -1;
 	slock_acquire(&rproc->fdtab[fd]->lock);
 #ifdef DEBUG
-	cprintf("%s: Seeking in file\n", rproc->name);
+	cprintf("%s:%d: Seeking in file\n", rproc->name, rproc->pid);
+	cprintf("%s:%d: File {%d}  %s\n", rproc->name, rproc->pid,
+		fd, rproc->fdtab[fd]->path);
+	cprintf("%s:%d: whence: %d  offset: %d\n",
+		rproc->name, rproc->pid,
+		whence, offset);
 #endif
 
 	int seek_pos;
 	if(whence == SEEK_CUR){
+#ifdef DEBUG
+		cprintf("%s:%d: Setting seek to: %d\n", 
+			rproc->name, rproc->pid, 
+			offset + rproc->fdtab[fd]->seek);
+#endif
 		seek_pos = rproc->fdtab[fd]->seek + offset;
 	}
 	else if(whence == SEEK_SET){
+#ifdef DEBUG
+		cprintf("%s:%d: Setting seek to: %d\n", 
+			rproc->name, rproc->pid, offset);
+#endif
+
 		seek_pos = offset;
 	}
 	else if(whence == SEEK_END){
 		struct stat stat;
 		fs_stat(rproc->fdtab[fd]->i, &stat);
 		seek_pos = stat.st_size + offset;
+#ifdef DEBUG
+		cprintf("%s:%d: Setting seek from end to: %d\n", 
+			rproc->name, rproc->pid, stat.st_size + offset);
+#endif
 	} else {
+#ifdef DEBUG
+		cprintf("%s:%d: ILLEGAL SEEK!! : %d\n",
+			rproc->name, rproc->pid, whence);
+#endif
 		seek_pos = -1;
 	}
 
 	if(seek_pos >= 0)
 		rproc->fdtab[fd]->seek = seek_pos;
+	else {
+#ifdef DEBUG
+		cprintf("%s:%d: TRIED TO SET NEGATIVE SEEK!\n",
+			rproc->name, rproc->pid);
+#endif
+	}
 
 	slock_release(&rproc->fdtab[fd]->lock);
 	return seek_pos;
 }
-
 
 /* int chmod(const char* path, uint perm) */
 int sys_chmod(void)

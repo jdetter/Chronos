@@ -2,6 +2,6 @@
 
 int main(int argc, char** argv)
 {
-	printf("C Program is running!\n");
+	printf("C Program Running!\n");
 	return 0;
 }

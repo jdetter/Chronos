@@ -299,7 +299,7 @@ void runprog(char* string){
 		char cwd_buff[128];
 		getcwd(cwd_buff, 128);
 	} else {
-		execve(argv[0], (char* const*)argv, environ);
+		execvp(argv[0], (char* const*)argv);
 		printf("sh: binary not found: %s\n", argv[0]);
 	}
 

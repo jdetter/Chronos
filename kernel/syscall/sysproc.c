@@ -519,19 +519,11 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* Does the binary look ok? */
 	if(elf_check_binary_path(path))
 	{
-		/* see if it is available in /bin */
-		strncpy(rproc->cwd, "/bin/", MAX_PATH_LEN);
-		if(elf_check_binary_path(path))
-		{
-			/* It really doesn't exist. */
-			memmove(rproc->cwd, cwd_tmp, MAX_PATH_LEN);
-
 #ifdef DEBUG
-			cprintf("%s:%d: Binary not found! %s\n", 
-					rproc->name, rproc->pid, path);
+		cprintf("%s:%d: Binary not found! %s\n", 
+				rproc->name, rproc->pid, path);
 #endif
-			return -1;
-		}
+		return -1;
 	}
 
 	/* acquire ptable lock */
