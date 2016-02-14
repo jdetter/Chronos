@@ -81,7 +81,7 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp/
 	bash ./tools/gensysskel.sh
-	cp -R ./sysskel/* ./tmp/
+	cp -R ./sysskel/. ./tmp
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/
 	mkdir -p ./tmp/boot

@@ -120,8 +120,13 @@ int strncmp(const char* str1, const char* str2, size_t sz)
                 else return -1; /* str1 comes before str2 */
         }
 
-	/* They are equal up to sz characters */
-	return 0;
+	/* If pos == sz then they are equal */
+	if(sz == pos )
+		return 0;
+
+	if(str1[pos])
+		return 1;
+	else return -1;
 }
 
 void memmove(void* dst, const void* src, uint sz)

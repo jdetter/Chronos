@@ -87,7 +87,6 @@
 #define SYS_select	0x51
 #define SYS_alarm	0x52
 #define SYS_seteuid	0x53
-
 #define SYS_sigaction	0x54
 #define SYS_sigprocmask	0x55
 #define SYS_sigpending	0x56
@@ -95,6 +94,8 @@
 #define SYS_sigsuspend	0x58
 #define SYS_setegid	0x59
 #define SYS_sync	0x5A
+#define SYS_setreuid	0x5B
+#define SYS_setregid	0x5C
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);

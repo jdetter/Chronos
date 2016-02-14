@@ -200,7 +200,7 @@ void main_stack(void)
 		if(!t) break;
 	}
 	cprintf("[ OK ]\n");
-
+	
 	/* Start scheduling loop. */
 	sched();
 	panic("Scheduler returned!");

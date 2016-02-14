@@ -165,8 +165,10 @@ int sys_signal(void);
 int sys_sigsuspend(void);
 int sys_setegid(void);
 int sys_sync(void);
+int sys_setreuid(void);
+int sys_setregid(void);
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_sync /* System call with the greatest value*/
+#define SYS_MAX SYS_setregid /* System call with the greatest value*/
 
 #endif
