@@ -182,12 +182,6 @@ int sys_close(void)
 	return close(fd);
 }
 
-void debug_func(void)
-{
-	int i = 0;
-	for(i = 0;i < 100;i++);
-}
-
 int close(int fd)
 {
 	if(!fd_ok(fd)) return -1;
@@ -195,13 +189,6 @@ int close(int fd)
 	slock_acquire(&rproc->fdtab[fd]->lock);
 	if(rproc->fdtab[fd]->type == FD_TYPE_FILE)
 	{
-#ifdef DEBUG
-		cprintf("%s: closing file %s\n",
-				rproc->name, rproc->fdtab[fd]->path);
-
-		if(!strcmp(rproc->fdtab[fd]->path, "./cc000005.ld"))
-			debug_func();
-#endif
 		fs_close(rproc->fdtab[fd]->i);
 	}else if(rproc->fdtab[fd]->type == FD_TYPE_PIPE)
 	{
@@ -646,8 +633,8 @@ int sys_getdents(void)
 
 	if(result > 0)
 	{
-#ifdef DEBUG
 		slock_release(&rproc->fdtab[fd]->lock);
+#ifdef DEBUG
 		cprintf("%s:%d: END OF DIRECTORY\n",
 			rproc->name, rproc->pid);
 #endif
