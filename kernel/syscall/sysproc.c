@@ -31,6 +31,10 @@
 
 #define DEBUG
 
+#ifdef RELEASE
+# undef DEBUG
+#endif
+
 extern pid_t next_pid;
 extern slock_t ptable_lock;
 extern uint k_ticks;

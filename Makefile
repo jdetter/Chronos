@@ -20,6 +20,9 @@ CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_
 ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
 QEMU := qemu-system-i386
 
+# Uncomment this line to turn off all output
+CFLAGS := $(CFLAGS) -DRELEASE
+
 # Flags for building indipendant binaries
 
 # Disable Position Independant Code

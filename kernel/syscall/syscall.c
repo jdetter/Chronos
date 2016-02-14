@@ -30,6 +30,10 @@ extern struct proc* rproc; /* The currently running process */
 
 #define DEBUG
 
+#ifdef RELEASE
+# undef DEBUG
+#endif
+
 int (*syscall_table[])(void) = {
 	NULL, /* There is no system call 0 */
 	sys_fork,

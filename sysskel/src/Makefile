@@ -9,9 +9,9 @@ BINS := \
 all: $(BINS)
 
 clean:
-	rm -f $(BINS)
+	rm -f $(BINS) assembly
 
 program:
-	$(AS) $(ASFLAGS) program.S
-	$(LD) a.out -o program
-	rm ./a.out
+	$(AS) $(ASFLAGS) program.S -o assembly
+	$(LD) assmembly -o program
+	rm ./assembly

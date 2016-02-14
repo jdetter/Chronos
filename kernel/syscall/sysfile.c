@@ -24,6 +24,12 @@
 #define DEBUG
 // #define DEBUG_CONTENT
 
+#ifdef RELEASE
+# undef DEBUG
+# undef DEBUG_SELECT
+# undef DEBUG_CONTENT
+#endif
+
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 

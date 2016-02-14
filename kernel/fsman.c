@@ -30,6 +30,10 @@
 
 #define DEBUG
 
+#ifdef RELEASE
+# undef DEBUG
+#endif
+
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
  * acquired first. If the locks are not acquired in the correct order, it
