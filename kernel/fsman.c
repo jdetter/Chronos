@@ -28,7 +28,7 @@
 #include "diskio.h"
 #include "diskcache.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG

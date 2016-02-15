@@ -277,8 +277,8 @@ int sys_isatty(void)
 {
 	int fd;
 	if(syscall_get_int(&fd, 0)) return 1;
-
-	if(fd < 0 || fd > PROC_MAX_FDS) return 1;
+	if(!fd_ok(fd))
+		return 0;
 
 	int x;
 	for(x = 0;x < MAX_TTYS;x++)

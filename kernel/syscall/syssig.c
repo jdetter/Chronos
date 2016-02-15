@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "panic.h"
 #include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
@@ -12,6 +13,12 @@
 #include "proc.h"
 #include "signal.h"
 #include "syscall.h"
+
+#define DEBUG
+
+#ifdef RELEASE
+# undef DEBUG
+#endif
 
 extern slock_t ptable_lock;
 extern struct proc ptable[];
@@ -34,6 +41,11 @@ int sys_sigaction(void)
 	if(signum < 0 || signum >= NSIG)
 		return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: sigaction: for sig: %d\n",
+		rproc->name, rproc->pid, signum);
+#endif
+
 	slock_acquire(&ptable_lock);
 	if(old)
 	{
@@ -50,11 +62,19 @@ int sys_sigaction(void)
 
 int sys_sigprocmask(void)
 {
+#ifdef DEBUG
+	cprintf("%s:%d: Sig proc mask: UNIMPLEMENTED.\n",
+		rproc->name, rproc->pid);
+#endif
 	return 0;
 }
 
 int sys_sigpending(void)
 {
+#ifdef DEBUG
+	cprintf("%s:%d: Sig pending: UNIMPLEMENTED.\n",
+		rproc->name, rproc->pid);
+#endif
 	return 0;
 }
 
@@ -81,6 +101,11 @@ int sys_signal(void)
 	if(signum < 0 || signum >= NSIG)
 		return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: Setting signal handler for sig: %d\n",
+		rproc->name, rproc->pid, signum);
+#endif
+
 	slock_acquire(&ptable_lock);
 	if(act == (struct sigaction*)SIG_IGN 
                 || act == (struct sigaction*)SIG_DFL 
@@ -103,6 +128,11 @@ int sys_sigsuspend(void)
 	if(syscall_get_int((int*)&set, 0))
 		return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: Waiting for signal...\n",
+		rproc->name, rproc->pid);
+#endif
+
 	slock_acquire(&ptable_lock);
 
 	rproc->sig_suspend_mask = set;
@@ -121,6 +151,12 @@ int sys_kill(void)
 
 	if(syscall_get_int(&pid, 0)) return -1;
 	if(syscall_get_int(&sig, 1)) return -1;
+
+#ifdef DEBUG
+	cprintf("%s:%d: Sending signal %d to process %d\n",
+		rproc->name, rproc->pid,
+		sig, pid);
+#endif
 
 	slock_acquire(&ptable_lock);
 
