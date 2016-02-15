@@ -63,7 +63,7 @@ KERNEL_CLEAN := \
 kernel-symbols: chronos.o 
 	$(CROSS_OBJCOPY) --only-keep-debug chronos.o chronos.sym
 
-kernel/chronos.o: kernel/idt.S kernel/idt.o $(KERNEL_OBJS)
+chronos.o: kernel/idt.S kernel/idt.o $(KERNEL_OBJS)
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS)
 
 kernel/idt.S: tools/bin/mkvect

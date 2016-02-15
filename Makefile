@@ -11,17 +11,18 @@ USER=$(shell whoami)
 
 # use host to configure the tools
 CC=gcc
-ld=ld
+LD=ld
 AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector
-ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
+AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
 QEMU := qemu-system-i386
 
-# Uncomment this line to turn off all output
-CFLAGS := $(CFLAGS) -DRELEASE
+# Uncomment this lines to turn off all output
+CFLAGS := -DRELEASE $(CFLAGS)
+AFLAGS := -DRELEASE $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
@@ -32,15 +33,15 @@ FS_START := 2048
 .PHONY: all
 all: chronos.img
 
-include tools/makefile.mk
-include kernel/makefile.mk
-include user/makefile.mk
+MAKE_ARGS := CC="$(CC)" LD="$(LD)" AS="$(AS)" \
+	CFLAGS="$(CFLAGS)" AFLAGS="$(AFLAGS)"
 
-
-
-chronos.img: kernel/boot/boot-stage1.img \
-		kernel/boot/boot-stage2.img \
-		$(FS_TYPE)
+chronos.img:
+	cd kernel/ ; \
+	make $(MAKE_ARGS) chronos.o ; \
+	exit ; \
+	make $(MAKE_ARGS) boot-stage1.img ; \
+	make $(MAKE_ARGS) boot-stage2.img 
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
