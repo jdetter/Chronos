@@ -16,25 +16,12 @@ AS=gcc
 OBJCOPY=objcopy
 
 LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
+CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector
 ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
 QEMU := qemu-system-i386
 
 # Uncomment this line to turn off all output
 CFLAGS := $(CFLAGS) -DRELEASE
-
-# Flags for building indipendant binaries
-
-# Disable Position Independant Code
-# BUILD_CFLAGS += -fno-pic
-# Disable built in functions
-BUILD_CFLAGS += -fno-builtin
-# Disable optimizations that deal with aliases.
-# BUILD_CFLAGS += -fno-strict-aliasing
-# Disable stack smashing protection
-BUILD_CFLAGS += -fno-stack-protector
-
-BUILD_ASFLAGS += $(BUILD_CFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img

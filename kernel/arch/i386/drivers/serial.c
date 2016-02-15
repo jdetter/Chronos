@@ -8,9 +8,9 @@
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
-#include "serial.h"
 #include "x86.h"
-#include "pic.h"
+#include "drivers/serial.h"
+#include "drivers/pic.h"
 
 #define COM1_DATA 		0x03F8
 #define COM1_INT  		0x03F9

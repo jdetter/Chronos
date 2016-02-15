@@ -1,23 +1,3 @@
-
-CROSS_CC := gcc
-CROSS_AS := gcc
-CROSS_LD := ld
-CFLAGS := -DARCH_i386 -DARCH_STR="i386" -nostdlib -m32
-AFLAGS := -DARCH_i386 -DARCH_STR="i386" -nostdlib -m32
-
-
-# Erase cruft above ^^^
-
-DRIVER_CFLAGS :=
-DRIVER_AFLAGS :=
-RELOCATE_FLAGS := -m elf_i386 -r
-
-
-
-
-
-
-
 # Stage 1 configuration
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 
@@ -41,6 +21,7 @@ BOOT_STAGE2_RODATA_START := 132
 BOOT_STAGE2_BSS_START := 136
 # How many sectors does stage 2 take up?
 BOOT_STAGE2_SECTORS := 140
+i386_INCLUDE := $(addprefix ../, $(i386_INCLUDE))
 
 boot-stage2.img:
 	cd deps ; \
@@ -51,6 +32,7 @@ boot-stage2.img:
 		CFLAGS="$(CFLAGS)" \
 		BUILD_AFLAGS="$(BUILD_AFLAGS)" \
 		BUILD_CFLAGS="$(BUILD_CFLAGS)" \
+		i386_INCLUDE="$(i386_INCLUDE)" \
 		stage2-deps.o
 
 	exit 1

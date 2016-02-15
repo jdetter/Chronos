@@ -8,18 +8,15 @@ DRIVER_CFLAGS :=
 DRIVER_AFLAGS :=
 RELOCATE_FLAGS := -m elf_i386 -r
 
-
 # Erase cruft above ^^^
 
 i386_INCLUDE := \
 	-I./ \
+	-I./include \
 	-I../../include \
 	-I../../drivers \
 	-I../../cache \
 	-I../..
-
-i386_CFLAGS := $(i386_INCLUDE) $(i386_CFLAGS)
-i386_AFLAGS := $(i386_INCLUDE) $(i386_AFLAGS)
 
 i386_CONTEXT_OBJS := asm
 i386_DRIVER_OBJS := ata \
@@ -53,13 +50,25 @@ i386_OBJS := \
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))
 
 arch.o: $(i386_OBJS)
-	$(CROSS_LD) $(RELOCATE_FLAGS) $(i386_OBJS)
+	$(CROSS_LD) $(RELOCATE_FLAGS) $(i386_OBJS) -o arch.o
+
+boot-stage2.img:
+	cd boot ; \
+	make CROSS_CC="$(CROSS_CC)" \
+		CROSS_AS="$(CROSS_AS)" \
+		CROSS_LD="$(CROSS_LD)" \
+		CFLAGS="$(CFLAGS)" \
+		AFLAGS="$(AFLAGS)" \
+		BUILD_CFLAGS="$(BUILD_CFLAGS)" \
+		BUILD_AFLAGS="$(BUILD_AFLAGS)" \
+		i386_INCLUDE="$(i386_INCLUDE)" \
+		boot-stage2.img
 
 .PHONY: arch-clean
 arch-clean:
 	rm -f $(i386_OBJS) arch.o
 
 %.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_CFLAGS) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_CFLAGS) $(i386_INCLUDE) -c -o $@ $<
 %.o: %.S
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(i386_AFLAGS) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(i386_AFLAGS) $(i386_INCLUDE) -c -o $@ $<
