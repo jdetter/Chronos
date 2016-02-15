@@ -24,5 +24,5 @@ clean:
 
 program:
 	$(AS) $(ASFLAGS) program.S -o assembly
-	$(LD) assmembly -o program
+	$(LD) assembly -o program
 	rm ./assembly
