@@ -7,7 +7,6 @@
 #include "fsman.h"
 #include "tty.h"
 #include "proc.h"
-#include "x86.h"
 #include "vm.h"
 #include "chronos.h"
 #include "panic.h"

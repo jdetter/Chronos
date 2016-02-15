@@ -1,3 +1,9 @@
+# Modify the arguments coming in
+export CROSS_CC := "../$(CROSS_CC)"
+export CROSS_LD := "../$(CROSS_LD)"
+export CROSS_AS := "../$(CROSS_AS)"
+export CROSS_OBJCOPY := "../$(CROSS_OBJCOPY)"
+
 # All files that need compiling (excluding drivers)
 KERNEL_BINS := \
 	syscall/syscall \
@@ -17,17 +23,11 @@ KERNEL_BINS := \
 	proc/sched \
 	klog \
 	netman \
-	main \
 	panic \
 	kcond \
 	cpu \
 	pipe \
 	fsman \
-	devman \
-	iosched \
-	ktime \
-	signal \
-	stdlock \
 	file \
 	stdlib \
 	ioctl \
@@ -46,15 +46,16 @@ KERNEL_OBJS := \
 	$(KERNEL_BINS) \
 	$(KERNEL_DRIVERS)
 
+KERNEL_OBJS := $(addsuffix .o, $(KERNEL_OBJS))
+
 # Include files
-KERNEL_CFLAGS := -Ikernel/include -Ikernel/drivers -Ikernel -Ikernel/cache
+KERNEL_CFLAGS := -Iinclude -Idrivers -Icache -I.
 KERNAL_AFLAGS := $(KERNEL_CFLAGS)
 KERNEL_LDFLAGS := -nostdlib --entry=main --section-start=.text=0xFF000000
 
 # Specify files to clean
 KERNEL_CLEAN := \
-        $(KERNEL_BINS) \
-        $(KERNEL_DRIVERS) \
+        $(KERNEL_OBJS) \
         chronos.o \
         idt.S \
         chronos.sym
@@ -63,11 +64,19 @@ KERNEL_CLEAN := \
 kernel-symbols: chronos.o 
 	$(CROSS_OBJCOPY) --only-keep-debug chronos.o chronos.sym
 
-chronos.o: kernel/idt.S kernel/idt.o $(KERNEL_OBJS)
-	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS)
+.PHONY: kernel-clean
+kernel-clean:
+	cd arch/$(BUILD_ARCH)/ ; \
+	make arch-clean
+	rm -f $(KERNEL_CLEAN)
 
-kernel/idt.S: ../tools/bin/mkvect
-	tools/bin/mkvect > kernel/idt.S
+chronos.o: idt.S $(KERNEL_OBJS)
+	cd arch/$(BUILD_ARCH) ; \
+	make arch.o
+	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS) arch/$(BUILD_ARCH)/arch.o
+
+idt.S: ../tools/bin/mkvect
+	../tools/bin/mkvect > ./idt.S
 %.o: %.S
 	$(CROSS_AS) $(AFLAGS) $(KERNEL_AFLAGS) -c -o $@ $<
 %.o: %.c

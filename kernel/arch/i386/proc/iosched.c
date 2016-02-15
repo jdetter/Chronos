@@ -19,8 +19,8 @@
 #include "pipe.h"
 #include "proc.h"
 #include "panic.h"
-#include "cmos.h"
-#include "rtc.h"
+#include "drivers/cmos.h"
+#include "drivers/rtc.h"
 #include "ktime.h"
 
 // #define DEBUG

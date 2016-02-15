@@ -11,7 +11,6 @@
 #include <sys/types.h>
 
 #include "kern/types.h"
-#include "x86.h"
 
 int strlen(const char* str)
 {
@@ -344,7 +343,7 @@ uchar bcdtobin(uchar val)
 	return (high * 10) + low;
 }
 
-int log2(uint value)
+int __log2(uint value)
 {
 	uint value_orig = value;
 	/* Shift to the right until we hit a 1 */

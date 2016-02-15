@@ -4,8 +4,6 @@
 #include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
-#include "x86.h"
-#include "stdlock.h"
 #include "file.h"
 #include "fsman.h"
 #include "devman.h"
@@ -19,8 +17,6 @@
 #include "elf.h"
 #include "stdarg.h"
 #include "syscall.h"
-#include "serial.h"
-#include "trap.h"
 #include "panic.h"
 
 extern pid_t next_pid;

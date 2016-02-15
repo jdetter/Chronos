@@ -9,25 +9,30 @@
 
 #include "kern/types.h"
 #include "kern/stdlib.h"
+#include "ktime.h"
+#include "drivers/rtc.h"
 #include "stdlock.h"
 #include "stdarg.h"
-#include "cmos.h"
-#include "rtc.h"
 
-static slock_t rtc_lock;
-static struct rtc_t k_time;
+slock_t rtc_lock;
+struct rtc_t k_time;
 
 void ktime_init(void)
 {
-	slock_init(&rtc_lock);
-	memset(&k_time, 0, sizeof(struct rtc_t));
+        slock_init(&rtc_lock);
+        memset(&k_time, 0, sizeof(struct rtc_t));
+}
+
+void ktime_rtc(struct rtc_t* dst)
+{
+        memmove(dst, &k_time, sizeof(struct rtc_t));
 }
 
 void ktime_update(void)
 {
-	slock_acquire(&rtc_lock);
-	rtc_update(&k_time);
-	slock_release(&rtc_lock);
+        slock_acquire(&rtc_lock);
+        rtc_update(&k_time);
+        slock_release(&rtc_lock);
 }
 
 uint ktime_seconds(void)
@@ -70,9 +75,4 @@ uint ktime_seconds(void)
 	slock_release(&rtc_lock);
 
         return total;
-}
-
-void ktime_rtc(struct rtc_t* dst)
-{
-	memmove(dst, &k_time, sizeof(struct rtc_t));
 }

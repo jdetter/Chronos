@@ -38,7 +38,6 @@ typedef uint32_t sect_t;
 #endif
 
 #ifdef KTIME_PROVIDED
-#include "rtc.h"
 #include "ktime.h"
 #endif
 

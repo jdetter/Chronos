@@ -1,28 +1,28 @@
 # Use the new tool chain to build executables.
 TARGET=i686-pc-chronos-
-BUILD_ARCH=i386
+export BUILD_ARCH := "i386"
 TOOL_DIR=../tools/bin
-CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
-CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
-CROSS_AS=$(TOOL_DIR)/$(TARGET)gcc
-CROSS_OBJCOPY=$(TOOL_DIR)/$(TARGET)objcopy
-TARGET_SYSROOT=../sysroot
-USER=$(shell whoami)
+export CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
+export CROSS_AS := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_OBJCOPY := $(TOOL_DIR)/$(TARGET)objcopy
+export TARGET_SYSROOT := ../sysroot
+export USER := $(shell whoami)
 
 # use host to configure the tools
-CC=gcc
-LD=ld
-AS=gcc
-OBJCOPY=objcopy
+export CC=gcc
+export LD=ld
+export AS=gcc
+export OBJCOPY=objcopy
 
-LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
-AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
+export LDFLAGS := 
+export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
+export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
 QEMU := qemu-system-i386
 
 # Uncomment this lines to turn off all output
-CFLAGS := -DRELEASE $(CFLAGS)
-AFLAGS := -DRELEASE $(AFLAGS)
+export CFLAGS := -DRELEASE $(CFLAGS)
+export AFLAGS := -DRELEASE $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
@@ -33,15 +33,13 @@ FS_START := 2048
 .PHONY: all
 all: chronos.img
 
-MAKE_ARGS := CC="$(CC)" LD="$(LD)" AS="$(AS)" \
-	CFLAGS="$(CFLAGS)" AFLAGS="$(AFLAGS)"
-
 chronos.img:
+	cd tools/ ; \
+	make tools
 	cd kernel/ ; \
-	make $(MAKE_ARGS) chronos.o ; \
-	exit ; \
-	make $(MAKE_ARGS) boot-stage1.img ; \
-	make $(MAKE_ARGS) boot-stage2.img 
+	make chronos.o \
+	make boot-stage1.img ; \
+	make boot-stage2.img 
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
@@ -179,4 +177,8 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 
 .PHONY: clean
 clean: 
+	cd tools ; \
+	make tools-clean
+	cd kernel ; \
+	make kernel-clean
 	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img

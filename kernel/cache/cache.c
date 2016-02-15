@@ -30,6 +30,7 @@ int log2_linux(uint value); /* defined in ext2.c*/
 #endif
 
 #include "cache.h"
+#define log2 __log2
 // #define CACHE_DEBUG
 // #define CACHE_DEBUG_VER
 

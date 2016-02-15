@@ -62,6 +62,8 @@ int log2_linux(uint value)
 #include "stdarg.h"
 #include "panic.h"
 
+#define log2 __log2
+
 #endif
 
 #include "file.h"

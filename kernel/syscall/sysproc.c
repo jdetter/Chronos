@@ -17,13 +17,10 @@
 #include "tty.h"
 #include "pipe.h"
 #include "proc.h"
-#include "x86.h"
 #include "chronos.h"
 #include "vm.h"
 #include "trap.h"
 #include "panic.h"
-#include "rtc.h"
-#include "ktime.h"
 #include "signal.h"
 #include "context.h"
 #include "elf.h"
@@ -1055,36 +1052,6 @@ int sys_times(void)
 	return k_ticks;
 }
 
-/* int gettimeofday(struct timeval* tv, struct timezone* tz) */
-int sys_gettimeofday(void)
-{
-	struct timeval* tv;
-	struct timezone* tz;
-	/* timezone is not used by any OS ever. It is purely historical. */
-	if(syscall_get_int((int*)&tv, 0)) return -1;
-	if(tv && syscall_get_buffer_ptr((void**)&tv, 
-				sizeof(struct timeval), 0)) return -1;
-	/* Is timezone specified? */
-	if(syscall_get_int((int*)&tz, 1)) return -1;
-	if(tz && syscall_get_buffer_ptr((void**)&tz, 
-				sizeof(struct timeval), 1)) return -1;
-
-	int seconds = ktime_seconds();
-
-	if(tv)
-	{
-		tv->tv_sec = seconds;
-		tv->tv_usec = 0;
-	}
-
-	if(tz)
-	{
-		memset(tz, 0, sizeof(struct timezone));
-	}
-
-	return 0;
-}
-
 /* uid_t getuid(void) */
 int sys_getuid(void){
 	return rproc->uid;
@@ -1411,26 +1378,6 @@ int sys_umask(void){
 
 int getumask(void){
 	return rproc->umask;
-}
-
-/* uint sleep(uint seconds) */
-int sys_sleep(void)
-{
-	uint seconds;
-	if(syscall_get_int((int*)&seconds, 0)) return -1;
-	slock_acquire(&ptable_lock);
-	rproc->block_type = PROC_BLOCKED_SLEEP;
-	int end = seconds + ktime_seconds() + 1;
-	rproc->sleep_time = end;
-	rproc->state = PROC_BLOCKED;
-	while(1)
-	{
-		yield_withlock();
-		if(ktime_seconds() >= end) break;
-		slock_acquire(&ptable_lock);
-	}
-
-	return 0;
 }
 
 int sys_alarm(void)

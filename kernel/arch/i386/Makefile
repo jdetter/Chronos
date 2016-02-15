@@ -1,11 +1,9 @@
-CROSS_CC := gcc
-CROSS_AS := gcc
-CROSS_LD := ld
-CFLAGS := -DARCH_i386 -DARCH_STR="i386" -nostdlib -m32
-AFLAGS := -DARCH_i386 -DARCH_STR="i386" -nostdlib -m32
+# Modify the arguments coming in
+export CROSS_CC := "../../$(CROSS_CC)"
+export CROSS_LD := "../../$(CROSS_LD)"
+export CROSS_AS := "../../$(CROSS_AS)"
+export CROSS_OBJCOPY := "../../$(CROSS_OBJCOPY)"
 
-DRIVER_CFLAGS :=
-DRIVER_AFLAGS :=
 RELOCATE_FLAGS := -m elf_i386 -r
 
 # Erase cruft above ^^^
@@ -26,25 +24,35 @@ i386_DRIVER_OBJS := ata \
 	pic \
 	pit \
 	rtc \
+	ktime \
 	serial \
 	vt102/tty_codes \
 	vt102/tty_display \
 	vt102/tty_io \
 	vt102/tty_kbd
-i386_PROC_OBJS := elf
+i386_LOCK_OBJS := stdlock
+i386_PROC_OBJS := elf iosched proc
+i386_SRC_OBJS := devman fsman main panic signal
+i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap
 i386_VM_OBJS := asm pgdir vm_alloc vm
 
 i386_CONTEXT_OBJS := $(addprefix context/, $(i386_CONTEXT_OBJS))
 i386_DRIVER_OBJS := $(addprefix drivers/, $(i386_DRIVER_OBJS))
+i386_LOCK_OBJS := $(addprefix lock/, $(i386_LOCK_OBJS))
 i386_PROC_OBJS := $(addprefix proc/, $(i386_PROC_OBJS))
+i386_SRC_OBJS := $(addprefix src/, $(i386_SRC_OBJS))
+i386_SYSCALL_OBJS := $(addprefix syscall/, $(i386_SYSCALL_OBJS))
 i386_TRAP_OBJS := $(addprefix trap/, $(i386_TRAP_OBJS))
 i386_VM_OBJS := $(addprefix vm/, $(i386_VM_OBJS))
 
 i386_OBJS := \
 	$(i386_CONTEXT_OBJS) \
 	$(i386_DRIVER_OBJS) \
+	$(i386_LOCK_OBJS) \
 	$(i386_PROC_OBJS) \
+	$(i386_SRC_OBJS) \
+	$(i386_SYSCALL_OBJS) \
 	$(i386_TRAP_OBJS) \
 	$(i386_VM_OBJS)
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))

@@ -12,7 +12,6 @@
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
-#include "x86.h"
 
 
 /**

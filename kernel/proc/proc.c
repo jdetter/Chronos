@@ -23,12 +23,10 @@
 #include "trap.h"
 #include "panic.h"
 #include "stdarg.h"
-#include "x86.h"
 #include "syscall.h"
 #include "chronos.h"
 #include "iosched.h"
 #include "time.h"
-#include "rtc.h"
 #include "context.h"
 #include "fpu.h"
 
@@ -44,21 +42,9 @@ struct proc* rproc;
 pid_t next_pid;
 /* How many ticks have there been since boot? */
 uint k_ticks;
-/* Current system time */
-struct rtc_t k_time;
 
 extern struct file_descriptor* fd_tables[PTABLE_SIZE][PROC_MAX_FDS];
 extern slock_t fd_tables_locks[];
-
-void proc_init()
-{
-	next_pid = 0;
-	memset(ptable, 0, sizeof(struct proc) * PTABLE_SIZE);
-	rproc = NULL;
-	k_ticks = 0;
-	memset(&k_time, 0, sizeof(struct rtc_t));
-	slock_init(&ptable_lock);
-}
 
 struct proc* alloc_proc()
 {
