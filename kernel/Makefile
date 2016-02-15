@@ -66,7 +66,7 @@ kernel-symbols: chronos.o
 chronos.o: kernel/idt.S kernel/idt.o $(KERNEL_OBJS)
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS)
 
-kernel/idt.S: tools/bin/mkvect
+kernel/idt.S: ../tools/bin/mkvect
 	tools/bin/mkvect > kernel/idt.S
 %.o: %.S
 	$(CROSS_AS) $(AFLAGS) $(KERNEL_AFLAGS) -c -o $@ $<
