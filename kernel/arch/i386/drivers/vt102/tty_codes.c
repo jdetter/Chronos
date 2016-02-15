@@ -9,11 +9,11 @@
 #include "stdlock.h"
 #include "kern/types.h"
 #include "devman.h"
-#include "console.h"
-#include "serial.h"
-#include "tty.h"
 #include "fsman.h"
 #include "klog.h"
+#include "drivers/tty.h"
+#include "drivers/serial.h"
+#include "drivers/console.h"
 
 // #define DEBUG 1
 #define cprintf ___cprintf

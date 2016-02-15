@@ -20,19 +20,19 @@
 #include "chronos.h"
 #include "x86.h"
 #include "panic.h"
-#include "pic.h"
-#include "pit.h"
 #include "stdarg.h"
 #include "syscall.h"
 #include "tty.h"
 #include "fsman.h"
 #include "pipe.h"
 #include "proc.h"
-#include "cmos.h"
-#include "rtc.h"
 #include "vm.h"
 #include "signal.h"
 #include "vm.h"
+#include "drivers/pic.h"
+#include "drivers/pit.h"
+#include "drivers/cmos.h"
+#include "drivers/rtc.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)

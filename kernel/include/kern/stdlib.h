@@ -31,7 +31,7 @@ void kitoa(int val_signed, char* dst_c, uint sz, uint radix);
  * Calculate the log base 2 of a number. Returns -1 if the
  * number is not a power of 2 (there is a remainder).
  */
-int log2(uint val);
+int __log2(uint val);
 
 /**
  * Convert a bcd coded byte into its binary equivalent.

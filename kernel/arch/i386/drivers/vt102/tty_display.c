@@ -5,15 +5,15 @@
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
-#include "tty.h"
 #include "panic.h"
 #include "iosched.h"
-#include "serial.h"
-#include "console.h"
 #include "stdarg.h"
 #include "stdlib.h"
 #include "proc.h"
 #include "fcntl.h"
+#include "drivers/tty.h"
+#include "drivers/serial.h"
+#include "drivers/console.h"
 
 static struct tty ttys[MAX_TTYS];
 struct tty* active_tty = NULL;

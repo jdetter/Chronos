@@ -74,6 +74,7 @@
 
 #include "klog.h"
 #include <sys/ioctl.h>
+#include <termios.h>
 
 struct kbd_buff
 {

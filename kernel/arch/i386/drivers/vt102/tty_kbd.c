@@ -6,14 +6,14 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "panic.h"
-#include "console.h"
-#include "keyboard.h"
 #include "tty.h"
 #include "iosched.h"
 #include "tty.h"
 #include "proc.h"
-#include "serial.h"
 #include "vm.h"
+#include "drivers/console.h"
+#include "drivers/keyboard.h"
+#include "drivers/serial.h"
 
 // #define DEBUG
 // #define KEY_DEBUG

@@ -23,7 +23,7 @@
 #include "vm.h"
 #include "stdarg.h"
 #include "panic.h"
-#include "console.h"
+#include "drivers/console.h"
 
 void __set_stack__(uint addr);
 void __drop_priv__(uint* k_context, uint new_esp, uint new_eip);
