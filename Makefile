@@ -1,6 +1,6 @@
 # Use the new tool chain to build executables.
 TARGET=i686-pc-chronos-
-export BUILD_ARCH := "i386"
+export BUILD_ARCH := i386
 TOOL_DIR=../tools/bin
 export CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
 export CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
@@ -30,20 +30,25 @@ FS_DD_BS := 4096
 FS_DD_COUNT := 262144
 FS_START := 2048
 
+# Size of the second boot sector 
+BOOT_STAGE2_SECTORS := 140
+
 .PHONY: all
 all: chronos.img
 
-chronos.img:
+chronos.img: 
 	cd tools/ ; \
 	make tools
 	cd kernel/ ; \
-	make chronos.o \
+	make chronos.o ; \
 	make boot-stage1.img ; \
 	make boot-stage2.img 
+	cd user ; \
+	make
+	make $(FS_TYPE)
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
-	tools/bin/boot-sign kernel/boot/boot-stage1.img
-	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
+	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
+	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
 	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
 
 virtualbox: tools chronos.img
@@ -69,7 +74,7 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp/
-	bash ./tools/gensysskel.sh
+	bash ./tools/src/gensysskel.sh
 	cp -R ./sysskel/. ./tmp
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/

@@ -1,8 +1,29 @@
 # Modify the arguments coming in
-export CROSS_CC := "../$(CROSS_CC)"
-export CROSS_LD := "../$(CROSS_LD)"
-export CROSS_AS := "../$(CROSS_AS)"
-export CROSS_OBJCOPY := "../$(CROSS_OBJCOPY)"
+export CROSS_CC := ../$(CROSS_CC)
+export CROSS_LD := ../$(CROSS_LD)
+export CROSS_AS := ../$(CROSS_AS)
+export CROSS_OBJCOPY := ../$(CROSS_OBJCOPY)
+
+# Other stuff our sub-makes need
+export CROSS_CC := $(CROSS_CC)
+export CROSS_LD := $(CROSS_LD)
+export CROSS_AS := $(CROSS_AS)
+export CROSS_OBJCOPY := $(CROSS_OBJCOPY)
+export CC := $(CC)
+export LD := $(LD)
+export AS := $(AS)
+export OBJCOPY := $(OBJCOPY)
+export LDFLAGS := $(LDFLAGS)
+export CFLAGS := $(CFLAGS)
+export AFLAGS := $(AFLAGS)
+
+export KINCLUDE_PATHS := \
+	./ \
+	include \
+	drivers \
+	cache
+
+KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
 
 # All files that need compiling (excluding drivers)
 KERNEL_BINS := \
@@ -49,8 +70,6 @@ KERNEL_OBJS := \
 KERNEL_OBJS := $(addsuffix .o, $(KERNEL_OBJS))
 
 # Include files
-KERNEL_CFLAGS := -Iinclude -Idrivers -Icache -I.
-KERNAL_AFLAGS := $(KERNEL_CFLAGS)
 KERNEL_LDFLAGS := -nostdlib --entry=main --section-start=.text=0xFF000000
 
 # Specify files to clean
@@ -70,6 +89,14 @@ kernel-clean:
 	make arch-clean
 	rm -f $(KERNEL_CLEAN)
 
+boot-stage1.img:
+	cd arch/$(BUILD_ARCH) ; \
+	make boot-stage1.img
+
+boot-stage2.img:
+	cd arch/$(BUILD_ARCH) ; \
+	make boot-stage2.img
+
 chronos.o: idt.S $(KERNEL_OBJS)
 	cd arch/$(BUILD_ARCH) ; \
 	make arch.o
@@ -78,7 +105,7 @@ chronos.o: idt.S $(KERNEL_OBJS)
 idt.S: ../tools/bin/mkvect
 	../tools/bin/mkvect > ./idt.S
 %.o: %.S
-	$(CROSS_AS) $(AFLAGS) $(KERNEL_AFLAGS) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(KINCLUDE) -c -o $@ $<
 %.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(KERNEL_CFLAGS) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(KINCLUDE) -c -o $@ $<
 

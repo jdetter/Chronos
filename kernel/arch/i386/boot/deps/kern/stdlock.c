@@ -1,1 +1,1 @@
-../../../../../stdlock.c
+../../../lock/stdlock.c

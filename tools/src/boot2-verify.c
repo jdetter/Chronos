@@ -15,21 +15,21 @@ int main(int argc, char** argv)
 {
 	printf("*** Boot stage 2 verification ***\n");
 
-	int text = open("kernel/boot/boot-stage2.text", O_RDONLY);
+	int text = open("./boot-stage2.text", O_RDONLY);
 	int text_end = lseek(text, 0, SEEK_END);
-	int data = open("kernel/boot/boot-stage2.data", O_RDONLY);
+	int data = open("./boot-stage2.data", O_RDONLY);
 	int data_end = lseek(data, 0, SEEK_END);
-	int rodata = open("kernel/boot/boot-stage2.rodata", O_RDONLY);
+	int rodata = open("./boot-stage2.rodata", O_RDONLY);
 	int rodata_end = lseek(rodata, 0, SEEK_END);
-	int bss = open("kernel/boot/boot-stage2.bss", O_RDONLY);
+	int bss = open("./boot-stage2.bss", O_RDONLY);
 	int bss_end = lseek(bss, 0, SEEK_END);
 	
 	if(text < 0 || data < 0 || rodata < 0 || bss < 0)
 	{
 		printf("FATAL ERROR: problem with program segment.\n");
-		char* ok = "ok";
-		char* bad = "bad";
-		printf("text: %s data: %s rodata: %s bss: %s\n",
+		char* ok = " OK ";
+		char* bad = "FAIL";
+		printf("\ntext: [%s]\ndata: [%s]\nrodata: [%s]\nbss: [%s]\n",
 			text > 0 ? ok : bad, 
 			data > 0 ? ok : bad,
 			rodata > 0 ? ok : bad,
