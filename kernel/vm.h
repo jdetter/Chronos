@@ -4,6 +4,8 @@
 /* Include the architecture independant header */
 #ifdef ARCH_i386
 #include  "arch/i386/vm/vm.h"
+#elif defined ARCH_x86_64
+#include "arch/x86_64/vm/vm.h"
 #else
 #error "Invalid architecture selected."
 #endif

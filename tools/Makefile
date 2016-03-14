@@ -9,7 +9,7 @@ TOOLS_CFLAGS := -D__LINUX__ \
 		-I ../kernel \
 		-I ../kernel/include \
 		-I ../kernel/cache \
-		-I ../kernel/arch/i386/include
+		-I ../kernel/arch/$(BUILD_ARCH)/include
 
 TOOLS_DEPS := \
 	deps/file.o \
