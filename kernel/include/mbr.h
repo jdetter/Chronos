@@ -3,22 +3,22 @@
 
 struct mbr
 {
-	uint_8 bootstrap[446];
-	uint_8 part1[16];
-	uint_8 part2[16];
-	uint_8 part3[16];
-	uint_8 part4[16];
-	uint_16 signature;
+	uint8_t bootstrap[446];
+	uint8_t part1[16];
+	uint8_t part2[16];
+	uint8_t part3[16];
+	uint8_t part4[16];
+	uint16_t signature;
 };
 
 struct mbr_partition_table
 {
-	uint_8 status;
-	uint_8 chs_first[3];
-	uint_8 type;
-	uint_8 chs_last[3];
-	uint_32 start_sector;
-	uint_32 sectors;
+	uint8_t status;
+	uint8_t chs_first[3];
+	uint8_t type;
+	uint8_t chs_last[3];
+	uint32_t start_sector;
+	uint32_t sectors;
 };
 
 #endif

@@ -1,7 +1,7 @@
-#include "kern/types.h"
-
 #ifndef _KERN_STDLIB_H_
 #define _KERN_STDLIB_H_
+
+#include <stdint.h>
 
 /* Standard macro functions */
 #define B4_ROUNDUP(addr)	((uint)addr + 3) & ~(3)
@@ -25,7 +25,7 @@ int ascii_char(char c);
  * Convert an integer to a string. This function will not modify more than sz
  * bytes of dst_c and will return a null terminated string.
  */
-void kitoa(int val_signed, char* dst_c, uint sz, uint radix);
+void kitoa(int val_signed, char* dst_c, size_t sz, int radix);
 
 /**
  * Calculate the log base 2 of a number. Returns -1 if the
@@ -36,6 +36,6 @@ int __log2(uint val);
 /**
  * Convert a bcd coded byte into its binary equivalent.
  */
-uchar bcdtobin(uchar val);
+char bcdtobin(uchar val);
 
 #endif
