@@ -1,9 +1,20 @@
+export CROSS_CC := gcc
+export CROSS_LD := ld
+export CROSS_AS := gcc
+export CROSS_OBJCOPY := objcopy
+export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
+
+export CC=gcc
+export LD=ld
+export AS=gcc
+export OBJCOPY=objcopy
+
 # Modify the arguments coming in
-export CROSS_CC := ../../$(CROSS_CC)
-export CROSS_LD := ../../$(CROSS_LD)
-export CROSS_AS := ../../$(CROSS_AS)
-export CROSS_OBJCOPY := ../../$(CROSS_OBJCOPY)
-export KINCLUDE_PATHS := $(addprefix ../../,$(KINCLUDE_PATHS))
+# export CROSS_CC := ../../$(CROSS_CC)
+# export CROSS_LD := ../../$(CROSS_LD)
+# export CROSS_AS := ../../$(CROSS_AS)
+# export CROSS_OBJCOPY := ../../$(CROSS_OBJCOPY)
+# export KINCLUDE_PATHS := $(addprefix ../../,$(KINCLUDE_PATHS))
 
 # Other stuff our sub-makes need
 export CC := $(CC)
