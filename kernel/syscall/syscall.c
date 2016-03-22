@@ -12,7 +12,6 @@
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
-#include "vsfs.h"
 #include "tty.h"
 #include "elf.h"
 #include "stdarg.h"
@@ -115,7 +114,6 @@ int (*syscall_table[])(void) = {
 	sys_select,
 	sys_alarm,
 	NULL,
-
 	sys_sigaction,
 	sys_sigprocmask,
 	sys_sigpending,
@@ -224,7 +222,7 @@ char* syscall_table_names[] = {
 };
 
 
-int syscall_handler(uint* esp)
+int syscall_handler(int* esp)
 {
 	/* Get the number of the system call */
 	int syscall_number = -1;

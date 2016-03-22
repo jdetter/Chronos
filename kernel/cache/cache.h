@@ -5,18 +5,18 @@
 
 struct cache
 {
-	uint entry_count; /* How many entries / slabs are there? */
+	int entry_count; /* How many entries / slabs are there? */
 	int entry_shift; /* Use shifts instead of multiplication */
         struct cache_entry* entries; /* List of entries */
-	uint last_entry; /* the address of the last entry */
+	uintptr_t last_entry; /* the address of the last entry */
         char* slabs; /* Pointer to the first slab */
 	int slab_shift; /* Quick shift is available for log2(slab)*/
-        uint slab_sz; /* How big are the slabs? */
+        size_t slab_sz; /* How big are the slabs? */
         slock_t lock; /* Lock needed to change the cache */
 	int clock; /* Points to the last entry allocated */
 	char name[CACHE_DEBUG_NAME_LEN]; /* name of the cache (DEBUG) */
-	uint cache_hits; /* How many times have we gotten a cache hit? */
-	uint cache_miss; /* How many times have we gotten a cache miss? */
+	int cache_hits; /* How many times have we gotten a cache hit? */
+	int cache_miss; /* How many times have we gotten a cache miss? */
 
 	/**
 	 * Custom comparison function. Decides what gets compared on a
@@ -55,7 +55,7 @@ struct cache
 /**
  * Initilize a cache structure. Returns 0 on success, -1 on failure.
  */
-int cache_init(void* cache_area, uint sz, uint data_sz,
+int cache_init(void* cache_area, size_t sz, size_t data_sz,
 		char* name, struct cache* cache);
 
 /**

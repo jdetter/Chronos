@@ -1,6 +1,7 @@
 #ifndef _KERN_STDLIB_H_
 #define _KERN_STDLIB_H_
 
+#include "kern/types.h"
 #include <stdint.h>
 
 /* Standard macro functions */

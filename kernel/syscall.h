@@ -73,7 +73,7 @@ int fd_ok(int fd);
  */
 int find_fd_gt(int val);
 
-int syscall_handler(uint* esp);
+int syscall_handler(int* esp);
 int sys_close(void);
 int sys_fork(void);
 int sys_wait(void);

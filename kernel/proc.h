@@ -42,7 +42,7 @@ struct file_descriptor
 	inode i; /* The inode pointer */
 	struct DeviceDriver* device; /* The device driver (if dev) */
 	pipe_t pipe; /* The pointer to the pipe (if pipe) */
-	uchar pipe_type; /* The type of pipe (if pipe) */
+	int pipe_type; /* The type of pipe (if pipe) */
 	char path[FILE_MAX_PATH]; /* Mount point on the file system */
 };
 
@@ -96,31 +96,31 @@ struct proc
 	mode_t umask; /* File creation mask */
 	
 	/** Process state parameters */
-	uint state; /* The state of the process */
-	uchar block_type; /* If blocked, what are you waiting for? */
+	int state; /* The state of the process */
+	int block_type; /* If blocked, what are you waiting for? */
 	cond_t* b_condition; /* The condition we might be waiting on */
-	uint b_condition_signal; /* The condition ticket number. */
+	int b_condition_signal; /* The condition ticket number. */
 	int b_pid; /* The pid we are waiting on. */
-	uint sleep_time; /* The time when the sleep ends */
+	time_t sleep_time; /* The time when the sleep ends */
 
 	/** IO parameters */
 	tty_t t; /* The tty this program is attached to. */
-	uchar* io_dst; /* Where the destination bytes will be placed. */
+	char* io_dst; /* Where the destination bytes will be placed. */
         int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
         int io_recieved; /* The actual amount of bytes recieved. */
 	struct proc* io_next; /* The next process waiting in the io queue*/
 	void* io_ticket; /* Optional parameter for some io operations */
 
 	/** SIGNAL stuff */
-	uint sig_handling; /* Are we handling a signal right now? */
+	int sig_handling; /* Are we handling a signal right now? */
 	struct signal_t* sig_queue; /* Signal queue */
 	struct trap_frame sig_saved; /* Saved registers while handling sig */
 	struct sigaction sigactions[NSIG];
-	uint sig_stack_start; /* The start of the signal stack (higher) */
+	uintptr_t sig_stack_start; /* The start of the signal stack (higher) */
 	sigset_t sig_suspend_mask; /* The suspended mask */
 
 	/** Parent and debug information */
-	uchar orphan; /* Whether or not the parent has been killed. */
+	int orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME]; /* The name of the process */
@@ -128,25 +128,25 @@ struct proc
 
 	/** Virtual memory */
         slock_t mem_lock;
-        uint stack_start; /* The high memory, start of the stack */
-        uint stack_end; /* Size of the stack in bytes. */
-        uint heap_start; /* The low memory, start of the heap */
-        uint heap_end; /* Size of the heap in bytes. */
-        uint mmap_start; /* Start of the mmap area */
-        uint mmap_end; /* end of the mmap area */
-        uint code_start; /* Start of the code area */
-        uint code_end; /* end of the code area */
+        uintptr_t stack_start; /* The high memory, start of the stack */
+        uintptr_t stack_end; /* Size of the stack in bytes. */
+        uintptr_t heap_start; /* The low memory, start of the heap */
+        uintptr_t heap_end; /* Size of the heap in bytes. */
+        uintptr_t mmap_start; /* Start of the mmap area */
+        uintptr_t mmap_end; /* end of the mmap area */
+        uintptr_t code_start; /* Start of the code area */
+        uintptr_t code_end; /* end of the code area */
 	pgdir_t* pgdir; /* The page directory for the process */
-	uint* sys_esp; /* Pointer to the start of the syscall argv */
-	uchar* k_stack; /* A pointer to the kernel stack for this process. */
+	int* sys_esp; /* Pointer to the start of the syscall argv */
+	char* k_stack; /* A pointer to the kernel stack for this process. */
 	struct task_segment* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int.*/
-	uint entry_point; /* The address of the first instruction */
-	uint context; /* The address at the top of the saved stack */
+	uintptr_t entry_point; /* The address of the first instruction */
+	uintptr_t context; /* The address at the top of the saved stack */
 
 	/* Resource usage */
-	uint user_ticks; /* The amount of ticks spent in user mode */
-	uint kernel_ticks; /* The amount of ticks spent in kernel mode */
+	int user_ticks; /* The amount of ticks spent in user mode */
+	int kernel_ticks; /* The amount of ticks spent in kernel mode */
 };
 
 /**

@@ -115,7 +115,7 @@ struct proc* spawn_tty(tty_t t)
 	/* Map in a new kernel stack */
         vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 
 		dir_flags, tbl_flags);
-        p->k_stack = (uchar*)PGROUNDUP(UVM_KSTACK_E);
+        p->k_stack = (char*)PGROUNDUP(UVM_KSTACK_E);
         p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
         p->tss = (struct task_segment*)(UVM_KSTACK_S);
 

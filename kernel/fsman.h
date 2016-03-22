@@ -15,18 +15,22 @@
 #define ATA_CACHE_SZ 0x30000 /* HDD cache sz per drive */
 #define FS_INODE_CACHE_SZ 0x10000 /* Per file system cache */
 
+typedef uint32_t blk_t; /* A block number */
+typedef uint32_t sect_t; /* A sector number */
+typedef uint32_t fileoff_t; /* Offset into a file */
+
 struct FSHardwareDriver
 {
 	char valid; /* 1 = valid, 0 = invalid. */
-	uint sectmax;
-	uint sectshifter;
-	uint sectsize;
+	int sectmax;
+	int sectshifter;
+	int sectsize;
 	struct cache cache;
-	int (*readsect)(void* dst, uint sect, struct FSHardwareDriver* driver); 
-	int (*writesect)(void* src, uint sect, struct FSHardwareDriver* driver);
-	int (*readsects)(void* dst, uint sectstart, uint sectcount,
+	int (*readsect)(void* dst, sect_t sect, struct FSHardwareDriver* driver); 
+	int (*writesect)(void* src, sect_t sect, struct FSHardwareDriver* driver);
+	int (*readsects)(void* dst, sect_t sectstart, int sectcount,
                 struct FSHardwareDriver* driver);
-        int (*writesects)(void* src, uint sectstart, uint sectcount,
+        int (*writesects)(void* src, sect_t sectstart, int sectcount,
                 struct FSHardwareDriver* driver);
 	void* context; /* Pointer to driver specified context */
 };
@@ -65,10 +69,10 @@ struct FSHardwareDriver
  */
 struct inode_t
 {
-	uchar valid; /* Whether or not this inode is valid. */
+	int valid; /* Whether or not this inode is valid. */
 	int flags; /* The flags that were used to open this file */
 	slock_t lock; /* Lock needs to be held to access this inode */
-	uint file_pos; /* Seek position in the file */
+	int file_pos; /* Seek position in the file */
 	struct stat st; /* Stats on the file */
 	char name[FILE_MAX_NAME]; /* the name of the file */
 	struct FSDriver* fs; /* File system this inode belongs to.*/
@@ -102,8 +106,8 @@ struct FSDriver
 	 * Initilize the hardware and context needed for the file system
 	 * to function.
 	 */
-	int (*init)(uint start_sector, uint end_sector, uint sectsize,
-		uint cache_sz, uchar* cache, 
+	int (*init)(sect_t start_sector, sect_t end_sector, size_t sectsize,
+		size_t cache_sz, char* cache, 
 		struct FSDriver* driver, void* context);
 	
 	/**
@@ -167,7 +171,7 @@ struct FSDriver
 	 * Make a directory in the file system. Returns 0 on success, -1 on
 	 * failure.
 	 */
-	int (*mkdir)(const char* path, uint permissions, uint uid, uint gid, 
+	int (*mkdir)(const char* path, mode_t permissions, uid_t uid, gid_t gid, 
 		void* context);
 
 	/**
@@ -175,14 +179,16 @@ struct FSDriver
 	 * at position start in the file. Returns the amount of bytes read
 	 * from the file.
 	 */
-	int (*read)(void* i, void* dst, uint start, uint sz, void* context);
+	int (*read)(void* i, void* dst, fileoff_t start, 
+		size_t sz, void* context);
 
         /**
          * Read from the inode i into the buffer dst for sz bytes starting
          * at position start in the file. Returns the amount of bytes read
          * from the file.
          */ 
-        int (*write)(void* i, const void* src, uint start, uint sz, void* context);
+        int (*write)(void* i, const void* src, fileoff_t start, 
+		size_t sz, void* context);
 
 	/**
 	 * Move file from src to dst. This function can also move
@@ -209,8 +215,8 @@ struct FSDriver
 	 * to read. Returns the amount of bytes read. Returns -1 on failure
 	 * and returns 0 on end of directory.
 	 */
-	int (*getdents)(void* dir, struct dirent* dst_arr, uint count,
-                uint pos, void* context);
+	int (*getdents)(void* dir, struct dirent* dst_arr, int count,
+                fileoff_t pos, void* context);
 
 	/**
 	 * Parse statistics into the stat structure.
@@ -256,32 +262,32 @@ struct FSDriver
 	int (*fsck)(void* context);
 
 	/* Locals for the driver */
-	uchar valid; /* Whether or not this entry is valid. */
-	uint type; /* Type of file system */
+	int valid; /* Whether or not this entry is valid. */
+	int type; /* Type of file system */
 	struct FSHardwareDriver* driver; /* HDriver for this file system*/
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
-	uchar context[FS_CONTEXT_SIZE]; /* Space for locals */
-	uchar* inode_cache; /* Pointer into the inode cache */
-	uint inode_cache_sz; /* How big is the cache in bytes? */
-	uint bpp; /* How many fs blocks fit onto a page? */
-	uint start; /* The sector where this file system starts */
+	char context[FS_CONTEXT_SIZE]; /* Space for locals */
+	char* inode_cache; /* Pointer into the inode cache */
+	size_t inode_cache_sz; /* How big is the cache in bytes? */
+	int bpp; /* How many fs blocks fit onto a page? */
+	sect_t start; /* The sector where this file system starts */
 
-        uint blocksize; /* What is the block size of this fs? */
-        uint blockshift; /* Turn a block address into an id */
+        size_t blocksize; /* What is the block size of this fs? */
+        int blockshift; /* Turn a block address into an id */
 	/* Read and write block functions */
-	int (*readblock)(void* dst, uint block, struct FSDriver* driver);
-        int (*writeblock)(void* src, uint block,struct FSDriver* driver);
-	int (*readblocks)(void* dst, uint startblock, uint count,
+	int (*readblock)(void* dst, blk_t block, struct FSDriver* driver);
+        int (*writeblock)(void* src, blk_t block,struct FSDriver* driver);
+	int (*readblocks)(void* dst, blk_t startblock, int count,
                 struct FSDriver* driver);
-        int (*writeblocks)(void* src, uint startblock, uint count,
+        int (*writeblocks)(void* src, blk_t startblock, int count,
                 struct FSDriver* driver);
-	int (*disk_read)(void* dst, uint start, uint sz,
+	int (*disk_read)(void* dst, fileoff_t start, size_t sz,
                 struct FSDriver* driver);
-        int (*disk_write)(void* src, uint start, uint sz,
+        int (*disk_write)(void* src, fileoff_t start, size_t sz,
                 struct FSDriver* driver);
 
-        void* (*reference)(uint block, struct FSDriver* driver);
-        void* (*addreference)(uint block, struct FSDriver* driver);
+        void* (*reference)(blk_t block, struct FSDriver* driver);
+        void* (*addreference)(blk_t block, struct FSDriver* driver);
         int (*dereference)(void* ref, struct FSDriver* driver);
 };
 
@@ -301,8 +307,8 @@ int fs_add_inode_reference(struct inode_t* i);
  * can be created. The creation flag also must be passed. All flags
  * are defined in file.h. Returns NULL if the file could not be opened.
  */
-inode fs_open(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid);
+inode fs_open(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid);
 
 /**
  * Close an open file. Returns 0 on success, -1 otherwise.
@@ -320,14 +326,15 @@ int fs_stat(inode i, struct stat* dst);
  * opened if it is created. Returns NULL if the file could not be created,
  * otherwise returns an inode.
  */
-int fs_create(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid);
+int fs_create(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid);
+
 
 /**
  * Change the ownership of the file to uid and gid. Returns 0
  * on success, returns -1 on failure.
  */
-int fs_chown(const char* path, uint uid, uint gid);
+int fs_chown(const char* path, uid_t uid, gid_t gid);
 
 /**
  * Change the permissions of the file. The permissions are
@@ -349,20 +356,20 @@ int fs_symlink(const char* file, const char* link);
 /**
  * Create the directory given by path. Returns 0 on success, -1 on failure.
  */
-int fs_mkdir(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid);
+int fs_mkdir(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid);
 
 /**
  * Read sz bytes from inode i into the destination buffer dst starting at the
  * seek position start.
  */
-int fs_read(inode i, void* dst, uint sz, uint start);
+int fs_read(inode i, void* dst, size_t sz, fileoff_t start);
 
 /**
  * Write sz bytes from inode i from the source buffer src into the file at 
  * the seek position start.
  */
-int fs_write(inode i, void* src, uint sz, uint start);
+int fs_write(inode i, void* src, size_t sz, fileoff_t start);
 
 /**
  * Rename (or move) a file from src to dst. Returns 0 on success, 
@@ -387,7 +394,7 @@ int fs_readdir(inode i, int index, struct dirent* dst);
  * also check to make sure that the path is valid. Returns 1 if the
  * path has grammar errors. Returns 0 on success.
  */
-int fs_path_resolve(const char* path, char* dst, uint sz);
+int fs_path_resolve(const char* path, char* dst, size_t sz);
 
 /**
  * Prints out file system statistics to the tty of the running process.

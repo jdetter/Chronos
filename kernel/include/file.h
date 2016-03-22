@@ -38,8 +38,8 @@
 /* Device nodes */
 struct devnode
 {
-        uint dev;
-        uint type;
+        int dev;
+        int type;
 };
 
 /* Linux Permission Macros */
@@ -148,7 +148,7 @@ struct devnode
  * Make sure the path ends with a slash. This guarentees that the path
  * represents a directory. Returns -1 on failure.
  */
-int file_path_dir(char* path, uint sz);
+int file_path_dir(char* path, size_t sz);
 
 /**
  * Makes sure that the path doesn't end with a slash unless src is the root

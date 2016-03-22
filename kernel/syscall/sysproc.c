@@ -812,7 +812,7 @@ int sys_exit(void)
 
 void _exit(int return_code)
 {
-	rproc->sys_esp = (uint*)&return_code;	
+	rproc->sys_esp = (int*)&return_code;	
 	sys_exit(); /* Will not return */
 	panic("_exit returned.\n");
 }

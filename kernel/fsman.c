@@ -78,7 +78,7 @@ int fs_add_inode_reference(struct inode_t* i)
  * path has grammar errors. Returns 0 on success. The resulting
  * path will not end with a slash unless it is the root '/'
  */
-int fs_path_resolve(const char* path, char* dst, uint sz)
+int fs_path_resolve(const char* path, char* dst, size_t sz)
 {
 	if(strlen(path) == 0) return -1;
 	int path_pos;
@@ -248,9 +248,9 @@ static void fs_free_inode(inode i)
 	memset(i, 0, sizeof(struct inode_t));
 }
 
-static int fs_get_name(const char* path, char* dst, uint sz)
+static int fs_get_name(const char* path, char* dst, size_t sz)
 {
-	uint index = strlen(path);
+	int index = strlen(path);
 	for(;index >= 0 && path[index] != '/';index--);
 	index++;
 	if(index < 0) return 1; /* invalid path */
@@ -276,8 +276,8 @@ static void fs_sync_inode(inode i)
  * defined here are in include/file.h.
  */
 
-inode fs_open(const char* path, uint flags, uint permissions,
-	uint uid, uint gid)
+inode fs_open(const char* path, int flags, mode_t permissions,
+	uid_t uid, gid_t gid)
 {
 
 #ifdef DEBUG
@@ -413,8 +413,8 @@ int fs_stat(inode i, struct stat* dst)
 	return 0;
 }
 
-int fs_create(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid)
+int fs_create(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid)
 {
 	/* fix up the path*/
 	char dst_path[FILE_MAX_PATH];
@@ -442,7 +442,7 @@ int fs_create(const char* path, uint flags,
 	return 0;
 }
 
-int fs_chown(const char* path, uint uid, uint gid)
+int fs_chown(const char* path, uid_t uid, gid_t gid)
 {
 	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
 	if(!i) return -1;
@@ -511,8 +511,8 @@ int fs_symlink(const char* file, const char* link)
 	return 0;
 }
 
-int fs_mkdir(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid)
+int fs_mkdir(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid)
 {
 	/* First resolve the path */
 	char dst_path[FILE_MAX_PATH];
@@ -533,7 +533,7 @@ int fs_mkdir(const char* path, uint flags,
 	return 0;
 }
 
-int fs_read(inode i, void* dst, uint sz, uint start)
+int fs_read(inode i, void* dst, size_t sz, fileoff_t start)
 {
 	int bytes = i->fs->read(i->inode_ptr, dst, start, sz, i->fs->context);
 	/* Check for read error */
@@ -541,7 +541,7 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 	return bytes;
 }
 
-int fs_write(inode i, void* src, uint sz, uint start)
+int fs_write(inode i, void* src, size_t sz, fileoff_t start)
 {
 	int bytes = i->fs->write(i->inode_ptr,
 			src, start, sz, i->fs->context);

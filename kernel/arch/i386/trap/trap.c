@@ -164,7 +164,7 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 		cprintf("trap: SYSTEM CALL\n");
 #endif
 		strncpy(fault_string, "System Call", 64);
-		syscall_ret = syscall_handler((uint*)tf->esp);
+		syscall_ret = syscall_handler((int*)tf->esp);
 		rproc->tf->eax = syscall_ret;
 	} else if(trap == INT_PIC_TIMER)
 	{

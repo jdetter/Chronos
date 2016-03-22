@@ -12,6 +12,7 @@
 #else
 #include <string.h>
 #include <stdlib.h>
+#include "kern/types.h"
 #include "kern/stdlib.h"
 #endif
 
@@ -20,18 +21,18 @@
 #include "kern/types.h"
 #include "fsman.h"
 
-static int disk_read(void* dst, uint start, uint sz, 
+static int disk_read(void* dst, fileoff_t start, size_t sz, 
 		struct FSDriver* driver)
 {
 	start += (driver->start << driver->driver->sectshifter);
 	if(sz == 0) return 0;
-	uint shifter = driver->driver->sectshifter;
-	uint sectsize = driver->driver->sectsize;
-	uint mask = sectsize - 1;
+	int shifter = driver->driver->sectshifter;
+	size_t sectsize = driver->driver->sectsize;
+	int mask = sectsize - 1;
 	char* dst_c = dst;
 
-	uint startsect = start >> shifter;
-	uint endsect = (start + sz) >> shifter;
+	sect_t startsect = start >> shifter;
+	sect_t endsect = (start + sz) >> shifter;
 	
 	char sector[sectsize];
 
@@ -39,7 +40,7 @@ static int disk_read(void* dst, uint start, uint sz,
 	if(driver->driver->readsect(sector, startsect, driver->driver))
 		return -1;
 	
-	uint bytes = sectsize - (start & mask);
+	size_t bytes = sectsize - (start & mask);
 	/* Check to make sure we need the whole block */
 	if(bytes > sz) bytes = sz;
 
@@ -83,25 +84,25 @@ static int disk_read(void* dst, uint start, uint sz,
 	return sz;
 }
 
-static int disk_write(void* src, uint start, uint sz, 
+static int disk_write(void* src, fileoff_t start, size_t sz, 
 		struct FSDriver* driver)
 {
         
         return 0;
 }
 
-static int disk_read_blocks(void* dst, uint block_start, uint block_count,
+static int disk_read_blocks(void* dst, blk_t block_start, int block_count,
 		struct FSDriver* driver)
 {
 	struct FSHardwareDriver* disk = driver->driver;
 	char* dst_c = dst;
 
-        uint sect_shift = disk->sectshifter;
-        uint block_shift = driver->blockshift;
+        int sect_shift = disk->sectshifter;
+        int block_shift = driver->blockshift;
         if(sect_shift > block_shift) return -1;
-	uint block_to_sector = block_shift - sect_shift;
-        uint sector_count = block_count << (block_shift - sect_shift);
-        uint start_read = driver->start + (block_start << block_to_sector);
+	int block_to_sector = block_shift - sect_shift;
+        int sector_count = block_count << (block_shift - sect_shift);
+        blk_t start_read = driver->start + (block_start << block_to_sector);
 
         /* Check for multi sector read support */
         if(!disk->readsects)
@@ -120,23 +121,23 @@ static int disk_read_blocks(void* dst, uint block_start, uint block_count,
         } else return disk->readsects(dst, start_read, sector_count, disk);
 }
 
-static int disk_read_block(void* dst, uint block, struct FSDriver* driver)
+static int disk_read_block(void* dst, blk_t block, struct FSDriver* driver)
 {
         return disk_read_blocks(dst, block, 1, driver);
 }
 
-static int disk_write_blocks(void* src, uint block_start, uint block_count,
+static int disk_write_blocks(void* src, blk_t block_start, int block_count,
                 struct FSDriver* driver)
 {
 	struct FSHardwareDriver* disk = driver->driver;
         char* src_c = src;
 
-        uint sect_shift = disk->sectshifter;
-        uint block_shift = driver->blockshift;
+        int sect_shift = disk->sectshifter;
+        int block_shift = driver->blockshift;
         if(sect_shift > block_shift) return -1;
-	uint block_to_sector = block_shift - sect_shift;
-        uint sector_count = block_count << (block_shift - sect_shift);
-        uint start_write = driver->start + (block_start << block_to_sector);
+	int block_to_sector = block_shift - sect_shift;
+        int sector_count = block_count << (block_shift - sect_shift);
+        blk_t start_write = driver->start + (block_start << block_to_sector);
 
         /* Check for multi sector read support */
         if(!disk->writesects)
@@ -155,7 +156,7 @@ static int disk_write_blocks(void* src, uint block_start, uint block_count,
         } else return disk->writesects(src, start_write, sector_count, disk);
 }
 
-static int disk_write_block(void* src, uint block, struct FSDriver* driver)
+static int disk_write_block(void* src, blk_t block, struct FSDriver* driver)
 {
         return disk_write_blocks(src, block, 1, driver);
 }

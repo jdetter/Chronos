@@ -1,6 +1,6 @@
 # Use the new tool chain to build executables.
-TARGET=x86_64-pc-chronos-
-export BUILD_ARCH := x86_64
+TARGET=i686-pc-chronos-
+export BUILD_ARCH := i386
 TOOL_DIR=../tools/bin
 export CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
 export CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
@@ -18,7 +18,7 @@ export OBJCOPY=objcopy
 export LDFLAGS := 
 export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
 export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
-QEMU := qemu-system-x86_64
+QEMU := qemu-system-$(BUILD_ARCH)
 
 # Uncomment this lines to turn off all output
 export CFLAGS := -DRELEASE $(CFLAGS)

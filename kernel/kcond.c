@@ -18,24 +18,24 @@ void cond_init(cond_t* c)
 
 void cond_signal(cond_t* c)
 {
-	uint* esp_saved = rproc->sys_esp;
-	rproc->sys_esp = (uint*)&c;
+	int* esp_saved = rproc->sys_esp;
+	rproc->sys_esp = (int*)&c;
 	sys_signal_cv();
 	rproc->sys_esp = esp_saved;
 }
 
 void cond_wait_spin(cond_t* c, slock_t* lock)
 {
-	uint* esp_saved = rproc->sys_esp;
-        rproc->sys_esp = (uint*)&c;
+	int* esp_saved = rproc->sys_esp;
+        rproc->sys_esp = (int*)&c;
 	sys_wait_s();
 	rproc->sys_esp = esp_saved;
 }
 
 void cond_wait_ticket(cond_t* c, tlock_t* lock)
 {
-	uint* esp_saved = rproc->sys_esp;
-        rproc->sys_esp = (uint*)&c;
+	int* esp_saved = rproc->sys_esp;
+        rproc->sys_esp = (int*)&c;
 	sys_wait_t();
 	rproc->sys_esp = esp_saved;
 }

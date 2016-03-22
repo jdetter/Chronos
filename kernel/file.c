@@ -39,7 +39,7 @@ int file_path_root(char* path)
         return 0;
 }
 
-int file_path_dir(char* path, uint sz)
+int file_path_dir(char* path, size_t sz)
 {
         if(strlen(path) + 2 >= sz)
                 return -1;
