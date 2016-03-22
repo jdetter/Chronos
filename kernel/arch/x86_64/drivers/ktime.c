@@ -35,7 +35,7 @@ void ktime_update(void)
         slock_release(&rtc_lock);
 }
 
-uint ktime_seconds(void)
+time_t ktime_seconds(void)
 {
 	slock_acquire(&rtc_lock);
         /** 

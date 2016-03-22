@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 /* Standard macro functions */
-#define B4_ROUNDUP(addr)	((uint)addr + 3) & ~(3)
-#define B4_ROUNDDOWN(addr)	((uint)addr) & ~(3)
+#define B4_ROUNDUP(addr)	((uintptr_t)addr + 3) & ~(3)
+#define B4_ROUNDDOWN(addr)	((uintptr_t)addr) & ~(3)
 
 /* Dependant headers */
 #include "stdarg.h"
@@ -32,11 +32,11 @@ void kitoa(int val_signed, char* dst_c, size_t sz, int radix);
  * Calculate the log base 2 of a number. Returns -1 if the
  * number is not a power of 2 (there is a remainder).
  */
-int __log2(uint val);
+int __log2(int val);
 
 /**
  * Convert a bcd coded byte into its binary equivalent.
  */
-char bcdtobin(uchar val);
+char bcdtobin(char val);
 
 #endif

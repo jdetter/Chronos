@@ -34,7 +34,7 @@
 
 extern pid_t next_pid;
 extern slock_t ptable_lock;
-extern uint k_ticks;
+extern int k_ticks;
 extern struct proc* rproc;
 extern struct proc ptable[];
 
@@ -543,7 +543,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	/* Create a temporary address space */
 	pgdir_t* tmp_pgdir = (pgdir_t*)palloc();
 
-	uint env_start = PGROUNDUP(UVM_TOP);
+	uintptr_t env_start = PGROUNDUP(UVM_TOP);
 	int null_buff = 0x0;
 	if(envp)
 	{
@@ -558,7 +558,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		env_sz += (env_count * sizeof(int)) + sizeof(int);
 		/* Get the start of the environment space */
 		env_start = PGROUNDDOWN(UVM_TOP - env_sz);
-		uint* env_arr = (uint*)env_start;
+		int* env_arr = (int*)env_start;
 		uchar* env_data = (uchar*)env_start + 
 			(env_count * sizeof(int)) + sizeof(int);
 		for(index = 0;index < env_count;index++)
@@ -590,13 +590,13 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	char* args[MAX_ARG];
 	memset(args, 0, MAX_ARG * sizeof(char*));
 
-	uint uvm_stack = PGROUNDDOWN(env_start); 
-	uint uvm_start = uvm_stack;
+	uintptr_t uvm_stack = PGROUNDDOWN(env_start); 
+	uintptr_t uvm_start = uvm_stack;
 	/* copy arguments */
 	int x;
 	for(x = 0;argv[x];x++)
 	{
-		uint str_len = strlen(argv[x]) + 1;
+		int str_len = strlen(argv[x]) + 1;
 		uvm_stack -= str_len;
 		vm_memmove((void*)uvm_stack, (char*)argv[x], str_len,
 				tmp_pgdir, rproc->pgdir,
@@ -612,7 +612,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
 
-	uint arg_arr_ptr = uvm_stack; /* argv */
+	uintptr_t arg_arr_ptr = uvm_stack; /* argv */
 	int arg_count = x;
 
 	/* Push envp */
@@ -635,7 +635,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 
 	/* Add bogus return address for _start */
 	uvm_stack -= sizeof(int);
-	uint ret_addr = 0xFFFFFFFF;
+	int ret_addr = 0xFFFFFFFF;
 	vm_memmove((void*)uvm_stack, &ret_addr, sizeof(int),
 			tmp_pgdir, rproc->pgdir,
 			dir_flags, tbl_flags);
@@ -902,7 +902,7 @@ int sys_brk(void)
 	return (int)addr;
 }
 
-/* void* sys_sbrk(uint increment) */
+/* void* sys_sbrk(int increment) */
 int sys_sbrk(void)
 {
 	intptr_t increment;
@@ -1019,11 +1019,11 @@ int sys_chdir(void)
 	return 0;
 }
 
-/* int getcwd(char* dst, uint sz) */
+/* int getcwd(char* dst, size_t sz) */
 int sys_getcwd(void)
 {
 	char* dst;
-	uint sz;	
+	size_t sz;	
 
 	if(syscall_get_int((int*)&sz, 1)) return -1;
 	if(syscall_get_buffer_ptr((void**)&dst, sz, 0)) return -1;
@@ -1064,7 +1064,7 @@ int sys_geteuid(void){
 
 /* int setuid(uid_t uid)*/
 int sys_setuid(void){
-	uint id;
+	uid_t id;
 
 	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->uid = id;
@@ -1092,7 +1092,7 @@ int sys_setegid(void)
 
 /* int setgid(gid_t gid)*/
 int sys_setgid(void){
-	uint id;
+	gid_t id;
 
 	if(syscall_get_int((int*)&id, 0)) return -1;
 	rproc->gid = id;

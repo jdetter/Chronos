@@ -207,7 +207,7 @@ int close(int fd)
 	return 0;
 }
 
-/* int read(int fd, char* dst, uint sz) */
+/* int read(int fd, char* dst, size_t sz) */
 int sys_read(void)
 {
 	int fd;
@@ -285,7 +285,7 @@ int sys_read(void)
 	return sz;
 }
 
-/* int write(int fd, char* src, uint sz) */
+/* int write(int fd, char* src, size_t sz) */
 int sys_write(void)
 {
 	int fd;
@@ -418,7 +418,7 @@ int sys_lseek(void)
 	return seek_pos;
 }
 
-/* int chmod(const char* path, uint perm) */
+/* int chmod(const char* path, mode_t perm) */
 int sys_chmod(void)
 {
 	const char* path;
@@ -434,7 +434,7 @@ int sys_chmod(void)
 	return fs_chmod(path, mode);
 }
 
-/* int chown(const char* path, uint uid, uint gid) */
+/* int chown(const char* path, uid_t uid, gid_t gid) */
 int sys_chown(void)
 {
 	const char* path;
@@ -448,22 +448,22 @@ int sys_chown(void)
 	return fs_chown(path, uid, gid);
 }
 
-/* int create(const char* file, uint permissions) */
+/* int create(const char* file, mode_t permissions) */
 int sys_create(void)
 {
 	const char* file;
-	uint permissions;
+	mode_t permissions;
 
 	if(syscall_get_str_ptr(&file, 0)) return -1;
 	if(syscall_get_int((int*)&permissions, 1)) return -1;
 	return fs_create(file, 0, permissions, rproc->uid, rproc->uid);
 }
 
-/* int mkdir(const char* dir, uint permissions) */
+/* int mkdir(const char* dir, mode_t permissions) */
 int sys_mkdir(void)
 {
 	const char* dir;
-	uint permissions;
+	mode_t permissions;
 	if(syscall_get_str_ptr(&dir, 0)) return -1;
 	if(syscall_get_int((int*)&permissions, 1)) return -1;
 	return fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
@@ -552,7 +552,7 @@ int sys_fstat(void)
 	return result;
 }
 
-/* int readdir(int fd, struct old_linux_dirent* dirp, uint count) */
+/* int readdir(int fd, struct old_linux_dirent* dirp, int count) */
 int sys_readdir(void)
 {
 	/**
@@ -596,7 +596,7 @@ int sys_readdir(void)
 	return 1;
 }
 
-/* int getdents(int fd, struct chronos_dirent* dirp, uint count) */
+/* int getdents(int fd, struct chronos_dirent* dirp, int count) */
 int sys_getdents(void)
 {
 	int fd;

@@ -80,7 +80,7 @@ void pipe_free(pipe_t p)
 	slock_release(&pipe_table_lock);
 }
 
-int pipe_write(void *src, uint sz, pipe_t pipe ){
+int pipe_write(void *src, size_t sz, pipe_t pipe ){
 	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int byteswritten = 0;
@@ -117,7 +117,7 @@ int pipe_write(void *src, uint sz, pipe_t pipe ){
 	
 }
 
-int pipe_read(void *dst, uint sz, pipe_t pipe){
+int pipe_read(void *dst, size_t sz, pipe_t pipe){
 	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int bytesread = 0;

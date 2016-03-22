@@ -33,7 +33,7 @@
 #include "drivers/serial.h"
 
 extern pgdir_t* k_pgdir;
-extern uint video_mode;
+extern int video_mode;
 slock_t driver_table_lock;
 static struct DeviceDriver drivers[MAX_DEVICES];
 extern uchar serial_connected;
@@ -61,17 +61,17 @@ static struct DeviceDriver* dev_alloc(void)
 	return driver;
 }
 
-void* dev_new_mapping(uint phy, uint sz)
+void* dev_new_mapping(uintptr_t phy, size_t sz)
 {
 	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
 	vmflags_t tbl_flags = VM_TBL_READ | VM_TBL_WRIT 
 		| VM_TBL_CACH | VM_TBL_WRTH;
 
-	uint v_start = curr_mapping;
-	uint v_end = PGROUNDUP(v_start + sz);
+	uintptr_t v_start = curr_mapping;
+	uintptr_t v_end = PGROUNDUP(v_start + sz);
 	if(v_end > KVM_HARDWARE_E)
 		panic("devman: Out of hardware memory.\n");
-	uint x;
+	uintptr_t x;
 	for(x = 0;x < sz;x += PGSIZE)
 		vm_mappage(phy + x, v_start + x, k_pgdir, 
 			dir_flags, tbl_flags);
@@ -256,12 +256,12 @@ struct DeviceDriver* dev_lookup(int dev)
 	else return NULL;
 }
 
-int io_null_read(void* dst, uint start_read, size_t sz, void* context)
+int io_null_read(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	return 0;
 }
 
-int io_null_write(void* dst, uint start_read, size_t sz, void* context)
+int io_null_write(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	return sz;
 }
@@ -275,13 +275,13 @@ int io_null_init(struct IODriver* driver)
 	return 0;
 }
 
-int io_zero_read(void* dst, uint start_read, size_t sz, void* context)
+int io_zero_read(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	memset(dst, 0, sz);
         return sz;
 }
 
-int io_zero_write(void* dst, uint start_read, size_t sz, void* context)
+int io_zero_write(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
         return sz;
 }

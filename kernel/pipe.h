@@ -6,14 +6,14 @@
 
 struct pipe
 {
-	uchar faulted; /* 0 = no error, 1 = one end of the pipe is closed. */
-	uchar allocated; /* 0 = the pipe is not in use, 1 = the pipe is in use. */
+	int faulted; /* 0 = no error, 1 = one end of the pipe is closed. */
+	int allocated; /* 0 = the pipe is not in use, 1 = the pipe is in use. */
 	char buffer[PIPE_DATA];
 	slock_t guard;
 	int read;
 	int write;
 	cond_t empty, fill; 
-	uchar full; 
+	int full; 
 	int read_ref; /* How many readers are there? */
 	int write_ref; /* How many writers are there? */
 };
@@ -35,11 +35,11 @@ void pipe_free(pipe_t p);
 /**
  * Write to a pipe.
  */
-int pipe_write(void *src, uint sz, pipe_t pipe );
+int pipe_write(void *src, size_t sz, pipe_t pipe );
 
 /**
  * Read from a pipe.
  */
-int pipe_read(void *dst, uint sz, pipe_t pipe);
+int pipe_read(void *dst, size_t sz, pipe_t pipe);
 
 #endif

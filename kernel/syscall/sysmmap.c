@@ -14,10 +14,10 @@
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 
-void* mmap(void* hint, uint sz, int protection,
+void* mmap(void* hint, size_t sz, int protection,
         int flags, int fd, off_t offset);
 
-static void* mmap_find_space(uint sz)
+static void* mmap_find_space(size_t sz)
 {
 	/* Lets start searching from the start */
 	int pages_needed = PGROUNDUP(sz) / PGSIZE;
@@ -52,7 +52,7 @@ int sys_munmap(void)
         if(syscall_get_int((int*)&length, 1)) return -1;
 
 	/* Is the address okay? */
-	uint address = (uint)addr;
+	uintptr_t address = (uintptr_t)addr;
 	if(length == 0) return -1;
 	/* Address must be page aligned */
 	if(address != PGROUNDDOWN(address)) return -1;
@@ -63,7 +63,7 @@ int sys_munmap(void)
 			address + length > PGROUNDDOWN(rproc->mmap_start))
 		return -1;
 
-	uint x;
+	uintptr_t x;
 	for(x = 0;x < length;x += PGSIZE)
 		vm_unmappage(x + address, rproc->pgdir);
 
@@ -72,12 +72,12 @@ int sys_munmap(void)
 
 
 
-/* void* mmap(void* hint, uint sz, int protection,
+/* void* mmap(void* hint, size_t sz, int protection,
    int flags, int fd, off_t offset) */
 int sys_mmap(void)
 {
         void* hint;
-        uint sz;
+        size_t sz;
         int protection;
         int flags;
         int fd;
@@ -98,7 +98,7 @@ int sys_mmap(void)
 }
 
 /** MUST HAVE PTABLE LOCK! */
-void* mmap(void* hint, uint sz, int protection, 
+void* mmap(void* hint, size_t sz, int protection, 
 	int flags, int fd, off_t offset)
 {
 	/* Acquire locks */
@@ -127,7 +127,7 @@ void* mmap(void* hint, uint sz, int protection,
 			return NULL;
 		}
 	} else {
-        	pagestart = (uint)mmap_find_space(sz);
+        	pagestart = (uintptr_t)mmap_find_space(sz);
 	}
 
 	if(!pagestart) 

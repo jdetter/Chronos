@@ -33,7 +33,7 @@
 #include "drivers/serial.h"
 
 extern pgdir_t* k_pgdir;
-extern uint video_mode;
+extern int video_mode;
 slock_t driver_table_lock;
 static struct DeviceDriver drivers[MAX_DEVICES];
 extern uchar serial_connected;

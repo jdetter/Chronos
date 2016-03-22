@@ -9,7 +9,7 @@ extern slock_t ptable_lock;
 extern struct proc ptable[];
 extern struct proc* rproc;
 extern pid_t next_pid;
-extern uint k_ticks;
+extern int k_ticks;
 extern struct rtc_t k_time;
 
 void proc_init()

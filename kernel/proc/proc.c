@@ -41,7 +41,7 @@ struct proc* rproc;
 /* The next available pid */
 pid_t next_pid;
 /* How many ticks have there been since boot? */
-uint k_ticks;
+int k_ticks;
 
 extern struct file_descriptor* fd_tables[PTABLE_SIZE][PROC_MAX_FDS];
 extern slock_t fd_tables_locks[];

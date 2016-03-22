@@ -43,7 +43,7 @@ void toupper(char* str)
 	}
 }
 
-char* strncpy(char* dst, const char* src, uint sz)
+char* strncpy(char* dst, const char* src, size_t sz)
 {
 	int x;
 	for(x=0; x<sz; x++) /* iterates through source until reaches max memory size */
@@ -58,7 +58,7 @@ char* strncpy(char* dst, const char* src, uint sz)
 	return dst; /* returns number of bytes */
 }
 
-uint strncat(char* str1, char* str2, uint sz)
+int strncat(char* str1, char* str2, size_t sz)
 {
 	int start = strlen(str1); /* set variable as length of string */
 	int x;
@@ -128,14 +128,14 @@ int strncmp(const char* str1, const char* str2, size_t sz)
 	else return -1;
 }
 
-void memmove(void* dst, const void* src, uint sz)
+void memmove(void* dst, const void* src, size_t sz)
 {
 	/* Check for do nothing */
 	if(dst == src) return;
 
-	uint x;
-	uchar* cdst = dst;
-	const uchar* csrc = src;
+	int x;
+	char* cdst = dst;
+	const char* csrc = src;
 	/* Check for  <--s-<-->--d--> overlap*/
 	if(src + sz > dst && src + sz < dst + sz)
 	{
@@ -146,18 +146,18 @@ void memmove(void* dst, const void* src, uint sz)
 	for(x = 0;x < sz;x++) cdst[x] = csrc[x];
 }
 
-void memset(void* dst, char val, uint sz)
+void memset(void* dst, char val, size_t sz)
 {
-	uchar* udst = dst; /* creating udst variable to hold value for dst */
+	char* udst = dst; /* creating udst variable to hold value for dst */
 	int x;
         for(x = 0;x < sz;x++) /* for x is less than max memory size */
 		udst[x] = val;	/* assigning each element of udst val */
 }
 
-int memcmp(void* buff1, void* buff2, uint sz)
+int memcmp(void* buff1, void* buff2, size_t sz)
 {
-	uchar* ubuff1 = (uchar*)buff1; /* able to hold value other than void */
-	uchar* ubuff2 = (uchar*)buff2; /* able to hold value other than void */
+	char* ubuff1 = (char*)buff1; /* able to hold value other than void */
+	char* ubuff2 = (char*)buff2; /* able to hold value other than void */
 	int x;
 	for(x=0; x<sz; x++) /* for x is less than max memory size */
 	{
@@ -195,7 +195,7 @@ float atof(char* str)
 	return 0;
 }
 
-void kitoa(int val_signed, char* dst_c, uint sz, uint radix)
+void kitoa(int val_signed, char* dst_c, size_t sz, int radix)
 {
 	char dst[128];
 	memset(dst, 0, 128);
@@ -217,7 +217,7 @@ void kitoa(int val_signed, char* dst_c, uint sz, uint radix)
 	}
 
 	if(radix == 16) neg = 0;
-	uint val = val_signed;
+	int val = val_signed;
 
 	int x;
 	for(x = 0;x < 128 && val > 0;x++)
@@ -305,7 +305,7 @@ int vsnprintf(char* dst, size_t sz, const char* fmt, va_list list)
 	return dst_index;
 }
 
-int snprintf(char* dst, uint sz, char* fmt, ...)
+int snprintf(char* dst, size_t sz, char* fmt, ...)
 {
 	va_list list;
 	va_start(list, fmt);
@@ -336,16 +336,16 @@ int ascii_char(char c)
 
 }
 
-uchar bcdtobin(uchar val)
+char bcdtobin(char val)
 {
-	uchar high = (val & 0xF0) >> 4;
-	uchar low = val & 0x0F;
+	char high = (val & 0xF0) >> 4;
+	char low = val & 0x0F;
 	return (high * 10) + low;
 }
 
-int __log2(uint value)
+int __log2(int value)
 {
-	uint value_orig = value;
+	int value_orig = value;
 	/* Shift to the right until we hit a 1 */
 	int x = 0;
 	while(value != 1)

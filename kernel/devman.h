@@ -1,6 +1,8 @@
 #ifndef _DEVMAN_H_
 #define _DEVMAN_H_
 
+#include "fsman.h"
+
 #define MAX_DEVICES 128
 
 /* Video modes */
@@ -9,7 +11,7 @@
 #define VIDEO_MODE_MONO 0x30
 
 /* ioctl helper function */
-int ioctl_arg_ok(void* arg, uint sz);
+int ioctl_arg_ok(void* arg, size_t sz);
 
 /* Definitions for drivers */
 struct IODriver
@@ -22,13 +24,13 @@ struct IODriver
 	 * Read sz bytes into the buffer dst. Returns the amount of
 	 * bytes read.
 	 */
-	int (*read)(void* dst, uint start_read, size_t sz, void* context);
+	int (*read)(void* dst, fileoff_t start_read, size_t sz, void* context);
 	
 	/**
 	 * Write sz bytes to the device from buffer src. Returns the amount
 	 * of bytes written to the device.
 	 */
-        int (*write)(void* src, uint start_write, size_t sz, void* context);
+        int (*write)(void* src, fileoff_t start_write, size_t sz, void* context);
 	int (*ioctl)(unsigned long request, void* arg, void* context);
 
 	/**
@@ -60,12 +62,14 @@ int dev_init();
 /**
  * Read from the device. Returns the amount of bytes read.
  */
-int dev_read(struct IODriver* device, void* dst, uint start_read, uint sz);
+int dev_read(struct IODriver* device, void* dst, 
+		fileoff_t start_read, size_t sz);
 
 /**
  * Write to an io device. Returns the amount of bytes written.
  */
-int dev_write(struct IODriver* device, void* src, uint start_write, uint sz);
+int dev_write(struct IODriver* device, void* src, 
+		fileoff_t start_write, size_t sz);
 
 /**
  * Populates the dev folder with devices.

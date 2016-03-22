@@ -17,7 +17,7 @@
 #include "stdarg.h"
 #include "fsman.h"
 
-extern uint video_mode;
+extern int video_mode;
 inode* log;
 
 /**
@@ -31,7 +31,7 @@ void cprintf(char* fmt, ...)
         void** argument = (void**)(&fmt + 1);
 
 	int len = strlen(fmt);
-        uint x;
+        int x;
         for(x = 0;x < len;x++)
         {
                 if(fmt[x] == '%' && x + 1 < strlen(fmt))
@@ -43,7 +43,7 @@ void cprintf(char* fmt, ...)
                                 /* Print in decimal */
                                 char buffer[32];
                                 kitoa(*((int*)argument), buffer, 32, 10);
-                                uint y;
+                                int y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);
                                 argument++;
@@ -52,7 +52,7 @@ void cprintf(char* fmt, ...)
                                 /* Print in hex */
                                 char buffer[32];
                                 kitoa(*((int*)argument), buffer, 32, 16);
-                                uint y;
+                                int y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);
                                 argument++;
@@ -74,7 +74,7 @@ void cprintf(char* fmt, ...)
                                 /* Print in binary */
                                 char buffer[128];
                                 kitoa(*((int*)argument), buffer, 32, 2);
-                                uint y;
+                                int y;
                                 for(y = 0;y < strlen(buffer);y++)
                                         tty_putc(t0, buffer[y]);
                                 argument++;

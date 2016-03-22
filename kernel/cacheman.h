@@ -9,7 +9,7 @@ void cman_init(void);
 /**
  * Allocate some cache space
  */
-void* cman_alloc(uint sz);
+void* cman_alloc(size_t sz);
 
 /**
  * Free the cache space.
