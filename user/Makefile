@@ -83,7 +83,7 @@ USER_CLEAN := \
 UINCLUDE := \
 	-Iinclude
 
-.PHONY: all user-clean
+.PHONY: all clean
 all: bin $(USER_BINARIES)
 clean:
 	rm -f $(USER_OBJECTS) $(USER_SYMBOLS)

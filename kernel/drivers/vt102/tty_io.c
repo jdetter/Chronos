@@ -19,8 +19,8 @@ extern struct proc ptable[];
 // #define QUEUE_DEBUG
 
 static int tty_io_init(struct IODriver* driver);
-static int tty_io_read(void* dst, uint start_read, size_t sz, void* context);
-static int tty_io_write(void* src, uint start_write, size_t sz, void* context);
+static int tty_io_read(void* dst, fileoff_t start_read, size_t sz, void* context);
+static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* context);
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
 static int tty_io_ready_read(void* context);
 static int tty_io_ready_write(void* context);
@@ -83,16 +83,16 @@ static int tty_io_init(struct IODriver* driver)
 	return 0;
 }
 
-static int tty_io_read(void* dst, uint start_read, size_t sz, void* context)
+static int tty_io_read(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	sz = tty_gets(dst, sz, context);
 	return sz;
 }
 
-static int tty_io_write(void* src, uint start_write, size_t sz, void* context)
+static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* context)
 {
 	tty_t t = context;
-	uchar* src_c = src;
+	char* src_c = src;
 	int x;
 	for(x = 0;x < sz;x++, src_c++)
 		tty_putc(t, *src_c);
@@ -105,7 +105,7 @@ static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 	cprintf("tty: ioctl called: %d 0x%x\n", (int)request, (int)request);
 #endif
 
-	uint i = (uint)arg;
+	unsigned int i = (unsigned int)arg;
 	int* ip = (int*)arg;
 	struct winsize* windowp = arg;
 	struct termios* termiosp = arg;

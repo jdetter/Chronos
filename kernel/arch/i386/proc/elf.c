@@ -34,7 +34,7 @@ int elf_check_binary_inode(inode ino)
 	if(!ino) return -1;
 
         /* Sniff to see if it looks right. */
-        uchar elf_buffer[4];
+        char elf_buffer[4];
         fs_read(ino, elf_buffer, 4, 0);
         char elf_buff[] = ELF_MAGIC;
         if(memcmp(elf_buffer, elf_buff, 4)) return -1;
@@ -65,11 +65,11 @@ uintptr_t elf_load_binary_inode(inode ino, pgdir_t* pgdir, uintptr_t* seg_start,
         struct elf32_header elf;
         fs_read(ino, &elf, sizeof(struct elf32_header), 0);
 
-	uint elf_end = 0;
-        uint elf_entry = elf.e_entry;
+	size_t elf_end = 0;
+        uintptr_t elf_entry = elf.e_entry;
 
-	uint code_start = (int)-1;
-	uint code_end = 0;
+	uintptr_t code_start = (int)-1;
+	uintptr_t code_end = 0;
 	int x;
         for(x = 0;x < elf.e_phnum;x++)
         {
@@ -128,12 +128,12 @@ uintptr_t elf_load_binary_inode(inode ino, pgdir_t* pgdir, uintptr_t* seg_start,
                         memset((void*)hd_addr, 0, mem_sz);
 
 			/* Is this a new start? */
-			if((uint)hd_addr < code_start)
-				code_start = (uint)hd_addr;
+			if((uintptr_t)hd_addr < code_start)
+				code_start = (uintptr_t)hd_addr;
 
 			/* Is this a new end? */
-			if((uint)(hd_addr + mem_sz) > code_end)
-				code_end = (uint)(hd_addr + mem_sz);
+			if((uintptr_t)(hd_addr + mem_sz) > code_end)
+				code_end = (uintptr_t)(hd_addr + mem_sz);
 
                         /* Load the section */
                         if(fs_read(ino, (void*)hd_addr, file_sz, offset) 

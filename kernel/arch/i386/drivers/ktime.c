@@ -13,6 +13,7 @@
 #include "drivers/rtc.h"
 #include "stdlock.h"
 #include "stdarg.h"
+#include "x86.h"
 
 slock_t rtc_lock;
 struct rtc_t k_time;

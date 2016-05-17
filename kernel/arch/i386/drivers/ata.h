@@ -9,8 +9,8 @@
  */
 struct ATAHardwareContext
 {
-        uchar primary; /* 1 = primary, 0 = secondary */
-        uchar master; /* 1 = master, 0 = slave*/
+        int primary; /* 1 = primary, 0 = secondary */
+        int master; /* 1 = master, 0 = slave*/
 };
 
 /**
@@ -24,7 +24,7 @@ void ata_init(void);
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * dst buffer is expected to be at least 512 bytes.
  */
-int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver);
+int ata_readsect(void* dst, sect_t sect, struct FSHardwareDriver* driver);
 
 /**
  * Write the bytes in src to a hard drive sector. Returns the amount of bytes
@@ -32,7 +32,7 @@ int ata_readsect(void* dst, uint sect, struct FSHardwareDriver* driver);
  * Note: sector sizes will always be treated as 512 byte buffers, so the
  * src buffer is expected to be at least 512 bytes. 
  */
-int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver);
+int ata_writesect(void* src, sect_t sect, struct FSHardwareDriver* driver);
 
 /**
  * For setting up generic io driver.

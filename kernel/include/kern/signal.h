@@ -24,9 +24,9 @@
 
 struct signal_t
 {
-        uchar allocated; /* Whether or not this entry is allocated. */
-        uchar default_action; /* Default action */
-        uchar catchable; /* Can this signal be caught? */
+        int allocated; /* Whether or not this entry is allocated. */
+        int default_action; /* Default action */
+        int catchable; /* Can this signal be caught? */
         int signum; /* The number of the signal */
 
         /**

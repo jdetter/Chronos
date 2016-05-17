@@ -174,7 +174,7 @@ struct proc* get_proc_pid(int pid);
  * Check to see if other processes are connected to this tty. Returns 0
  * if the tty is disconnected, 1 otherwise.
  */
-uchar proc_tty_connected(tty_t t);
+int proc_tty_connected(tty_t t);
 
 /**
  * Disconnect the given process from its tty.

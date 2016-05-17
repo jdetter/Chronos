@@ -46,6 +46,19 @@
 #define CR0_WP		(0x01 << 16)
 
 #ifndef __X86_ASM_ONLY__
+
+/* Unsigned types */
+typedef unsigned char uchar;
+typedef unsigned int uint;
+typedef unsigned short ushort;
+typedef unsigned long ulong;
+
+/* data type sizes for i386 */
+typedef unsigned char uint_8;
+typedef unsigned short uint_16;
+typedef unsigned int uint_32;
+typedef unsigned long long int uint_64;
+
 /* Inline assembly functions */
 static inline uchar
 inb(ushort port)

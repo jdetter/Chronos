@@ -2,7 +2,7 @@
 #include "cpu.h"
 #include "panic.h"
 
-uchar __check_interrupt__(void);
+int __check_interrupt__(void);
 
 static int cli_count = 0;
 void push_cli(void)

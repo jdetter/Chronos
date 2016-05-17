@@ -128,7 +128,7 @@ struct proc* spawn_tty(tty_t t)
 
 	/* Basic values for the trap frame */
 	/* Setup the user stack */
-	uchar* ustack = (uchar*)p->stack_start;
+	char* ustack = (char*)p->stack_start;
 
 	/* Fake env */
 	ustack -= sizeof(int);
@@ -171,10 +171,10 @@ struct proc* spawn_tty(tty_t t)
 	return p;
 }
 
-uchar proc_tty_connected(tty_t t)
+int proc_tty_connected(tty_t t)
 {
 	slock_acquire(&ptable_lock);
-	uchar result = 0;
+	int result = 0;
 	int x;
 	for(x = 0;x < PTABLE_SIZE;x++)
 	{

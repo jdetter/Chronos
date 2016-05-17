@@ -15,16 +15,16 @@
 
 #ifdef ARCH_i386
 /* Unsigned types */
-typedef unsigned char uchar;
-typedef unsigned int uint;
-typedef unsigned short ushort;
-typedef unsigned long ulong;
+// typedef unsigned char uchar;
+// typedef unsigned int uint;
+// typedef unsigned short ushort;
+// typedef unsigned long ulong;
 
 /* data type sizes for i386 */
-typedef unsigned char uint_8;
-typedef unsigned short uint_16;
-typedef unsigned int uint_32;
-typedef unsigned long long int uint_64;
+// typedef unsigned char uint_8;
+// typedef unsigned short uint_16;
+// typedef unsigned int uint_32;
+// typedef unsigned long long int uint_64;
 
 #ifndef __LINUX__
 /* Types that conflict with the Linux definitions*/
@@ -57,15 +57,6 @@ typedef signed int suseconds_t; */
 #endif
 
 #endif /* i386 */
-
-/* Uncomment to enable global debug */
-//#define __GLOBAL_DEBUG__
-
-#ifdef __GLOBAL_DEBUG__
-	static const uchar debug = 1;
-#else
-	static const uchar debug = 0;
-#endif
 
 //#define CACHE_WATCH 
 

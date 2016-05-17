@@ -187,3 +187,5 @@ clean:
 	cd kernel ; \
 	make kernel-clean
 	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img
+	cd user; \
+	make clean

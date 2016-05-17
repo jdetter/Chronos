@@ -34,11 +34,7 @@ i386_DRIVER_OBJS := ata \
 	pit \
 	rtc \
 	ktime \
-	serial \
-	vt102/tty_codes \
-	vt102/tty_display \
-	vt102/tty_io \
-	vt102/tty_kbd
+	serial
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc

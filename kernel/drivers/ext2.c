@@ -1188,8 +1188,8 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 static int _ext2_read(void* dst, fileoff_t start, size_t sz, 
 		disk_inode* ino, context* context)
 {
-	uint_64 file_size = ino->lower_size |
-		((uint_64)ino->upper_size << 32);
+	uint64_t file_size = ino->lower_size |
+		((uint64_t)ino->upper_size << 32);
 
 	if(start >= file_size) return 0; /* End of file */
 	/* Don't allow reads past the end of the file. */
@@ -1256,18 +1256,18 @@ static int _ext2_write(const void* src, fileoff_t start, fileoff_t sz,
 	 * If we're writing past the end of the file, we 
 	 * need to add blocks where were writing
 	 */
-	uint_64 file_size = ino->lower_size |
-		((uint_64)ino->upper_size << 32);
-	uint_64 start_64 = start;
-	uint_64 sz_64 = sz;
-	uint_64 end_write = start_64 + sz_64;
+	uint64_t file_size = ino->lower_size |
+		((uint64_t)ino->upper_size << 32);
+	uint64_t start_64 = start;
+	uint64_t sz_64 = sz;
+	uint64_t end_write = start_64 + sz_64;
 
 	/* Are we growing the file? */
 	if(end_write > file_size)
 	{
 		/* Update size */
-		ino->lower_size = (uint_32)end_write;
-		ino->upper_size = (uint_32)(end_write >> 32);
+		ino->lower_size = (uint32_t)end_write;
+		ino->upper_size = (uint32_t)(end_write >> 32);
 	}
 
 	/* We need to add blocks where were about to write */
@@ -1400,7 +1400,7 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 
 	if(pos < 0) return -1;
 
-	uchar name_length;
+	unsigned char name_length;
 	/* Get the size of the record */
 	if(_ext2_read(&name_length, pos + 6, 1, ino, context) != 1)
 		return -1;
@@ -1416,12 +1416,12 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 }
 
 static int ext2_modify_dirent_type(disk_inode* dir, char* name, int group,
-	uint_8 type, context* context)
+	uint8_t type, context* context)
 {
 	 if(!dir || !name) return -1;
 
-        uint_64 dir_size = dir->lower_size |
-                ((uint_64)dir->upper_size << 32);
+        uint64_t dir_size = dir->lower_size |
+                ((uint64_t)dir->upper_size << 32);
 
         fileoff_t pos = 0;
         struct ext2_dirent current;
@@ -1449,13 +1449,13 @@ static int ext2_modify_dirent_type(disk_inode* dir, char* name, int group,
 /* Round a number up to the 4th bit boundary */
 #define EXT2_ROUND_B4_UP(num) (((num) + 3) & ~3)
 static int ext2_alloc_dirent(disk_inode* dir, int inode_num, 
-		int group, const char* file, uchar type, 
+		int group, const char* file, char type, 
 		context* context)
 {
 	if(inode_num < 0) return -1;
 
-	uint_64 dir_size = dir->lower_size |
-		((uint_64)dir->upper_size << 32);
+	uint64_t dir_size = dir->lower_size |
+		((uint64_t)dir->upper_size << 32);
 
 	/* with utf8 encoding can be no longer than 255 bytes. */
 	if(strlen(file) > 255) return -1;
@@ -1505,8 +1505,8 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 
 		/* update the directory size */
 		dir_size += context->blocksize;
-		dir->lower_size = (uint_32)dir_size;
-		dir->upper_size = (uint_32)(dir_size >> 32);
+		dir->lower_size = (uint32_t)dir_size;
+		dir->upper_size = (uint32_t)(dir_size >> 32);
 	} else {
 		/* Allocate the size we need */
 		current.size = EXT2_ROUND_B4_UP(current.name_length) + 8;
@@ -1535,7 +1535,7 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 	return 0;
 }
 
-static int _ext2_truncate(disk_inode* ino, uint_64 size, context* context)
+static int _ext2_truncate(disk_inode* ino, uint64_t size, context* context)
 {
 	/* Convert the size into a block address */
 	fileoff_t last_index = (size + context->blocksize - 1) 
@@ -1565,8 +1565,8 @@ static int _ext2_truncate(disk_inode* ino, uint_64 size, context* context)
 static int ext2_free_dirent(disk_inode* dir, int group,
 		const char* file, context* context)
 {
-	uint_64 dir_size = dir->lower_size |
-		((uint_64)dir->upper_size << 32);
+	uint64_t dir_size = dir->lower_size |
+		((uint64_t)dir->upper_size << 32);
 
 	/* Lets find the directory entry */
 	int found = 0;
@@ -1651,8 +1651,8 @@ static int ext2_free_dirent(disk_inode* dir, int group,
 static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 		int follow, disk_inode* handle, context* context)
 {
-	uint_64 file_size = handle->lower_size | 
-		((uint_64)handle->upper_size << 32);
+	uint64_t file_size = handle->lower_size | 
+		((uint64_t)handle->upper_size << 32);
 	char parent[EXT2_MAX_PATH];
 	struct ext2_dirent dir;
 
@@ -1667,7 +1667,7 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 	while(*path == '/')path++;
 	strncpy(parent, path, EXT2_MAX_PATH);
 	if(file_path_root(parent)) return -1;
-	uchar last = 0;
+	int last = 0;
 	if(!strcmp(parent, path)) last = 1;
 	/* Search for the parent in the handle */
 	int pos = 0;
@@ -1792,7 +1792,7 @@ static int ext2_fsck_file(inode* ino, context* context)
 {
 	/* Check to make sure all blocks are allocated */
 	uint64_t file_size = ino->ino->lower_size |
-                ((uint_64)ino->ino->upper_size << 32);
+                ((uint64_t)ino->ino->upper_size << 32);
 	uint64_t pos;
 	int failure = 0;
 	for(pos = 0;pos < file_size;pos += context->blocksize)
@@ -2120,8 +2120,8 @@ int ext2_stat(inode* ino, struct stat* dst, context* context)
 #ifdef DEBUG
 	cprintf("ext2: Statting file: %s\n", ino->path);
 #endif
-	uint_64 file_size = ino->ino->lower_size |
-		((uint_64)ino->ino->upper_size << 32);
+	uint64_t file_size = ino->ino->lower_size |
+		((uint64_t)ino->ino->upper_size << 32);
 
 	memset(dst, 0, sizeof(struct stat));
 	dst->st_dev = 0;
@@ -2563,8 +2563,8 @@ int ext2_unlink(const char* file, context* context)
 int ext2_readdir(inode* dir, int index, struct dirent* dst, 
 		context* context)
 {
-	uint_64 file_size = dir->ino->lower_size |
-		((uint_64)dir->ino->upper_size << 32);
+	uint64_t file_size = dir->ino->lower_size |
+		((uint64_t)dir->ino->upper_size << 32);
 
 	struct ext2_dirent diren;
 
@@ -2596,8 +2596,8 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 int ext2_getdents(inode* dir, struct dirent* dst_arr, int count, 
 		fileoff_t pos, context* context)
 {
-	uint_64 file_size = dir->ino->lower_size |
-		((uint_64)dir->ino->upper_size << 32);
+	uint64_t file_size = dir->ino->lower_size |
+		((uint64_t)dir->ino->upper_size << 32);
 
 	if(pos >= file_size) return 0; /* End of directory */
 

@@ -23,10 +23,10 @@
 
 #define COM1_IRQ 0x04
 
-uchar serial_started = 0;
-uchar serial_connected = 0;
-uint serial_received(void);
-uint transmit_ready(void);
+char serial_started = 0;
+char serial_connected = 0;
+int serial_received(void);
+int transmit_ready(void);
 
 int serial_init(int pic)
 {
@@ -62,7 +62,7 @@ int serial_init(int pic)
 	return 0;
 }
 
-uint serial_received(void)
+int serial_received(void)
 {
 	return inb(COM1_LSR) & 0x1;
 }
@@ -70,12 +70,12 @@ uint serial_received(void)
 /**
  * Is the buffer ready to be written to?
  */
-uint transmit_ready(void)
+int transmit_ready(void)
 {
 	return inb(COM1_LSR) & 0x20;
 }
 
-uint serial_write(void* src, uint sz)
+size_t serial_write(void* src, size_t sz)
 {
 	int x = 0;
 	uchar* src_c = (uchar*)src;
@@ -93,7 +93,7 @@ uint serial_write(void* src, uint sz)
 	return x;
 }
 
-uint serial_read(void* dst, uint sz)
+size_t serial_read(void* dst, size_t sz)
 {
 	int x = 0;
 	uchar* dst_c = (uchar*)dst;
@@ -122,8 +122,8 @@ char serial_read_noblock(void)
 }
 
 int serial_io_init(struct IODriver* driver);
-int serial_io_read(void* dst, uint start_read, size_t sz, void* context);
-int serial_io_write(void* src, uint start_write, size_t sz, void* context);
+int serial_io_read(void* dst, fileoff_t start_read, size_t sz, void* context);
+int serial_io_write(void* src, fileoff_t start_write, size_t sz, void* context);
 int serial_io_setup(struct IODriver* driver)
 {
 	driver->init = serial_io_init;
@@ -137,12 +137,12 @@ int serial_io_init(struct IODriver* driver)
 	return 0;
 }
 
-int serial_io_read(void* dst, uint start_read, size_t sz, void* context)
+int serial_io_read(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	return serial_read(dst, sz);
 }
 
-int serial_io_write(void* src, uint start_write, size_t sz, void* context)
+int serial_io_write(void* src, fileoff_t start_write, size_t sz, void* context)
 {
 	return serial_write(src, sz);
 }

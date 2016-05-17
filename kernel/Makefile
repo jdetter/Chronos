@@ -59,7 +59,11 @@ KERNEL_DRIVERS := \
         ext2 \
 	diskio \
 	lwfs \
-	raid
+	raid \
+	vt102/tty_codes \
+	vt102/tty_display \
+	vt102/tty_io \
+	vt102/tty_kbd
 
 KERNEL_DRIVERS := $(addprefix drivers/, $(KERNEL_DRIVERS))
 

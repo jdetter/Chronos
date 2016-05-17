@@ -11,10 +11,10 @@ void trap_init(void);
 
 struct task_gate
 {
-	uint_16 reserved_1;
-	uint_16 tss_segment_selector;
-	uint_16 type;
-	uint_16 reserved_2;
+	uint16_t reserved_1;
+	uint16_t tss_segment_selector;
+	uint16_t type;
+	uint16_t reserved_2;
 };
 
 #define GATE_INT_CONST (0x8E00)
@@ -24,10 +24,10 @@ struct task_gate
 
 struct int_gate
 {
-	uint_16 offset_1;
-	uint_16 segment_selector;
-	uint_16 flags;
-	uint_16 offset_2;
+	uint16_t offset_1;
+	uint16_t segment_selector;
+	uint16_t flags;
+	uint16_t offset_2;
 };
 
 #define GATE_TRAP_CONST (0x8F00)
@@ -37,10 +37,10 @@ struct int_gate
 
 struct trap_gate
 {
-        uint_16 offset_1;
-        uint_16 segment_selector;
-        uint_16 flags;
-        uint_16 offset_2;
+        uint16_t offset_1;
+        uint16_t segment_selector;
+        uint16_t flags;
+        uint16_t offset_2;
 };
 
 #endif

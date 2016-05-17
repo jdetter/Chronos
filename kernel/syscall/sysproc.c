@@ -559,7 +559,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 		/* Get the start of the environment space */
 		env_start = PGROUNDDOWN(UVM_TOP - env_sz);
 		int* env_arr = (int*)env_start;
-		uchar* env_data = (uchar*)env_start + 
+		char* env_data = (char*)env_start + 
 			(env_count * sizeof(int)) + sizeof(int);
 		for(index = 0;index < env_count;index++)
 		{
@@ -709,8 +709,8 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	cprintf("\tStart of heap: 0x%x\n", rproc->heap_start);
 #endif
 
-	uchar setuid = 0;
-	uchar setgid = 0;
+	int setuid = 0;
+	int setgid = 0;
 	/* Check for setuid and setgid */
 	inode i = fs_open(program_path, O_RDONLY, 0x0, 0x0, 0x0);
 

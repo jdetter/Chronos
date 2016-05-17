@@ -392,7 +392,7 @@ int sys_mprotect(void)
 
 	size_t end = (int)(start + len);
 
-	uchar flags = 0;
+	unsigned char flags = 0;
 	if(prot & PROT_READ) flags |= 0;
 	if(prot & PROT_WRITE) flags |= VM_TBL_WRIT | VM_TBL_READ;
 	if(prot & PROT_READ) flags |= 0;
