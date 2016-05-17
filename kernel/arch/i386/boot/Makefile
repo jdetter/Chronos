@@ -1,23 +1,3 @@
-# some stuff our sub-makes will need
-export CROSS_CC := ../$(CROSS_CC)
-export CROSS_LD := ../$(CROSS_LD)
-export CROSS_AS := ../$(CROSS_AS)
-export CROSS_OBJCOPY := ../$(CROSS_OBJCOPY)
-export i386_INCLUDE_PATHS := $(addprefix ../,$(i386_INCLUDE_PATHS))
-
-# Other stuff our sub-makes need
-export CC := $(CC)
-export LD := $(LD)
-export AS := $(AS)
-export OBJCOPY := $(OBJCOPY)
-export LDFLAGS := $(LDFLAGS)
-export CFLAGS := $(CFLAGS)
-export AFLAGS := $(AFLAGS)
-export RELOCATE_FLAGS := $(RELOCATE_FLAGS)
-
-# Modify i386 flags
-export i386_INCLUDE := $(addprefix -I, $(i386_INCLUDE_PATHS))
-
 # Stage 1 configuration
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
 

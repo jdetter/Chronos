@@ -1,22 +1,3 @@
-# Modify the arguments coming in
-export CROSS_CC := ../$(CROSS_CC)
-export CROSS_LD := ../$(CROSS_LD)
-export CROSS_AS := ../$(CROSS_AS)
-export CROSS_OBJCOPY := ../$(CROSS_OBJCOPY)
-
-# Other stuff our sub-makes need
-export CROSS_CC := $(CROSS_CC)
-export CROSS_LD := $(CROSS_LD)
-export CROSS_AS := $(CROSS_AS)
-export CROSS_OBJCOPY := $(CROSS_OBJCOPY)
-export CC := $(CC)
-export LD := $(LD)
-export AS := $(AS)
-export OBJCOPY := $(OBJCOPY)
-export LDFLAGS := $(LDFLAGS)
-export CFLAGS := $(CFLAGS)
-export AFLAGS := $(AFLAGS)
-
 # Specify build targets. Exclude the file extension (e.g. .c or .s)
 USER_TARGETS := \
 	float-test \

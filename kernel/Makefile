@@ -1,29 +1,12 @@
-# Modify the arguments coming in
-export CROSS_CC := ../$(CROSS_CC)
-export CROSS_LD := ../$(CROSS_LD)
-export CROSS_AS := ../$(CROSS_AS)
-export CROSS_OBJCOPY := ../$(CROSS_OBJCOPY)
 
-# Other stuff our sub-makes need
-export CROSS_CC := $(CROSS_CC)
-export CROSS_LD := $(CROSS_LD)
-export CROSS_AS := $(CROSS_AS)
-export CROSS_OBJCOPY := $(CROSS_OBJCOPY)
-export CC := $(CC)
-export LD := $(LD)
-export AS := $(AS)
-export OBJCOPY := $(OBJCOPY)
-export LDFLAGS := $(LDFLAGS)
-export CFLAGS := $(CFLAGS)
-export AFLAGS := $(AFLAGS)
-
+# Export the include folders for the kernel.
 export KINCLUDE_PATHS := \
-	./ \
-	include \
-	drivers \
-	cache
+	$(shell readlink -e ./) \
+	$(shell readlink -e include) \
+	$(shell readlink -e drivers) \
+	$(shell readlink -e ./cache)
 
-KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
+export KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
 
 # All files that need compiling (excluding drivers)
 KERNEL_BINS := \

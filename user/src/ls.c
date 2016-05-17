@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/dirent.h>
 
 #define __LINUX__
 #define __FILE_NO_FUNC__

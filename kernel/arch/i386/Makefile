@@ -1,29 +1,13 @@
-# Modify the arguments coming in
-export CROSS_CC := ../../$(CROSS_CC)
-export CROSS_LD := ../../$(CROSS_LD)
-export CROSS_AS := ../../$(CROSS_AS)
-export CROSS_OBJCOPY := ../../$(CROSS_OBJCOPY)
-export KINCLUDE_PATHS := $(addprefix ../../,$(KINCLUDE_PATHS))
-
-# Other stuff our sub-makes need
-export CC := $(CC)
-export LD := $(LD)
-export AS := $(AS)
-export OBJCOPY := $(OBJCOPY)
-export LDFLAGS := $(LDFLAGS)
-export CFLAGS := $(CFLAGS)
-export AFLAGS := $(AFLAGS)
-
 export RELOCATE_FLAGS := -m elf_i386 -r
 
 export i386_INCLUDE_PATHS := \
 	$(KINCLUDE_PATHS) \
-	./ \
-	include \
-	drivers \
-	trap
+	$(shell readlink -e ./) \
+	$(shell readlink -e include) \
+	$(shell readlink -e drivers) \
+	$(shell readlink -e trap)
 
-i386_INCLUDE := $(addprefix -I,$(i386_INCLUDE_PATHS))
+export i386_INCLUDE := $(addprefix -I,$(i386_INCLUDE_PATHS))
 
 i386_CONTEXT_OBJS := asm
 i386_DRIVER_OBJS := ata \
@@ -77,11 +61,15 @@ boot-stage2.img:
 	cd boot ; \
 	make boot-stage2.img
 
+.PHONY: clean
+clean: arch-clean
+
 .PHONY: arch-clean
 arch-clean:
 	cd boot ; \
 	make boot-clean
 	rm -f $(i386_OBJS) arch.o
+
 
 %.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_INCLUDE) -c -o $@ $<

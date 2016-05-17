@@ -2,12 +2,20 @@
 TARGET=i686-pc-chronos-
 export BUILD_ARCH := i386
 TOOL_DIR=../tools/bin
-export CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
-export CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
-export CROSS_AS := $(TOOL_DIR)/$(TARGET)gcc
-export CROSS_OBJCOPY := $(TOOL_DIR)/$(TARGET)objcopy
-export TARGET_SYSROOT := ../sysroot
+
+
+CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_CC := $(shell readlink -e "$(CROSS_CC)")
+CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
+export CROSS_LD := $(shell readlink -e $(CROSS_LD))
+CROSS_AS := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_AS := $(shell readlink -e $(CROSS_AS))
+CROSS_OBJCOPY := $(TOOL_DIR)/$(TARGET)objcopy
+export CROSS_OBJCOPY := $(shell readlink -e $(CROSS_OBJCOPY))
+TARGET_SYSROOT := ../sysroot
+export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
+
 
 # use host to configure the tools
 export CC=gcc
