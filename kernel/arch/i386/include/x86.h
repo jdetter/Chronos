@@ -43,7 +43,11 @@
 #define EFLAGS_OF	(0x01 << 11)
 #define EFLAGS_IOPL	(0x03 << 12)
 #define EFLAGS_NT	(0x01 << 14)
+
+
+/* CR0 bits */
 #define CR0_WP		(0x01 << 16)
+#define CR0_PGENABLE 	(1<<31)
 
 #ifndef __X86_ASM_ONLY__
 

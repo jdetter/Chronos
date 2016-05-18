@@ -3,7 +3,7 @@
 
 /* Include the architecture independant header */
 #ifdef ARCH_i386
-#include  "arch/i386/vm/vm.h"
+#include  "arch/i386/include/vm.h"
 #elif defined ARCH_x86_64
 #include "arch/x86_64/vm/vm.h"
 #else
@@ -114,8 +114,19 @@
 #include "vm/vm_share.h"
 #endif
 
+/**
+ * Enable paging and set the current page table.
+ */
 void vm_enable_paging(pgdir_t* dir);
+
+/**
+ * Get the page directory that is currently in use.
+ */
 pgdir_t* vm_curr_pgdir(void);
+
+/**
+ * Disable paging
+ */
 void vm_disable_paging(void);
 
 /**

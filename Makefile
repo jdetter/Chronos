@@ -59,6 +59,16 @@ chronos.img:
 	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
 	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
 
+chronos-multiboot.img:
+	cd tools ; \
+	make tools || exit 1
+	cd kernel/ ; \
+	make chronos.o || exit 1 ; \
+	make multiboot.o || exit 1
+	cd user ; \
+	make
+	make $(FS_TYPE)
+
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
 
@@ -114,9 +124,6 @@ ext2-grub.img:
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img
 
-kernel/idt.c:
-	tools/bin/mkvect > kernel/idt.c
-
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
@@ -126,22 +133,18 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
 .PHONY: qemu qemu-gdb qemu-x qemu-x-gdb
 
-# Standard build and launch recipes
-qemu: all
-	$(QEMU) -nographic $(QEMU_OPTIONS)
-qemu-gdb: all kernel-symbols user-symbols
-	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
-qemu-x: all 
-	$(QEMU) $(QEMU_OPTIONS)
-qemu-x-gdb: all kernel-symbols user-symbols
-	$(QEMU) $(QEMU_OPTIONS) -s -S
-
 # Launch current build recipes
 run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
-run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
+run-gdb: user/bin $(USER_BUILD)
+	cd kernel ; \
+	make kernel-symbols ; \
+	mv *.sym ..
+	cd user ; \
+	make user-symbols ; \
+	mv bin/*.sym ..
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
@@ -194,6 +197,6 @@ clean:
 	make tools-clean
 	cd kernel ; \
 	make kernel-clean
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img
 	cd user; \
 	make clean
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img *.sym

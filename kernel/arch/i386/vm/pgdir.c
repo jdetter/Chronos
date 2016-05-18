@@ -54,8 +54,6 @@
 int __kvm_stack_check__(void);
 /** Switch to kernel memory and stack */
 void __kvm_swap__(pgdir_t* kvm);
-/** Check to see if paging is enabled */
-int __check_paging__(void);
 
 extern pgdir_t* k_pgdir;
 
@@ -194,7 +192,7 @@ pgdir_t* vm_push_pgdir(void)
 	push_cli();
 
 	/* Is paging even enabled? */
-	if(!__check_paging__()) return NULL;
+	if(!vm_check_paging()) return NULL;
 	pgdir_t* dir = vm_curr_pgdir();
 	if(dir == k_pgdir) return NULL;
 
@@ -209,7 +207,7 @@ void vm_pop_pgdir(pgdir_t* dir)
 {
 	pop_cli();
 	if(dir == NULL) return;
-	if(!__check_paging__()) return;
+	if(!vm_check_paging()) return;
         if(dir == k_pgdir) return;
 	vm_enable_paging(dir);
 }

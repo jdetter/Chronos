@@ -253,20 +253,72 @@ struct vm_segment_descriptor
         uint8_t  base_3; /* 24..31 of base */
 };
 
-/**
- * Turn generic flags for a page directory into flags for an i386
- * page directory. Returns the correcponding flags for an i386 page
- * table.
- */
-// vmflags_t vm_dir_flags(vmflags_t flags);
+extern pgdir_t* k_pgdir;
+extern int video_mode;
 
 /**
- * Turn generic flags for a page table into flags for an i386
- * page table. Returns the corresponding flags for an i386 page
- * table.
+ * Initilize the page allocator.
  */
-// vmflags_t vm_tbl_flags(vmflags_t flags);
+extern void vm_alloc_init(void);
 
-#endif
+/**
+ * Save the state of the page allocator. This is only done during
+ * the second boot stage.
+ */
+extern void vm_alloc_save_state(void);
+
+/**
+ * Restore the state of the page allocator. This is only done during
+ * kernel boot.
+ */
+extern void vm_alloc_restore_state(void);
+
+/**
+ * Enable paging and set the current page table directory.
+ */
+extern void vm_enable_paging(pgdir_t* pgdir);
+
+/**
+ * Diable paging and unset the current page table directory.
+ */
+extern void vm_disable_paging(void);
+
+/**
+ * Returns the physical address of the page directory currently in use.
+ */
+extern pgdir_t* vm_curr_pgdir(void);
+
+/**
+ * Enable kernel readonly protection. Exceptions will now be thrown
+ * if the kernel attempts to write to a readonly page that is owned
+ * by the kernel.
+ */
+extern void vm_enforce_kernel_readonly(void);
+
+/**
+ * Check to see if paging is enabled. Returns zero if paging is disabled, 
+ * nonzero otherwise.
+ */
+extern int vm_check_paging(void);
+
+/**
+ * Check to see if interrupts are enabled. Returns 0 if interrupts are
+ * disabled. Returns non zero otherwise.
+ */
+extern int check_interrupt(void);
+
+/**
+ * If there was a page fault, returns the address access that caused
+ * the fault to occur.
+ */
+extern uintptr_t vm_get_page_fault_address(void);
+
+/**
+ * Set the stack of the runing program and jump to the start of the
+ * given program. This function does not return.
+ */
+extern void vm_set_stack(uintptr_t stack, void* callback) __attribute__ ((noreturn));
+
+#endif /* !ASM_ONLY */
 
 #endif

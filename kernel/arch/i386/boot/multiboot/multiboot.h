@@ -45,4 +45,7 @@ struct multiboot_header_extended2
 	uint32_t depth;
 };
 
+extern struct multiboot_header header;
+extern void multiboot_main(void);
+
 #endif

@@ -72,7 +72,6 @@ extern struct proc* rproc;
 extern uint trap_handlers[];
 extern int k_ticks;
 extern slock_t ptable_lock;
-uint __get_cr2__(void);
 
 void trap_return();
 
@@ -257,13 +256,13 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 			if(kernel_fault) 
 			{
 				strncpy(fault_string, "Seg Fault", 64);
-                                tf->error = __get_cr2__();
+                                tf->error = vm_get_page_fault_address();
 				break;
 			}
 
-			if(trap_pf(__get_cr2__())){
+			if(trap_pf(vm_get_page_fault_address())){
 				strncpy(fault_string, "Seg Fault", 64);
-				tf->error = __get_cr2__();
+				tf->error = vm_get_page_fault_address();
 				user_problem = 1;
 			}else{
 				handled = 1;

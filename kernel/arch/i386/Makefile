@@ -22,10 +22,10 @@ i386_DRIVER_OBJS := ata \
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc
-i386_SRC_OBJS := devman fsman main panic
+i386_SRC_OBJS := devman fsman panic
 i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap
-i386_VM_OBJS := asm pgdir vm_alloc vm
+i386_VM_OBJS := asm pgdir vm_alloc vm vm_init
 i386_SIGNAL_OBJS := signal
 
 i386_CONTEXT_OBJS := $(addprefix context/, $(i386_CONTEXT_OBJS))

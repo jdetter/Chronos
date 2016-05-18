@@ -46,7 +46,6 @@ int vm_init(void)
 	 * All we need to do is pick up the free map head and kernel
 	 * page directory.
 	 */
-	//setup_kvm(); We do this in main now.
 	
 	/* The boot strap directly mapped in the null guard page */
 	vm_unmappage(0x0, k_pgdir);

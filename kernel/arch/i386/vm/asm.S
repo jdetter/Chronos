@@ -3,8 +3,7 @@
 #include "vm.h"
 #include "x86.h"
 
-/* vm_enable_paging(pgdir_t* pgdir)*/
-#define CR0_PGENABLE (1<<31)
+/* void vm_enable_paging(pgdir_t* pgdir)*/
 .globl vm_enable_paging
 vm_enable_paging:
         pushl   %ebp
@@ -22,6 +21,7 @@ vm_enable_paging:
         pop     %ebp
         ret
 
+/* void vm_diable_paging(void) */
 .globl vm_disable_paging
 vm_disable_paging:
         pushl   %eax
@@ -35,13 +35,15 @@ vm_disable_paging:
         popl    %eax
         ret
 
+/* pgdir* vm_curr_pgdir(void) */
 .globl vm_curr_pgdir
 vm_curr_pgdir:
         movl    %cr3, %eax
         ret
 
-.globl __enforce_kernel_readonly__
-__enforce_kernel_readonly__:
+/* void vm_enforce_kernel_readonly(void) */
+.globl vm_enforce_kernel_readonly
+enforce_kernel_readonly:
         pushl   %ebp
         movl    %esp, %ebp
 
@@ -54,26 +56,28 @@ __enforce_kernel_readonly__:
 
         ret
 
-# check to see if paging is enabled. 
-.globl __check_paging__
-__check_paging__:
+/* int vm_check_paging(void) */
+.globl vm_check_paging
+vm_check_paging:
         movl    %cr0, %eax
         andl    $CR0_PGENABLE, %eax
         roll    $1, %eax
         ret
 
-#define EFLAGS_INT_EN (0x01 << 9)
-.globl __check_interrupt__
-__check_interrupt__:
+
+/* int check_interrupt(void) */
+.globl check_interrupt
+check_interrupt:
         pushf
         xorl    %eax, %eax
         popl    %eax
-        andl    $(EFLAGS_INT_EN), %eax
+        andl    $(EFLAGS_IF), %eax
         rorl	$0x09, %eax
 	ret
-# uint __get_cr2__(void)
-.globl __get_cr2__
-__get_cr2__:
+
+# uint vm_get_page_fault_address(void)
+.globl vm_get_page_fault_address
+vm_get_page_fault_address:
         movl    %cr2, %eax
         ret
 
@@ -83,9 +87,9 @@ __get_cr0__:
         movl    %cr0, %eax
         ret
 
-# void __set_stack__(uint stack, uint return_addr)
-.globl __set_stack__
-__set_stack__:
+# void vm_set_stack(uintptr_t stack, void* callback)
+.globl vm_set_stack
+vm_set_stack:
 	movl	%esp, %ebp
         /* get the new stack */
         movl    4(%ebp), %eax
@@ -99,7 +103,7 @@ __set_stack__:
         /* Push return value */
         pushl   %ecx
 
-        /* Return to calling function. */
+        /* Return to calling function. ECX -> EIP */
         ret
 
 # uchar __kvm_stack_check__(void)
@@ -118,6 +122,7 @@ __kvm_stack_check__fail:
 #define PGDIR_DIR_MASK	0xFFC00000
 #define PGDIR_TBL_MASK 	0x003ff000
 #define PGDIR_MASK	0xFFFFF000
+
 # void __kvm_swap__(pgdir_t* kvm)
 .globl __kvm_swap__
 __kvm_swap__:

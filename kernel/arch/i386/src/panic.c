@@ -12,8 +12,8 @@ void cprintf_init(void)
         tty_t t0 = tty_find(0);
         if(t0->type == 0)
         {
-                // video_mode = 0;
-                video_mode = VIDEO_MODE_COLOR;
+                video_mode = 0;
+                // video_mode = VIDEO_MODE_COLOR;
                 switch(video_mode)
                 {
                         case VIDEO_MODE_NONE:
