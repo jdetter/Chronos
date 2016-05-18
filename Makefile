@@ -49,8 +49,8 @@ chronos.img:
 	make tools || exit 1
 	cd kernel/ ; \
 	make chronos.o || exit 1 ; \
-	make boot-stage1.img || exit 1; \
-	make boot-stage2.img  || exit 1
+	make boot-stage1.img || exit 1 ; \
+	make boot-stage2.img || exit 1 ;
 	cd user ; \
 	make
 	make $(FS_TYPE)

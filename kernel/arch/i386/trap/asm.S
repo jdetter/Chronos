@@ -1,43 +1,9 @@
 #define __ASM_ONLY__
 #include "trap.h"
 
-# void fpu_init(void)
-.globl fpu_init
-fpu_init:
-	pushl	%ebp
-	movl	%esp, %ebp
-
-	movl	%cr0, %eax
-	# Clear the emulation bit 
-	andl	$~CR0_EM, %eax
-	# Set the coprocessor bit
-	orl	$CR0_MP, %eax
-	movl	%eax, %cr0
-
-	movl	%cr4, %eax
-	orl	$CR4_OSFXSR, %eax
-	orl	$CR4_OSXMMEXCPT, %eax
-	movl	%eax, %cr4
-
-	movl	%ebp, %esp
-	popl	%ebp
-	ret
-
-# void fpu_reset(void)
-.globl fpu_reset
-fpu_reset:
-	pushl	%ebp
-	movl	%esp, %ebp
-
-	fninit
-
-	movl	%ebp, %esp
-	popl	%ebp
-	ret
-
 # Make a trap frame on the current stack.
-.globl mktf
-mktf:
+.globl tp_mktf
+tp_mktf:
         # nested interrupts are currently unsupported.
         cli
         # Status information and trap number have already been pushed.
@@ -70,15 +36,15 @@ mktf:
 	pushl	%esp
         call    trap_handler
 
-.globl fork_return
-fork_return:
+.globl tp_fork_return
+tp_fork_return:
         nop
         nop
         nop
         nop
 
-.globl trap_return
-trap_return:
+.globl tp_trap_return
+tp_trap_return:
 	# Restore the floating point registers
 	fxrstor (%esp)
 
@@ -100,8 +66,8 @@ trap_return:
         # Restore the stack pointer, esp and EFLAGS, finish context switch.
         iret
 
-.globl fake_trap
-fake_trap:
+.globl tp_fake_trap
+tp_fake_trap:
         pushl   %ebp
         movl    %esp, %ebp
 
@@ -118,4 +84,14 @@ fake_trap:
         movl    %ebp, %esp
         popl    %ebp
 
+        ret
+
+/* int check_interrupt(void) */
+.globl check_interrupt
+check_interrupt:
+        pushf
+        xorl    %eax, %eax
+        popl    %eax
+        andl    $(EFLAGS_IF), %eax
+        rorl    $0x09, %eax
         ret

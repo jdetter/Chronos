@@ -302,22 +302,16 @@ extern void vm_enforce_kernel_readonly(void);
 extern int vm_check_paging(void);
 
 /**
- * Check to see if interrupts are enabled. Returns 0 if interrupts are
- * disabled. Returns non zero otherwise.
- */
-extern int check_interrupt(void);
-
-/**
- * If there was a page fault, returns the address access that caused
- * the fault to occur.
- */
-extern uintptr_t vm_get_page_fault_address(void);
-
-/**
  * Set the stack of the runing program and jump to the start of the
  * given program. This function does not return.
  */
 extern void vm_set_stack(uintptr_t stack, void* callback) __attribute__ ((noreturn));
+
+/**
+ * If there was a page fault, returns the address access that caused
+ * the fault to occur. This is just a mapping to x86_get_cr2.
+ */
+#define vm_get_page_fault_address x86_get_cr2
 
 #endif /* !ASM_ONLY */
 

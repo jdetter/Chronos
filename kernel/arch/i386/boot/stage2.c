@@ -34,7 +34,6 @@
 void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
 void __kernel_jmp__(uint entry);
-void __enforce_kernel_readonly__(void);
 
 char* no_image = "Chronos.elf not found!\n";
 char* invalid = "Chronos.elf is invalid!\n";
@@ -74,7 +73,7 @@ int main(void)
 	cprintf(ok);
 
 	cprintf("Enforcing kernel readonly...\t\t\t\t\t\t");
-	__enforce_kernel_readonly__();
+	vm_enforce_kernel_readonly();
 	cprintf(ok);
 
 	/* Initilize the cache manager */
@@ -208,7 +207,7 @@ int main(void)
 	cprintf(kernel_loaded);
 	
 	/* Save vm context */
-	vm_save_vm();
+	vm_alloc_save_state();
 	/* Jump into the kernel */
 	__kernel_jmp__(elf_entry);
 

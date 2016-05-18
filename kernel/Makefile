@@ -87,6 +87,9 @@ boot-stage2.img:
 chronos.o: idt.S $(KERNEL_OBJS)
 	cd arch/$(BUILD_ARCH) ; \
 	make arch.o
+
+	make boot-stage1.img boot-stage2.img
+	exit 21
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS) arch/$(BUILD_ARCH)/arch.o
 
 idt.S: ../tools/bin/mkvect

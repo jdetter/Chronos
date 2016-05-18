@@ -43,7 +43,7 @@ vm_curr_pgdir:
 
 /* void vm_enforce_kernel_readonly(void) */
 .globl vm_enforce_kernel_readonly
-enforce_kernel_readonly:
+vm_enforce_kernel_readonly:
         pushl   %ebp
         movl    %esp, %ebp
 
@@ -62,29 +62,6 @@ vm_check_paging:
         movl    %cr0, %eax
         andl    $CR0_PGENABLE, %eax
         roll    $1, %eax
-        ret
-
-
-/* int check_interrupt(void) */
-.globl check_interrupt
-check_interrupt:
-        pushf
-        xorl    %eax, %eax
-        popl    %eax
-        andl    $(EFLAGS_IF), %eax
-        rorl	$0x09, %eax
-	ret
-
-# uint vm_get_page_fault_address(void)
-.globl vm_get_page_fault_address
-vm_get_page_fault_address:
-        movl    %cr2, %eax
-        ret
-
-# uint __get_cr0__(void)
-.globl __get_cr0__
-__get_cr0__:
-        movl    %cr0, %eax
         ret
 
 # void vm_set_stack(uintptr_t stack, void* callback)

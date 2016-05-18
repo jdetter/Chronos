@@ -18,7 +18,8 @@ i386_DRIVER_OBJS := ata \
 	pit \
 	rtc \
 	ktime \
-	serial
+	serial \
+	fpu
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc
@@ -27,6 +28,7 @@ i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap
 i386_VM_OBJS := asm pgdir vm_alloc vm vm_init
 i386_SIGNAL_OBJS := signal
+i386_x86_OBJS := asm
 
 i386_CONTEXT_OBJS := $(addprefix context/, $(i386_CONTEXT_OBJS))
 i386_DRIVER_OBJS := $(addprefix drivers/, $(i386_DRIVER_OBJS))
@@ -37,6 +39,7 @@ i386_SYSCALL_OBJS := $(addprefix syscall/, $(i386_SYSCALL_OBJS))
 i386_TRAP_OBJS := $(addprefix trap/, $(i386_TRAP_OBJS))
 i386_VM_OBJS := $(addprefix vm/, $(i386_VM_OBJS))
 i386_SIGNAL_OBJS := $(addprefix signal/, $(i386_SIGNAL_OBJS))
+i386_x86_OBJS := $(addprefix x86/, $(i386_x86_OBJS))
 
 i386_OBJS := \
 	$(i386_CONTEXT_OBJS) \
@@ -47,7 +50,8 @@ i386_OBJS := \
 	$(i386_SYSCALL_OBJS) \
 	$(i386_TRAP_OBJS) \
 	$(i386_VM_OBJS) \
-	$(i386_SIGNAL_OBJS)
+	$(i386_SIGNAL_OBJS) \
+	$(i386_x86_OBJS)
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))
 
 arch.o: $(i386_OBJS)

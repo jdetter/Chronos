@@ -10,12 +10,6 @@
 #define SEG_TSS         0x05
 #define SEG_COUNT       0x06
 
-#define CR0_EM		(0x01 << 2)
-#define CR0_MP		(0x01 << 1)
-
-#define CR4_OSFXSR	(0x01 << 9)
-#define CR4_OSXMMEXCPT	(0x01 << 10)
-
 #define SYS_EXIT_BASE   ((SEG_USER_CODE << 3) - 16)
 
 #ifndef __ASM_ONLY__

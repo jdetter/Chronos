@@ -10,7 +10,6 @@
 #include "kern/types.h"
 #include <kern/stdlib.h>
 #include "x86.h"
-#include "asm.h"
 #include "file.h"
 #include "stdlock.h"
 #include "chronos.h"

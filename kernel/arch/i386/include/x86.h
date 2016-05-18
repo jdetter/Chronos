@@ -46,8 +46,54 @@
 
 
 /* CR0 bits */
+#define CR0_MP          (0x01 << 1)
+#define CR0_EM          (0x01 << 2)
 #define CR0_WP		(0x01 << 16)
-#define CR0_PGENABLE 	(1<<31)
+#define CR0_PGENABLE 	(0x01 << 31)
+
+/* CR4 bits */
+#define CR4_OSFXSR      (0x01 << 9)
+#define CR4_OSXMMEXCPT  (0x01 << 10)
+
+/* Segment table bits */
+#define SEG_PRESENT     (0x01 << 7)
+#define SEG_PRES        ((0x01 << 7) | (0x01 << 4))
+#define SEG_EXE         (0x01 << 3)
+#define SEG_DATA        0x00
+
+#define SEG_KERN        0x00
+#define SEG_USER        (0x03 << 5)
+
+#define SEG_GRWU        0x00
+#define SEG_GRWD        (0x01 << 1)
+
+#define SEG_CONF        0x00
+#define SEG_NONC        (0x01 << 2)
+
+#define SEG_READ        0x02
+#define SEG_WRITE       0x02
+
+#define SEG_SZ          0x40
+
+#define SEG_DEFAULT_ACCESS (SEG_PRES | SEG_CONF)
+#define SEG_DEFAULT_FLAGS (0xC0)
+
+/* Segment creators */
+#define SEG_NULLASM \
+        .word 0; \
+        .word 0; \
+        .byte 0; \
+        .byte 0; \
+        .byte 0; \
+        .byte 0
+
+#define SEG_ASM(exe_data, read_write, priv, base, limit)        \
+        .word ((limit >> 12) & 0xFFFF);                         \
+        .word (base & 0xFFFF);                                  \
+        .byte ((base >> 16) & 0xFF);                            \
+        .byte ((SEG_DEFAULT_ACCESS | exe_data | read_write | priv) & 0xFF); \
+        .byte (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF);     \
+        .byte ((base >> 24) & 0xFF)
 
 #ifndef __X86_ASM_ONLY__
 
@@ -185,6 +231,31 @@ static inline int xchg(volatile int *addr, int newval)
 			"cc");
 	return result;
 }
+
+/**
+ * Returns the value in the 0th control register.
+ */
+extern unsigned int x86_get_cr0(void);
+
+/**
+ * Returns the value in the 2th control register.
+ */
+extern unsigned int x86_get_cr2(void);
+
+/**
+ * Returns the value in the 3th control register.
+ */
+extern unsigned int x86_get_cr3(void);
+
+/**
+ * Returns the value in the 4th control register.
+ */
+extern unsigned int x86_get_cr4(void);
+
+/**
+ * Check to see if interrupts are enabled.
+ */
+extern int x86_check_interrupt(void);
 #endif
 
 /**
