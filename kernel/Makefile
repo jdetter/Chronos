@@ -84,7 +84,7 @@ boot-stage2.img:
 	cd arch/$(BUILD_ARCH) ; \
 	make boot-stage2.img
 
-chronos.o: idt.S $(KERNEL_OBJS)
+chronos.o: idt.S 
 	cd arch/$(BUILD_ARCH) ; \
 	make arch.o
 

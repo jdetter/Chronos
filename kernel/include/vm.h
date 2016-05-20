@@ -253,11 +253,6 @@ void vm_copy_uvm(pgdir_t* dst, pgdir_t* src);
 void vm_free_uvm(pgdir_t* dir);
 
 /**
- * Use the kernel's page table
- */
-void switch_kvm(void);
-
-/**
  * Map another process's kstack into another process's address space.
  */
 void vm_set_user_kstack(pgdir_t* dir, pgdir_t* kstack);

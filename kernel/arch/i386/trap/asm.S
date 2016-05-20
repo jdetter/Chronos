@@ -85,13 +85,3 @@ tp_fake_trap:
         popl    %ebp
 
         ret
-
-/* int check_interrupt(void) */
-.globl check_interrupt
-check_interrupt:
-        pushf
-        xorl    %eax, %eax
-        popl    %eax
-        andl    $(EFLAGS_IF), %eax
-        rorl    $0x09, %eax
-        ret

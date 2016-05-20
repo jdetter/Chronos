@@ -272,6 +272,17 @@ void sched(void);
 void scheduler(void);
 
 /**
+ * Exit the current context and enter the kernel's context (scheduler). This
+ * call does nothing if the kernel is already on the CPU.
+ */
+void proc_switch_kvm(void);
+
+/**
+ * Switch to a user's page table and restore the context.
+ */
+void proc_switch_uvm(struct proc* p);
+
+/**
  * Debug function
  */
 void proc_print_table(void);

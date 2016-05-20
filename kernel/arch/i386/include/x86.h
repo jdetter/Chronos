@@ -95,6 +95,11 @@
         .byte (((limit >> 28) | SEG_DEFAULT_FLAGS) & 0xFF);     \
         .byte ((base >> 24) & 0xFF)
 
+/* definitions for relevant MSRs:*/
+#define SYSENTER_CS_MSR         0x174
+#define SYSENTER_ESP_MSR        0x175
+#define SYSENTER_EIP_MSR        0x176
+
 #ifndef __X86_ASM_ONLY__
 
 /* Unsigned types */

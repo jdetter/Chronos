@@ -9,7 +9,6 @@ export i386_INCLUDE_PATHS := \
 
 export i386_INCLUDE := $(addprefix -I,$(i386_INCLUDE_PATHS))
 
-i386_CONTEXT_OBJS := asm
 i386_DRIVER_OBJS := ata \
 	cmos \
 	console \
@@ -30,7 +29,6 @@ i386_VM_OBJS := asm pgdir vm_alloc vm vm_init
 i386_SIGNAL_OBJS := signal
 i386_x86_OBJS := asm
 
-i386_CONTEXT_OBJS := $(addprefix context/, $(i386_CONTEXT_OBJS))
 i386_DRIVER_OBJS := $(addprefix drivers/, $(i386_DRIVER_OBJS))
 i386_LOCK_OBJS := $(addprefix lock/, $(i386_LOCK_OBJS))
 i386_PROC_OBJS := $(addprefix proc/, $(i386_PROC_OBJS))
@@ -42,7 +40,6 @@ i386_SIGNAL_OBJS := $(addprefix signal/, $(i386_SIGNAL_OBJS))
 i386_x86_OBJS := $(addprefix x86/, $(i386_x86_OBJS))
 
 i386_OBJS := \
-	$(i386_CONTEXT_OBJS) \
 	$(i386_DRIVER_OBJS) \
 	$(i386_LOCK_OBJS) \
 	$(i386_PROC_OBJS) \

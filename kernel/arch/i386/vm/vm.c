@@ -68,7 +68,7 @@ int vm_init(void)
 	for(x = boot2_s;x < boot2_e;x += PGSIZE)
 		pfree(x);	
 	/* Clear the TLB */
-	switch_kvm();
+	proc_switch_kvm();
 
 	return 0;
 }

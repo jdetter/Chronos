@@ -77,6 +77,7 @@ void trap_return();
 
 void trap_init(void)
 {
+	/* Initilize the trap table */
 	int x;
 	for(x = 0;x < TRAP_COUNT;x++)
 	{
@@ -100,14 +101,16 @@ int trap_pf(uintptr_t address)
 
 	uintptr_t stack_bottom = rproc->stack_end;
 	uintptr_t stack_tolerance = stack_bottom - STACK_TOLERANCE * PGSIZE;
+
 	if(address < stack_bottom && address >= stack_tolerance){
 		uintptr_t address_down = PGROUNDDOWN(address);
-		if(address_down <= rproc->heap_end)
+		if(address_down <= PGROUNDUP(rproc->heap_end))
 			return 1;
 
 		int numOfPgs = (stack_bottom - address_down) / PGSIZE;
 		vm_mappages(address_down, numOfPgs * PGSIZE, rproc->pgdir, 
 			dir_flags, tbl_flags);
+
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
 	} else {

@@ -69,7 +69,8 @@ boot-clean:
 	rm -f  \
 		boot-stage1.o boot-stage1.img \
 		boot-stage2.o boot-stage2.img \
-		$(BOOT_OBJS) $(BOOT_CLEAN)
+		$(BOOT_OBJS) $(BOOT_CLEAN) \
+		$(BOOT_STAGE2_DEPS) $(BOOT_STAGE1_DEPS) $(MULTIBOOT_DEPS)
 		
 
 boot-stage1.img: $(BOOT_OBJS) $(BOOT_STAGE1_DEPS)
