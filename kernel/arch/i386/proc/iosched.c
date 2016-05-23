@@ -7,16 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
-#include "file.h"
-#include "stdarg.h"
-#include "stdlock.h"
-#include "devman.h"
-#include "tty.h"
-#include "fsman.h"
-#include "iosched.h"
-#include "pipe.h"
 #include "proc.h"
 #include "panic.h"
 #include "drivers/cmos.h"

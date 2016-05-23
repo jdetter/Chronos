@@ -12,13 +12,11 @@
 #else
 #include <string.h>
 #include <stdlib.h>
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #endif
 
 #include "file.h"
 #include "stdlock.h"
-#include "kern/types.h"
 #include "fsman.h"
 
 static int disk_read(void* dst, fileoff_t start, size_t sz, 

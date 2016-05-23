@@ -5,8 +5,9 @@
 
 /* Some dependant headers */
 #include <sys/stat.h>
+#include <stdint.h>
 #include <dirent.h>
-#include "kern/types.h"
+
 #include "file.h"
 #include "stdlock.h"
 #include "cache.h"

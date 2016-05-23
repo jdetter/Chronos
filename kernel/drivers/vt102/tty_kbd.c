@@ -256,7 +256,7 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 		switch(ascii)
 		{
 			case '1':
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 				vm_share_print();
 #endif
 				break;

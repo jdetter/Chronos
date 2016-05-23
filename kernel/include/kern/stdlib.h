@@ -1,15 +1,14 @@
 #ifndef _KERN_STDLIB_H_
 #define _KERN_STDLIB_H_
 
-#include "kern/types.h"
+/* Dependant headers */
 #include <stdint.h>
+#include <stdarg.h>
 
 /* Standard macro functions */
 #define B4_ROUNDUP(addr)	((uintptr_t)addr + 3) & ~(3)
 #define B4_ROUNDDOWN(addr)	((uintptr_t)addr) & ~(3)
 
-/* Dependant headers */
-#include "stdarg.h"
 
 /**
  * Trim white space from the beginning and end of the string. Returns the

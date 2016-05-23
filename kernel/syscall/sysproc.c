@@ -68,7 +68,7 @@ int sys_fork(void)
 	new_proc->pgdir = (pgdir_t*) palloc();
 	vm_copy_kvm(new_proc->pgdir);
 
-#ifndef _ALLOW_VM_SHARE_
+#ifndef __ALLOW_VM_SHARE__
 	vm_copy_uvm(new_proc->pgdir, rproc->pgdir);
 #else
 	/* vm_copy_uvm(new_proc->pgdir, rproc->pgdir); */
@@ -190,7 +190,7 @@ int clone(unsigned long flags, void* child_stack,
 	new_proc->tid = main_proc->next_tid++;
 	new_proc->parent = main_proc;
 
-#ifndef _ALLOW_VM_SHARE_
+#ifndef __ALLOW_VM_SHARE__
 	/* Create a new page directory */
 	new_proc->pgdir = (pgdir_t*)palloc();
 	vm_copy_kvm(new_proc->pgdir);
@@ -245,7 +245,7 @@ int clone(unsigned long flags, void* child_stack,
 		new_proc->fdtab = main_proc->fdtab;
 		new_proc->fdtab_lock = main_proc->fdtab_lock;
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		/* Map the page directory */
 		new_proc->pgdir = main_proc->pgdir;
 #endif
@@ -253,7 +253,7 @@ int clone(unsigned long flags, void* child_stack,
 		/* Allow the child to run */
 		new_proc->state = PROC_RUNNABLE;
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		/* Wait for the child to exit */
 		while(waitpid_nolock_noharvest(new_proc->pid) 
 				!= new_proc->pid);
@@ -1388,7 +1388,7 @@ int sys_alarm(void)
 
 int sys_vfork(void)
 {
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 	return clone(CLONE_VFORK, NULL, NULL, NULL, NULL);
 #else
 	/* Create a new child */

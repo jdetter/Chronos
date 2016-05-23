@@ -1,5 +1,4 @@
 #define __LINUX_DEFS__
-#include "kern/types.h"
 //#include "proc.h"
 #undef NULL
 

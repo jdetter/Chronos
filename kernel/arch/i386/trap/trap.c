@@ -10,7 +10,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "idt.h"
 #include "trap.h"
@@ -26,9 +25,9 @@
 #include "fsman.h"
 #include "pipe.h"
 #include "proc.h"
-#include "vm.h"
 #include "signal.h"
 #include "vm.h"
+#include "k/vm.h"
 #include "drivers/pic.h"
 #include "drivers/pit.h"
 #include "drivers/cmos.h"
@@ -114,7 +113,7 @@ int trap_pf(uintptr_t address)
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
 	} else {
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		/* Is this copy on write? */
 		if(vm_is_cow(rproc->pgdir, address))
 		{

@@ -159,7 +159,7 @@ void* mmap(void* hint, size_t sz, int protection,
 
         vm_mappages(pagestart, sz, rproc->pgdir, dir_flags, tbl_flags);
 
-#ifdef  _ALLOW_VM_SHARE_
+#ifdef  __ALLOW_VM_SHARE__
 	/* Is this mapping shared? */
 	if(flags & MAP_SHARED)
 	{

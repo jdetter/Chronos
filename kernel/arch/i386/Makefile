@@ -1,11 +1,7 @@
 export RELOCATE_FLAGS := -m elf_i386 -r
 
 export i386_INCLUDE_PATHS := \
-	$(KINCLUDE_PATHS) \
-	$(shell readlink -e ./) \
-	$(shell readlink -e include) \
-	$(shell readlink -e drivers) \
-	$(shell readlink -e trap)
+	$(shell readlink -e ./include)
 
 export i386_INCLUDE := $(addprefix -I,$(i386_INCLUDE_PATHS))
 
@@ -25,7 +21,7 @@ i386_PROC_OBJS := elf iosched proc
 i386_SRC_OBJS := devman fsman panic
 i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap
-i386_VM_OBJS := asm pgdir vm_alloc vm vm_init
+i386_VM_OBJS := asm pgdir vm_alloc vm vm_boot
 i386_SIGNAL_OBJS := signal
 i386_x86_OBJS := asm
 

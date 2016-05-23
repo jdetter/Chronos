@@ -18,6 +18,7 @@
 #include "pipe.h"
 #include "proc.h"
 #include "vm.h"
+#include "k/vm.h"
 #include "panic.h"
 #include "cpu.h"
 
@@ -40,7 +41,7 @@
 #define PGTBL_DIRTY (1 << 0x6)
 #define PGTBL_GLOBL (1 << 0x8)
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 /* There are 3 available page table flags on x86. They are allocated below: */
 #define PGTBL_SHARE (1 << 0x9) /* Marks the page as shared */
 #define PGTBL_CONWR (1 << 0xa) /* Marks the page is copy on write (cow) */
@@ -135,7 +136,7 @@ static vmflags_t vm_tbl_flags(vmflags_t flags)
         if(flags & VM_TBL_PRES)
 		result |= PGTBL_PRSNT;
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 	if(flags & VM_TBL_SHAR)
 		result |= PGTBL_SHARE;
 	if(flags & VM_TBL_COWR)
@@ -168,7 +169,7 @@ static vmflags_t vm_gen_tbl_flags(vmflags_t flags)
         if(flags & PGTBL_PRSNT)
                 result |= VM_TBL_PRES;
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
         if(flags & PGTBL_SHARE)
                 result |= VM_TBL_SHAR;
         if(flags & PGTBL_CONWR)
@@ -602,7 +603,7 @@ void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 				(void*)PGROUNDDOWN(src_dir[x]), 
 				PGSIZE);
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		pgtbl_t* table = (pgtbl_t*)(PGROUNDDOWN(dst_dir[x]));
 		/* Find shared pages */
 		int pg_index;
@@ -662,7 +663,7 @@ void vm_copy_uvm(pgdir_t* dst_dir, pgdir_t* src_dir)
 		vmflags_t src_pgflags = vm_findpgflags_native(x, src_dir);
 		vmflags_t src_tblflags = vm_findtblflags_native(x, src_dir);
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		/* Is this page shared? */
 		if(src_pgflags & PGTBL_SHARE)
 		{
@@ -865,7 +866,7 @@ int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir)
 				cprintf("DIRTY ");
 			if(pg_flags & PGTBL_GLOBL)
 				cprintf("GLOBL ");
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 			if(pg_flags & PGTBL_SHARE)
 				cprintf("SHARE ");
 			if(pg_flags & PGTBL_CONWR)

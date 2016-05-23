@@ -228,9 +228,10 @@
 #define TSS_AVAILABILITY	0x10
 #define TSS_DEFAULT_FLAGS	0x09
 
+
 /** Allow vm sharing */
 #ifndef __BOOT_STRAP__
-// #define _ALLOW_VM_SHARE_
+// #define __ALLOW_VM_SHARE__
 #endif
 
 #ifndef __VM_ASM_ONLY__
@@ -242,6 +243,7 @@ typedef uintptr_t pgdir_t;
 typedef uintptr_t pgtbl_t;
 typedef uintptr_t vmpage_t;
 typedef uintptr_t pypage_t;
+typedef uintptr_t pstack_t;
 
 struct vm_segment_descriptor
 {
@@ -255,6 +257,28 @@ struct vm_segment_descriptor
 
 extern pgdir_t* k_pgdir;
 extern int video_mode;
+
+/**
+ * Save the current page directory and disable interrupts on this cpu. This
+ * is to prevent a situation where the current thread is interrupted while
+ * we are changing the page directory.
+ */
+extern pgdir_t* vm_push_pgdir(void);
+
+/**
+ * Restore the previous page directory and pop_cli. This does the opposite
+ * action of vm_push_pgdir. Even if vm_push_pgdir didn't change the current
+ * page directory, vm_pop_pgdir should still be called. Not calling
+ * vm_pop_pgdir after a vm_push_pgdir could cause the cpu to lose
+ * interrupts.
+ */
+extern void vm_pop_pgdir(pgdir_t* dir);
+
+/**
+ * Initilize segmentation if it is used. Returns 0 on success, non zero
+ * otherwise.
+ */
+extern int vm_seg_init(void);
 
 /**
  * Initilize the page allocator.
@@ -274,6 +298,17 @@ extern void vm_alloc_save_state(void);
 extern void vm_alloc_restore_state(void);
 
 /**
+ * Setup the page pool. This is done during the boot strap.
+ */
+extern void vm_init_page_pool(void);
+
+/**
+ * Add pages to the page pool. This will not add pages to the page pool
+ * that are going to be direct mapped.
+ */
+extern void vm_add_pages(vmpage_t start, vmpage_t end, pgdir_t* dir);
+
+/**
  * Enable paging and set the current page table directory.
  */
 extern void vm_enable_paging(pgdir_t* pgdir);
@@ -283,10 +318,6 @@ extern void vm_enable_paging(pgdir_t* pgdir);
  */
 extern void vm_disable_paging(void);
 
-/**
- * Returns the physical address of the page directory currently in use.
- */
-extern pgdir_t* vm_curr_pgdir(void);
 
 /**
  * Enable kernel readonly protection. Exceptions will now be thrown
@@ -314,5 +345,12 @@ extern void vm_set_stack(uintptr_t stack, void* callback) __attribute__ ((noretu
 #define vm_get_page_fault_address x86_get_cr2
 
 #endif /* !ASM_ONLY */
+
+/** Prevent the generic vm.h from checking for this file */
+#define __NO_VM_ARCH__
+
+#ifndef _VM_H_
+#include "k/vm.h"
+#endif
 
 #endif

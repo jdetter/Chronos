@@ -6,7 +6,7 @@ BOOT_STAGE2_DEPS := \
         arch/vm/asm \
         arch/vm/pgdir \
         arch/vm/vm_alloc \
-        arch/vm/vm_init \
+        arch/vm/vm_boot \
         arch/drivers/serial \
         arch/drivers/ata \
         arch/drivers/pic \

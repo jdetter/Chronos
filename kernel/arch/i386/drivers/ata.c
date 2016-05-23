@@ -11,12 +11,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"
 #include "devman.h"
-#include "ata.h"
+#include "drivers/ata.h"
 #include "x86.h"
 #include "panic.h"
 #include "stdarg.h"

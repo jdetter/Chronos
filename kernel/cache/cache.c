@@ -4,7 +4,6 @@
 
 #ifdef __LINUX__
 #include <sys/types.h>
-#include "kern/types.h"
 #include "stdlock.h"
 
 #include <stdlib.h>
@@ -19,7 +18,6 @@ int log2_linux(int value); /* defined in ext2.c*/
 #else
 #include <string.h>
 #include <stdlib.h>
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
 #include "panic.h"

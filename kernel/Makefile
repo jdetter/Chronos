@@ -1,10 +1,7 @@
 
 # Export the include folders for the kernel.
 export KINCLUDE_PATHS := \
-	$(shell readlink -e ./) \
-	$(shell readlink -e include) \
-	$(shell readlink -e drivers) \
-	$(shell readlink -e ./cache)
+	$(shell readlink -e include)
 
 export KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
 
@@ -84,7 +81,8 @@ boot-stage2.img:
 	cd arch/$(BUILD_ARCH) ; \
 	make boot-stage2.img
 
-chronos.o: idt.S 
+# chronos.o: idt.S 
+chronos.o:
 	cd arch/$(BUILD_ARCH) ; \
 	make arch.o
 

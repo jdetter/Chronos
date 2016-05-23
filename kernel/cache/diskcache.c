@@ -20,12 +20,10 @@ int log2_linux(int value); /* defined in ext2.c*/
 
 #include <stdlib.h>
 #include <string.h>
-#include "kern/types.h"
 #include "kern/stdlib.h"
 
 #endif
 
-#include "kern/types.h"
 #include "vm.h"
 #include "stdlock.h"
 #include "file.h"

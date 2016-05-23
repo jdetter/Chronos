@@ -1,4 +1,3 @@
-#include "kern/types.h"
 #include "cpu.h"
 #include "panic.h"
 

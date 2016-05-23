@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "ktime.h"
 #include "drivers/rtc.h"

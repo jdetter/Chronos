@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "x86.h"
 #include "file.h"
@@ -22,7 +21,6 @@
 #include "panic.h"
 #include "pipe.h"
 #include "proc.h"
-#include "vm.h"
 #include "cacheman.h"
 #include "diskcache.h"
 #include "device.h"
@@ -31,6 +29,10 @@
 #include "drivers/keyboard.h"
 #include "drivers/console.h"
 #include "drivers/serial.h"
+
+#include "vm.h"
+#include "k/vm.h"
+
 
 extern pgdir_t* k_pgdir;
 extern int video_mode;

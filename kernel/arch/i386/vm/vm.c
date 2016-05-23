@@ -7,36 +7,31 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
-#include <kern/stdlib.h>
+#include "kern/stdlib.h"
 #include "x86.h"
-#include "file.h"
 #include "stdlock.h"
 #include "chronos.h"
 #include "trap.h"
-#include "fsman.h"
 #include "devman.h"
-#include "tty.h"
-#include "pipe.h"
 #include "proc.h"
 #include "vm.h"
+#include "k/vm.h"
 #include "stdarg.h"
 #include "panic.h"
+#include "context.h"
+
+/* We need some graphics config for bootup */
 #include "drivers/console.h"
 
-void __set_stack__(uint addr);
-void __drop_priv__(uint* k_context, uint new_esp, uint new_eip);
-void __context_restore__(uint* current, uint old);
-
-uint k_context; /* The kernel context */
-uint k_stack; /* Kernel stack */
+context_t k_context; /* The kernel context */
+pstack_t k_stack; /* Kernel stack */
 extern pgdir_t* k_pgdir; /* Kernel page directory */
 extern slock_t global_mem_lock;
 
 int vm_init(void)
 {
 	slock_init(&global_mem_lock);
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 	vm_share_init(); /* Setup shared memory */
 #endif
 
@@ -89,7 +84,7 @@ int vm_seg_init(void)
 	return 0;
 }
 
-void switch_kvm(void)
+void vm_switch_kvm(void)
 {
 	vm_enable_paging(k_pgdir);
 }
@@ -127,7 +122,7 @@ void switch_context(struct proc* p)
 	if(p->state == PROC_READY)
 	{
 		p->state = PROC_RUNNING;
-		__drop_priv__(&k_context, p->tf->esp, p->entry_point);
+		x86_drop_priv(&k_context, p->tf->esp, (void*)p->entry_point);
 
 		/* When we get back here, the process is done running for now. */
 		return;
@@ -138,5 +133,5 @@ void switch_context(struct proc* p)
 	p->state = PROC_RUNNING;
 
 	/* Go from kernel context to process context */
-	__context_restore__(&k_context, p->context);
+	x86_context_switch(&k_context, p->context);
 }

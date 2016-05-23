@@ -7,11 +7,10 @@
 
 #include <stddef.h>
 
-#include "kern/types.h"
 #include "x86.h"
 #include "panic.h"
-#include "pic.h"
-#include "keyboard.h"
+#include "drivers/pic.h"
+#include "drivers/keyboard.h"
 
 /** Uncomment this line for debugging */
 // #define DEBUG

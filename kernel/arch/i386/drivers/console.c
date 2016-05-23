@@ -7,10 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "x86.h"
 #include "stdarg.h"
-#include "console.h"
+#include "drivers/console.h"
 
 #define MAX_NUM 15
 

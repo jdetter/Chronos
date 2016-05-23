@@ -10,7 +10,6 @@
 #include <stdarg.h>
 #include <sys/types.h>
 
-#include "kern/types.h"
 
 int strlen(const char* str)
 {

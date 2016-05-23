@@ -8,11 +8,10 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
-#include "cmos.h"
+#include "drivers/cmos.h"
 #include "stdlock.h"
-#include "rtc.h"
+#include "drivers/rtc.h"
 #include "panic.h"
 
 void rtc_update(struct rtc_t* dst)

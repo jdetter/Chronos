@@ -1,7 +1,6 @@
 #include <sys/select.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "proc.h"
 #include "stdlock.h"
 #include "syscall.h"

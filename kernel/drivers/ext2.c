@@ -47,7 +47,6 @@ int log2_linux(int value)
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdarg.h"
 #include "panic.h"
@@ -60,7 +59,7 @@ int log2_linux(int value)
 #include "stdlock.h"
 #define NO_DEFINE_INODE
 #include "fsman.h"
-#include "ext2.h"
+#include "drivers/ext2.h"
 #include "diskio.h"
 #include "cache.h"
 #include "diskcache.h"

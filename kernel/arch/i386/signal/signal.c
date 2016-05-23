@@ -10,7 +10,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "kern/signal.h"
 #include "x86.h"

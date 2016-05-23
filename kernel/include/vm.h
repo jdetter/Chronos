@@ -1,7 +1,14 @@
-#ifndef _UVM_H_
-#define _UVM_H_
+#ifndef _VM_H_
+#define _VM_H_
+
+#if (defined _VM_ASM_ONLY_ || defined __VM_ASM_ONLY__)
+#warn "Please use __ASM_ONLY__ instead of _*_ASM_ONLY_"
+#define __ASM_ONLY__
+#endif
 
 /* Include the architecture independant header */
+#ifndef __NO_VM_ARCH__
+
 #ifdef ARCH_i386
 #include  "arch/i386/include/vm.h"
 #elif defined ARCH_x86_64
@@ -9,6 +16,8 @@
 #else
 #error "Invalid architecture selected."
 #endif
+
+#endif /** #ifdef __NO_ARCH__ */
 
 /** VERY GENERIC MEMORY MAPS */
 #ifndef VM_LAYOUT_PROVIDED
@@ -94,81 +103,46 @@
 #define VM_TBL_PRES 0x0200 /* Mark the page as present */
 #define VM_TBL_EXEC 0x0400 /* Mark the page as executable */
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 #define VM_TBL_SHAR 0x1000 /* Mark the page as shared */
 #define VM_TBL_COWR 0x2000 /* Mark the page as copy on write */
 #endif
 
-#ifndef __VM_ASM_ONLY__
+#ifndef __ASM_ONLY__
 
 #include <stdint.h>
 #include <sys/types.h>
 
-/* Include setup header */
-#include "vm/vm_setup.h"
-
-/* Include alloc header */
-#include "vm/vm_alloc.h"
-
-#ifdef _ALLOW_VM_SHARE_
-#include "vm/vm_share.h"
-#endif
 
 /**
- * Enable paging and set the current page table.
+ * Initlize the memory manager. Returns 0 on success, non zero otherwise.
  */
-void vm_enable_paging(pgdir_t* dir);
+extern int vm_init(void);
 
 /**
- * Get the page directory that is currently in use.
+ * Returns the physical address of the page directory currently in use
  */
-pgdir_t* vm_curr_pgdir(void);
-
-/**
- * Disable paging
- */
-void vm_disable_paging(void);
-
-/**
- * Save the current page directory and disable interrupts on this cpu. This
- * is to prevent a situation where the current thread is interrupted while
- * we are changing the page directory.
- */
-pgdir_t* vm_push_pgdir(void);
-
-/**
- * Restore the previous page directory and pop_cli. This does the opposite
- * action of vm_push_pgdir. Even if vm_push_pgdir didn't change the current
- * page directory, vm_pop_pgdir should still be called. Not calling 
- * vm_pop_pgdir after a vm_push_pgdir could cause the cpu to lose 
- * interrupts.
- */
-void vm_pop_pgdir(pgdir_t* dir);
-
-/**
- * Setup the kernel portion of the page table.
- */
-void setup_kvm(void);
+extern pgdir_t* vm_curr_pgdir(void);
 
 /**
  * Map the page at virtual address virt, to the physical address phy into the
  * page directory dir. This will create entries and tables where needed.
  */
-int vm_mappage(pypage_t phy, vmpage_t virt, pgdir_t* dir, 
+extern int vm_mappage(pypage_t phy, vmpage_t virt, pgdir_t* dir, 
 	vmflags_t dir_flags, vmflags_t tbl_flags);
 
 /**
  * Maps pages from va to sz. If certain pages are already mapped, they will be
  * ignored. Returns 0 on success, -1 otherwise.
  */
-int vm_mappages(vmpage_t va, size_t sz, pgdir_t* dir, 
+extern int vm_mappages(vmpage_t va, size_t sz, pgdir_t* dir, 
 	vmflags_t dir_flags, vmflags_t tbl_flags);
 
 /**
  * Directly map the pages into the page table. Returns 0 on success, non
  * zero otherwise.
  */
-int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir, 
+extern int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir, 
 	vmflags_t dir_flags, vmflags_t tbl_flags);
 
 /**
@@ -176,12 +150,12 @@ int vm_dir_mappages(vmpage_t start, vmpage_t end, pgdir_t* dir,
  * nothing is done. Returns the page that was unmapped. Returns 0 if there
  * was no page unmapped.
  */
-vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir);
+extern vmpage_t vm_unmappage(vmpage_t virt, pgdir_t* dir);
 
 /**
  * Copy the contents of the src page into the dst page. Returns 0 on success.
  */
-int vm_cpy_page(pypage_t dst, pypage_t src);
+extern int vm_cpy_page(pypage_t dst, pypage_t src);
 
 /**
  * Find a page in a page directory. If the page is not mapped, and create is 1,
@@ -189,94 +163,93 @@ int vm_cpy_page(pypage_t dst, pypage_t src);
  * is 0, and the page is not found, return 0. Otherwise, return the address
  * of the mapped page.
  */
-pypage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
+extern pypage_t vm_findpg(vmpage_t virt, int create, pgdir_t* dir,
 	vmflags_t dir_flags, vmflags_t tbl_flags);
-
 
 /**
  * Get the flags for the table that this page lives in.
  */
-vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir);
+extern vmflags_t vm_findtblflags(vmpage_t virt, pgdir_t* dir);
 
 /**
  * Get the flags for the directory that this page lives in. 
  */
-vmflags_t vm_finddirflags(vmpage_t virt, pgdir_t* dir);
+extern vmflags_t vm_finddirflags(vmpage_t virt, pgdir_t* dir);
 
 /**
  * Returns the flags for a virtual memory address. Returns -1 if the
  * page is not mapped in memory. 
  */
-vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir);
+extern vmflags_t vm_findpgflags(vmpage_t virt, pgdir_t* dir);
 
 /**
  * Set the flags for a page in a page table. Returns 0 on success.
  */
-int vm_setpgflags(vmpage_t virt, pgdir_t* dir, vmflags_t pg_flags);
+extern int vm_setpgflags(vmpage_t virt, pgdir_t* dir, vmflags_t pg_flags);
 
 /**
  * Sets the page read only. Returns the virtual address on success, 0 on
  * failure.
  */
-int vm_pgreadonly(vmpage_t virt, pgdir_t* dir);
+extern int vm_pgreadonly(vmpage_t virt, pgdir_t* dir);
 
 /**
  * Set the range of pages from virt_start to virt_end to read only.
  * returns 0 on success, 1 on failure.
  */
-int vm_pgsreadonly(vmpage_t start, vmpage_t end, pgdir_t* dir);
+extern int vm_pgsreadonly(vmpage_t start, vmpage_t end, pgdir_t* dir);
 
 /**
  * Free all pages in the page table and free the directory itself.
  */
-void freepgdir(pgdir_t* dir);
+extern void freepgdir(pgdir_t* dir);
 
 /**
  * Copy the kernel portion of the page table
  */
-int vm_copy_kvm(pgdir_t* dir);
+extern int vm_copy_kvm(pgdir_t* dir);
 
 /**
  * Instead of creating a copy of a user virtual memory space, directly map
  * the user pages.
  */
-void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir);
+extern void vm_map_uvm(pgdir_t* dst_dir, pgdir_t* src_dir);
 
 /**
  * Make an exact copy of the user virtual memory space.
  */
-void vm_copy_uvm(pgdir_t* dst, pgdir_t* src);
+extern void vm_copy_uvm(pgdir_t* dst, pgdir_t* src);
 
 /**
  * Free the user portion of a page directory.
  */
-void vm_free_uvm(pgdir_t* dir);
+extern void vm_free_uvm(pgdir_t* dir);
 
 /**
  * Map another process's kstack into another process's address space.
  */
-void vm_set_user_kstack(pgdir_t* dir, pgdir_t* kstack);
+extern void vm_set_user_kstack(pgdir_t* dir, pgdir_t* kstack);
 
 /**
  * Copy the kernel stack from src_dir and put it into dst_dir.
  */
-void vm_cpy_user_kstack(pgdir_t* dst_dir, pgdir_t* src_dir);
+extern void vm_cpy_user_kstack(pgdir_t* dst_dir, pgdir_t* src_dir);
 
 /**
  * Map another process's stack into a process's stack swap space.
  */
-void vm_set_swap_stack(pgdir_t* dir, pgdir_t* swap);
+extern void vm_set_swap_stack(pgdir_t* dir, pgdir_t* swap);
 
 /**
  * Clear this directory's stack swap space.
  */
-void vm_clear_swap_stack(pgdir_t* dir);
+extern void vm_clear_swap_stack(pgdir_t* dir);
 
 /**
  * Move memory from one address space to another. Return the amount of bytes
  * copied.
  */
-size_t vm_memmove(void* dst, const void* src, size_t sz,
+extern size_t vm_memmove(void* dst, const void* src, size_t sz,
                 pgdir_t* dst_pgdir, pgdir_t* src_pgdir,
                 vmflags_t dir_flags, vmflags_t tbl_flags);
 
@@ -284,7 +257,7 @@ size_t vm_memmove(void* dst, const void* src, size_t sz,
  * Free the directory and page table struct  but none of the pages pointed to 
  * by the tables.
  */
-void vm_freepgdir_struct(pgdir_t* dir);
+extern void vm_freepgdir_struct(pgdir_t* dir);
 
 /** Memory debugging functions */
 
@@ -292,8 +265,81 @@ void vm_freepgdir_struct(pgdir_t* dir);
  * Print each mapping and flags in the page table. Returns the amount of
  * pages found in the page table.
  */
-int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir);
+extern int vm_print_pgdir(vmpage_t last_page, pgdir_t* dir);
 
-#endif 
+#ifdef __ALLOW_VM_SHARE__
+
+/**
+ * Initilize global structures for sharing memory on boot. Returns 0
+ * on success, -1 otherwise.
+ */
+extern int vm_share_init(void);
+
+/**
+ * Share the given virtual page in the given address space. Returns 0 on
+ * success. Returns -1 otherwise.
+ */
+extern int vm_pgshare(vmpage_t page, pgdir_t* pgdir);
+
+/**
+ * Check to see if the given page is shared. Returns 1 if the page is
+ * shared, otherwise 0 is returned. 0 will also be returned if the
+ * page doesn't exist.
+ */
+extern int vm_isshared(vmpage_t page, pgdir_t* pgdir);
+
+/**
+ * Unshare the page. This decrements the reference count for this page.
+ * Returns the amount of references left to the page.
+ */
+extern int vm_pgunshare(pypage_t page);
+
+/**
+ * Share pages from base to base + sz. Returns 0 on success, -1 on failure.
+ */
+extern int vm_pgsshare(vmpage_t base, size_t sz, pgdir_t* pgdir);
+
+/**
+ * DEBUG FUNCTION: print the table and hashmap.
+ */
+extern void vm_share_print(void);
+
+/**
+ * Mark the user pages as copy on write. Returns 0 on success, -1 on failure.
+ */
+extern int vm_uvm_cow(pgdir_t* dir);
+
+/**
+ * Check to see if the given page is marked as copy on write. Returns 0 if
+ * the page is not copy on write, returns 1 if the page is copy on write. This
+ * function can safely be called on the same address space more than once.
+ */
+extern int vm_is_cow(pgdir_t* dir, vmpage_t page);
+
+/**
+ * Remove the copy on write property from the page. This will also allocated
+ * a new page (if needed) and copy over the data. If this is the last reference
+ * to the page, the page will just be marked as writable. The result of this
+ * function will always be a page at the given address that is writable. Returns
+ * 0 on success, nonzero otherwise.
+ */
+extern int vm_uncow(pgdir_t* dir, vmpage_t page);
+
+#endif /* #ifdef __ALLOW_VM_SHARE__ */
+
+
+/**
+ * Allocate a page. Return NULL if there are no more free pages. The address
+ * returned should be page aligned.
+ * Security: Remember to zero the page before returning the address.
+ */
+extern pypage_t palloc(void);
+
+/**
+ * Free the page, pg. Add it to anywhere in the free list (no coalescing).
+ */
+extern void pfree(pypage_t pg);
+
+#endif /* #ifndef __ASM_ONLY__*/
 
 #endif

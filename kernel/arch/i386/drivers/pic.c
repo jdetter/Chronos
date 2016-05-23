@@ -4,9 +4,8 @@
  * Driver for the 80*86 Programmable Interrupt Controller.
  */
 
-#include "kern/types.h"
 #include "x86.h"
-#include "pic.h"
+#include "drivers/pic.h"
 #include "panic.h"
 
 #define PORT_PIC_MASTER_COMMAND 	0x0020

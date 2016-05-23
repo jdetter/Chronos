@@ -37,7 +37,7 @@ x86_check_interrupt:
         rorl    $0x09, %eax
         ret
 
-# void x86_drop_priv(uintptr_t* k_context, uintptr_t new_esp, void* new_eip);
+# void x86_drop_priv(context_t* k_context, uintptr_t new_esp, void* new_eip);
 .globl x86_drop_priv
 x86_drop_priv:
 # Kernel context must be saved here!
@@ -88,9 +88,9 @@ x86_drop_priv:
 
         sysexit
 
-# void __context_restore__(uint* current, uint old)
-.globl __context_restore__
-__context_restore__:
+# void context_switch(uintptr_t current, uintptr_t next)
+.globl x86_context_switch
+x86_context_switch:
 # First, get current context pointer.
         movl    0x4(%esp), %eax
 # get the new context value (not a pointer!)

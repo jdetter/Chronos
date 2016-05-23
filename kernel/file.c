@@ -14,7 +14,6 @@ typedef unsigned long ulong;
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdarg.h"
 #define _strncpy strncpy

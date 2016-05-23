@@ -1,10 +1,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "panic.h"
 #include "vm.h"
-#include "kern/types.h"
+#include "k/vm.h"
+#include "panic.h"
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"

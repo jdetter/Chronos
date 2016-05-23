@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "x86.h"
 #include "cpu.h"
@@ -20,6 +19,7 @@
 #include "pipe.h"
 #include "proc.h"
 #include "vm.h"
+#include "k/vm.h"
 #include "panic.h"
 
 // #define DEBUG
@@ -84,7 +84,7 @@ void pfree(vmpage_t pg)
         k_pages++;
 	/* Make sure that the page doesn't have any flags: */
 
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 	/* Was this page shared? */
 	if(vm_pgunshare((pypage_t)pg))
 	{

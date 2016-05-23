@@ -102,6 +102,9 @@
 
 #ifndef __X86_ASM_ONLY__
 
+#include "context.h"
+#include "vm.h"
+
 /* Unsigned types */
 typedef unsigned char uchar;
 typedef unsigned int uint;
@@ -261,6 +264,17 @@ extern unsigned int x86_get_cr4(void);
  * Check to see if interrupts are enabled.
  */
 extern int x86_check_interrupt(void);
+
+/**
+ * Move from the current context to a new context.
+ */
+extern void x86_context_switch(context_t* current, context_t next);
+
+/**
+ * Lower privileges and enter a new user function.
+ */
+extern void x86_drop_priv(context_t* context, pstack_t new_stack, void* entry);
+
 #endif
 
 /**
