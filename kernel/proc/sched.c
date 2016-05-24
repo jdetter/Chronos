@@ -10,8 +10,8 @@ extern struct proc ptable[];
 extern slock_t ptable_lock;
 extern struct proc* rproc;
 /* The context of the scheduler right before user process gets scheduled. */
-extern uintptr_t k_context;
-extern uintptr_t k_stack;
+extern context_t k_context;
+extern pstack_t k_stack;
 
 void sched_init()
 {
@@ -25,8 +25,6 @@ void sched_init()
 	slock_init(&ptable_lock);
 }
 
-/* TODO: Get rid of type casts and __context_restore__ */
-void __context_restore__(uintptr_t* current, uintptr_t old);
 void yield(void)
 {
 	/* We are about to enter the scheduler again, reacquire lock. */
@@ -36,7 +34,7 @@ void yield(void)
 	rproc->state = PROC_RUNNABLE;
 
 	/* Give up cpu for a scheduling round */
-	__context_restore__((uintptr_t*)&rproc->context, k_context);
+	context_restore((uintptr_t*)&rproc->context, k_context);
 
 	/* When we get back here, we no longer have the ptable lock. */
 }
@@ -47,7 +45,7 @@ void yield_withlock(void)
 	/* We are also not changing the state of the process here. */
 
 	/* Give up cpu for a scheduling round */
-	__context_restore__((uintptr_t*)&rproc->context, k_context);
+	context_restore((uintptr_t*)&rproc->context, k_context);
 
 	/* When we get back here, we no longer have the ptable lock. */
 }
@@ -78,7 +76,7 @@ void scheduler(void)
 				slock_release(&ptable_lock);
 
 				/* Make the context switch */
-				switch_context(rproc);
+				context_switch(rproc);
 				//cprintf("Process is done for now.\n");
 
 				// The new process is now scheduled.

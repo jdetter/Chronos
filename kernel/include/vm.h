@@ -1,6 +1,7 @@
 #ifndef _VM_H_
 #define _VM_H_
 
+
 #if (defined _VM_ASM_ONLY_ || defined __VM_ASM_ONLY__)
 #warn "Please use __ASM_ONLY__ instead of _*_ASM_ONLY_"
 #define __ASM_ONLY__
@@ -10,9 +11,9 @@
 #ifndef __NO_VM_ARCH__
 
 #ifdef ARCH_i386
-#include  "arch/i386/include/vm.h"
+#include  "../arch/i386/include/vm.h"
 #elif defined ARCH_x86_64
-#include "arch/x86_64/vm/vm.h"
+#include "../arch/x86_64/vm/vm.h"
 #else
 #error "Invalid architecture selected."
 #endif

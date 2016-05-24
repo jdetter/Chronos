@@ -7,7 +7,6 @@
 #include <sys/fcntl.h>
 #include <sys/wait.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "syscall.h"
 #include "file.h"
@@ -39,7 +38,6 @@ extern struct proc* rproc;
 extern struct proc ptable[];
 
 int waitpid_nolock(int pid, int* status, int options);
-void fork_return(void);
 int clone(unsigned long flags, void* child_stack,
                 void* ptid, void* ctid,
                 struct pt_regs* regs);
@@ -124,7 +122,7 @@ int sys_fork(void)
 	/* new proc needs a context */
 	struct context* c = (struct context*)
 		((char*)tf - sizeof(struct context));
-	c->eip = (uintptr_t)fork_return;
+	c->eip = (uintptr_t)tp_fork_return;
 	c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
 	c->cr0 = (uintptr_t)new_proc->pgdir;
 	new_proc->context = (uintptr_t)c + SVM_DISTANCE;
@@ -231,7 +229,7 @@ int clone(unsigned long flags, void* child_stack,
 	struct context* c = (struct context*)
 		((char*)tf - sizeof(struct context));
 	/* Set the return to fork_return */
-	c->eip = (uintptr_t)fork_return;
+	c->eip = (uintptr_t)tp_fork_return;
 	c->esp = (uintptr_t)tf - 4 + SVM_DISTANCE;
 	c->cr0 = (uintptr_t)new_proc->pgdir;
 	new_proc->context = (uintptr_t)c + SVM_DISTANCE;
@@ -667,7 +665,7 @@ int execve(const char* path, char* const argv[], char* const envp[])
 	vm_map_uvm(rproc->pgdir, tmp_pgdir);
 
 	/* Invalidate the TLB */
-	switch_uvm(rproc);
+	vm_enable_paging(rproc->pgdir);
 
 	/* load the binary if possible. */
 	uintptr_t code_start;

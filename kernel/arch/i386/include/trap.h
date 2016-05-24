@@ -96,21 +96,15 @@ struct trap_frame
         uint16_t padding6;
 };
 
-struct context
-{
-        uint32_t cr0; /* Saved page table base register */
+/**
+ * Return into the user's context from a trap.
+ */
+void tp_trap_return(void) __attribute__ ((noreturn));
 
-        uint32_t edi; /* pushal */
-        uint32_t esi;
-        uint32_t ebp;
-        uint32_t esp;
-        uint32_t ebx;
-        uint32_t edx;
-        uint32_t ecx;
-        uint32_t eax;
-
-        uint32_t eip;
-};
+/**
+ * Make a trap frame and jump into the trap handler.
+ */
+void tp_mktf(void) __attribute__ ((noreturn));
 
 #endif
 

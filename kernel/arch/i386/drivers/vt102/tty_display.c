@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
@@ -11,7 +10,7 @@
 #include "stdlib.h"
 #include "proc.h"
 #include "fcntl.h"
-#include "drivers/tty.h"
+#include "tty.h"
 #include "drivers/serial.h"
 #include "drivers/console.h"
 

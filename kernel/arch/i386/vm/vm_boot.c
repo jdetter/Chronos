@@ -117,10 +117,3 @@ void vm_init_page_pool(void)
         }
 
 }
-
-void setup_kvm(void)
-{
-        /* The kernel is now loaded, setup everything we need. */
-	vm_alloc_restore_state();
-}
-

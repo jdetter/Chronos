@@ -1,6 +1,11 @@
 #ifndef _ATA_H_
 #define _ATA_H_
 
+#include "fsman.h"
+#include "devman.h"
+
+typedef unsigned int sect_t;
+
 /* Amount of possible ata drivers */
 #define ATA_DRIVER_COUNT 4
 /**

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"

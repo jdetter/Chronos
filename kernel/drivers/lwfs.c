@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "panic.h"
 #include "cacheman.h"
 #include "stdlock.h"

@@ -72,8 +72,6 @@ extern uint trap_handlers[];
 extern int k_ticks;
 extern slock_t ptable_lock;
 
-void trap_return();
-
 void trap_init(void)
 {
 	/* Initilize the trap table */
@@ -348,5 +346,5 @@ TRAP_DONE:
 	asm volatile("popl %ebp");
 	/* add return address */
 	asm volatile("addl $0x08, %esp");
-	asm volatile("jmp trap_return");
+	asm volatile("jmp tp_trap_return");
 }

@@ -14,16 +14,21 @@ i386_DRIVER_OBJS := ata \
 	rtc \
 	ktime \
 	serial \
-	fpu
+	fpu \
+	vt102/tty_codes \
+	vt102/tty_display \
+	vt102/tty_io \
+	vt102/tty_kbd
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc
-i386_SRC_OBJS := devman panic
+i386_SRC_OBJS := devman panic main fsman
 i386_SYSCALL_OBJS := sysfile sysproc
-i386_TRAP_OBJS := asm trap
+i386_TRAP_OBJS := asm trap idt
 i386_VM_OBJS := asm pgdir vm_alloc vm vm_boot
 i386_SIGNAL_OBJS := signal
 i386_x86_OBJS := asm
+i386_CONTEXT_OBJS := context
 
 i386_DRIVER_OBJS := $(addprefix drivers/, $(i386_DRIVER_OBJS))
 i386_LOCK_OBJS := $(addprefix lock/, $(i386_LOCK_OBJS))
@@ -34,6 +39,7 @@ i386_TRAP_OBJS := $(addprefix trap/, $(i386_TRAP_OBJS))
 i386_VM_OBJS := $(addprefix vm/, $(i386_VM_OBJS))
 i386_SIGNAL_OBJS := $(addprefix signal/, $(i386_SIGNAL_OBJS))
 i386_x86_OBJS := $(addprefix x86/, $(i386_x86_OBJS))
+i386_CONTEXT_OBJS := $(addprefix context/, $(i386_CONTEXT_OBJS))
 
 i386_OBJS := \
 	$(i386_DRIVER_OBJS) \
@@ -44,10 +50,11 @@ i386_OBJS := \
 	$(i386_TRAP_OBJS) \
 	$(i386_VM_OBJS) \
 	$(i386_SIGNAL_OBJS) \
-	$(i386_x86_OBJS)
+	$(i386_x86_OBJS) \
+	$(i386_CONTEXT_OBJS)
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))
 
-arch.o: $(i386_OBJS)
+arch.o: arch-tools $(i386_OBJS)
 	$(CROSS_LD) $(RELOCATE_FLAGS) $(i386_OBJS) -o arch.o
 
 boot-stage1.img:
@@ -58,15 +65,21 @@ boot-stage2.img:
 	cd boot ; \
 	make boot-stage2.img
 
-.PHONY: clean
-clean: arch-clean
-
 .PHONY: arch-clean
 arch-clean:
 	cd boot ; \
 	make boot-clean
-	rm -f $(i386_OBJS) arch.o
+	cd tools ; \
+	make tools-clean
+	rm -f $(i386_OBJS) arch.o trap/idt.S
 
+.PHONY: arch-tools
+arch-tools:
+	cd tools ; \
+	make tools
+
+trap/idt.S: arch-tools
+	./tools/bin/mkvect > ./trap/idt.S
 
 %.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_INCLUDE) -c -o $@ $<

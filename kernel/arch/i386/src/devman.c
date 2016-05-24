@@ -23,15 +23,18 @@
 #include "proc.h"
 #include "cacheman.h"
 #include "diskcache.h"
+#include "cpu.h"
+#include "vm.h"
+#include "k/netman.h"
 #include "device.h"
 #include "drivers/ata.h"
 #include "drivers/pic.h"
 #include "drivers/keyboard.h"
 #include "drivers/console.h"
 #include "drivers/serial.h"
-
-#include "vm.h"
-#include "k/vm.h"
+#include "drivers/fpu.h"
+#include "drivers/cmos.h"
+#include "drivers/pit.h"
 
 
 extern pgdir_t* k_pgdir;
@@ -84,6 +87,41 @@ void* dev_new_mapping(uintptr_t phy, size_t sz)
 
 int dev_init()
 {
+	/* Enable PIC */
+        cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
+        pic_init();
+        cprintf("[ OK ]\n");
+	
+	/* Enable the floating point unit */
+        cprintf("Enabling the floating point unit.\t\t\t\t\t");
+        fpu_init();
+        cprintf("[ OK ]\n");
+
+	/* Initilize CMOS */
+        cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
+        cmos_init();
+        cprintf("[ OK ]\n");
+
+	/* Start the network manager */
+	cprintf("Starting network manager...\t\t\t\t\t\t");
+        net_init();
+        cprintf("[ OK ]\n");
+
+	/* Enable PIT */
+        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
+        pit_init();
+        cprintf("[ OK ]\n");
+
+	/* Initilize cli stack */
+        cprintf("Initilizing cli stack...\t\t\t\t\t\t");
+        reset_cli();
+        cprintf("[ OK ]\n");
+
+	/* Initilize pipes */
+        cprintf("Initilizing pipes...\t\t\t\t\t\t\t");
+        pipe_init();
+        cprintf("[ OK ]\n");
+
 	curr_mapping = KVM_HARDWARE_S;
 	slock_init(&driver_table_lock);
 	struct DeviceDriver* driver = NULL;

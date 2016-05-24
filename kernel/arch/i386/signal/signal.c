@@ -189,7 +189,7 @@ int sig_cleanup(void)
 	if(!rproc->sig_queue || !rproc->sig_handling) return -1;
 
 	/* Restore trap frame */
-	memmove(rproc->k_stack - sizeof(struct trap_frame), 
+	memmove((char*)rproc->k_stack - sizeof(struct trap_frame), 
 			&rproc->sig_saved, 
 			sizeof(struct trap_frame));
 	sig_dequeue(rproc);
@@ -308,7 +308,7 @@ int sig_handle(void)
 		{
 			/* We weren't handling a signal until now */
 			memmove(&rproc->sig_saved, 
-					rproc->k_stack - sizeof(struct trap_frame),
+					(char*)rproc->k_stack - sizeof(struct trap_frame),
 					sizeof(struct trap_frame));
 		}
 

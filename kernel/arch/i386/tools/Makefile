@@ -1,17 +1,16 @@
 TOOLS := \
-	disk-part
+        mkvect \
+	boot-sign \
+	boot2-verify
 
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-TOOLS_CFLAGS := -D__LINUX__ \
-		-I ../kernel \
-		-I ../kernel/include \
-		-I ../kernel/cache \
-		-I ../kernel/arch/$(BUILD_ARCH)/include
+TOOLS_CFLAGS := \
+	-D__LINUX__
 
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
-.PHONY: tools
+.PHONY: tools tools-clean
 tools: bin $(TOOLS_BINARIES)
 
 tools-clean:
@@ -25,4 +24,4 @@ deps/%.o: deps/%.c
 
 bin/%: src/%.c
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@.o $< 
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -o $@ $@.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -o $@ $@.o $(TOOLS_DEPS)

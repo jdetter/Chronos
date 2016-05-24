@@ -1,13 +1,9 @@
 #define __LINUX_DEFS__
-//#include "proc.h"
-#undef NULL
-
 #include <stdio.h>
-//#include "vm.h"
 
 int main(int argc, char** argv)
 {
-	puts(".globl mktf");
+	puts(".globl tp_mktf");
 	
 	int x;
 	for(x = 0;x < 255;x++)
@@ -32,7 +28,7 @@ int main(int argc, char** argv)
 				break;
 		}
 		printf("\tpushl $%d\n", x);
-		printf("\tjmp mktf\n");
+		printf("\tjmp tp_mktf\n");
 	}
 
 	printf(".data\n");

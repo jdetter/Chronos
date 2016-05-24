@@ -7,11 +7,10 @@
 
 #include "file.h"
 #include "stdlock.h"
-#include "kern/types.h"
 #include "devman.h"
 #include "fsman.h"
 #include "klog.h"
-#include "drivers/tty.h"
+#include "tty.h"
 #include "drivers/serial.h"
 #include "drivers/console.h"
 

@@ -27,7 +27,6 @@
 #include "iosched.h"
 #include "time.h"
 #include "context.h"
-#include "fpu.h"
 
 extern struct vsfs_context context;
 
@@ -114,7 +113,7 @@ struct proc* spawn_tty(tty_t t)
 	/* Map in a new kernel stack */
         vm_mappages(UVM_KSTACK_S, UVM_KSTACK_E - UVM_KSTACK_S, p->pgdir, 
 		dir_flags, tbl_flags);
-        p->k_stack = (char*)PGROUNDUP(UVM_KSTACK_E);
+        p->k_stack = (context_t)PGROUNDUP(UVM_KSTACK_E);
         p->tf = (struct trap_frame*)(p->k_stack - sizeof(struct trap_frame));
         p->tss = (struct task_segment*)(UVM_KSTACK_S);
 
@@ -123,7 +122,7 @@ struct proc* spawn_tty(tty_t t)
 		dir_flags | VM_DIR_USRP, tbl_flags | VM_TBL_USRP);
 
 	/* Switch to user page table */
-	switch_uvm(p);
+	vm_enable_paging(p->pgdir);
 
 	/* Basic values for the trap frame */
 	/* Setup the user stack */
@@ -160,9 +159,6 @@ struct proc* spawn_tty(tty_t t)
 	/* Set the mmap area start */
 	p->mmap_end = p->mmap_start = 
 		PGROUNDUP(UVM_TOP) - UVM_MIN_STACK;
-
-	/* Setup our floating point unit */
-	fpu_reset();
 
 	p->state = PROC_READY;
 	slock_release(&ptable_lock);

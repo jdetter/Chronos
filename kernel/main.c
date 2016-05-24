@@ -13,26 +13,17 @@
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
-#include "idt.h"
-#include "x86.h"
 #include "cpu.h"
 #include "ktime.h"
 #include "trap.h"
-#include "netman.h"
 #include "signal.h"
 #include "cacheman.h"
-#include "fpu.h"
-#include "drivers/pic.h"
-#include "drivers/pit.h"
-#include "drivers/cmos.h"
-#include "drivers/rtc.h"
-#include "drivers/keyboard.h"
 
 void main_stack(void);
 
-extern struct rtc_t k_time;
-extern struct proc* rproc;
 extern pstack_t k_stack;
+
+extern void arch_init(void (*function)(void));
 
 /* Entry point for the kernel */
 int main(void)
@@ -44,7 +35,7 @@ int main(void)
 	return 0;
 }
 
-/* Proper 4K stack*/
+/* Proper minimum 4K stack*/
 void main_stack(void)
 {
 	/* We now have a proper kernel stack */
@@ -55,21 +46,6 @@ void main_stack(void)
 	sig_init();
 	cprintf("[ OK ]\n");
 	
-	/* Enable PIC */
-        cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
-        pic_init();
-        cprintf("[ OK ]\n");
-
-	/* Enable the floating point unit */
-	cprintf("Enabling the floating point unit.\t\t\t\t\t");
-	fpu_init();
-	cprintf("[ OK ]\n");
-
-        /* Initilize CMOS */
-        cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
-        cmos_init();
-        cprintf("[ OK ]\n");
-
 	/* Initilize kernel time */
 	cprintf("Initilizing kernel time...\t\t\t\t\t\t");
 	ktime_init();
@@ -90,36 +66,18 @@ void main_stack(void)
 	fsman_init();
 	cprintf("[ OK ]\n");
 
+	/* Make sure all of the log folders exist and are setup */
+	cprintf("Initilizing kernel logger...\t\t\t\t\t\t");
+	klog_init();
+	cprintf("[ OK ]\n");
+
 	/* Populate the device folder */
 	cprintf("Populating the dev folder...\t\t\t\t\t\t");
         dev_populate();
         cprintf("[ OK ]\n");
 
-	cprintf("Starting network manager...\t\t\t\t\t\t");
-	net_init();
-	cprintf("[ OK ]\n");
-
-	/* Enable PIT */
-        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
-	pit_init();
-	cprintf("[ OK ]\n");
-
-	/* Initilize cli stack */
-	cprintf("Initilizing cli stack...\t\t\t\t\t\t");
-	reset_cli();
-	cprintf("[ OK ]\n");
-
-	/* Initilize pipes */
-	cprintf("Initilizing pipes...\t\t\t\t\t\t\t");
-	pipe_init();
-	cprintf("[ OK ]\n");
-	
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
-	cprintf("[ OK ]\n");
-
-	cprintf("Initilizing kernel logger...\t\t\t\t\t\t");
-	klog_init();
 	cprintf("[ OK ]\n");
 
 	cprintf("Starting all logs...\t\t\t\t\t\t\t");
@@ -173,15 +131,4 @@ void main_stack(void)
 	/* Start scheduling loop. */
 	sched();
 	panic("Scheduler returned!");
-}
-
-void msetup()
-{
-	panic("kernel: Memory allocator not initilized.\n");
-}
-
-int mpanic(int size)
-{
-	panic("kernel: Memory allocator out of space.\n");
-	return -1;
 }

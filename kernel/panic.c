@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "file.h"
 #include "stdlock.h"

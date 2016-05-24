@@ -80,7 +80,7 @@ boot-stage1.img: $(BOOT_OBJS) $(BOOT_STAGE1_DEPS)
 	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o ./boot-stage1.o stage1.o $(BOOT_STAGE1_DEPS)
 	$(CROSS_OBJCOPY) -S -O binary -j .text boot-stage1.o boot-stage1.img
 	# Sign the boot sector
-	../../../../tools/bin/boot-sign ./boot-stage1.img
+	../tools/bin/boot-sign ./boot-stage1.img
 
 boot-stage2.img: $(BOOT_OBJS) $(BOOT_STAGE2_DEPS)
 	# Link the second boot stage 
@@ -92,7 +92,7 @@ boot-stage2.img: $(BOOT_OBJS) $(BOOT_STAGE2_DEPS)
 	$(CROSS_OBJCOPY) -O binary -j .data boot-stage2.o boot-stage2.data
 	$(CROSS_OBJCOPY) -O binary -j .rodata boot-stage2.o boot-stage2.rodata
 	$(CROSS_OBJCOPY) -O binary -j .bss boot-stage2.o boot-stage2.bss
-	../../../../tools/bin/boot2-verify
+	../tools/bin/boot2-verify
 	dd if=boot-stage2.text of=boot-stage2.img bs=512 \
 		count=$(BOOT_STAGE2_TEXT_SZ) seek=0
 	dd if=boot-stage2.data of=boot-stage2.img bs=512 \

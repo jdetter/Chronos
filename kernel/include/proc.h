@@ -3,10 +3,11 @@
 
 /* Dependant headers */
 #include <signal.h>
-#include "kern/signal.h"
-#include "trap.h"
-#include "vm.h"
+#include "context.h"
 #include "fsman.h"
+#include "kern/signal.h"
+#include "vm.h"
+#include "trap.h"
 #include "pipe.h"
 #include "devman.h"
 #include "tty.h"
@@ -138,7 +139,7 @@ struct proc
         uintptr_t code_end; /* end of the code area */
 	pgdir_t* pgdir; /* The page directory for the process */
 	int* sys_esp; /* Pointer to the start of the syscall argv */
-	char* k_stack; /* A pointer to the kernel stack for this process. */
+	context_t k_stack; /* A pointer to the kernel stack for this process. */
 	struct task_segment* tss; /* The task segment for this process */
 	struct trap_frame* tf; /* A pointer to the trap frame from the int.*/
 	uintptr_t entry_point; /* The address of the first instruction */
@@ -270,12 +271,6 @@ void sched(void);
  * this loop. (lock required)
  */
 void scheduler(void);
-
-/**
- * Exit the current context and enter the kernel's context (scheduler). This
- * call does nothing if the kernel is already on the CPU.
- */
-void proc_switch_kvm(void);
 
 /**
  * Switch to a user's page table and restore the context.

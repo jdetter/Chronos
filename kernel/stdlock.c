@@ -5,8 +5,7 @@
  * A standard lock library implementation.
  */
 
-#include <stdlock.h>
-#include "x86.h"
+#include "stdlock.h"
 
 void slock_init(slock_t* lock)
 {

@@ -10,7 +10,6 @@
 #include "kern/stdlib.h"
 #include "x86.h"
 #include "stdlock.h"
-#include "chronos.h"
 #include "trap.h"
 #include "devman.h"
 #include "proc.h"
@@ -58,8 +57,9 @@ int vm_init(void)
 	int x;
 	for(x = boot2_s;x < boot2_e;x += PGSIZE)
 		pfree(x);	
+
 	/* Clear the TLB */
-	proc_switch_kvm();
+	vm_enable_paging(k_pgdir);
 
 	return 0;
 }
@@ -78,56 +78,4 @@ int vm_seg_init(void)
 {
 	lgdt((uint)global_descriptor_table, GDT_SIZE);
 	return 0;
-}
-
-void vm_switch_kvm(void)
-{
-	vm_enable_paging(k_pgdir);
-}
-
-void switch_uvm(struct proc* p)
-{
-	vm_enable_paging(p->pgdir);
-}
-
-void switch_context(struct proc* p)
-{
-	/* Set the task segment to point to the process's stacks. */
-	uint base = (uint)p->tss;
-	uint limit = sizeof(struct task_segment);
-	uint type = TSS_DEFAULT_FLAGS | TSS_PRESENT;
-	uint flag = TSS_AVAILABILITY;
-
-	global_descriptor_table[SEG_TSS].limit_1 = (uint_16) limit;
-	global_descriptor_table[SEG_TSS].base_1 = (uint_16) base;
-	global_descriptor_table[SEG_TSS].base_2 = (uint_8)(base>>16);
-	global_descriptor_table[SEG_TSS].type = type;
-	global_descriptor_table[SEG_TSS].flags_limit_2 = 
-		(uint_8)(limit >> 16) | flag;
-	global_descriptor_table[SEG_TSS].base_3 = (base >> 24);
-
-	/* Switch to the user's page directory (stack access) */
-	vm_enable_paging(p->pgdir);
-	struct task_segment* ts = (struct task_segment*)p->tss;
-	ts->SS0 = SEG_KERNEL_DATA << 3;
-	ts->ESP0 = (uint)p->k_stack;
-	ts->esp = p->tf->esp;
-	ts->ss = SEG_USER_DATA << 3;
-	ltr(SEG_TSS << 3);
-
-	if(p->state == PROC_READY)
-	{
-		p->state = PROC_RUNNING;
-		x86_drop_priv(&k_context, p->tf->esp, (void*)p->entry_point);
-
-		/* When we get back here, the process is done running for now. */
-		return;
-	}
-	if(p->state != PROC_RUNNABLE)
-		panic("Tried to schedule non-runnable process.");
-
-	p->state = PROC_RUNNING;
-
-	/* Go from kernel context to process context */
-	x86_context_switch(&k_context, p->context);
 }

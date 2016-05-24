@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdlib.h>
-#include "kern/types.h"
 #include "syscall.h"
 
 /**
