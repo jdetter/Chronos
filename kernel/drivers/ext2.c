@@ -60,7 +60,7 @@ int log2_linux(int value)
 #define NO_DEFINE_INODE
 #include "fsman.h"
 #include "drivers/ext2.h"
-#include "diskio.h"
+#include "drivers/diskio.h"
 #include "cache.h"
 #include "diskcache.h"
 #include "cacheman.h"

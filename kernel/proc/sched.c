@@ -1,13 +1,10 @@
 #include <string.h>
 
-#include "kern/types.h"
 #include "iosched.h"
 #include "stdlock.h"
 #include "proc.h"
 #include "devman.h"
 #include "context.h"
-
-#include "kern/types.h"
 
 extern struct proc ptable[];
 extern slock_t ptable_lock;

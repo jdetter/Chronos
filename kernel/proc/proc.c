@@ -8,7 +8,6 @@
 #include <string.h>
 #include <sys/fcntl.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "file.h"
 #include "elf.h"
@@ -132,20 +131,20 @@ struct proc* spawn_tty(tty_t t)
 
 	/* Fake env */
 	ustack -= sizeof(int);
-	*((uint*)ustack) = 0x0;
+	*((uintptr_t*)ustack) = 0x0;
 
 	/* Fake argv */
         ustack -= sizeof(int);
-        *((uint*)ustack) = 0x0;
+        *((uintptr_t*)ustack) = 0x0;
 
 	/* argc = 0 */
         ustack -= sizeof(int);
-        *((uint*)ustack) = 0x0;
+        *((uintptr_t*)ustack) = 0x0;
 
 	/* Fake eip */
         ustack -= sizeof(int);
-        *((uint*)ustack) = 0xFFFFFFFF;
-        p->tf->esp = (uint)ustack;
+        *((uintptr_t*)ustack) = 0xFFFFFFFF;
+        p->tf->esp = (uintptr_t)ustack;
 
 	/* Load the binary */
 	uintptr_t code_start;

@@ -30,7 +30,7 @@
 
 void setup_boot2_pgdir(void);
 void cprintf(char* fmt, ...);
-void __kernel_jmp__(uint entry);
+void __kernel_jmp__(uintptr_t entry);
 
 char* no_image = "Chronos.elf not found!\n";
 char* invalid = "Chronos.elf is invalid!\n";
@@ -59,16 +59,23 @@ int main(void)
 		/* There is no serial port. */
 		serial = 0;
 	}
+
+	if(serial)
+	{
+		cprintf("Initilizing virtual memory...\t\t\t\t\t\t");
+	}
+
+	setup_boot2_pgdir();
+	vm_enable_paging(k_pgdir);
+
+	if(serial) 
+	{
+		cprintf(ok);
+	}
+
 	cprintf("Welcome to Chronos!\n");
 
-	cprintf("Initilizing virtual memory...\t\t\t\t\t\t");
-	setup_boot2_pgdir();
-	cprintf(ok);
-
-	cprintf("Initilizing paging...\t\t\t\t\t\t\t");
-	vm_enable_paging(k_pgdir);
-	cprintf(ok);
-
+	/* Kernel can write to readonly pages, disable this */
 	cprintf("Enforcing kernel readonly...\t\t\t\t\t\t");
 	vm_enforce_kernel_readonly();
 	cprintf(ok);
@@ -203,7 +210,7 @@ int main(void)
 
 	cprintf(kernel_loaded);
 	
-	/* Save vm context */
+	/* Save vm state */
 	vm_alloc_save_state();
 	/* Jump into the kernel */
 	__kernel_jmp__(elf_entry);
@@ -242,7 +249,7 @@ void setup_boot2_pgdir(void)
 	k_pgdir = (pgdir_t*)KVM_KPGDIR;
 	memset(k_pgdir, 0, PGSIZE);
 	/* Do page pool */
-	vm_stable_page_pool();
+	vm_stable_page_pool(); /* A820 isn't working right */
 	vm_init_page_pool();
 	
 	vmflags_t dir_flags = VM_DIR_READ | VM_DIR_WRIT;
@@ -265,7 +272,7 @@ void setup_boot2_pgdir(void)
 	/* Map pages for the kernel binary */
 	// mappages(KVM_KERN_S, KVM_KERN_E - KVM_KERN_S, k_pgdir, 0);
 
-	/* Map in some of the disk caching space */
+	/* Map in the disk caching space */
 	vm_mappages(KVM_DISK_S, KVM_DISK_E - KVM_DISK_S, k_pgdir, 
 			dir_flags, tbl_flags);
 

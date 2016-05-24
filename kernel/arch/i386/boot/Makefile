@@ -3,6 +3,7 @@ BOOT_STAGE1_DEPS := \
 BOOT_STAGE1_DEPS := $(addsuffix .o, $(BOOT_STAGE1_DEPS))
 
 BOOT_STAGE2_DEPS := \
+        arch/stdlock \
         arch/vm/asm \
         arch/vm/pgdir \
         arch/vm/vm_alloc \
@@ -27,8 +28,10 @@ MULTIBOOT_DEPS := \
 	multiboot/multiboot_header
 MULTIBOOT_DEPS := $(addsuffix .o, $(MULTIBOOT_DEPS))
 
-BOOT_INCLUDE := \
-	-Iinclude
+BOOT_INCLUDE_KERNEL := \
+	-Ikernel-include
+BOOT_INCLUDE_ARCH := \
+	-Iarch-include
 
 # Stage 1 configuration
 BOOT_STAGE1_LDFLAGS := --section-start=.text=0x7c00 --entry=start
@@ -102,7 +105,7 @@ boot-stage2.img: $(BOOT_OBJS) $(BOOT_STAGE2_DEPS)
 multiboot.o: $(MULTIBOOT_DEPS) $(BOOT_OBJS) $(BOOT_STAGE2_DEPS)
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o multiboot.o $(MULTIBOOT_DEPS) $(BOOT_OBJS) $(BOOT_STAGE2_DEPS)
 
-%.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -D__BOOT_STRAP__ -c -o $@ $< 
 %.o: %.S
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -D__BOOT_STRAP__ -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(BOOT_INCLUDE_ARCH) $(BOOT_INCLUDE_KERNEL) -D__BOOT_STRAP__ -c -o $@ $<
+%.o: %.c
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_INCLUDE_ARCH) $(BOOT_INCLUDE_KERNEL) -D__BOOT_STRAP__ -c -o $@ $<

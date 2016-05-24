@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "file.h"
 #include "stdarg.h"
@@ -29,46 +28,16 @@
 #include "drivers/rtc.h"
 #include "drivers/keyboard.h"
 
-void __set_stack__(uint stack, uint function);
 void main_stack(void);
-uint __get_cr0__(void);
 
 extern struct rtc_t k_time;
 extern struct proc* rproc;
-extern uint k_stack;
+extern pstack_t k_stack;
 
 /* Entry point for the kernel */
 int main(void)
 {
-	/* Initilize the primary tty */
-	cprintf_init();
-	/* Lets make sure that tty0 gets configured properly. */
-	setup_kvm();
-	cprintf("Welcome to the Chronos kernel!\n");
-
-	/* Install global descriptor table */
-        cprintf("Loading Global Descriptor table...\t\t\t\t\t");
-        vm_seg_init();
-        cprintf("[ OK ]\n");
-
-	/* Get interrupt descriptor table up in case of a crash. */
-	/* Install interrupt descriptor table */
-        cprintf("Installing Interrupt Descriptor table...\t\t\t\t");
-        trap_init();
-        cprintf("[ OK ]\n");
-	
-	/* WARNING: we don't have a proper stack right now. */
-	/* Get vm up */
-	cprintf("Initilizing Virtual Memory...\t\t\t\t\t\t");
-	vm_init();
-	cprintf("[ OK ]\n");
-
-	/* Setup proper stack */
-	uint new_stack = KVM_KSTACK_E;
-	k_stack = new_stack;
-
-	cprintf("Switching over to kernel stack...\t\t\t\t\t");
-	__set_stack__(PGROUNDUP(new_stack), (uint)main_stack);
+	arch_init(main_stack);
 
 	panic("main_stack returned.\n");
 	for(;;);

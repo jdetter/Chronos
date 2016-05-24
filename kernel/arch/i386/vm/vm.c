@@ -51,10 +51,6 @@ int vm_init(void)
 	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 
 		dir_flags, tbl_flags);
 
-	/* Map pages in for kmalloc */
-	// vm_mappages(KVM_KMALLOC_S, KVM_KMALLOC_E - KVM_KMALLOC_S, 
-	//	k_pgdir, dir_flags, tbl_flags);
-
 	/* Add bootstrap code to the memory pool */
 	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
 	int boot2_e = PGROUNDUP(KVM_BOOT2_E);

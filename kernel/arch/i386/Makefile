@@ -18,7 +18,7 @@ i386_DRIVER_OBJS := ata \
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc
-i386_SRC_OBJS := devman fsman panic
+i386_SRC_OBJS := devman panic
 i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap
 i386_VM_OBJS := asm pgdir vm_alloc vm vm_boot
