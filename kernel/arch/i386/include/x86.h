@@ -100,6 +100,9 @@
 #define SYSENTER_ESP_MSR        0x175
 #define SYSENTER_EIP_MSR        0x176
 
+#define CONSOLE_MONO_BASE_ORIG  (0xB0000)
+#define CONSOLE_COLOR_BASE_ORIG (0xB8000)
+
 #ifndef __X86_ASM_ONLY__
 
 #include "context.h"
@@ -324,44 +327,44 @@ extern void x86_drop_priv(context_t* context, pstack_t new_stack, void* entry);
 #ifndef __X86_ASM_ONLY__
 struct task_segment
 {
-	uint_16 previous_task_link; /* Segment selector of prev task*/
-	uint_16 reserved_1;
-	uint_32 ESP0;
-	uint_16 SS0;
-	uint_16 reserved_2;
-	uint_32 ESP1;
-	uint_16 SS1;
-	uint_16 reserved_3;
-	uint_32 ESP2;
-	uint_16 SS2;
-	uint_16 reserved_4;
-	uint_32 cr3; /* Saved page table base register */
-	uint_32 eip; /* Instruction pointer */
-	uint_32 eflags;
-	uint_32 eax;
-	uint_32 ecx;
-	uint_32 edx;
-	uint_32 ebx;
-	uint_32 esp;
-	uint_32 ebp;
-	uint_32 esi;
-	uint_32 edi;
-	uint_16 es;
-	uint_16 reserved5;
-	uint_16 cs;
-	uint_16 reserved6;
-	uint_16 ss;
-	uint_16 reserved7;
-	uint_16 ds;
-	uint_16 reserved8;
-	uint_16 fs;
-	uint_16 reserved9;
-	uint_16 gs;
-	uint_16 reserved10;
-	uint_16 ldt;
-	uint_16 reserved11;
-	uint_16 T;
-	uint_16 io_base_address_map;
+	uint16_t previous_task_link; /* Segment selector of prev task*/
+	uint16_t reserved_1;
+	uint32_t ESP0;
+	uint16_t SS0;
+	uint16_t reserved_2;
+	uint32_t ESP1;
+	uint16_t SS1;
+	uint16_t reserved_3;
+	uint32_t ESP2;
+	uint16_t SS2;
+	uint16_t reserved_4;
+	uint32_t cr3; /* Saved page table base register */
+	uint32_t eip; /* Instruction pointer */
+	uint32_t eflags;
+	uint32_t eax;
+	uint32_t ecx;
+	uint32_t edx;
+	uint32_t ebx;
+	uint32_t esp;
+	uint32_t ebp;
+	uint32_t esi;
+	uint32_t edi;
+	uint16_t es;
+	uint16_t reserved5;
+	uint16_t cs;
+	uint16_t reserved6;
+	uint16_t ss;
+	uint16_t reserved7;
+	uint16_t ds;
+	uint16_t reserved8;
+	uint16_t fs;
+	uint16_t reserved9;
+	uint16_t gs;
+	uint16_t reserved10;
+	uint16_t ldt;
+	uint16_t reserved11;
+	uint16_t T;
+	uint16_t io_base_address_map;
 }; /* Size MUST be 104.*/
 #endif
 

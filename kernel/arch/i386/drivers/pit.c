@@ -15,9 +15,10 @@
 #define PORT_PIT_COMMAND 	0x43
 
 #define TICKS_PER_SECOND 1
-// FAST #define TICKS_DIVISOR (8192)
+// FAST i
+#define TICKS_DIVISOR (8192)
 // SLOWEST
-#define TICKS_DIVISOR 6553
+// #define TICKS_DIVISOR 6553
 
 void pit_init(void)
 {
@@ -46,11 +47,11 @@ void pit_init(void)
 
 void pit_reset(void)
 {
-        /* Calculate the correct divisor. */
-        uint divisor = TICKS_DIVISOR;
-        /* Write the divisor (low) */
-        outb(PORT_PIT_CHANNEL_0_DATA, (uchar)divisor);
-        /* Write the divisor (high) */
-        outb(PORT_PIT_CHANNEL_0_DATA, (uchar)(divisor >> 8));
+	/* Calculate the correct divisor. */
+	uint divisor = TICKS_DIVISOR;
+	/* Write the divisor (low) */
+	outb(PORT_PIT_CHANNEL_0_DATA, (uchar)divisor);
+	/* Write the divisor (high) */
+	outb(PORT_PIT_CHANNEL_0_DATA, (uchar)(divisor >> 8));
 	pic_enable(INT_PIC_TIMER);
 }

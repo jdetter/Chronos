@@ -9,7 +9,7 @@
 
 #include "x86.h"
 #include "stdarg.h"
-#include "drivers/console.h"
+#include "k/drivers/console.h"
 
 #define MAX_NUM 15
 

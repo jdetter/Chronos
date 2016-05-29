@@ -50,8 +50,6 @@ pipe_t pipe_alloc(void)
 	return p;
 }
 
-extern struct proc ptable[];
-extern slock_t ptable_lock;
 void pipe_fault(pipe_t t)
 {
 	slock_acquire(&ptable_lock);

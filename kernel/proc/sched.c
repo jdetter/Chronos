@@ -5,13 +5,7 @@
 #include "proc.h"
 #include "devman.h"
 #include "context.h"
-
-extern struct proc ptable[];
-extern slock_t ptable_lock;
-extern struct proc* rproc;
-/* The context of the scheduler right before user process gets scheduled. */
-extern context_t k_context;
-extern pstack_t k_stack;
+#include "panic.h"
 
 void sched_init()
 {
@@ -71,6 +65,7 @@ void scheduler(void)
 			{
 				/* Found a process! */
 				rproc = ptable + x;
+				cprintf("Running process: %s\n", rproc->name);
 
 				/* release lock */
 				slock_release(&ptable_lock);

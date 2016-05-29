@@ -28,9 +28,6 @@
 # undef DEBUG_CONTENT
 #endif
 
-extern slock_t ptable_lock;
-extern struct proc* rproc;
-
 int sys_link(void)
 {
 	const char* oldName;
@@ -511,8 +508,8 @@ int sys_fstat(void)
 	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: fstat on file %s\n", rproc->name, rproc->pid, 
-		rproc->fdtab[fd]->path);
+	cprintf("%s:%d: fstat on file fd: %d  path: %s\n", rproc->name, rproc->pid, 
+		fd, rproc->fdtab[fd]->path);
 #endif
 
 	slock_acquire(&rproc->fdtab[fd]->lock);
@@ -527,8 +524,12 @@ int sys_fstat(void)
 			break;
 		case FD_TYPE_DEVICE:
 		case FD_TYPE_PIPE:
+#ifdef DEBUG
+			cprintf("%s:%d: File is device.\n", rproc->name, rproc->pid);
+#endif
 			i = fs_open(rproc->fdtab[fd]->device->node, 
 					O_RDONLY, 0x0, 0x0, 0x0);
+
 			close_on_exit = 1;
 			break;
 		default:

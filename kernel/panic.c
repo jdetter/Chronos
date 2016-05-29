@@ -27,60 +27,60 @@ inode* log;
 void cprintf(char* fmt, ...)
 {
 	tty_t t0 = tty_find(0);
-        void** argument = (void**)(&fmt + 1);
+	void** argument = (void**)(&fmt + 1);
 
 	int len = strlen(fmt);
-        int x;
-        for(x = 0;x < len;x++)
-        {
-                if(fmt[x] == '%' && x + 1 < strlen(fmt))
-                {
-                        if(fmt[x + 1] == '%')
-                                tty_putc(t0, '%');
-                        else if(fmt[x + 1] == 'd')
-                        {
-                                /* Print in decimal */
-                                char buffer[32];
-                                kitoa(*((int*)argument), buffer, 32, 10);
-                                int y;
-                                for(y = 0;y < strlen(buffer);y++)
-                                        tty_putc(t0, buffer[y]);
-                                argument++;
-                        } else if(fmt[x + 1] == 'p' || fmt[x + 1] == 'x')
-                        {
-                                /* Print in hex */
-                                char buffer[32];
-                                kitoa(*((int*)argument), buffer, 32, 16);
-                                int y;
-                                for(y = 0;y < strlen(buffer);y++)
-                                        tty_putc(t0, buffer[y]);
-                                argument++;
-                        } else if(fmt[x + 1] == 'c')
-                        {
-                                /* Print character */
-                                char c = *((char*)argument);
-                                tty_putc(t0, c);
-                                argument++;
-                        } else if(fmt[x + 1] == 's')
-                        {
-                                char* str = *((char**)argument);
-                                int y;
-                                for(y = 0;y < strlen(str);y++)
-                                        tty_putc(t0, str[y]);
-                                argument++;
-                        } else if(fmt[x + 1] == 'b')
-                        {
-                                /* Print in binary */
-                                char buffer[128];
-                                kitoa(*((int*)argument), buffer, 32, 2);
-                                int y;
-                                for(y = 0;y < strlen(buffer);y++)
-                                        tty_putc(t0, buffer[y]);
-                                argument++;
-                        }
+	int x;
+	for(x = 0;x < len;x++)
+	{
+		if(fmt[x] == '%' && x + 1 < strlen(fmt))
+		{
+			if(fmt[x + 1] == '%')
+				tty_putc(t0, '%');
+			else if(fmt[x + 1] == 'd')
+			{
+				/* Print in decimal */
+				char buffer[32];
+				kitoa(*((int*)argument), buffer, 32, 10);
+				int y;
+				for(y = 0;y < strlen(buffer);y++)
+					tty_putc(t0, buffer[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'p' || fmt[x + 1] == 'x')
+			{
+				/* Print in hex */
+				char buffer[32];
+				kitoa(*((int*)argument), buffer, 32, 16);
+				int y;
+				for(y = 0;y < strlen(buffer);y++)
+					tty_putc(t0, buffer[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'c')
+			{
+				/* Print character */
+				char c = *((char*)argument);
+				tty_putc(t0, c);
+				argument++;
+			} else if(fmt[x + 1] == 's')
+			{
+				char* str = *((char**)argument);
+				int y;
+				for(y = 0;y < strlen(str);y++)
+					tty_putc(t0, str[y]);
+				argument++;
+			} else if(fmt[x + 1] == 'b')
+			{
+				/* Print in binary */
+				char buffer[128];
+				kitoa(*((int*)argument), buffer, 32, 2);
+				int y;
+				for(y = 0;y < strlen(buffer);y++)
+					tty_putc(t0, buffer[y]);
+				argument++;
+			}
 
-                        x++;
-                } else tty_putc(t0, fmt[x]);
+			x++;
+		} else tty_putc(t0, fmt[x]);
 	}
 }
 

@@ -1,1 +1,0 @@
-../../kernel/arch/i386/lock/stdlock.c

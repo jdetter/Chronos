@@ -10,8 +10,6 @@
 #include "chronos.h"
 #include "panic.h"
 
-extern slock_t ptable_lock;
-extern struct proc* rproc;
 
 void* mmap(void* hint, size_t sz, int protection,
         int flags, int fd, off_t offset);

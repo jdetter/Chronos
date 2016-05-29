@@ -95,7 +95,7 @@ struct proc
 	fdtab_t fdtab;
 	slock_t* fdtab_lock;
 	mode_t umask; /* File creation mask */
-	
+
 	/** Process state parameters */
 	int state; /* The state of the process */
 	int block_type; /* If blocked, what are you waiting for? */
@@ -107,8 +107,8 @@ struct proc
 	/** IO parameters */
 	tty_t t; /* The tty this program is attached to. */
 	char* io_dst; /* Where the destination bytes will be placed. */
-        int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
-        int io_recieved; /* The actual amount of bytes recieved. */
+	int io_request; /* Requested io size. Must be < PROC_IO_BUFFER */
+	int io_recieved; /* The actual amount of bytes recieved. */
 	struct proc* io_next; /* The next process waiting in the io queue*/
 	void* io_ticket; /* Optional parameter for some io operations */
 
@@ -128,15 +128,15 @@ struct proc
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
 
 	/** Virtual memory */
-        slock_t mem_lock;
-        uintptr_t stack_start; /* The high memory, start of the stack */
-        uintptr_t stack_end; /* Size of the stack in bytes. */
-        uintptr_t heap_start; /* The low memory, start of the heap */
-        uintptr_t heap_end; /* Size of the heap in bytes. */
-        uintptr_t mmap_start; /* Start of the mmap area */
-        uintptr_t mmap_end; /* end of the mmap area */
-        uintptr_t code_start; /* Start of the code area */
-        uintptr_t code_end; /* end of the code area */
+	slock_t mem_lock;
+	uintptr_t stack_start; /* The high memory, start of the stack */
+	uintptr_t stack_end; /* Size of the stack in bytes. */
+	uintptr_t heap_start; /* The low memory, start of the heap */
+	uintptr_t heap_end; /* Size of the heap in bytes. */
+	uintptr_t mmap_start; /* Start of the mmap area */
+	uintptr_t mmap_end; /* end of the mmap area */
+	uintptr_t code_start; /* Start of the code area */
+	uintptr_t code_end; /* end of the code area */
 	pgdir_t* pgdir; /* The page directory for the process */
 	int* sys_esp; /* Pointer to the start of the syscall argv */
 	context_t k_stack; /* A pointer to the kernel stack for this process. */
@@ -150,6 +150,14 @@ struct proc
 	int kernel_ticks; /* The amount of ticks spent in kernel mode */
 };
 
+extern struct proc ptable[];
+extern struct proc* rproc;
+extern slock_t ptable_lock;
+extern pid_t next_pid;
+
+extern context_t k_context;
+extern pstack_t k_stack;
+
 /**
  * Allocate a new process
  */
@@ -161,38 +169,10 @@ struct proc* alloc_proc();
 void sched_init();
 
 /**
- * Start a new process with the given tty.
- */
-struct proc* spawn_tty(tty_t t);
-
-/**
  * Returns a pointer with the process id pid. If there is no such process,
  * then NULL is returned. (lock not needed)
  */
 struct proc* get_proc_pid(int pid);
-
-/**
- * Check to see if other processes are connected to this tty. Returns 0
- * if the tty is disconnected, 1 otherwise.
- */
-int proc_tty_connected(tty_t t);
-
-/**
- * Disconnect the given process from its tty.
- */
-void proc_disconnect(struct proc* p);
-
-/**
- * Disconnect all processes that are attached to the given tty.
- */
-void proc_tty_disconnect(tty_t t);
-
-/**
- * Set the controlling terminal for a process.
- */
-void proc_set_ctty(struct proc* p, tty_t t);
-
-/** Some FD table functions (desc.c) */
 
 /**
  * Initilize a fdtab. This zeros all entries in the table.
@@ -271,11 +251,6 @@ void sched(void);
  * this loop. (lock required)
  */
 void scheduler(void);
-
-/**
- * Switch to a user's page table and restore the context.
- */
-void proc_switch_uvm(struct proc* p);
 
 /**
  * Debug function

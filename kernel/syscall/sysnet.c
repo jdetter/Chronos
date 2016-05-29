@@ -15,8 +15,6 @@
 #include "proc.h"
 #include "panic.h"
 
-extern struct proc* rproc;
-
 int sys_gethostname(void)
 {
 	char* buffer;

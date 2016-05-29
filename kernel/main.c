@@ -28,6 +28,7 @@ extern void arch_init(void (*function)(void));
 /* Entry point for the kernel */
 int main(void)
 {
+	
 	arch_init(main_stack);
 
 	panic("main_stack returned.\n");
@@ -45,7 +46,7 @@ void main_stack(void)
 	cprintf("Initilizing signals...\t\t\t\t\t\t\t");
 	sig_init();
 	cprintf("[ OK ]\n");
-	
+
 	/* Initilize kernel time */
 	cprintf("Initilizing kernel time...\t\t\t\t\t\t");
 	ktime_init();
@@ -57,8 +58,12 @@ void main_stack(void)
 	cprintf("[ OK ]\n");
 
 	/* Detect devices */
-	cprintf("Detecting devices...\t\t\t\t\t\t\t");
+	cprintf("Initilizing device manager...\n");
 	dev_init();
+
+	/* Initilize pipes */
+	cprintf("Initilizing pipes...\t\t\t\t\t\t\t");
+	pipe_init();
 	cprintf("[ OK ]\n");
 
 	/* Start file system manager */
@@ -73,32 +78,32 @@ void main_stack(void)
 
 	/* Populate the device folder */
 	cprintf("Populating the dev folder...\t\t\t\t\t\t");
-        dev_populate();
-        cprintf("[ OK ]\n");
+	dev_populate();
+	cprintf("[ OK ]\n");
 
 	cprintf("Initilizing Process Scheduler...\t\t\t\t\t");
 	sched_init();
 	cprintf("[ OK ]\n");
 
 	cprintf("Starting all logs...\t\t\t\t\t\t\t");
-        if(tty_code_log_init())
-                cprintf("[FAIL]\n");
-        else cprintf("[ OK ]\n");
+	if(tty_code_log_init())
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 
 	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
-        if(tty_enable_logging(tty_find(0), "tty0.txt"))
-                cprintf("[FAIL]\n");
-        else cprintf("[ OK ]\n");
+	if(tty_enable_logging(tty_find(0), "tty0.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 #if 0
-        cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
-        if(tty_enable_logging(tty_find(0), "tty0-new.txt"))
-                cprintf("[FAIL]\n");
-        else cprintf("[ OK ]\n");
+	cprintf("Enabling logging on tty0...\t\t\t\t\t\t");
+	if(tty_enable_logging(tty_find(0), "tty0-new.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 
 	cprintf("Enabling logging on tty1...\t\t\t\t\t\t");
-        if(tty_enable_logging(tty_find(1), "tty1-new.txt"))
-                cprintf("[FAIL]\n");
-        else cprintf("[ OK ]\n");
+	if(tty_enable_logging(tty_find(1), "tty1-new.txt"))
+		cprintf("[FAIL]\n");
+	else cprintf("[ OK ]\n");
 
 	cprintf("Starting all logs...\t\t\t\t\t\t\t");
 	if(tty_code_log_init())
@@ -116,18 +121,29 @@ void main_stack(void)
 	else cprintf("[ OK ]\n");
 #endif
 
+	cprintf("Spawning primary tty...\t\t\t\t\t\t\t");
+	tty_t primary = tty_find(0);
+	if(!primary)
+		panic("[FAIL]\nNo primary tty found!\n");
+	tty_spawn(primary);
+	// tty_enable(primary);
+	cprintf("[ OK ]\n");
+
+#if 0
 	/* Spawn shells on all of the ttys */	
 	cprintf("Spawning ttys...\t\t\t\t\t\t\t");
 	int tty_num;
 	for(tty_num = 1;;tty_num++)
 	{
-		if(tty_num == 2) break;
+		if(tty_num == 1) break;
 		tty_t t = tty_find(tty_num);
-		spawn_tty(t);
+		tty_spawn(t);
 		if(!t) break;
 	}
 	cprintf("[ OK ]\n");
-	
+#endif
+
+	cprintf("Starting scheduler...\n");
 	/* Start scheduling loop. */
 	sched();
 	panic("Scheduler returned!");

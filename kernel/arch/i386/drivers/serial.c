@@ -8,16 +8,16 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "x86.h"
-#include "drivers/serial.h"
+#include "k/drivers/serial.h"
 #include "drivers/pic.h"
 
-#define COM1_DATA 		0x03F8
-#define COM1_INT  		0x03F9
+#define COM1_DATA 			0x03F8
+#define COM1_INT  			0x03F9
 #define COM1_INT_IDENT 		0x03FA
-#define COM1_LCR 		0x03FB
-#define COM1_MCR 		0x03FC
-#define COM1_LSR 		0x03FD
-#define COM1_MSR 		0x03FE
+#define COM1_LCR 			0x03FB
+#define COM1_MCR 			0x03FC
+#define COM1_LSR 			0x03FD
+#define COM1_MSR 			0x03FE
 #define COM1_SCRATCH 		0x03FF
 
 #define COM1_IRQ 0x04

@@ -10,7 +10,7 @@
 #include "x86.h"
 #include "panic.h"
 #include "drivers/pic.h"
-#include "drivers/keyboard.h"
+#include "k/drivers/keyboard.h"
 
 /** Uncomment this line for debugging */
 // #define DEBUG

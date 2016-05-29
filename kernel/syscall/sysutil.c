@@ -11,8 +11,6 @@
 #include "proc.h"
 #include "chronos.h"
 
-extern struct proc* rproc;
-
 /** Check to see if an fd is valid */
 int fd_ok(int fd)
 {

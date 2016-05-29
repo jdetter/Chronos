@@ -6,8 +6,6 @@
 #include "ktime.h"
 #include "drivers/rtc.h"
 
-extern struct proc* rproc;
-
 int sys_select_next_fd(int curr_fd, fd_set* set, int max_fd)
 {
         for(;curr_fd < PROC_MAX_FDS && curr_fd < max_fd;curr_fd++)

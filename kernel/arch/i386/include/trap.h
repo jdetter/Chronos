@@ -14,6 +14,8 @@
 
 #ifndef __ASM_ONLY__
 
+#include "k/trap.h"
+
 #define TF_REGISTERS (0x08 << 2)
 typedef char fpu128_t[16];
 
@@ -22,7 +24,7 @@ struct trap_frame
 	/* Floating point context */
 	fpu128_t fpu_w0;
 	fpu128_t fpu_w1;
-	
+
 	fpu128_t fpu_mm0;
 	fpu128_t fpu_mm1;
 	fpu128_t fpu_mm2;
@@ -31,7 +33,7 @@ struct trap_frame
 	fpu128_t fpu_mm5;
 	fpu128_t fpu_mm6;
 	fpu128_t fpu_mm7;
-	
+
 	fpu128_t fpu_xmm0;
 	fpu128_t fpu_xmm1;
 	fpu128_t fpu_xmm2;
@@ -40,7 +42,7 @@ struct trap_frame
 	fpu128_t fpu_xmm5;
 	fpu128_t fpu_xmm6;
 	fpu128_t fpu_xmm7;
-	
+
 	fpu128_t fpu_resw0;
 	fpu128_t fpu_resw1;
 	fpu128_t fpu_resw2;
@@ -60,40 +62,40 @@ struct trap_frame
 	/* Alignment for fpu */
 	char fpu_alignment[436];
 
-        /* 32 bit Registers from pushad */
-        uint32_t edi;
-        uint32_t esi;
-        uint32_t ebp;
-        uint32_t espx; /* This gets restored, but overridden by esp below */
-        uint32_t ebx;
-        uint32_t edx;
-        uint32_t ecx;
-        uint32_t eax;
+	/* 32 bit Registers from pushad */
+	uint32_t edi;
+	uint32_t esi;
+	uint32_t ebp;
+	uint32_t espx; /* This gets restored, but overridden by esp below */
+	uint32_t ebx;
+	uint32_t edx;
+	uint32_t ecx;
+	uint32_t eax;
 
-        /* Segment registers */
-        uint16_t gs;
-        uint16_t padding1;
-        uint16_t fs;
-        uint16_t padding2;
-        uint16_t es;
-        uint16_t padding3;
-        uint16_t ds;
-        uint16_t padding4;
+	/* Segment registers */
+	uint16_t gs;
+	uint16_t padding1;
+	uint16_t fs;
+	uint16_t padding2;
+	uint16_t es;
+	uint16_t padding3;
+	uint16_t ds;
+	uint16_t padding4;
 
-        /* Trap number pushed by trap handlers */
-        uint32_t trap_number;
+	/* Trap number pushed by trap handlers */
+	uint32_t trap_number;
 
-        /* Pushed during the interrupt */
-        uint32_t error;
-        uint32_t eip; /* Instruction Pointer */
-        uint16_t cs; /* Code segment selector */
-        uint16_t padding5; /* 16 bit padding */
-        uint32_t eflags; /* Status bits for this process. */
+	/* Pushed during the interrupt */
+	uint32_t error;
+	uint32_t eip; /* Instruction Pointer */
+	uint16_t cs; /* Code segment selector */
+	uint16_t padding5; /* 16 bit padding */
+	uint32_t eflags; /* Status bits for this process. */
 
-        /* Pushed if there was a privilege change */
-        uint32_t esp; /* The stack pointer that will be restored. (see espx) */
-        uint16_t ss; /* Stack segment selector. */
-        uint16_t padding6;
+	/* Pushed if there was a privilege change */
+	uint32_t esp; /* The stack pointer that will be restored. (see espx) */
+	uint16_t ss; /* Stack segment selector. */
+	uint16_t padding6;
 };
 
 /**

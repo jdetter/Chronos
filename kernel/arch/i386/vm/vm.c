@@ -20,7 +20,7 @@
 #include "context.h"
 
 /* We need some graphics config for bootup */
-#include "drivers/console.h"
+#include "k/drivers/console.h"
 
 context_t k_context; /* The kernel context */
 pstack_t k_stack; /* Kernel stack */

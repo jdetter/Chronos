@@ -14,15 +14,11 @@ i386_DRIVER_OBJS := ata \
 	rtc \
 	ktime \
 	serial \
-	fpu \
-	vt102/tty_codes \
-	vt102/tty_display \
-	vt102/tty_io \
-	vt102/tty_kbd
+	fpu
 
 i386_LOCK_OBJS := stdlock
 i386_PROC_OBJS := elf iosched proc
-i386_SRC_OBJS := devman panic main fsman
+i386_SRC_OBJS := devman panic main fsman cpu
 i386_SYSCALL_OBJS := sysfile sysproc
 i386_TRAP_OBJS := asm trap idt
 i386_VM_OBJS := asm pgdir vm_alloc vm vm_boot
@@ -57,10 +53,12 @@ i386_OBJS := $(addsuffix .o, $(i386_OBJS))
 arch.o: arch-tools $(i386_OBJS)
 	$(CROSS_LD) $(RELOCATE_FLAGS) $(i386_OBJS) -o arch.o
 
+.PHONY: boot-stage1.img
 boot-stage1.img:
 	cd boot ; \
 	make boot-stage1.img
 
+.PHONY: boot-stage2.img
 boot-stage2.img:
 	cd boot ; \
 	make boot-stage2.img

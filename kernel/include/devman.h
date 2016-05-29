@@ -1,6 +1,9 @@
 #ifndef _DEVMAN_H_
 #define _DEVMAN_H_
 
+#include <stdlib.h>
+#include <stdint.h>
+
 #include "fsman.h"
 
 #define MAX_DEVICES 128
@@ -25,12 +28,12 @@ struct IODriver
 	 * bytes read.
 	 */
 	int (*read)(void* dst, fileoff_t start_read, size_t sz, void* context);
-	
+
 	/**
 	 * Write sz bytes to the device from buffer src. Returns the amount
 	 * of bytes written to the device.
 	 */
-        int (*write)(void* src, fileoff_t start_write, size_t sz, void* context);
+	int (*write)(void* src, fileoff_t start_write, size_t sz, void* context);
 	int (*ioctl)(unsigned long request, void* arg, void* context);
 
 	/**

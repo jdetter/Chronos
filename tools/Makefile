@@ -1,14 +1,8 @@
 TOOLS := \
 	disk-part
-
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-TOOLS_CFLAGS := -D__LINUX__ \
-		-I ../kernel \
-		-I ../kernel/include \
-		-I ../kernel/cache \
-		-I ../kernel/arch/$(BUILD_ARCH)/include
-
+TOOLS_CFLAGS := -D__LINUX__
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
 .PHONY: tools
@@ -20,9 +14,5 @@ tools-clean:
 bin:
 	mkdir -p bin
 
-deps/%.o: deps/%.c
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@ $<
-
 bin/%: src/%.c
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -c -o $@.o $< 
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -m32 -o $@ $@.o
+	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -o $@ $<

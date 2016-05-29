@@ -29,12 +29,12 @@
 #include "device.h"
 #include "drivers/ata.h"
 #include "drivers/pic.h"
-#include "drivers/keyboard.h"
-#include "drivers/console.h"
-#include "drivers/serial.h"
 #include "drivers/fpu.h"
 #include "drivers/cmos.h"
 #include "drivers/pit.h"
+#include "k/drivers/keyboard.h"
+#include "k/drivers/serial.h"
+#include "k/drivers/console.h"
 
 
 extern pgdir_t* k_pgdir;
@@ -117,11 +117,6 @@ int dev_init()
         reset_cli();
         cprintf("[ OK ]\n");
 
-	/* Initilize pipes */
-        cprintf("Initilizing pipes...\t\t\t\t\t\t\t");
-        pipe_init();
-        cprintf("[ OK ]\n");
-
 	curr_mapping = KVM_HARDWARE_S;
 	slock_init(&driver_table_lock);
 	struct DeviceDriver* driver = NULL;
@@ -149,7 +144,7 @@ int dev_init()
 				CONSOLE_MEM_SZ);
 
 	/* Find ttys */
-	uint x;
+	int x;
 	for(x = 0;;x++)
 	{
 		if(x > 0 && !video_type) break;
@@ -201,7 +196,6 @@ int dev_init()
 			"ATA DRIVE %d", (x + 1));
 		disk_cache_hardware_init(ata_drivers[x]);
 	}
-
 
 	serial_init(0);
 	/* Find serial port */
@@ -283,6 +277,7 @@ void dev_populate(void)
 
 		if(drivers[x].valid)
 		{
+			cprintf("Made node: %s\n", drivers[x].node);
 			fs_mknod(drivers[x].node, x, drivers[x].type, 
 				dev_perm | type);
 		}

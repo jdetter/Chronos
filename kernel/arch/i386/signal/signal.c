@@ -29,10 +29,6 @@
 
 #include <signal.h>
 
-extern struct proc* rproc;
-extern struct proc ptable;
-extern slock_t ptable_lock;
-
 /* Signal default action table */
 static int default_actions[NSIG];
 

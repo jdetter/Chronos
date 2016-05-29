@@ -4,7 +4,7 @@
 /**
  * Maximum number of ttys that can be connected
  */
-#define MAX_TTYS 4
+#define MAX_TTYS 1
 
 /** 
  * For a color monitor, there are 80 rows and 25 columns and each position
@@ -72,9 +72,12 @@
 #define NPAR 16
 #endif
 
-#include "klog.h"
 #include <sys/ioctl.h>
 #include <termios.h>
+#include "klog.h"
+
+struct IODriver;
+struct proc;
 
 struct kbd_buff
 {
@@ -152,7 +155,6 @@ struct tty
 	struct winsize save_window;
 	int save_tab_stop;
 	int save_sgr;
-
 };
 
 typedef struct tty* tty_t;
@@ -307,5 +309,13 @@ int tty_keyboard_count(tty_t t);
  * Allow ttys to capture keyboard events.
  */
 void tty_setup_kbd_events(void);
+
+/** Add descriptions for these */
+int tty_connected(tty_t t);
+void tty_disconnect_proc(struct proc* p);
+void tty_disconnect_all(tty_t t);
+void tty_set_proc_ctty(struct proc* p, tty_t t);
+int tty_spawn(tty_t t);
+
 
 #endif

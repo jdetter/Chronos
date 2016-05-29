@@ -67,10 +67,8 @@ char* trap_names[] = {
 
 extern struct rtc_t k_time;
 struct int_gate interrupt_table[TRAP_COUNT];
-extern struct proc* rproc;
 extern uint trap_handlers[];
 extern int k_ticks;
-extern slock_t ptable_lock;
 
 void trap_init(void)
 {

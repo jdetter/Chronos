@@ -46,9 +46,6 @@
  *
  */
 
-/* currently running process (from proc.c) */
-extern struct proc* rproc;
-
 /* Global inode table */
 slock_t itable_lock;
 struct inode_t itable[FS_INODE_MAX];

@@ -19,10 +19,6 @@
 # undef DEBUG
 #endif
 
-extern slock_t ptable_lock;
-extern struct proc ptable[];
-extern struct proc* rproc;
-
 int sys_sigaction(void)
 {
 	/* Assign the handler */

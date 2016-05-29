@@ -26,7 +26,6 @@ KERNEL_BINS := \
 	netman \
 	panic \
 	kcond \
-	cpu \
 	pipe \
 	fsman \
 	file \
@@ -37,10 +36,15 @@ KERNEL_BINS := \
 
 # Generic drivers 
 KERNEL_DRIVERS := \
-        ext2 \
+	ext2 \
 	diskio \
 	lwfs \
-	raid
+	raid \
+	tty \
+	vt102/tty_display \
+	vt102/tty_codes \
+	vt102/tty_io \
+	vt102/tty_kbd
 
 KERNEL_DRIVERS := $(addprefix drivers/, $(KERNEL_DRIVERS))
 
@@ -55,10 +59,10 @@ KERNEL_LDFLAGS := -nostdlib --entry=main --section-start=.text=0xFF000000
 
 # Specify files to clean
 KERNEL_CLEAN := \
-        $(KERNEL_OBJS) \
-        chronos.o \
-        idt.S \
-        chronos.sym
+	$(KERNEL_OBJS) \
+	chronos.o \
+	idt.S \
+	chronos.sym
 
 .PHONY: kernel-symbols
 kernel-symbols: chronos.o 
@@ -67,24 +71,28 @@ kernel-symbols: chronos.o
 .PHONY: kernel-clean
 kernel-clean:
 	cd arch/$(BUILD_ARCH)/ ; \
-	make arch-clean
+		make arch-clean
 	rm -f $(KERNEL_CLEAN)
 
+.PHONY: boot-stage1.img
 boot-stage1.img:
 	cd arch/$(BUILD_ARCH) ; \
-	make boot-stage1.img
+		make boot-stage1.img
 
+.PHONY: boot-stage2.img
 boot-stage2.img:
 	cd arch/$(BUILD_ARCH) ; \
-	make boot-stage2.img
+		make boot-stage2.img
 
+.PHONY: chronos.o
 chronos.o: $(KERNEL_OBJS)
 	cd arch/$(BUILD_ARCH) ; \
-	make arch.o
+		make arch.o
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $(KERNEL_OBJS) arch/$(BUILD_ARCH)/arch.o
 
 %.o: %.S
 	$(CROSS_AS) $(AFLAGS) $(KINCLUDE) -c -o $@ $<
+
 %.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(KINCLUDE) -c -o $@ $<
 

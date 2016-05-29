@@ -10,14 +10,14 @@ extern struct vm_segment_descriptor global_descriptor_table[];
 void context_switch(struct proc* p)
 {
         /* Set the task segment to point to the process's stacks. */
-        uint base = (uint)p->tss;
-        uint limit = sizeof(struct task_segment);
-        uint type = TSS_DEFAULT_FLAGS | TSS_PRESENT;
-        uint flag = TSS_AVAILABILITY;
+        uintptr_t base = (uint)p->tss;
+        uintptr_t limit = sizeof(struct task_segment);
+        unsigned int type = TSS_DEFAULT_FLAGS | TSS_PRESENT;
+        unsigned int flag = TSS_AVAILABILITY;
 
-        global_descriptor_table[SEG_TSS].limit_1 = (uint_16) limit;
-        global_descriptor_table[SEG_TSS].base_1 = (uint_16) base;
-        global_descriptor_table[SEG_TSS].base_2 = (uint_8)(base>>16);
+        global_descriptor_table[SEG_TSS].limit_1 = (uint16_t) limit;
+        global_descriptor_table[SEG_TSS].base_1 = (uint16_t) base;
+        global_descriptor_table[SEG_TSS].base_2 = (uint8_t)(base>>16);
         global_descriptor_table[SEG_TSS].type = type;
         global_descriptor_table[SEG_TSS].flags_limit_2 =
                 (uint_8)(limit >> 16) | flag;

@@ -7,8 +7,6 @@
 #include "fsman.h"
 #include "proc.h"
 
-extern struct proc* rproc;
-
 void cond_init(cond_t* c)
 {
 	c->next_signal = 0;

@@ -29,8 +29,8 @@ export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARC
 QEMU := qemu-system-$(BUILD_ARCH)
 
 # Uncomment this lines to turn off all output
-export CFLAGS := -DRELEASE $(CFLAGS)
-export AFLAGS := -DRELEASE $(AFLAGS)
+# export CFLAGS := -DRELEASE $(CFLAGS)
+# export AFLAGS := -DRELEASE $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
@@ -44,6 +44,7 @@ BOOT_STAGE2_SECTORS := 140
 .PHONY: all
 all: chronos.img
 
+.PHONY: chronos.img
 chronos.img: 
 	cd tools/ ; \
 	make tools || exit 1

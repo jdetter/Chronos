@@ -16,10 +16,6 @@
 
 // #define DEBUG
 
-extern slock_t ptable_lock;
-extern struct proc ptable[];
-extern struct proc* rproc;
-
 /**
  * Check to see if there are any processes that need to be woken up.
  */

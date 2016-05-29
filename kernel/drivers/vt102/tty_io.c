@@ -9,10 +9,6 @@
 #include "tty.h"
 #include "proc.h"
 
-extern slock_t ptable_lock;
-extern struct proc* rproc;
-extern struct proc ptable[];
-
 // #define DEBUG
 // #define KEY_DEBUG
 // #define QUEUE_DEBUG
@@ -90,6 +86,7 @@ static int tty_io_read(void* dst, fileoff_t start_read, size_t sz, void* context
 
 static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* context)
 {
+	cprintf("Writing %s to serial console.\n", (char*)src);
 	tty_t t = context;
 	char* src_c = src;
 	int x;
@@ -212,16 +209,16 @@ static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 		case TIOCSCTTY:
 			/* TODO:check to make sure rproc is a session leader*/
 			/* TODO:make sure rproc doesn't already have a tty*/
-			if(proc_tty_connected(t))
-				proc_disconnect(rproc);
+			if(tty_connected(t))
+				tty_disconnect_proc(rproc);
 
-			proc_set_ctty(rproc, t);
+			tty_set_proc_ctty(rproc, t);
 			break;
 
 		case TIOCNOTTY:
 			/* TODO: send SIGHUP to all process on tty t.*/
 			if(rproc->t == t)
-				proc_disconnect(rproc);
+				tty_disconnect_proc(rproc);
 			break;
 
 		case TIOCGPGRP:
