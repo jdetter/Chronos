@@ -17,7 +17,7 @@
 #include "syscall.h"
 #include "panic.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG
@@ -203,14 +203,14 @@ char* syscall_table_names[] = {
 	"vfork",
 	"select",
 	"alarm",
-        "seteuid",
-        "sigaction",
-        "sigprocmask",
-        "sigpending",
-        "signal",
-        "sigsuspend",
-        "setegid",
-        "sync",
+    "seteuid",
+    "sigaction",
+    "sigprocmask",
+    "sigpending",
+    "signal",
+    "sigsuspend",
+    "setegid",
+    "sync",
 	"setreuid",
 	"setregid"
 };
