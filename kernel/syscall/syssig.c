@@ -13,7 +13,7 @@
 #include "signal.h"
 #include "syscall.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG

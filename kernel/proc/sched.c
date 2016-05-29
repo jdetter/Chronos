@@ -65,7 +65,6 @@ void scheduler(void)
 			{
 				/* Found a process! */
 				rproc = ptable + x;
-				cprintf("Running process: %s\n", rproc->name);
 
 				/* release lock */
 				slock_release(&ptable_lock);

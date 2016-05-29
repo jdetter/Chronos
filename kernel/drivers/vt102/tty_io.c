@@ -86,7 +86,6 @@ static int tty_io_read(void* dst, fileoff_t start_read, size_t sz, void* context
 
 static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* context)
 {
-	cprintf("Writing %s to serial console.\n", (char*)src);
 	tty_t t = context;
 	char* src_c = src;
 	int x;

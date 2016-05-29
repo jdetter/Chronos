@@ -79,7 +79,7 @@ void* dev_new_mapping(uintptr_t phy, size_t sz)
 	uintptr_t x;
 	for(x = 0;x < sz;x += PGSIZE)
 		vm_mappage(phy + x, v_start + x, k_pgdir, 
-			dir_flags, tbl_flags);
+				dir_flags, tbl_flags);
 
 	curr_mapping = v_end;
 	return (void*)v_start;
@@ -88,34 +88,34 @@ void* dev_new_mapping(uintptr_t phy, size_t sz)
 int dev_init()
 {
 	/* Enable PIC */
-        cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
-        pic_init();
-        cprintf("[ OK ]\n");
-	
+	cprintf("Starting Programmable Interrupt Controller Driver...\t\t\t");
+	pic_init();
+	cprintf("[ OK ]\n");
+
 	/* Enable the floating point unit */
-        cprintf("Enabling the floating point unit.\t\t\t\t\t");
-        fpu_init();
-        cprintf("[ OK ]\n");
+	cprintf("Enabling the floating point unit.\t\t\t\t\t");
+	fpu_init();
+	cprintf("[ OK ]\n");
 
 	/* Initilize CMOS */
-        cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
-        cmos_init();
-        cprintf("[ OK ]\n");
+	cprintf("Initilizing cmos...\t\t\t\t\t\t\t");
+	cmos_init();
+	cprintf("[ OK ]\n");
 
 	/* Start the network manager */
 	cprintf("Starting network manager...\t\t\t\t\t\t");
-        net_init();
-        cprintf("[ OK ]\n");
+	net_init();
+	cprintf("[ OK ]\n");
 
 	/* Enable PIT */
-        cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
-        pit_init();
-        cprintf("[ OK ]\n");
+	cprintf("Starting Programmable Interrupt Timer Driver...\t\t\t\t");
+	pit_init();
+	cprintf("[ OK ]\n");
 
 	/* Initilize cli stack */
-        cprintf("Initilizing cli stack...\t\t\t\t\t\t");
-        reset_cli();
-        cprintf("[ OK ]\n");
+	cprintf("Initilizing cli stack...\t\t\t\t\t\t");
+	reset_cli();
+	cprintf("[ OK ]\n");
 
 	curr_mapping = KVM_HARDWARE_S;
 	slock_init(&driver_table_lock);
@@ -162,7 +162,7 @@ int dev_init()
 		/* Set mount point */
 		driver->type = DEV_TTY;
 		snprintf(driver->node, 
-			FILE_MAX_PATH, "/dev/tty%d", x);
+				FILE_MAX_PATH, "/dev/tty%d", x);
 	}
 
 	/* Fix tty0 */
@@ -184,16 +184,16 @@ int dev_init()
 		driver->type = DEV_DISK;
 		ata_io_setup(&driver->io_driver, ata_drivers[x]);
 		snprintf(driver->node,
-			FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
+				FILE_MAX_PATH, "/dev/hd%c", 'a' + x);
 
 		void* disk_cache = cman_alloc(ATA_CACHE_SZ);
 		/* Initilize the cache for this disk */
 		if(cache_init(disk_cache, ATA_CACHE_SZ, PGSIZE, 
-			"", &ata_drivers[x]->cache))
-			cprintf("Cache init for disk failed!\n");
+					"", &ata_drivers[x]->cache))
+			panic("Cache init for disk failed!\n");
 		/* Set a real name for the cache */
 		snprintf(ata_drivers[x]->cache.name, CACHE_DEBUG_NAME_LEN,
-			"ATA DRIVE %d", (x + 1));
+				"ATA DRIVE %d", (x + 1));
 		disk_cache_hardware_init(ata_drivers[x]);
 	}
 
@@ -207,8 +207,8 @@ int dev_init()
 		pic_enable(INT_PIC_COM1);
 		/* Set mount point */
 		driver->type = DEV_COM;
-                snprintf(driver->node,
-                        FILE_MAX_PATH, "/dev/sl0");
+		snprintf(driver->node,
+				FILE_MAX_PATH, "/dev/sl0");
 	}
 
 	/* Keyboard */
@@ -225,9 +225,9 @@ int dev_init()
 	dev_null = driver;
 
 	driver = dev_alloc();
-        driver->type = DEV_IO;
-        snprintf(driver->node, FILE_MAX_PATH, "/dev/zero");
-        driver->io_driver.init = io_zero_init;
+	driver->type = DEV_IO;
+	snprintf(driver->node, FILE_MAX_PATH, "/dev/zero");
+	driver->io_driver.init = io_zero_init;
 	dev_zero = driver;
 
 	/* Do final init on all io devices */
@@ -255,7 +255,7 @@ void dev_populate(void)
 			case DEV_COM:
 				type = S_IFCHR;
 				break;
-			/* Block devices */
+				/* Block devices */
 			case DEV_DISK_PART:
 			case DEV_DISK:
 			case DEV_RAM:
@@ -270,16 +270,15 @@ void dev_populate(void)
 				break;
 			default:
 				type = 0;
-				cprintf("Invalid device: %d\n", x);
+				// cprintf("Invalid device: %d\n", x);
 				break;
 		}
 		if(!type) continue;
 
 		if(drivers[x].valid)
 		{
-			cprintf("Made node: %s\n", drivers[x].node);
 			fs_mknod(drivers[x].node, x, drivers[x].type, 
-				dev_perm | type);
+					dev_perm | type);
 		}
 	}
 }
@@ -313,19 +312,19 @@ int io_null_init(struct IODriver* driver)
 int io_zero_read(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
 	memset(dst, 0, sz);
-        return sz;
+	return sz;
 }
 
 int io_zero_write(void* dst, fileoff_t start_read, size_t sz, void* context)
 {
-        return sz;
+	return sz;
 }
 
 int io_zero_init(struct IODriver* driver)
 {
-        driver->init = io_zero_init;
-        driver->read = io_zero_read;
-        driver->write = io_zero_write;
-        driver->ioctl = NULL;
-        return 0;
+	driver->init = io_zero_init;
+	driver->read = io_zero_read;
+	driver->write = io_zero_write;
+	driver->ioctl = NULL;
+	return 0;
 }
