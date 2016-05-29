@@ -9,13 +9,11 @@
 #include <string.h>
 #include <sys/fcntl.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "fsman.h"
-#include "ata.h"
 #include "panic.h"
 #include "stdarg.h"
 #include "pipe.h"
@@ -23,12 +21,16 @@
 #include "chronos.h"
 #include "proc.h"
 #include "panic.h"
-#include "ext2.h"
-#include "lwfs.h"
-#include "diskio.h"
 #include "diskcache.h"
+#include "drivers/ext2.h"
+#include "drivers/lwfs.h"
+#include "drivers/diskio.h"
 
 // #define DEBUG
+
+#ifdef RELEASE
+# undef DEBUG
+#endif
 
 /**
  * DEADLOCK NOTICE: in order to hold the itable lock, the fstable must be
@@ -44,9 +46,6 @@
  *
  */
 
-/* currently running process (from proc.c) */
-extern struct proc* rproc;
-
 /* Global inode table */
 slock_t itable_lock;
 struct inode_t itable[FS_INODE_MAX];
@@ -55,111 +54,45 @@ struct inode_t itable[FS_INODE_MAX];
 slock_t fstable_lock;
 struct FSDriver fstable[FS_TABLE_MAX];
 
-static struct FSDriver* fs_alloc(void);
-void fs_free(struct FSDriver* driver); /** Make this static when it is ready*/
+/* Global inode table */
+extern slock_t itable_lock;
+extern struct inode_t itable[];
 
-void fsman_init(void)
+/* File system table */
+extern slock_t fstable_lock;
+extern struct FSDriver fstable[];
+
+struct FSDriver* fs_alloc(void)
 {
-	int x;
-
-	/* Initilize inode table */
-	memset(&itable, 0, sizeof(struct inode_t) * FS_INODE_MAX);
-
-	/* Bring up ata drivers */
-	//ata_init(); this is now done in devman.
-
-	/* Get a running driver */
-	struct FSHardwareDriver* ata = NULL;
-	for(x = 0;x < ATA_DRIVER_COUNT;x++)
-		if(ata_drivers[x]->valid)
-		{
-			ata = ata_drivers[x];
-			break;
-		}
-	if(ata == NULL) panic("No ata driver available.\n");
-
-	/* Assign a root file system */
-	struct FSDriver* ext2 = fs_alloc();
-	ext2->driver = ata;
-	diskio_setup(ext2);
-	ext2->start = 2048;
-	disk_cache_init(ext2);
-	
-	/* Set our ext2 as the root file system. */
-	ext2_init(ext2);
-	// ext2->fsck(ext2->context);
-	ext2->valid = 1;
-	ext2->type = 0;
-	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
-
-	/* If the directory is already there, delete it */
-	ext2->rmdir("/dev", ext2->context);
-
-	/* make sure there is a dev folder */
-	if(ext2->mkdir("/dev", 
-		PERM_ARD | PERM_AEX | PERM_UWR | PERM_GWR | S_IFDIR,
-		0x0, 0x0, ext2->context))
-	{
-		/* If this fails, then there must be junk in the directory */
-		/* Make sure the permissions are okay at least */
-		void* ino = ext2->open("/dev", ext2->context);
-		if(!ino)
-		{
-			/* If we can't open dev the file system is currupt */
-			return;
-		}
-
-		ext2->chmod(ino, 
-			PERM_ARD | PERM_AEX | PERM_UWR 
-			| PERM_GWR | S_IFDIR, ext2->context);
-		ext2->chown(ino, 0, 0, ext2->context);
-	}
-
-	/* Create a light weight file system on /dev */
-	struct FSDriver* dev = fs_alloc();
-	if(lwfs_init(0x100000, dev))
-	{
-		cprintf("kernel: failed to create /dev ram file system.\n");
-		fs_free(dev);
-		return;
-	}
-	
-	dev->type = 0;
-	dev->valid = 1;
-	strncpy(dev->mount_point, "/dev/", FILE_MAX_PATH);
-}
-
-static struct FSDriver* fs_alloc(void)
-{
-	slock_acquire(&fstable_lock);
-	struct FSDriver* driver = NULL;
-	int x;
-	for(x = 0;x < FS_TABLE_MAX;x++)
-	{
-		if(!fstable[x].valid)
-		{
+        slock_acquire(&fstable_lock);
+        struct FSDriver* driver = NULL;
+        int x;
+        for(x = 0;x < FS_TABLE_MAX;x++)
+        {
+                if(!fstable[x].valid)
+                {
 #ifdef CACHE_WATCH
-			cprintf("FSDriver allocated: %d\n", x);
+                        cprintf("FSDriver allocated: %d\n", x);
 #endif
-			driver = fstable + x;
-			driver->valid = 1;
-			break;
-		}
-	}
+                        driver = fstable + x;
+                        driver->valid = 1;
+                        break;
+                }
+        }
 
 #ifdef CACHE_PANIC
-	if(!driver) panic("Too many file systems mounted!\n");
+        if(!driver) panic("Too many file systems mounted!\n");
 #endif
 
-	slock_release(&fstable_lock);
-	return driver;
+        slock_release(&fstable_lock);
+        return driver;
 }
 
 void fs_free(struct FSDriver* driver)
 {
-	slock_acquire(&fstable_lock);
-	driver->valid = 0;
-	slock_release(&fstable_lock);
+        slock_acquire(&fstable_lock);
+        driver->valid = 0;
+        slock_release(&fstable_lock);
 }
 
 int fs_add_inode_reference(struct inode_t* i)
@@ -170,6 +103,7 @@ int fs_add_inode_reference(struct inode_t* i)
 	else cprintf("INODE REFERENCE ADDED: %s process: KERNEL\n",
 				i->name);
 #endif
+
 	i->references++;
 	return 0;
 }
@@ -182,7 +116,7 @@ int fs_add_inode_reference(struct inode_t* i)
  * path has grammar errors. Returns 0 on success. The resulting
  * path will not end with a slash unless it is the root '/'
  */
-int fs_path_resolve(const char* path, char* dst, uint sz)
+int fs_path_resolve(const char* path, char* dst, size_t sz)
 {
 	if(strlen(path) == 0) return -1;
 	int path_pos;
@@ -262,30 +196,50 @@ int fs_path_resolve(const char* path, char* dst, uint sz)
 
 static struct FSDriver* fs_find_fs(const char* path)
 {
-	uint match_len = 0;
+	int match_len = 0;
 	struct FSDriver* fs = NULL;
 	int x;
 	for(x = 0;x < FS_TABLE_MAX;x++)
 	{
+		/* Skip all invalid filesystems */
 		if(fstable[x].valid == 0) continue;
-		uint mp_strlen = strlen(fstable[x].mount_point);
-		if(!memcmp(fstable[x].mount_point, (char*)path, mp_strlen))
+
+		/* Get the length of the mount point of this fs */
+		int mp_strlen = strlen(fstable[x].mount_point);
+
+		/* If this ends in a slash, and it's not root, subtract one */
+		if(mp_strlen > 1 &&fstable[x].mount_point[mp_strlen - 1]=='/')
+			mp_strlen--;
+
+		if(!strncmp(fstable[x].mount_point, (char*)path, mp_strlen))
 		{
-			/* They are equal */
+			/* Find the longest match */
 			if(match_len < mp_strlen)
                         {
 				match_len = mp_strlen;
 				fs = fstable + x;
 			}
+
+			continue;
 		}
 	}
+
 	return fs;
 }
 
 static int fs_get_path(struct FSDriver* fs, const char* path, 
-		char* dst, uint sz)
+		char* dst, size_t sz)
 {
 	char* mount = fs->mount_point;
+
+	/* Check to see if we're looking for the root */
+	if(strlen(mount) - 1 == strlen(path)
+		&& mount[strlen(mount - 1)] == '/')
+	{
+		strncpy(dst, "/", sz);
+		return 0;
+	}
+
 	int pos = strlen(mount);
 	if(pos > strlen(path)) return -1;
 	/* We want to keep the trailing slash. */
@@ -332,9 +286,9 @@ static void fs_free_inode(inode i)
 	memset(i, 0, sizeof(struct inode_t));
 }
 
-static int fs_get_name(const char* path, char* dst, uint sz)
+static int fs_get_name(const char* path, char* dst, size_t sz)
 {
-	uint index = strlen(path);
+	int index = strlen(path);
 	for(;index >= 0 && path[index] != '/';index--);
 	index++;
 	if(index < 0) return 1; /* invalid path */
@@ -360,9 +314,13 @@ static void fs_sync_inode(inode i)
  * defined here are in include/file.h.
  */
 
-inode fs_open(const char* path, uint flags, uint permissions,
-	uint uid, uint gid)
+inode fs_open(const char* path, int flags, mode_t permissions,
+	uid_t uid, gid_t gid)
 {
+
+#ifdef DEBUG
+	cprintf("fsman: opening %s\n", path);
+#endif
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
 	char tmp_path[FILE_MAX_PATH];
@@ -374,14 +332,28 @@ inode fs_open(const char* path, uint flags, uint permissions,
 	if(file_path_file(dst_path))
 		return NULL;
 
+#ifdef DEBUG
+	cprintf("fsman: after resolving file: %s\n", dst_path);
+#endif
+
 	/* Find the file system for this path */
 	struct FSDriver* fs = fs_find_fs(dst_path);
 	if(fs == NULL)
 		return NULL; /* Invalid path */
 
+#ifdef DEBUG
+	cprintf("fsman: file lives on device mounted at %s\n",
+		fs->mount_point);
+#endif
+
         char fs_path[FILE_MAX_PATH];
         if(fs_get_path(fs, dst_path, fs_path, FILE_MAX_PATH))
                 return NULL; /* Bad path */
+
+#ifdef DEBUG
+	cprintf("fsman: Final resolved path for file: %s\n",
+		fs_path);
+#endif
 
 	/* See if this file is already opened. */
 	void* inp = NULL;
@@ -479,8 +451,8 @@ int fs_stat(inode i, struct stat* dst)
 	return 0;
 }
 
-int fs_create(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid)
+int fs_create(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid)
 {
 	/* fix up the path*/
 	char dst_path[FILE_MAX_PATH];
@@ -508,7 +480,7 @@ int fs_create(const char* path, uint flags,
 	return 0;
 }
 
-int fs_chown(const char* path, uint uid, uint gid)
+int fs_chown(const char* path, uid_t uid, gid_t gid)
 {
 	inode i = fs_open(path, O_RDWR, 0x0, 0x0, 0x0);
 	if(!i) return -1;
@@ -577,8 +549,8 @@ int fs_symlink(const char* file, const char* link)
 	return 0;
 }
 
-int fs_mkdir(const char* path, uint flags, 
-		uint permissions, uint uid, uint gid)
+int fs_mkdir(const char* path, int flags, 
+		mode_t permissions, uid_t uid, gid_t gid)
 {
 	/* First resolve the path */
 	char dst_path[FILE_MAX_PATH];
@@ -599,7 +571,7 @@ int fs_mkdir(const char* path, uint flags,
 	return 0;
 }
 
-int fs_read(inode i, void* dst, uint sz, uint start)
+int fs_read(inode i, void* dst, size_t sz, fileoff_t start)
 {
 	int bytes = i->fs->read(i->inode_ptr, dst, start, sz, i->fs->context);
 	/* Check for read error */
@@ -607,7 +579,7 @@ int fs_read(inode i, void* dst, uint sz, uint start)
 	return bytes;
 }
 
-int fs_write(inode i, void* src, uint sz, uint start)
+int fs_write(inode i, void* src, size_t sz, fileoff_t start)
 {
 	int bytes = i->fs->write(i->inode_ptr,
 			src, start, sz, i->fs->context);

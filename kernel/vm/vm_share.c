@@ -1,6 +1,6 @@
 #include "vm.h"
 
-#if ((!defined _ARCH_SHARE_PROVIDED_) && (defined _ALLOW_VM_SHARE_))
+#if ((!defined _ARCH_SHARE_PROVIDED_) && (defined __ALLOW_VM_SHARE__))
 
 #include <sys/types.h>
 #include <string.h>

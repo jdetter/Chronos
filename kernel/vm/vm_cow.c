@@ -6,7 +6,7 @@
  * both shared memory and cow pages.
  */
 
-#if ((!defined _ARCH_SHARE_PROVIDED_) && (defined _ALLOW_VM_SHARE_))
+#if ((!defined _ARCH_SHARE_PROVIDED_) && (defined __ALLOW_VM_SHARE__))
 
 #include "panic.h"
 

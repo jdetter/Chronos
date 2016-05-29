@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
 #include "file.h"
@@ -15,8 +14,6 @@
 #include "tty.h"
 #include "proc.h"
 #include "panic.h"
-
-extern struct proc* rproc;
 
 int sys_gethostname(void)
 {

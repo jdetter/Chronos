@@ -1,37 +1,36 @@
 # Use the new tool chain to build executables.
 TARGET=i686-pc-chronos-
-BUILD_ARCH=i386
+export BUILD_ARCH := i386
 TOOL_DIR=../tools/bin
-CROSS_CC=$(TOOL_DIR)/$(TARGET)gcc
-CROSS_LD=$(TOOL_DIR)/$(TARGET)ld
-CROSS_AS=$(TOOL_DIR)/$(TARGET)gcc
-CROSS_OBJCOPY=$(TOOL_DIR)/$(TARGET)objcopy
-TARGET_SYSROOT=../sysroot
-USER=$(shell whoami)
+
+
+CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_CC := $(shell readlink -e "$(CROSS_CC)")
+CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
+export CROSS_LD := $(shell readlink -e $(CROSS_LD))
+CROSS_AS := $(TOOL_DIR)/$(TARGET)gcc
+export CROSS_AS := $(shell readlink -e $(CROSS_AS))
+CROSS_OBJCOPY := $(TOOL_DIR)/$(TARGET)objcopy
+export CROSS_OBJCOPY := $(shell readlink -e $(CROSS_OBJCOPY))
+TARGET_SYSROOT := ../sysroot
+export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
+export USER := $(shell whoami)
+
 
 # use host to configure the tools
-CC=gcc
-ld=ld
-AS=gcc
-OBJCOPY=objcopy
+export CC=gcc
+export LD=ld
+export AS=gcc
+export OBJCOPY=objcopy
 
-LDFLAGS := 
-CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
-ASFLAGS += -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH)
-QEMU := qemu-system-i386
+export LDFLAGS := 
+export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
+export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
+QEMU := qemu-system-$(BUILD_ARCH)
 
-# Flags for building indipendant binaries
-
-# Disable Position Independant Code
-# BUILD_CFLAGS += -fno-pic
-# Disable built in functions
-BUILD_CFLAGS += -fno-builtin
-# Disable optimizations that deal with aliases.
-# BUILD_CFLAGS += -fno-strict-aliasing
-# Disable stack smashing protection
-BUILD_CFLAGS += -fno-stack-protector
-
-BUILD_ASFLAGS += $(BUILD_CFLAGS)
+# Uncomment this lines to turn off all output
+# export CFLAGS := -DRELEASE $(CFLAGS)
+# export AFLAGS := -DRELEASE $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
@@ -39,23 +38,37 @@ FS_DD_BS := 4096
 FS_DD_COUNT := 262144
 FS_START := 2048
 
+# Size of the second boot sector 
+BOOT_STAGE2_SECTORS := 140
+
 .PHONY: all
 all: chronos.img
 
-include tools/makefile.mk
-include kernel/makefile.mk
-include user/makefile.mk
-
-
-
-chronos.img: kernel/boot/boot-stage1.img \
-		kernel/boot/boot-stage2.img \
-		$(FS_TYPE)
+.PHONY: chronos.img
+chronos.img: 
+	cd tools/ ; \
+	make tools || exit 1
+	cd kernel/ ; \
+	make chronos.o || exit 1 ; \
+	make boot-stage1.img || exit 1 ; \
+	make boot-stage2.img || exit 1 ;
+	cd user ; \
+	make
+	make $(FS_TYPE)
 	dd if=/dev/zero of=chronos.img bs=512 count=2048
-	tools/bin/boot-sign kernel/boot/boot-stage1.img
-	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
+	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
+	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
 	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
+
+chronos-multiboot.img:
+	cd tools ; \
+	make tools || exit 1
+	cd kernel/ ; \
+	make chronos.o || exit 1 ; \
+	make multiboot.o || exit 1
+	cd user ; \
+	make
+	make $(FS_TYPE)
 
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
@@ -80,8 +93,8 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	sudo mount -o loop ./ext2.img ./tmp
 	sudo chown -R $(USER):$(USER) tmp
 	cp -R $(TARGET_SYSROOT)/* ./tmp/
-	bash ./tools/gensysskel.sh
-	cp -R ./sysskel/* ./tmp/
+	bash ./tools/src/gensysskel.sh
+	cp -R ./sysskel/. ./tmp
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/
 	mkdir -p ./tmp/boot
@@ -112,9 +125,6 @@ ext2-grub.img:
 fsck: fs.img tools/bin/fsck
 	tools/bin/fsck fs.img
 
-kernel/idt.c:
-	tools/bin/mkvect > kernel/idt.c
-
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
@@ -124,22 +134,18 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
 .PHONY: qemu qemu-gdb qemu-x qemu-x-gdb
 
-# Standard build and launch recipes
-qemu: all
-	$(QEMU) -nographic $(QEMU_OPTIONS)
-qemu-gdb: all kernel-symbols user-symbols
-	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
-qemu-x: all 
-	$(QEMU) $(QEMU_OPTIONS)
-qemu-x-gdb: all kernel-symbols user-symbols
-	$(QEMU) $(QEMU_OPTIONS) -s -S
-
 # Launch current build recipes
 run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
-run-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
+run-gdb: user/bin $(USER_BUILD)
+	cd kernel ; \
+	make kernel-symbols ; \
+	mv *.sym ..
+	cd user ; \
+	make user-symbols ; \
+	mv bin/*.sym ..
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
@@ -188,4 +194,10 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 
 .PHONY: clean
 clean: 
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img
+	cd tools ; \
+	make tools-clean
+	cd kernel ; \
+	make kernel-clean
+	cd user; \
+	make clean
+	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img *.sym

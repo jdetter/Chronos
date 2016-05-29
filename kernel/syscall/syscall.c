@@ -1,10 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
-#include "stdlock.h"
-#include "x86.h"
 #include "stdlock.h"
 #include "file.h"
 #include "fsman.h"
@@ -14,21 +11,20 @@
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
-#include "vsfs.h"
 #include "tty.h"
 #include "elf.h"
 #include "stdarg.h"
 #include "syscall.h"
-#include "serial.h"
-#include "trap.h"
 #include "panic.h"
 
-extern pid_t next_pid;
-extern slock_t ptable_lock; /* Process table lock */
-extern struct proc ptable[]; /* The process table */
-extern struct proc* rproc; /* The currently running process */
-
 // #define DEBUG
+
+#ifdef RELEASE
+# undef DEBUG
+#endif
+
+extern int k_start_pages;
+extern int k_pages;
 
 int (*syscall_table[])(void) = {
 	NULL, /* There is no system call 0 */
@@ -115,14 +111,15 @@ int (*syscall_table[])(void) = {
 	sys_select,
 	sys_alarm,
 	NULL,
-
 	sys_sigaction,
 	sys_sigprocmask,
 	sys_sigpending,
 	sys_signal,
 	sys_sigsuspend,
 	sys_setegid,
-	sys_sync
+	sys_sync,
+	sys_setreuid,
+	sys_setregid
 };
 
 char* syscall_table_names[] = {
@@ -209,18 +206,20 @@ char* syscall_table_names[] = {
 	"vfork",
 	"select",
 	"alarm",
-        "seteuid",
-        "sigaction",
-        "sigprocmask",
-        "sigpending",
-        "signal",
-        "sigsuspend",
-        "setegid",
-        "sync"
+    "seteuid",
+    "sigaction",
+    "sigprocmask",
+    "sigpending",
+    "signal",
+    "sigsuspend",
+    "setegid",
+    "sync",
+	"setreuid",
+	"setregid"
 };
 
 
-int syscall_handler(uint* esp)
+int syscall_handler(int* esp)
 {
 	/* Get the number of the system call */
 	int syscall_number = -1;
@@ -269,8 +268,8 @@ int sys_isatty(void)
 {
 	int fd;
 	if(syscall_get_int(&fd, 0)) return 1;
-
-	if(fd < 0 || fd > PROC_MAX_FDS) return 1;
+	if(!fd_ok(fd))
+		return 0;
 
 	int x;
 	for(x = 0;x < MAX_TTYS;x++)
@@ -409,115 +408,9 @@ int sys_semtimedop(void)
 	return -1;
 }
 
-extern uint k_start_pages;
-extern uint k_pages;
 int sys_proc_dump(void)
 {
-	/*
-	   tty_print_string(rproc->t, "Running processes:\n");
-	   int x;
-	   for(x = 0;x < PTABLE_SIZE;x++)
-	   {
-	   struct proc* p = ptable + x;
-	   if(p->state == PROC_UNUSED) continue;
-	   tty_print_string(rproc->t, "++++++++++++++++++++\n");
-	   tty_print_string(rproc->t, "Name: %s\n", p->name);
-	   tty_print_string(rproc->t, "DIR: %s\n", p->cwd);
-	   tty_print_string(rproc->t, "PID: %d\n", p->pid);
-	   tty_print_string(rproc->t, "UID: %d\n", p->uid);
-	   tty_print_string(rproc->t, "GID: %d\n", p->gid);
-
-	   tty_print_string(rproc->t, "state: ");
-	   switch(p->state)
-	   {
-	   case PROC_EMBRYO:	
-	   tty_print_string(rproc->t, "EMBRYO");
-	   break;
-	   case PROC_READY:	
-	   tty_print_string(rproc->t, "READY TO RUN");
-	   break;
-	   case PROC_RUNNABLE:	
-	   tty_print_string(rproc->t, "RUNNABLE");
-	   break;
-	   case PROC_RUNNING:	
-	   tty_print_string(rproc->t, "RUNNING - "
-	   "CURRENT PROCESS");
-	   break;
-	   case PROC_BLOCKED:	
-	   tty_print_string(rproc->t, "BLOCKED\n");
-	   tty_print_string(rproc->t, "Reason: ");
-	   if(p->block_type == PROC_BLOCKED_WAIT)
-	   {
-	   tty_print_string(rproc->t, "CHILD WAIT");
-	   } else if(p->block_type == PROC_BLOCKED_COND)
-	   {
-	   tty_print_string(rproc->t, "CONDITION");
-	   } else {
-
-	   tty_print_string(rproc->t, "INDEFINITLY\n");
-	   }
-	   break;
-	   case PROC_ZOMBIE:	
-	   tty_print_string(rproc->t, "ZOMBIE");
-	   break;
-	   case PROC_KILLED:	
-	   tty_print_string(rproc->t, "KILLED");
-	   break;
-	   default: 
-	   tty_print_string(rproc->t, "CURRUPT!");
-	   }
-	   tty_print_string(rproc->t, "\n");
-
-	   tty_print_string(rproc->t, "Open Files:\n");
-	   int file;
-	   for(file = 0;file < MAX_FILES;file++)
-	   {
-	   struct file_descriptor* fd = 
-	   p->file_descriptors + file;
-	   if(fd->type == 0x0) continue;
-	   tty_print_string(rproc->t, "%d: ", file);
-	   switch(fd->type)
-	   {
-	   case FD_TYPE_FILE:
-	   tty_print_string(rproc->t, "FILE");
-	   break;
-	   case FD_TYPE_DEVICE:
-	   tty_print_string(rproc->t, "DEVICE");
-	   break;
-	case FD_TYPE_PIPE:
-		tty_print_string(rproc->t, "PIPE");
-		break;
-	default:
-		tty_print_string(rproc->t, 							"CURRUPT");
-}
-tty_print_string(rproc->t, "\n");
-
-}
-tty_print_string(rproc->t, "Virtual Memory: ");
-uint stack = p->stack_start - p->stack_end;
-uint heap = p->heap_end - p->heap_start;
-uint code = p->heap_start - 0x1000;
-uint total = (stack + heap + code) / 1024;
-tty_print_string(rproc->t, "%dK\n", total);	
-}
-
-tty_print_string(rproc->t, "\n");
-
-fs_fsstat();
-
-int divisor = 1024 * 1024;
-uint used_pages = k_start_pages - k_pages;
-tty_print_string(rproc->t, "Used memory:  %dM\n", 
-		(used_pages * PGSIZE) / divisor);
-tty_print_string(rproc->t, "Free memory:  %dM\n", 
-		(k_pages * PGSIZE) / divisor);
-tty_print_string(rproc->t, "Total memory: %dM\n", 
-		(k_start_pages * PGSIZE) / divisor);
-tty_print_string(rproc->t, "Used percent:  %d%%\n",
-		(used_pages * 100) / k_start_pages);
-tty_print_string(rproc->t, "Free percent:  %d%%\n",
-		(k_pages * 100) / k_start_pages); */
-return 0;
+	return 0;
 }
 
 /* int mprotect(void* addr, size_t len, int prot)*/
@@ -541,7 +434,7 @@ int sys_mprotect(void)
 
 	size_t end = (int)(start + len);
 
-	uchar flags = 0;
+	unsigned char flags = 0;
 	if(prot & PROT_READ) flags |= 0;
 	if(prot & PROT_WRITE) flags |= VM_TBL_WRIT | VM_TBL_READ;
 	if(prot & PROT_READ) flags |= 0;

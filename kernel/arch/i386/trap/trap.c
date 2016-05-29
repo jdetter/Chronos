@@ -10,7 +10,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "idt.h"
 #include "trap.h"
@@ -20,19 +19,19 @@
 #include "chronos.h"
 #include "x86.h"
 #include "panic.h"
-#include "pic.h"
-#include "pit.h"
 #include "stdarg.h"
 #include "syscall.h"
 #include "tty.h"
 #include "fsman.h"
 #include "pipe.h"
 #include "proc.h"
-#include "cmos.h"
-#include "rtc.h"
-#include "vm.h"
 #include "signal.h"
 #include "vm.h"
+#include "k/vm.h"
+#include "drivers/pic.h"
+#include "drivers/pit.h"
+#include "drivers/cmos.h"
+#include "drivers/rtc.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)
@@ -68,16 +67,12 @@ char* trap_names[] = {
 
 extern struct rtc_t k_time;
 struct int_gate interrupt_table[TRAP_COUNT];
-extern struct proc* rproc;
 extern uint trap_handlers[];
-extern uint k_ticks;
-extern slock_t ptable_lock;
-uint __get_cr2__(void);
-
-void trap_return();
+extern int k_ticks;
 
 void trap_init(void)
 {
+	/* Initilize the trap table */
 	int x;
 	for(x = 0;x < TRAP_COUNT;x++)
 	{
@@ -101,18 +96,20 @@ int trap_pf(uintptr_t address)
 
 	uintptr_t stack_bottom = rproc->stack_end;
 	uintptr_t stack_tolerance = stack_bottom - STACK_TOLERANCE * PGSIZE;
+
 	if(address < stack_bottom && address >= stack_tolerance){
 		uintptr_t address_down = PGROUNDDOWN(address);
-		if(address_down <= rproc->heap_end)
+		if(address_down <= PGROUNDUP(rproc->heap_end))
 			return 1;
 
 		int numOfPgs = (stack_bottom - address_down) / PGSIZE;
 		vm_mappages(address_down, numOfPgs * PGSIZE, rproc->pgdir, 
 			dir_flags, tbl_flags);
+
 		/* Move the stack end */
 		rproc->stack_end -= numOfPgs * PGSIZE;
 	} else {
-#ifdef _ALLOW_VM_SHARE_
+#ifdef __ALLOW_VM_SHARE__
 		/* Is this copy on write? */
 		if(vm_is_cow(rproc->pgdir, address))
 		{
@@ -164,7 +161,7 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 		cprintf("trap: SYSTEM CALL\n");
 #endif
 		strncpy(fault_string, "System Call", 64);
-		syscall_ret = syscall_handler((uint*)tf->esp);
+		syscall_ret = syscall_handler((int*)tf->esp);
 		rproc->tf->eax = syscall_ret;
 	} else if(trap == INT_PIC_TIMER)
 	{
@@ -257,13 +254,13 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 			if(kernel_fault) 
 			{
 				strncpy(fault_string, "Seg Fault", 64);
-                                tf->error = __get_cr2__();
+                                tf->error = vm_get_page_fault_address();
 				break;
 			}
 
-			if(trap_pf(__get_cr2__())){
+			if(trap_pf(vm_get_page_fault_address())){
 				strncpy(fault_string, "Seg Fault", 64);
-				tf->error = __get_cr2__();
+				tf->error = vm_get_page_fault_address();
 				user_problem = 1;
 			}else{
 				handled = 1;
@@ -347,5 +344,5 @@ TRAP_DONE:
 	asm volatile("popl %ebp");
 	/* add return address */
 	asm volatile("addl $0x08, %esp");
-	asm volatile("jmp trap_return");
+	asm volatile("jmp tp_trap_return");
 }

@@ -44,6 +44,7 @@
 
 /* Table for all of the file descriptors */
 struct file_descriptor fds[FDS_TABLE_SZ];
+
 /* Table of file descriptor tables */
 struct file_descriptor* fd_tables[PTABLE_SIZE][PROC_MAX_FDS];
 slock_t fd_tables_locks[PTABLE_SIZE];

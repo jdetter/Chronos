@@ -14,7 +14,6 @@ typedef unsigned long ulong;
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdarg.h"
 #define _strncpy strncpy
@@ -39,7 +38,7 @@ int file_path_root(char* path)
         return 0;
 }
 
-int file_path_dir(char* path, uint sz)
+int file_path_dir(char* path, size_t sz)
 {
         if(strlen(path) + 2 >= sz)
                 return -1;

@@ -94,6 +94,8 @@
 #define SYS_sigsuspend	0x58
 #define SYS_setegid	0x59
 #define SYS_sync	0x5A
+#define SYS_setreuid	0x5B
+#define SYS_setregid	0x5C
 
 #define SYS_semctl	0x5B
 #define SYS_semget	0x5C

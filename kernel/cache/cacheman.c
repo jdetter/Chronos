@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
 #include "file.h"
@@ -12,7 +11,6 @@
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
-#include "x86.h"
 
 
 /**
@@ -20,7 +18,7 @@
  */
 struct cman_node
 {
-	uint sz; /* Size of this node */
+	size_t sz; /* Size of this node */
 	struct cman_node* next; /* Next node in the list */
 };
 
@@ -29,13 +27,13 @@ static struct cman_node* head;
 void cman_init(void)
 {
 	/* Zero our space */
-	uint sz = PGROUNDUP(KVM_DISK_E - KVM_DISK_S);
+	size_t sz = PGROUNDUP(KVM_DISK_E - KVM_DISK_S);
 	memset((void*)KVM_DISK_S, 0, sz);
 	head = (void*)KVM_DISK_S;
 	head->sz = sz;
 }
 
-void* cman_alloc(uint sz)
+void* cman_alloc(size_t sz)
 {
 	if(sz == 0) return NULL;
 
@@ -88,4 +86,4 @@ void* cman_alloc(uint sz)
 	return (void*)result;
 }
 
-void cman_free(void* ptr, uint sz){}
+void cman_free(void* ptr, size_t sz){}

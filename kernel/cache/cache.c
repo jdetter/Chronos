@@ -4,32 +4,27 @@
 
 #ifdef __LINUX__
 #include <sys/types.h>
-#include "kern/types.h"
 #include "stdlock.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#define uint_64 uint64_t
-#define uint_32 uint32_t
-#define uint_16 uint16_t
-#define uint_8  uint8_t
 #define cprintf printf
 /* need the log2 algorithm */
-int log2_linux(uint value); /* defined in ext2.c*/
+int log2_linux(int value); /* defined in ext2.c*/
 
 #define log2(val) log2_linux(val)
 #else
 #include <string.h>
 #include <stdlib.h>
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
 #include "panic.h"
 #endif
 
 #include "cache.h"
+#define log2 __log2
 // #define CACHE_DEBUG
 // #define CACHE_DEBUG_VER
 
@@ -56,11 +51,11 @@ static int cache_default_check(void* obj, int id, struct cache* cache,
 	if(cache->slab_shift)
 	{
 		/* We can use shifting (fast) */
-		entry += (((uint)obj - (uint)cache->slabs) 
+		entry += (((uintptr_t)obj - (uintptr_t)cache->slabs) 
 			>> cache->slab_shift);
 	} else {
 		/* We have to use division (slow) */
-		entry += (((uint)obj - (uint)cache->slabs) 
+		entry += (((uintptr_t)obj - (uintptr_t)cache->slabs) 
 			/ cache->slab_sz);
 	}
 
@@ -150,11 +145,11 @@ static void* cache_search_nolock(int id, struct cache* cache, void* context);
 static int cache_dereference_nolock(void* ptr, 
 		struct cache* cache, void* context);
 
-int cache_init(void* cache_area, uint sz, uint data_sz, 
+int cache_init(void* cache_area, size_t sz, size_t data_sz, 
 		char* name, struct cache* cache)
 {
 	memset(cache, 0, sizeof(struct cache));
-	uint entries = sz / (sizeof(struct cache_entry) + data_sz);
+	int entries = sz / (sizeof(struct cache_entry) + data_sz);
 	if(entries < 1) return -1;
 
 #ifdef CACHE_DEBUG
@@ -179,7 +174,7 @@ int cache_init(void* cache_area, uint sz, uint data_sz,
 	cache->clock = 0;
 	cache->entries = (void*)(cache->slabs + sz) 
 		- (entries << cache->entry_shift);
-	cache->last_entry = (uint)(cache->entries + (entries - 1));
+	cache->last_entry = (int)(cache->entries + (entries - 1));
 	strncpy(cache->name, name, 64);
 	slock_init(&cache->lock);
 	memset(cache_area, 0, sz); /* Clear to 0 */
@@ -293,15 +288,15 @@ static void* cache_alloc(int id, struct cache* cache, void* context)
 static int cache_force_free(void* ptr, struct cache* cache)
 {
 	struct cache_entry* entry = cache->entries;
-	uint val = (uint)ptr - (uint)cache->slabs;
+	int val = (uintptr_t)ptr - (uintptr_t)cache->slabs;
 	/* If shift is available then use it (fast) */
 	if(cache->slab_shift)
-		entry += (uint)(val >> cache->slab_shift);
+		entry += (uintptr_t)(val >> cache->slab_shift);
 	else {
 		/* The division instruction is super slow. */
 		entry += (val / cache->slab_sz);
 	}
-	if((uint)entry > cache->last_entry)
+	if((uintptr_t)entry > cache->last_entry)
 		return -1;
 
 	entry->references = 0;
@@ -314,16 +309,16 @@ static int cache_force_free(void* ptr, struct cache* cache)
 int cache_count_refs(void* ptr, struct cache* cache)
 {
         struct cache_entry* entry = cache->entries;
-        uint val = (uint)ptr - (uint)cache->slabs;
+        int val = (uintptr_t)ptr - (uintptr_t)cache->slabs;
         /* If shift is available then use it (fast) */
         if(cache->slab_shift)
-                entry += (uint)(val >> cache->slab_shift);
+                entry += (int)(val >> cache->slab_shift);
         else {
                 /* The division instruction is super slow. */
                 entry += (val / cache->slab_sz);
         }
 
-        if((uint)entry > cache->last_entry)
+        if((uintptr_t)entry > cache->last_entry)
                 return -1;
         if(!entry->valid)
                 return -1;
@@ -334,16 +329,16 @@ int cache_count_refs(void* ptr, struct cache* cache)
 int cache_set_clobber(void* ptr, struct cache* cache)
 {
         struct cache_entry* entry = cache->entries;
-        uint val = (uint)ptr - (uint)cache->slabs;
+        int val = (uintptr_t)ptr - (uintptr_t)cache->slabs;
         /* If shift is available then use it (fast) */
         if(cache->slab_shift)
-                entry += (uint)(val >> cache->slab_shift);
+                entry += (int)(val >> cache->slab_shift);
         else {
                 /* The division instruction is super slow. */
                 entry += (val / cache->slab_sz);
         }
 
-        if((uint)entry > cache->last_entry)
+        if((uintptr_t)entry > cache->last_entry)
                 return -1;
         if(!entry->valid)
                 return -1;
@@ -366,15 +361,15 @@ static int cache_dereference_nolock(void* ptr, struct cache* cache,
 
 	int result = 0;
 	struct cache_entry* entry = cache->entries;
-	uint val = (uint)ptr - (uint)cache->slabs;
+	int val = (uintptr_t)ptr - (uintptr_t)cache->slabs;
 	/* If shift is available then use it (fast) */
 	if(cache->slab_shift)
-		entry += (uint)(val >> cache->slab_shift);
+		entry += (int)(val >> cache->slab_shift);
 	else {
 		/* The division instruction is super slow. */
 		entry += (val / cache->slab_sz);
 	}
-	if((uint)entry > cache->last_entry)
+	if((uintptr_t)entry > cache->last_entry)
 	{
 #ifdef CACHE_DEBUG
 		cprintf("%s cache: illegal entry dereferenced!\n", cache->name);
@@ -573,15 +568,15 @@ int cache_sync(void* ptr, struct cache* cache, void* context)
 {
 	if(!ptr) return -1;
 	struct cache_entry* entry = cache->entries;
-	uint val = (uint)ptr - (uint)cache->slabs;
+	int val = (uintptr_t)ptr - (uintptr_t)cache->slabs;
 	/* If shift is available then use it (fast) */
 	if(cache->slab_shift)
-		entry += (uint)(val >> cache->slab_shift);
+		entry += (int)(val >> cache->slab_shift);
 	else {
 		/* The division instruction is super slow. */
 		entry += (val / cache->slab_sz);
 	}
-	if((uint)entry > cache->last_entry)
+	if((uintptr_t)entry > cache->last_entry)
 	{
 #ifdef CACHE_DEBUG
 		cprintf("%s cache: illegal entry sync attempt!\n", 

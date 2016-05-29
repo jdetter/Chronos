@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "file.h"
 #include "stdlock.h"
@@ -11,8 +10,6 @@
 #include "fsman.h"
 #include "proc.h"
 #include "chronos.h"
-
-extern struct proc* rproc;
 
 /** Check to see if an fd is valid */
 int fd_ok(int fd)

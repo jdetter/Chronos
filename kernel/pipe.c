@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdarg.h"
 #include "stdlock.h"
@@ -51,8 +50,6 @@ pipe_t pipe_alloc(void)
 	return p;
 }
 
-extern struct proc ptable[];
-extern slock_t ptable_lock;
 void pipe_fault(pipe_t t)
 {
 	slock_acquire(&ptable_lock);
@@ -80,7 +77,7 @@ void pipe_free(pipe_t p)
 	slock_release(&pipe_table_lock);
 }
 
-int pipe_write(void *src, uint sz, pipe_t pipe ){
+int pipe_write(void *src, size_t sz, pipe_t pipe ){
 	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int byteswritten = 0;
@@ -117,7 +114,7 @@ int pipe_write(void *src, uint sz, pipe_t pipe ){
 	
 }
 
-int pipe_read(void *dst, uint sz, pipe_t pipe){
+int pipe_read(void *dst, size_t sz, pipe_t pipe){
 	if(pipe->faulted) return -1;
 	slock_acquire(&pipe->guard);
 	int bytesread = 0;

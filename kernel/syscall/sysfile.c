@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include <sys/fcntl.h>
 #include <sys/select.h>
+#include <dirent.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdlock.h"
 #include "file.h"
@@ -15,7 +15,6 @@
 #include "pipe.h"
 #include "syscall.h"
 #include "chronos.h"
-#include "ktime.h"
 #include "proc.h"
 #include "panic.h"
 
@@ -23,8 +22,11 @@
 // #define DEBUG
 // #define DEBUG_CONTENT
 
-extern slock_t ptable_lock;
-extern struct proc* rproc;
+#ifdef RELEASE
+# undef DEBUG
+# undef DEBUG_SELECT
+# undef DEBUG_CONTENT
+#endif
 
 int sys_link(void)
 {
@@ -175,12 +177,6 @@ int sys_close(void)
 	return close(fd);
 }
 
-void debug_func(void)
-{
-	int i = 0;
-	for(i = 0;i < 100;i++);
-}
-
 int close(int fd)
 {
 	if(!fd_ok(fd)) return -1;
@@ -188,13 +184,6 @@ int close(int fd)
 	slock_acquire(&rproc->fdtab[fd]->lock);
 	if(rproc->fdtab[fd]->type == FD_TYPE_FILE)
 	{
-#ifdef DEBUG
-		cprintf("%s: closing file %s\n",
-				rproc->name, rproc->fdtab[fd]->path);
-
-		if(!strcmp(rproc->fdtab[fd]->path, "./cc000005.ld"))
-			debug_func();
-#endif
 		fs_close(rproc->fdtab[fd]->i);
 	}else if(rproc->fdtab[fd]->type == FD_TYPE_PIPE)
 	{
@@ -214,7 +203,7 @@ int close(int fd)
 	return 0;
 }
 
-/* int read(int fd, char* dst, uint sz) */
+/* int read(int fd, char* dst, size_t sz) */
 int sys_read(void)
 {
 	int fd;
@@ -292,7 +281,7 @@ int sys_read(void)
 	return sz;
 }
 
-/* int write(int fd, char* src, uint sz) */
+/* int write(int fd, char* src, size_t sz) */
 int sys_write(void)
 {
 	int fd;
@@ -425,7 +414,7 @@ int sys_lseek(void)
 	return seek_pos;
 }
 
-/* int chmod(const char* path, uint perm) */
+/* int chmod(const char* path, mode_t perm) */
 int sys_chmod(void)
 {
 	const char* path;
@@ -441,7 +430,7 @@ int sys_chmod(void)
 	return fs_chmod(path, mode);
 }
 
-/* int chown(const char* path, uint uid, uint gid) */
+/* int chown(const char* path, uid_t uid, gid_t gid) */
 int sys_chown(void)
 {
 	const char* path;
@@ -455,22 +444,22 @@ int sys_chown(void)
 	return fs_chown(path, uid, gid);
 }
 
-/* int create(const char* file, uint permissions) */
+/* int create(const char* file, mode_t permissions) */
 int sys_create(void)
 {
 	const char* file;
-	uint permissions;
+	mode_t permissions;
 
 	if(syscall_get_str_ptr(&file, 0)) return -1;
 	if(syscall_get_int((int*)&permissions, 1)) return -1;
 	return fs_create(file, 0, permissions, rproc->uid, rproc->uid);
 }
 
-/* int mkdir(const char* dir, uint permissions) */
+/* int mkdir(const char* dir, mode_t permissions) */
 int sys_mkdir(void)
 {
 	const char* dir;
-	uint permissions;
+	mode_t permissions;
 	if(syscall_get_str_ptr(&dir, 0)) return -1;
 	if(syscall_get_int((int*)&permissions, 1)) return -1;
 	return fs_mkdir(dir, 0, permissions, rproc->uid, rproc->uid);
@@ -519,8 +508,8 @@ int sys_fstat(void)
 	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: fstat on file %s\n", rproc->name, rproc->pid, 
-		rproc->fdtab[fd]->path);
+	cprintf("%s:%d: fstat on file fd: %d  path: %s\n", rproc->name, rproc->pid, 
+		fd, rproc->fdtab[fd]->path);
 #endif
 
 	slock_acquire(&rproc->fdtab[fd]->lock);
@@ -535,8 +524,12 @@ int sys_fstat(void)
 			break;
 		case FD_TYPE_DEVICE:
 		case FD_TYPE_PIPE:
+#ifdef DEBUG
+			cprintf("%s:%d: File is device.\n", rproc->name, rproc->pid);
+#endif
 			i = fs_open(rproc->fdtab[fd]->device->node, 
 					O_RDONLY, 0x0, 0x0, 0x0);
+
 			close_on_exit = 1;
 			break;
 		default:
@@ -559,7 +552,7 @@ int sys_fstat(void)
 	return result;
 }
 
-/* int readdir(int fd, struct old_linux_dirent* dirp, uint count) */
+/* int readdir(int fd, struct old_linux_dirent* dirp, int count) */
 int sys_readdir(void)
 {
 	/**
@@ -603,12 +596,12 @@ int sys_readdir(void)
 	return 1;
 }
 
-/* int getdents(int fd, struct chronos_dirent* dirp, uint count) */
+/* int getdents(int fd, struct chronos_dirent* dirp, int count) */
 int sys_getdents(void)
 {
 	int fd;
 	struct dirent* dirp;
-	uint count;
+	int count;
 
 	if(syscall_get_int(&fd, 0)) return -1;
 	if(syscall_get_int((int*)&count, 2)) return -1;
@@ -619,14 +612,36 @@ int sys_getdents(void)
 	if(rproc->fdtab[fd]->type != FD_TYPE_FILE)
 		return -1;
 
+#ifdef DEBUG
+	cprintf("%s:%d: getdents on fd {%d} file: %s\n", 
+		rproc->name, rproc->pid, fd, rproc->fdtab[fd]->path);
+#endif
+
 	slock_acquire(&rproc->fdtab[fd]->lock);
-	int result = fs_readdir(rproc->fdtab[fd]->i, rproc->fdtab[fd]->seek, 
-			dirp);
+	int result = fs_readdir(rproc->fdtab[fd]->i, 
+		rproc->fdtab[fd]->seek, dirp);
 	if(result < 0) 
 	{
+#ifdef DEBUG
+		cprintf("%s:%d: ERROR READING DIRECTORY ENTRY\n",
+				rproc->name, rproc->pid);
+#endif
 		slock_release(&rproc->fdtab[fd]->lock);
 		return -1;
 	}
+
+	if(result > 0)
+	{
+		slock_release(&rproc->fdtab[fd]->lock);
+#ifdef DEBUG
+		cprintf("%s:%d: END OF DIRECTORY\n",
+			rproc->name, rproc->pid);
+#endif
+		return 0;
+	}
+
+	/* Update the record length */
+	dirp->d_reclen = sizeof(struct dirent);
 
 	/* Convert to old structure */
 	rproc->fdtab[fd]->seek++; /* Increment seek */
@@ -1084,6 +1099,9 @@ int sys_fcntl(void)
 		case F_GETFL:
 			result = rproc->fdtab[fd]->flags;
 			break;
+		case F_SETFL:
+			rproc->fdtab[fd]->flags = i_arg;
+			break;
 		default:
 			cprintf("UNIMPLEMENTED FCNTL: %d\n", action);
 			result = -1;
@@ -1128,205 +1146,4 @@ int sys_sync(void)
 	return 0;
 }
 
-int sys_select_next_fd(int curr_fd, fd_set* set, int max_fd)
-{
-	for(;curr_fd < PROC_MAX_FDS && curr_fd < max_fd;curr_fd++)
-	{
-		if(FD_ISSET(curr_fd, set))
-			return curr_fd;
-	}
 
-	return -1;
-}
-
-int sys_select_fdset_move(fd_set* dst, fd_set* src, int max)
-{
-	FD_ZERO(dst);
-
-	int set_count = 0;
-
-	int fd;
-	for(fd = 0;fd < max;fd++)
-		if(FD_ISSET(fd, src))
-		{
-			FD_SET(fd, dst);
-			set_count++;
-		}
-
-	return set_count;
-}
-
-int sys_select(void)
-{
-#ifdef DEBUG_SELECT
-	cprintf("kernel: call to select.\n");
-#endif
-	int nfds;
-	fd_set* readfds = NULL;
-	fd_set* writefds = NULL;
-	fd_set* exceptfds = NULL;
-	struct timeval* timeout = NULL;
-
-	fd_set ret_readfds;
-	FD_ZERO(&ret_readfds);
-	fd_set ret_writefds;
-	FD_ZERO(&ret_writefds);
-	fd_set ret_exceptfds;
-	FD_ZERO(&ret_exceptfds);
-
-	if(syscall_get_int(&nfds, 0))
-		return -1;
-	syscall_get_optional_ptr((void**)&readfds, 1);
-	syscall_get_optional_ptr((void**)&writefds, 2);
-	syscall_get_optional_ptr((void**)&exceptfds, 3);
-	syscall_get_optional_ptr((void**)&timeout, 4);
-
-#ifdef DEBUG_SELECT
-	cprintf("nfds: %d  readfds? %d  writefds? %d exceptfds? %d timeout? %d\n", nfds, 
-			readfds ? 1 : 0, 
-			writefds ? 1 : 0, 
-			exceptfds ? 1 : 0, 
-			timeout ? 1 : 0);
-	if(timeout)
-		cprintf("\ttimeout: tv_sec: %d  tv_usec %d\n", timeout->tv_sec, timeout->tv_usec);
-#endif
-
-	int dev_found = 0;
-	unsigned int endtime = 0;
-	if(timeout)
-		endtime = ktime_seconds() + timeout->tv_sec;
-	while(!dev_found)
-	{
-		int fd;
-		/* Check read fds if available */
-		if(readfds)
-		{
-			fd = 0;
-			while((fd = sys_select_next_fd(fd, readfds, nfds)) != -1)
-			{
-				/* Make sure this fd is okay */
-				if(!fd_ok(fd)) 
-				{
-					fd++;
-					continue;
-				}
-
-				/* Acquire the lock for this fd */
-				slock_acquire(&rproc->fdtab[fd]->lock);
-
-				switch(rproc->fdtab[fd]->type)
-				{
-					case FD_TYPE_FILE:
-						/** 
-						 * Files are always 
-						 * ready for reading
-						 */
-						FD_SET(fd, &ret_readfds);
-						dev_found = 1;
-						break;
-					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
-
-						/* Does this device support read 'peek'? */
-						if(rproc->fdtab[fd]->device->io_driver.ready_read)
-						{
-							/* Does the device have something for us? */
-							if(rproc->fdtab[fd]->device->io_driver.ready_read(
-										rproc->fdtab[fd]->device->io_driver.context))
-							{
-								FD_SET(fd, &ret_readfds);
-								dev_found = 1;
-							}
-						}
-
-						break;
-					case FD_TYPE_PATH:
-					case FD_TYPE_NULL:
-					default:
-						break;
-				}
-
-				slock_release(&rproc->fdtab[fd]->lock);
-				fd++;
-			}
-		}
-
-		if(writefds)
-		{
-			fd = 0;
-			while((fd = sys_select_next_fd(fd, writefds, nfds)) != -1)
-			{
-				/* Make sure this fd is okay */
-                                if(!fd_ok(fd))
-                                {
-                                        fd++;
-                                        continue;
-                                }
-
-                                /* Acquire the lock for this fd */
-                                slock_acquire(&rproc->fdtab[fd]->lock);
-
-				switch(rproc->fdtab[fd]->type)
-				{
-					case FD_TYPE_FILE:
-						/** 
-						 * Files are always 
-						 * ready for writing
-						 */
-						dev_found = 1;
-						FD_SET(fd, &ret_writefds);
-						break;
-					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
-
-						/* Does this device support write 'peek'? */
-						if(rproc->fdtab[fd]->device->io_driver.ready_write)
-						{
-							/* Is this output device ready? */
-							if(rproc->fdtab[fd]->device->io_driver.ready_write(
-										rproc->fdtab[fd]->device->io_driver.context))
-							{
-								FD_SET(fd, &ret_writefds);
-								dev_found = 1;
-							}
-						}
-
-						break;
-					case FD_TYPE_PATH:
-					case FD_TYPE_NULL:
-						break;
-				}
-
-				slock_release(&rproc->fdtab[fd]->lock);
-				fd++;
-			}
-		}
-
-
-		if(!dev_found)
-		{
-			/* yield for a cycle */
-			yield();
-
-			/* Is our timeout up? */
-			if(timeout && ktime_seconds() >= endtime)
-			{
-#ifdef DEBUG_SELECT
-				cprintf("select: timeout expired.\n");
-#endif
-				return 0;
-			}
-		}
-
-	}	
-
-	/* copy the return sets */
-	int fd_count = 0;
-	if(readfds) fd_count += sys_select_fdset_move(readfds, &ret_readfds, nfds);
-	if(writefds) fd_count += sys_select_fdset_move(writefds, &ret_writefds, nfds);
-	if(exceptfds) fd_count += sys_select_fdset_move(exceptfds, &ret_exceptfds, nfds);
-
-#ifdef DEBUG_SELECT
-	cprintf("select: value returned: %d\n", fd_count);
-#endif
-
-	return fd_count;
-}

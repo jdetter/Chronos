@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "panic.h"
 #include "cacheman.h"
 #include "stdlock.h"
@@ -38,7 +37,6 @@ typedef uint32_t sect_t;
 #endif
 
 #ifdef KTIME_PROVIDED
-#include "rtc.h"
 #include "ktime.h"
 #endif
 

@@ -17,24 +17,14 @@
 #include <dirent.h>
 #include <unistd.h>
 
-#define uint_64 uint64_t
-#define uint_32 uint32_t
-#define uint_16 uint16_t
-#define uint_8  uint8_t
-
 /* map cprintf to printf */
 #define cprintf printf
 
-typedef unsigned char uchar;
-typedef unsigned int uint;
-typedef unsigned short ushort;
-typedef unsigned long ulong;
-
 /* need the log2 algorithm */
-int log2_linux(uint value)
+int log2_linux(int value)
 {
 	if(value == 0) return -1;
-        uint value_orig = value;
+        int value_orig = value;
         /* Shift to the right until we hit a 1 */
         int x = 0;
         while(value != 1)
@@ -57,10 +47,11 @@ int log2_linux(uint value)
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/types.h"
 #include "kern/stdlib.h"
 #include "stdarg.h"
 #include "panic.h"
+
+#define log2 __log2
 
 #endif
 
@@ -68,8 +59,8 @@ int log2_linux(uint value)
 #include "stdlock.h"
 #define NO_DEFINE_INODE
 #include "fsman.h"
-#include "ext2.h"
-#include "diskio.h"
+#include "drivers/ext2.h"
+#include "drivers/diskio.h"
 #include "cache.h"
 #include "diskcache.h"
 #include "cacheman.h"
@@ -93,58 +84,58 @@ int log2_linux(uint value)
 /**
  * An offset into a file or a file size.
  */
-typedef uint_64 file_offset;
-typedef uint_32 blkid;
+typedef uint64_t file_offset;
+typedef uint32_t blkid;
 
 struct ext2_linux_specific
 {
-	uint_8 fragment_number;
-	uint_8 fragment_size;
-	uint_16 reserved1;
-	uint_16 userid_high;
-	uint_16 groupid_high;
-	uint_32 reserved2;
+	uint8_t fragment_number;
+	uint8_t fragment_size;
+	uint16_t reserved1;
+	uint16_t userid_high;
+	uint16_t groupid_high;
+	uint32_t reserved2;
 };
 
 struct ext2_hurd_specific
 {
-        uint_8 fragment_number;
-        uint_8 fragment_size;
-        uint_16 mode_high;
-        uint_16 userid_high;
-        uint_16 groupid_high;
-        uint_32 author_id;
+        uint8_t fragment_number;
+        uint8_t fragment_size;
+        uint16_t mode_high;
+        uint16_t userid_high;
+        uint16_t groupid_high;
+        uint32_t author_id;
 };
 
 struct ext2_masix_specific
 {
-        uint_8 fragment_number;
-        uint_8 fragment_size;
-	uint_8 reserved[10];
+        uint8_t fragment_number;
+        uint8_t fragment_size;
+	uint8_t reserved[10];
 };
 
 struct ext2_disk_inode
 {
-	uint_16 mode;
-	uint_16 owner;
-	uint_32 lower_size;
-	uint_32 last_access_time;
-	uint_32 creation_time;
-	uint_32 modification_time;
-	uint_32 deletion_time;
-	uint_16 group;
-	uint_16 hard_links;
-	uint_32 sectors;
-	uint_32 flags;
-	uint_32 os_value_1;
-	uint_32 direct[EXT2_DIRECT_COUNT];
-	uint_32 indirect;
-	uint_32 dindirect;
-	uint_32 tindirect;
-	uint_32 generation;
-	uint_32 acl;
-	uint_32 upper_size;
-	uint_32 fragment;
+	uint16_t mode;
+	uint16_t owner;
+	uint32_t lower_size;
+	uint32_t last_access_time;
+	uint32_t creation_time;
+	uint32_t modification_time;
+	uint32_t deletion_time;
+	uint16_t group;
+	uint16_t hard_links;
+	uint32_t sectors;
+	uint32_t flags;
+	uint32_t os_value_1;
+	uint32_t direct[EXT2_DIRECT_COUNT];
+	uint32_t indirect;
+	uint32_t dindirect;
+	uint32_t tindirect;
+	uint32_t generation;
+	uint32_t acl;
+	uint32_t upper_size;
+	uint32_t fragment;
 	
 	union
 	{
@@ -158,79 +149,79 @@ struct ext2_cache_inode
 {
 	struct ext2_disk_inode* ino;
 	void* block; /* The block that contains this inode */
-	uint_32 inode_num;
-	uint_32 inode_group;
+	uint32_t inode_num;
+	uint32_t inode_group;
 	char path[EXT2_MAX_PATH];
 };
 
 struct ext2_base_superblock
 {
-	uint_32 inode_count;
-	uint_32 block_count;
-	uint_32 reseved_count;
-	uint_32 free_block_count;
-	uint_32 free_inode_count;	
-	uint_32 superblock_address;
-	uint_32 block_size_shift;
-	uint_32 frag_size_shift;
-	uint_32 blocks_per_group;
-	uint_32 frags_per_group;
-	uint_32 inodes_per_group;
-	uint_32 last_mount_time;
-	uint_32 last_written_time;
-	uint_16 consistency_mounts;
-	uint_16 max_consistency_mounts;
-	uint_16 signature;
-	uint_16 state;
-	uint_16 error_policy;
-	uint_16 minor_version;
-	uint_32 posix_consistency;
-	uint_32 posix_interval;
-	uint_32 os_uuid;
-	uint_32 major_version;
-	uint_16 owner_id;
-	uint_16 group_id;
+	uint32_t inode_count;
+	uint32_t block_count;
+	uint32_t reseved_count;
+	uint32_t free_block_count;
+	uint32_t free_inode_count;	
+	uint32_t superblock_address;
+	uint32_t block_size_shift;
+	uint32_t frag_size_shift;
+	uint32_t blocks_per_group;
+	uint32_t frags_per_group;
+	uint32_t inodes_per_group;
+	uint32_t last_mount_time;
+	uint32_t last_written_time;
+	uint16_t consistency_mounts;
+	uint16_t max_consistency_mounts;
+	uint16_t signature;
+	uint16_t state;
+	uint16_t error_policy;
+	uint16_t minor_version;
+	uint32_t posix_consistency;
+	uint32_t posix_interval;
+	uint32_t os_uuid;
+	uint32_t major_version;
+	uint16_t owner_id;
+	uint16_t group_id;
 };
 
 struct ext2_extended_base_superblock
 {
-	uint_32 first_inode;
-	uint_16 inode_size;
-	uint_16 my_block_group;
-	uint_32 optional_features;
-	uint_32 required_features;
-	uint_32 readonly_features;
+	uint32_t first_inode;
+	uint16_t inode_size;
+	uint16_t my_block_group;
+	uint32_t optional_features;
+	uint32_t required_features;
+	uint32_t readonly_features;
 	char 	fs_uuid[16];
 	char 	name[16];
 	char 	last_mount[64];
-	uint_32 compression_alg;
-	uint_8 	file_preallocate;
-	uint_8 	dir_preallocate;
-	uint_16 unused1;
+	uint32_t compression_alg;
+	uint8_t	file_preallocate;
+	uint8_t	dir_preallocate;
+	uint16_t unused1;
 	char 	journal_id[16];
-	uint_32 journal_inode;
-	uint_32 journal_device;
-	uint_32 inode_orphan_head;
+	uint32_t journal_inode;
+	uint32_t journal_device;
+	uint32_t inode_orphan_head;
 
 };
 
 struct ext2_block_group_table
 {
-	uint_32 block_bitmap_address; /* block usage bitmap address */
-	uint_32 inode_bitmap_address; /* inode usage bitmap address */
-	uint_32 inode_table; /* Start of the inode table */
-	uint_16 free_blocks; /* How many blocks are available? */
-	uint_16 free_inodes; /* How many inodes are available? */
-	uint_16 dir_count; /* How many directories are in this group? */
+	uint32_t block_bitmap_address; /* block usage bitmap address */
+	uint32_t inode_bitmap_address; /* inode usage bitmap address */
+	uint32_t inode_table; /* Start of the inode table */
+	uint16_t free_blocks; /* How many blocks are available? */
+	uint16_t free_inodes; /* How many inodes are available? */
+	uint16_t dir_count; /* How many directories are in this group? */
 	char unused[14];
 };
 
 struct ext2_dirent
 {
-	uint_32 inode;
-	uint_16 size;
-	uint_8  name_length;
-	uint_8  type;
+	uint32_t inode;
+	uint16_t size;
+	uint8_t  name_length;
+	uint8_t  type;
 	char	name[EXT2_MAX_NAME];
 };
 
@@ -307,7 +298,7 @@ struct ext2_context
 	/* The block containing the superblock */
 	char* super_block;
 	/* The offset in the block containing the superblock */
-	uint super_offset;
+	int super_offset;
 
 	/* hardware driver */
 	struct FSHardwareDriver* driver;
@@ -601,7 +592,7 @@ static int ext2_alloc_block_old(int block_group,
 	return 0;
 }
 
-static int ext2_alloc_block(uint block_num, context* context)
+static int ext2_alloc_block(blkid block_num, context* context)
 {
         char* block = NULL;
 	int block_group = (block_num - context->firstgroupstart)
@@ -617,12 +608,12 @@ static int ext2_alloc_block(uint block_num, context* context)
                 return -1;
 
 	/* Calculate meta size */
-	uint group_start = (block_group 
+	blkid group_start = (block_group 
 		<< context->blockspergroupshift)
 		+ context->firstgroupstart;
-	uint group_end = group_start + (1 << context->blockspergroupshift);
-	uint meta_last = table.inode_table + 1 + context->inodeblocks;
-	uint block_id = block_num - group_start;
+	blkid group_end = group_start + (1 << context->blockspergroupshift);
+	blkid meta_last = table.inode_table + 1 + context->inodeblocks;
+	blkid block_id = block_num - group_start;
 
 	/* Dont allow blocks in the meta to be allocated */
 	if(block_num < meta_last) return -1;
@@ -732,9 +723,9 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	int sequence = 0; /* How many free in a row have we found? */
 	int range_start = -1;
 
-	uint inode_table_sz = (context->inodeblocks) >> context->blockshift;
+	size_t inode_table_sz = (context->inodeblocks) >> context->blockshift;
 	/* We are starting the search just after the end of the metadata. */
-	uint meta = (table.inode_table 
+	int meta = (table.inode_table 
 		+ inode_table_sz) - group_start;
 	int x = meta;
 	for(;x < context->blockspergroup;x++)
@@ -833,10 +824,10 @@ static int _ext2_read_inode(inode* dst, int num, context* context)
 		return -1;
 
 	/* Get the address of the inode */
-	uint inode_offset = local_index << context->inodesizeshift;
-	uint inode_address = table.inode_table + 
+	fileoff_t inode_offset = local_index << context->inodesizeshift;
+	fileoff_t inode_address = table.inode_table + 
 		(inode_offset >> context->blockshift);
-	uint inode_block_offset = inode_offset & (context->blocksize - 1);
+	fileoff_t inode_block_offset = inode_offset & (context->blocksize - 1);
 
 	/* Read from the inode table */
 	block = context->fs->reference(inode_address, context->fs);
@@ -1193,11 +1184,11 @@ static int ext2_set_block_address(int index, int val, int block_hint,
 	return -1;
 }
 
-static int _ext2_read(void* dst, uint start, uint sz, 
+static int _ext2_read(void* dst, fileoff_t start, size_t sz, 
 		disk_inode* ino, context* context)
 {
-	uint_64 file_size = ino->lower_size |
-		((uint_64)ino->upper_size << 32);
+	uint64_t file_size = ino->lower_size |
+		((uint64_t)ino->upper_size << 32);
 
 	if(start >= file_size) return 0; /* End of file */
 	/* Don't allow reads past the end of the file. */
@@ -1205,8 +1196,8 @@ static int _ext2_read(void* dst, uint start, uint sz,
 		sz = file_size - start;
 
 	char* dst_c = dst;
-	uint bytes = 0;
-	uint read = 0;
+	size_t bytes = 0;
+	size_t read = 0;
 	char* block;
 	int start_index = start >> context->blockshift;
 	int end_index = (start + sz) >> context->blockshift;
@@ -1255,7 +1246,7 @@ static int _ext2_read(void* dst, uint start, uint sz,
  * performance gain here is to ask: when should we replace blocks? When
  * they cause a fragment? When they are on a 'seam'?
  */
-static int _ext2_write(const void* src, uint start, uint sz, 
+static int _ext2_write(const void* src, fileoff_t start, fileoff_t sz, 
 		int group_hint, disk_inode* ino, context* context)
 {
 	char* block;
@@ -1264,18 +1255,18 @@ static int _ext2_write(const void* src, uint start, uint sz,
 	 * If we're writing past the end of the file, we 
 	 * need to add blocks where were writing
 	 */
-	uint_64 file_size = ino->lower_size |
-		((uint_64)ino->upper_size << 32);
-	uint_64 start_64 = start;
-	uint_64 sz_64 = sz;
-	uint_64 end_write = start_64 + sz_64;
+	uint64_t file_size = ino->lower_size |
+		((uint64_t)ino->upper_size << 32);
+	uint64_t start_64 = start;
+	uint64_t sz_64 = sz;
+	uint64_t end_write = start_64 + sz_64;
 
 	/* Are we growing the file? */
 	if(end_write > file_size)
 	{
 		/* Update size */
-		ino->lower_size = (uint_32)end_write;
-		ino->upper_size = (uint_32)(end_write >> 32);
+		ino->lower_size = (uint32_t)end_write;
+		ino->upper_size = (uint32_t)(end_write >> 32);
 	}
 
 	/* We need to add blocks where were about to write */
@@ -1330,8 +1321,8 @@ static int _ext2_write(const void* src, uint start, uint sz,
 	}
 
 	const char* src_c = src;
-	uint bytes = 0;
-	uint write = 0;
+	size_t bytes = 0;
+	size_t write = 0;
 	int start_index = start >> context->blockshift;
 	int end_index = (start + sz) >> context->blockshift;
 
@@ -1408,7 +1399,7 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 
 	if(pos < 0) return -1;
 
-	uchar name_length;
+	unsigned char name_length;
 	/* Get the size of the record */
 	if(_ext2_read(&name_length, pos + 6, 1, ino, context) != 1)
 		return -1;
@@ -1424,14 +1415,14 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 }
 
 static int ext2_modify_dirent_type(disk_inode* dir, char* name, int group,
-	uint_8 type, context* context)
+	uint8_t type, context* context)
 {
 	 if(!dir || !name) return -1;
 
-        uint_64 dir_size = dir->lower_size |
-                ((uint_64)dir->upper_size << 32);
+        uint64_t dir_size = dir->lower_size |
+                ((uint64_t)dir->upper_size << 32);
 
-        uint pos = 0;
+        fileoff_t pos = 0;
         struct ext2_dirent current;
 
         while(pos < dir_size)
@@ -1457,13 +1448,13 @@ static int ext2_modify_dirent_type(disk_inode* dir, char* name, int group,
 /* Round a number up to the 4th bit boundary */
 #define EXT2_ROUND_B4_UP(num) (((num) + 3) & ~3)
 static int ext2_alloc_dirent(disk_inode* dir, int inode_num, 
-		int group, const char* file, uchar type, 
+		int group, const char* file, char type, 
 		context* context)
 {
 	if(inode_num < 0) return -1;
 
-	uint_64 dir_size = dir->lower_size |
-		((uint_64)dir->upper_size << 32);
+	uint64_t dir_size = dir->lower_size |
+		((uint64_t)dir->upper_size << 32);
 
 	/* with utf8 encoding can be no longer than 255 bytes. */
 	if(strlen(file) > 255) return -1;
@@ -1472,9 +1463,9 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 	int needed = EXT2_ROUND_B4_UP(8 + strlen(file));
 	/* This is the position of the dirent we are amending */
 	/* OR if not amending, the position of the new dirent */
-	uint pos = 0;
+	fileoff_t pos = 0;
 
-	uint found = 0; /* Did we find a match? */
+	int found = 0; /* Did we find a match? */
 
 	struct ext2_dirent current;
 
@@ -1513,8 +1504,8 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 
 		/* update the directory size */
 		dir_size += context->blocksize;
-		dir->lower_size = (uint_32)dir_size;
-		dir->upper_size = (uint_32)(dir_size >> 32);
+		dir->lower_size = (uint32_t)dir_size;
+		dir->upper_size = (uint32_t)(dir_size >> 32);
 	} else {
 		/* Allocate the size we need */
 		current.size = EXT2_ROUND_B4_UP(current.name_length) + 8;
@@ -1543,10 +1534,10 @@ static int ext2_alloc_dirent(disk_inode* dir, int inode_num,
 	return 0;
 }
 
-static int _ext2_truncate(disk_inode* ino, uint_64 size, context* context)
+static int _ext2_truncate(disk_inode* ino, uint64_t size, context* context)
 {
 	/* Convert the size into a block address */
-	uint last_index = (size + context->blocksize - 1) 
+	fileoff_t last_index = (size + context->blocksize - 1) 
 		>> context->blockshift;
 
 	/* Slow method. */
@@ -1573,8 +1564,8 @@ static int _ext2_truncate(disk_inode* ino, uint_64 size, context* context)
 static int ext2_free_dirent(disk_inode* dir, int group,
 		const char* file, context* context)
 {
-	uint_64 dir_size = dir->lower_size |
-		((uint_64)dir->upper_size << 32);
+	uint64_t dir_size = dir->lower_size |
+		((uint64_t)dir->upper_size << 32);
 
 	/* Lets find the directory entry */
 	int found = 0;
@@ -1659,8 +1650,8 @@ static int ext2_free_dirent(disk_inode* dir, int group,
 static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 		int follow, disk_inode* handle, context* context)
 {
-	uint_64 file_size = handle->lower_size | 
-		((uint_64)handle->upper_size << 32);
+	uint64_t file_size = handle->lower_size | 
+		((uint64_t)handle->upper_size << 32);
 	char parent[EXT2_MAX_PATH];
 	struct ext2_dirent dir;
 
@@ -1675,7 +1666,7 @@ static int ext2_lookup_rec(const char* path, struct ext2_dirent* dst,
 	while(*path == '/')path++;
 	strncpy(parent, path, EXT2_MAX_PATH);
 	if(file_path_root(parent)) return -1;
-	uchar last = 0;
+	int last = 0;
 	if(!strcmp(parent, path)) last = 1;
 	/* Search for the parent in the handle */
 	int pos = 0;
@@ -1729,7 +1720,7 @@ static int ext2_lookup(const char* path, struct ext2_dirent* dst,
 	return ext2_lookup_rec(path, dst, 1, context->root->ino, context);
 }
 
-static int ext2_block_is_allocted(uint block_num, context* context)
+static int ext2_block_is_allocted(blkid block_num, context* context)
 {
 	int allocated = 0;
 
@@ -1799,14 +1790,14 @@ static int ext2_print_inode_bitmap(int group, context* context)
 static int ext2_fsck_file(inode* ino, context* context)
 {
 	/* Check to make sure all blocks are allocated */
-	uint_64 file_size = ino->ino->lower_size |
-                ((uint_64)ino->ino->upper_size << 32);
-	uint_64 pos;
+	uint64_t file_size = ino->ino->lower_size |
+                ((uint64_t)ino->ino->upper_size << 32);
+	uint64_t pos;
 	int failure = 0;
 	for(pos = 0;pos < file_size;pos += context->blocksize)
 	{
-		uint index = (pos >> context->blockshift);
-		uint block = ext2_block_address(index, ino->ino, context);
+		blkid index = (pos >> context->blockshift);
+		blkid block = ext2_block_address(index, ino->ino, context);
 
 		if(!ext2_block_is_allocted(block, context))
 		{
@@ -1824,8 +1815,8 @@ static int ext2_fsck_file(inode* ino, context* context)
 
 static int ext2_fsck_dir(inode* ino, context* context)
 {
-	uint pos = 0;
-	uint failure = 0;
+	fileoff_t pos = 0;
+	int failure = 0;
 
 	while(1)
 	{
@@ -1875,17 +1866,17 @@ int ext2_symlink(const char* file, const char* link,context* context);
 int ext2_mkdir(const char* path, mode_t permission,
 		uid_t uid, gid_t gid, context* context);
 int ext2_rmdir(const char* path, context* context);
-int ext2_read(inode* ino, void* dst, uint start, uint sz,
+int ext2_read(inode* ino, void* dst, fileoff_t start, size_t sz,
 		context* context);
-int ext2_write(inode* ino, const void* src, uint start, uint sz,
+int ext2_write(inode* ino, const void* src, fileoff_t start, size_t sz,
 		context* context);
 int ext2_rename(const char* src, const char* dst, context* context);
 int ext2_unlink(const char* file, context* context);
 int ext2_readdir(inode* dir, int index, struct dirent* dst,
 		context* context);
 int ext2_fsstat(struct fs_stat* dst, context* context);
-int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count,
-		uint pos, context* context);
+int ext2_getdents(inode* dir, struct dirent* dst_arr, int count,
+		fileoff_t pos, context* context);
 void ext2_sync(context* context);
 int ext2_fsync(inode* ino, context* context);
 int ext2_fsck(context* context);
@@ -1904,7 +1895,7 @@ int ext2_init(struct FSDriver* fs)
 		return -1;
 	}
 
-	uint cache_sz = FS_INODE_CACHE_SZ;
+	size_t cache_sz = FS_INODE_CACHE_SZ;
 	void* inode_cache = cman_alloc(FS_INODE_CACHE_SZ);
 
 	struct FSHardwareDriver* driver = fs->driver;
@@ -1919,7 +1910,7 @@ int ext2_init(struct FSDriver* fs)
 	context->sectsize = driver->sectsize;
 
 	/* Read the superblock */
-	uint superblock_start = 1024;
+	int superblock_start = 1024;
 	char super_buffer[1024];
 	if(fs->disk_read(super_buffer, superblock_start, 
 				1024, fs) != 1024)
@@ -2015,7 +2006,7 @@ int ext2_init(struct FSDriver* fs)
 		return -1;
 
 	/* Setup the superblock context pointer */
-	uint superblock_block = 0;
+	blkid superblock_block = 0;
 	context->super_offset = 0;
 	if(context->blocksize == 512)
 		superblock_block = 2;
@@ -2128,8 +2119,8 @@ int ext2_stat(inode* ino, struct stat* dst, context* context)
 #ifdef DEBUG
 	cprintf("ext2: Statting file: %s\n", ino->path);
 #endif
-	uint_64 file_size = ino->ino->lower_size |
-		((uint_64)ino->ino->upper_size << 32);
+	uint64_t file_size = ino->ino->lower_size |
+		((uint64_t)ino->ino->upper_size << 32);
 
 	memset(dst, 0, sizeof(struct stat));
 	dst->st_dev = 0;
@@ -2456,13 +2447,13 @@ int ext2_rmdir(const char* path, context* context)
 	return ext2_unlink(path, context);
 }
 
-int ext2_read(inode* ino, void* dst, uint start, uint sz, 
+int ext2_read(inode* ino, void* dst, fileoff_t start, size_t sz, 
 		context* context)
 {
 	return _ext2_read(dst, start, sz, ino->ino, context);
 }
 
-int ext2_write(inode* ino, const void* src, uint start, uint sz,
+int ext2_write(inode* ino, const void* src, fileoff_t start, size_t sz,
 		context* context)
 {
 	return _ext2_write(src, start, sz, 
@@ -2571,8 +2562,8 @@ int ext2_unlink(const char* file, context* context)
 int ext2_readdir(inode* dir, int index, struct dirent* dst, 
 		context* context)
 {
-	uint_64 file_size = dir->ino->lower_size |
-		((uint_64)dir->ino->upper_size << 32);
+	uint64_t file_size = dir->ino->lower_size |
+		((uint64_t)dir->ino->upper_size << 32);
 
 	struct ext2_dirent diren;
 
@@ -2598,14 +2589,14 @@ int ext2_readdir(inode* dir, int index, struct dirent* dst,
 		pos += diren.size;
 	}
 
-	return -1;
+	return 1;
 }
 
-int ext2_getdents(inode* dir, struct dirent* dst_arr, uint count, 
-		uint pos, context* context)
+int ext2_getdents(inode* dir, struct dirent* dst_arr, int count, 
+		fileoff_t pos, context* context)
 {
-	uint_64 file_size = dir->ino->lower_size |
-		((uint_64)dir->ino->upper_size << 32);
+	uint64_t file_size = dir->ino->lower_size |
+		((uint64_t)dir->ino->upper_size << 32);
 
 	if(pos >= file_size) return 0; /* End of directory */
 
