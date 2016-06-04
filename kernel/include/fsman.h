@@ -12,8 +12,6 @@
 #include "stdlock.h"
 #include "cache.h"
 
-/* Some cache tunables */
-#define ATA_CACHE_SZ 0x30000 /* HDD cache sz per drive */
 #define FS_INODE_CACHE_SZ 0x10000 /* Per file system cache */
 
 typedef uint32_t blk_t; /* A block number */
@@ -108,9 +106,9 @@ struct FSDriver
 	 * to function.
 	 */
 	int (*init)(sect_t start_sector, sect_t end_sector, size_t sectsize,
-		size_t cache_sz, char* cache, 
-		struct FSDriver* driver, void* context);
-	
+			size_t cache_sz, char* cache, 
+			struct FSDriver* driver, void* context);
+
 	/**
 	 * Required file system driver function that opens a file
 	 * given a path, some flags and an open mode. The mode and
@@ -121,19 +119,19 @@ struct FSDriver
 	void* (*open)(const char* path, void* context);
 
 	/**
- 	 * Close the file with the given inode. The inode type
+	 * Close the file with the given inode. The inode type
 	 * is file system specific.
- 	 */
+	 */
 	int (*close)(void* i, void* context);
 
 	/**
- 	 * Parse statistics on an open file. Returns 0 on success,
+	 * Parse statistics on an open file. Returns 0 on success,
 	 * returns 1 otherwise.
- 	 */
+	 */
 	int (*stat)(void* i, struct stat* dst, void* context);
 
 	/**
- 	 * Create a file in the file system given by path. Returns 0 on
+	 * Create a file in the file system given by path. Returns 0 on
 	 * success, -1 on failure. If the file already exists, returns 0.
 	 */
 	int (*create)(const char* path, mode_t permissions, 
@@ -163,17 +161,17 @@ struct FSDriver
 	 */
 	int (*link)(const char* file, const char* link, void* context);
 
-        /**
-         * Create a soft link to a file. Returns 0 on success.
-         */
-        int (*symlink)(const char* file, const char* link, void* context);
+	/**
+	 * Create a soft link to a file. Returns 0 on success.
+	 */
+	int (*symlink)(const char* file, const char* link, void* context);
 
 	/**
 	 * Make a directory in the file system. Returns 0 on success, -1 on
 	 * failure.
 	 */
 	int (*mkdir)(const char* path, mode_t permissions, uid_t uid, gid_t gid, 
-		void* context);
+			void* context);
 
 	/**
 	 * Read from the inode i into the buffer dst for sz bytes starting
@@ -181,15 +179,15 @@ struct FSDriver
 	 * from the file.
 	 */
 	int (*read)(void* i, void* dst, fileoff_t start, 
-		size_t sz, void* context);
+			size_t sz, void* context);
 
-        /**
-         * Read from the inode i into the buffer dst for sz bytes starting
-         * at position start in the file. Returns the amount of bytes read
-         * from the file.
-         */ 
-        int (*write)(void* i, const void* src, fileoff_t start, 
-		size_t sz, void* context);
+	/**
+	 * Read from the inode i into the buffer dst for sz bytes starting
+	 * at position start in the file. Returns the amount of bytes read
+	 * from the file.
+	 */ 
+	int (*write)(void* i, const void* src, fileoff_t start, 
+			size_t sz, void* context);
 
 	/**
 	 * Move file from src to dst. This function can also move
@@ -208,7 +206,7 @@ struct FSDriver
 	 * 0 on success, -1 when the end of the directory has been reached.
 	 */
 	int (*readdir)(void* dir, int index, 
-		struct dirent* dst, void* context);
+			struct dirent* dst, void* context);
 
 	/**
 	 * Get directory entries from an inode. Pos is the offset to the
@@ -217,7 +215,7 @@ struct FSDriver
 	 * and returns 0 on end of directory.
 	 */
 	int (*getdents)(void* dir, struct dirent* dst_arr, int count,
-                fileoff_t pos, void* context);
+			fileoff_t pos, void* context);
 
 	/**
 	 * Parse statistics into the stat structure.
@@ -242,11 +240,11 @@ struct FSDriver
 	 * a common interface to access devices.
 	 */
 	int (*mknod)(const char* path, dev_t major, dev_t minor,
-                mode_t perm, void* context);
+			mode_t perm, void* context);
 
 	/**
 	 * Sync all files and data with the storage. This function never
- 	 * fails.
+	 * fails.
 	 */
 	void (*sync)(void* context);
 
@@ -273,23 +271,23 @@ struct FSDriver
 	int bpp; /* How many fs blocks fit onto a page? */
 	sect_t start; /* The sector where this file system starts */
 
-        size_t blocksize; /* What is the block size of this fs? */
-        int blockshift; /* Turn a block address into an id */
+	size_t blocksize; /* What is the block size of this fs? */
+	int blockshift; /* Turn a block address into an id */
 	/* Read and write block functions */
 	int (*readblock)(void* dst, blk_t block, struct FSDriver* driver);
-        int (*writeblock)(void* src, blk_t block,struct FSDriver* driver);
+	int (*writeblock)(void* src, blk_t block,struct FSDriver* driver);
 	int (*readblocks)(void* dst, blk_t startblock, int count,
-                struct FSDriver* driver);
-        int (*writeblocks)(void* src, blk_t startblock, int count,
-                struct FSDriver* driver);
+			struct FSDriver* driver);
+	int (*writeblocks)(void* src, blk_t startblock, int count,
+			struct FSDriver* driver);
 	int (*disk_read)(void* dst, fileoff_t start, size_t sz,
-                struct FSDriver* driver);
-        int (*disk_write)(void* src, fileoff_t start, size_t sz,
-                struct FSDriver* driver);
+			struct FSDriver* driver);
+	int (*disk_write)(void* src, fileoff_t start, size_t sz,
+			struct FSDriver* driver);
 
-        void* (*reference)(blk_t block, struct FSDriver* driver);
-        void* (*addreference)(blk_t block, struct FSDriver* driver);
-        int (*dereference)(void* ref, struct FSDriver* driver);
+	void* (*reference)(blk_t block, struct FSDriver* driver);
+	void* (*addreference)(blk_t block, struct FSDriver* driver);
+	int (*dereference)(void* ref, struct FSDriver* driver);
 };
 
 /**

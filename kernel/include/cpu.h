@@ -18,4 +18,14 @@ void pop_cli(void);
  */
 void reset_cli(void);
 
+/**
+ * Shutdown the system
+ */
+void shutdown(void);
+
+/**
+ * Reboot the system
+ */
+void reboot(void);
+
 #endif

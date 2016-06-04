@@ -167,8 +167,11 @@ int sys_setegid(void);
 int sys_sync(void);
 int sys_setreuid(void);
 int sys_setregid(void);
+int sys_reboot(void);
+
+#include <chronos.h>
 
 #define SYS_MIN SYS_fork /* System call with the smallest value */
-#define SYS_MAX SYS_setregid /* System call with the greatest value*/
+#define SYS_MAX SYS_reboot /* System call with the greatest value*/
 
 #endif

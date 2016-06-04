@@ -2,105 +2,106 @@
 #define _CHRONOS_H_
 
 /* Chronos traps */
-#define TRAP_SC 	0x80 /* System call trap*/
+#define TRAP_SC 		0x80 /* System call trap*/
 
-#define SYS_fork 	0x01
-#define SYS_wait 	0x02
-#define SYS_exec 	0x03
-#define SYS_exit 	0x04
-#define SYS_open 	0x05
-#define SYS_close 	0x06
-#define SYS_read 	0x07
-#define SYS_write 	0x08
-#define SYS_lseek	0x09
-#define SYS_mmap 	0x0A
-#define SYS_chdir 	0x0B
-#define SYS_getcwd 	0x0C
-#define SYS_create 	0x0D
-#define SYS_mkdir 	0x0E
-#define SYS_rmdir 	0x0F
-#define SYS_unlink	0x10
-#define SYS_mv 		0x11
-#define SYS_fstat 	0x12
-#define SYS_wait_s	0x13
-#define SYS_wait_t	0x14
+#define SYS_fork 		0x01
+#define SYS_wait 		0x02
+#define SYS_exec 		0x03
+#define SYS_exit 		0x04
+#define SYS_open 		0x05
+#define SYS_close 		0x06
+#define SYS_read 		0x07
+#define SYS_write 		0x08
+#define SYS_lseek		0x09
+#define SYS_mmap 		0x0A
+#define SYS_chdir 		0x0B
+#define SYS_getcwd 		0x0C
+#define SYS_create 		0x0D
+#define SYS_mkdir 		0x0E
+#define SYS_rmdir 		0x0F
+#define SYS_unlink		0x10
+#define SYS_mv 			0x11
+#define SYS_fstat 		0x12
+#define SYS_wait_s		0x13
+#define SYS_wait_t		0x14
 #define SYS_signal_cv 	0x15
-#define SYS_readdir	0x16
-#define SYS_pipe	0x17
-#define SYS_dup		0x18
-#define SYS_dup2	0x19
+#define SYS_readdir		0x16
+#define SYS_pipe		0x17
+#define SYS_dup			0x18
+#define SYS_dup2		0x19
 #define SYS_proc_dump	0x1A
 #define SYS_tty_mode	0x1B
 #define SYS_tty_screen	0x1C
 #define SYS_tty_cursor	0x1D
-#define SYS_brk		0x1E
-#define SYS_sbrk	0x1F
-#define SYS_chmod	0x20
-#define SYS_chown	0x21
+#define SYS_brk			0x1E
+#define SYS_sbrk		0x1F
+#define SYS_chmod		0x20
+#define SYS_chown		0x21
 #define SYS_mprotect	0x22
-#define SYS__exit	0x23
-#define SYS_execve	0x24
-#define SYS_getpid	0x25
-#define SYS_isatty	0x26
-#define SYS_kill	0x27
-#define SYS_link	0x28
-#define SYS_stat	0x29
-#define SYS_times	0x2A
+#define SYS__exit		0x23
+#define SYS_execve		0x24
+#define SYS_getpid		0x25
+#define SYS_isatty		0x26
+#define SYS_kill		0x27
+#define SYS_link		0x28
+#define SYS_stat		0x29
+#define SYS_times		0x2A
 #define SYS_gettimeofday 0x2B
-#define SYS_waitpid	0x2C
-#define SYS_creat	0x2D
-#define SYS_getuid	0x2E
-#define SYS_setuid	0x2F
-#define SYS_getgid	0x30
-#define SYS_setgid	0x31
-#define SYS_gettid	0x32
-#define SYS_getppid	0x33
-#define SYS_munmap	0x34
+#define SYS_waitpid		0x2C
+#define SYS_creat		0x2D
+#define SYS_getuid		0x2E
+#define SYS_setuid		0x2F
+#define SYS_getgid		0x30
+#define SYS_setgid		0x31
+#define SYS_gettid		0x32
+#define SYS_getppid		0x33
+#define SYS_munmap		0x34
 #define SYS_getdents	0x35
-#define SYS_getegid	0x36
-#define SYS_geteuid	0x37
-#define SYS_ioctl	0x38
-#define SYS_access	0x39
-#define SYS_ttyname	0x3A
+#define SYS_getegid		0x36
+#define SYS_geteuid		0x37
+#define SYS_ioctl		0x38
+#define SYS_access		0x39
+#define SYS_ttyname		0x3A
 #define SYS_fpathconf	0x3B
 #define SYS_pathconf	0x3C
-#define SYS_sleep	0x3D
-#define SYS_umask	0x3E
-#define SYS_lstat	0x3F
-#define SYS_fchown	0x40
-#define SYS_fchmod	0x41
+#define SYS_sleep		0x3D
+#define SYS_umask		0x3E
+#define SYS_lstat		0x3F
+#define SYS_fchown		0x40
+#define SYS_fchmod		0x41
 #define SYS_gethostname	0x42
-#define SYS_execl	0x43
-#define SYS_utime	0x44
-#define SYS_utimes	0x45
-#define SYS_fcntl	0x46
-#define SYS_sysconf	0x47
+#define SYS_execl		0x43
+#define SYS_utime		0x44
+#define SYS_utimes		0x45
+#define SYS_fcntl		0x46
+#define SYS_sysconf		0x47
 #define SYS_ftruncate	0x48
-#define SYS_execvp	0x49
-#define SYS_getpgid	0x4A
+#define SYS_execvp		0x49
+#define SYS_getpgid		0x4A
 #define SYS_getresuid	0x4B
 #define SYS_getresgid	0x4C
 #define SYS_setresuid	0x4D
-#define SYS_setpgid	0x4E
+#define SYS_setpgid		0x4E
 #define SYS_setresgid	0x4F
-#define SYS_vfork	0x50
-#define SYS_select	0x51
-#define SYS_alarm	0x52
-#define SYS_seteuid	0x53
+#define SYS_vfork		0x50
+#define SYS_select		0x51
+#define SYS_alarm		0x52
+#define SYS_seteuid		0x53
 #define SYS_sigaction	0x54
 #define SYS_sigprocmask	0x55
 #define SYS_sigpending	0x56
-#define SYS_signal	0x57
+#define SYS_signal		0x57
 #define SYS_sigsuspend	0x58
-#define SYS_setegid	0x59
-#define SYS_sync	0x5A
+#define SYS_setegid		0x59
+#define SYS_sync		0x5A
 #define SYS_setreuid	0x5B
 #define SYS_setregid	0x5C
+#define SYS_reboot		0x5D
 
-#define SYS_semctl	0x5B
-#define SYS_semget	0x5C
-#define SYS_semop	0x5D
-#define SYS_semtimedop	0x5E
+// #define SYS_semctl	0x5B
+// #define SYS_semget	0x5C
+// #define SYS_semop	0x5D
+// #define SYS_semtimedop	0x5E
 
 #ifndef __CHRONOS_ASM_ONLY__
 int __chronos_syscall(int num, ...);
@@ -289,6 +290,8 @@ int __chronos_syscall(int num, ...);
 #define F_RSETLKW       13      /* Set or Clear remote record-lock(Blocking) */
 #define F_DUPFD_CLOEXEC 14      /* As F_DUPFD, but set close-on-exec flag */
 
+#define CHRONOS_RB_REBOOT 	0x01
+#define CHRONOS_RB_SHUTDOWN 0x02
 
 #endif
 

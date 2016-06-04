@@ -32,7 +32,8 @@ KERNEL_BINS := \
 	stdlib \
 	ioctl \
 	main \
-	stdlock
+	stdlock \
+	reboot
 
 # Generic drivers 
 KERNEL_DRIVERS := \

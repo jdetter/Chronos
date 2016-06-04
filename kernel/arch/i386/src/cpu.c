@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include "panic.h"
+#include "x86.h"
 
 int x86_check_interrupt(void);
 
@@ -28,7 +29,28 @@ void pop_cli(void)
         }
 }
 
+void qemu_shutdown()
+{
+	char *p = "Shutdown";
+	for(;*p;p++)
+		outb(0xB004, *p);
+}
+
 void reset_cli(void)
 {
 	cli_count = 0;
+}
+
+void reboot(void)
+{
+	qemu_shutdown();
+	x86_reboot();
+	panic("REBOOT FAILED");
+}
+
+void shutdown(void)
+{
+	qemu_shutdown();
+	x86_shutdown();
+	panic("SHUTDOWN FAILED");
 }

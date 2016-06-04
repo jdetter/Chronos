@@ -11,11 +11,13 @@
 #include "proc.h"
 #include "vm.h"
 #include "chronos.h"
+#include "cpu.h"
 #include "tty.h"
 #include "elf.h"
 #include "stdarg.h"
 #include "syscall.h"
 #include "panic.h"
+#include "reboot.h"
 
 // #define DEBUG
 
@@ -119,7 +121,8 @@ int (*syscall_table[])(void) = {
 	sys_setegid,
 	sys_sync,
 	sys_setreuid,
-	sys_setregid
+	sys_setregid,
+	sys_reboot
 };
 
 char* syscall_table_names[] = {
@@ -215,7 +218,8 @@ char* syscall_table_names[] = {
     "setegid",
     "sync",
 	"setreuid",
-	"setregid"
+	"setregid",
+	"reboot"
 };
 
 
@@ -447,4 +451,28 @@ int sys_mprotect(void)
 	return 0;
 }
 
+/* int sys_reboot(int mode) */
+int sys_reboot(void)
+{
+	int mode;
+	if(syscall_get_int((int*)&mode, 0))
+		return -1;
 
+	switch(mode)
+	{
+		case CHRONOS_RB_REBOOT:
+			cprintf("System is going down for reboot...\n");
+			pre_shutdown();
+			reboot();
+			break;
+		case CHRONOS_RB_SHUTDOWN:
+			cprintf("System is shutting down...\n");
+			pre_shutdown();
+			shutdown();
+			break;
+		default:
+			break;
+	}
+
+	return -1;
+}

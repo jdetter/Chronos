@@ -44,7 +44,9 @@ USER_TARGETS := \
 	ls \
 	rm \
 	mkdir \
-	opendir-test
+	opendir-test \
+	reboot \
+	shutdown
 
 LIBS := -lncurses
 

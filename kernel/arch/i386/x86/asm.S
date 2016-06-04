@@ -116,3 +116,10 @@ x86_context_switch:
         movl    $0x00, %eax
         ret
 
+.globl x86_reboot
+x86_reboot:
+	ret
+
+.globl x86_shutdown
+x86_shutdown:
+	hlt

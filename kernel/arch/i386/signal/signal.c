@@ -358,7 +358,7 @@ int sig_handle(void)
 	/* Check to see if we got terminated */
 	if(terminated)
 	{
-		cprintf("Process killed: %s\n", rproc->name);
+		cprintf("kernel: Process killed: %s\n", rproc->name);
 		slock_release(&ptable_lock);
 		_exit(1);
 	}

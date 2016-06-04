@@ -103,6 +103,8 @@
 #define CONSOLE_MONO_BASE_ORIG  (0xB0000)
 #define CONSOLE_COLOR_BASE_ORIG (0xB8000)
 
+#define ATA_CACHE_SZ 0x30000 /* HDD cache sz per drive */
+
 #ifndef __X86_ASM_ONLY__
 
 #include "context.h"
@@ -277,6 +279,16 @@ extern void x86_context_switch(context_t* current, context_t next);
  * Lower privileges and enter a new user function.
  */
 extern void x86_drop_priv(context_t* context, pstack_t new_stack, void* entry);
+
+/**
+ * Reboot the system
+ */
+extern void x86_reboot(void);
+
+/**
+ * Shut down the system
+ */
+extern void x86_shutdown(void);
 
 #endif
 
