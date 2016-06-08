@@ -1,3 +1,4 @@
+#include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -8,9 +9,7 @@
 
 #define MAX_ARG 64
 
-char* spawn_process = "/bin/sh";
-
-void some_recursion(int i);
+static const char* spawn_process = "/bin/sh";
 
 int main(int argc, char** argv)
 {
@@ -23,9 +22,19 @@ int main(int argc, char** argv)
 		printf("Warning: sh has exited.\n");
 		for(;;);
 	} else {
-		char* args[MAX_ARG];
+		const char* process = spawn_process;
+
+		/* Check to see if were running the testsuite */
+		int testsuite = open("/testsuite", O_RDONLY);
+		if(testsuite >= 0)
+		{
+			close(testsuite);
+			process = "/testsuite";
+		}
+
+		const char* args[MAX_ARG];
 		memset(args, 0, MAX_ARG); 
-		args[0] = spawn_process;
+		args[0] = process;
 		args[1] = "arg1";
 		args[2] = "args2";
 
@@ -33,7 +42,7 @@ int main(int argc, char** argv)
 		envp[0] = NULL;
 	
 		printf("Spawning process %s...\n", args[0]);
-		execve(spawn_process, (char* const*)args, (char* const*)envp);
+		execve(process, (char* const*)args, (char* const*)envp);
 		printf("init panic: exec has failed.\n");
 		for(;;);
 	}
