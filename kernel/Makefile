@@ -85,7 +85,6 @@ boot-stage2.img:
 	cd arch/$(BUILD_ARCH) ; \
 		make boot-stage2.img
 
-.PHONY: chronos.o
 chronos.o: $(KERNEL_OBJS)
 	cd arch/$(BUILD_ARCH) ; \
 		make arch.o

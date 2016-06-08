@@ -21,11 +21,11 @@ void reset_cli(void);
 /**
  * Shutdown the system
  */
-void shutdown(void);
+void cpu_shutdown(void);
 
 /**
  * Reboot the system
  */
-void reboot(void);
+void cpu_reboot(void);
 
 #endif

@@ -104,6 +104,8 @@
 // #define SYS_semtimedop	0x5E
 
 #ifndef __CHRONOS_ASM_ONLY__
+void reboot(int) __attribute__ ((noreturn));
+
 int __chronos_syscall(int num, ...);
 #endif
 

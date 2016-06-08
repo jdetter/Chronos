@@ -29,3 +29,6 @@ tools/build
 # Exported log files
 logs/
 save/
+
+# Some system skeleton files
+sysskel/tests

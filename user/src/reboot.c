@@ -1,8 +1,8 @@
 #include <chronos.h>
 
-void main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-	chronos_syscall(SYS_reboot, CHRONOS_RB_REBOOT);
+	reboot(CHRONOS_RB_REBOOT);
 
 	return 0;
 }

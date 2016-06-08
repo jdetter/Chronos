@@ -173,7 +173,7 @@ int sig_proc(struct proc* p, int sig)
 			&& p->state == PROC_STOPPED)
 		p->state = PROC_RUNNABLE;
 
-	if(p->state == PROC_SIGNAL)
+	if(p->state == PROC_SIGNAL || sig == SIGKILL)
 		p->state = PROC_RUNNABLE;
 
 	return 0;
@@ -308,10 +308,10 @@ int sig_handle(void)
 					sizeof(struct trap_frame));
 		}
 
-		uint stack = rproc->sig_stack_start;
+		pstack_t stack = rproc->sig_stack_start;
 
 		/* set the return address to the sig handler */
-		rproc->tf->eip = (uint)sig_handler;
+		rproc->tf->eip = (uintptr_t)sig_handler;
 
 		vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
 		vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
@@ -324,7 +324,7 @@ int sig_handle(void)
 
 		/* (safely) Push our magic return value */
 		stack -= sizeof(int);
-		uint mag = SIG_MAGIC;
+		uint32_t mag = SIG_MAGIC;
 		vm_memmove((void*)stack, &mag, sizeof(int), 
 				rproc->pgdir, rproc->pgdir,
 				dir_flags, tbl_flags);

@@ -325,9 +325,13 @@ TRAP_DONE:
 	if(rproc->sig_queue && !rproc->sig_handling)
 	{
 		slock_acquire(&ptable_lock);
+		cprintf("Process %s is handling signal...\n", rproc->name);
 		sig_handle();
 		slock_release(&ptable_lock);
 	}
+
+	if(rproc->sig_queue && rproc->sig_handling)
+		cprintf("HERE");
 
 
 	/* Make sure that the interrupt flags is set */

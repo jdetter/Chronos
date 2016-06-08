@@ -463,12 +463,12 @@ int sys_reboot(void)
 		case CHRONOS_RB_REBOOT:
 			cprintf("System is going down for reboot...\n");
 			pre_shutdown();
-			reboot();
+			cpu_reboot();
 			break;
 		case CHRONOS_RB_SHUTDOWN:
 			cprintf("System is shutting down...\n");
 			pre_shutdown();
-			shutdown();
+			cpu_shutdown();
 			break;
 		default:
 			break;
