@@ -1,5 +1,5 @@
-#ifndef _CHRONOS_H_
-#define _CHRONOS_H_
+#ifndef _SYS_CHRONOS_H_
+#define _SYS_CHRONOS_H_
 
 /* Chronos traps */
 #define TRAP_SC 		0x80 /* System call trap*/
@@ -104,9 +104,9 @@
 // #define SYS_semtimedop	0x5E
 
 #ifndef __CHRONOS_ASM_ONLY__
-void reboot(int) __attribute__ ((noreturn));
+extern int reboot(int type);
 
-int __chronos_syscall(int num, ...);
+extern int __chronos_syscall(int num, ...);
 #endif
 
 #ifndef __CHRONOS_SYSCALLS_ONLY__
