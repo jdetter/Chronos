@@ -98,6 +98,10 @@
 #define SYS_setregid	0x5C
 #define SYS_reboot		0x5D
 
+// Options for reboot system call
+#define CHRONOS_RB_REBOOT 	0x01
+#define CHRONOS_RB_SHUTDOWN 0x02
+
 // #define SYS_semctl	0x5B
 // #define SYS_semget	0x5C
 // #define SYS_semop	0x5D
@@ -110,6 +114,7 @@ extern int __chronos_syscall(int num, ...);
 #endif
 
 #ifndef __CHRONOS_SYSCALLS_ONLY__
+#ifndef __LINUX__
 
 /**
  * Macros for pathconf
@@ -292,9 +297,8 @@ extern int __chronos_syscall(int num, ...);
 #define F_RSETLKW       13      /* Set or Clear remote record-lock(Blocking) */
 #define F_DUPFD_CLOEXEC 14      /* As F_DUPFD, but set close-on-exec flag */
 
-#define CHRONOS_RB_REBOOT 	0x01
-#define CHRONOS_RB_SHUTDOWN 0x02
 
+#endif
 #endif
 
 #endif

@@ -247,17 +247,18 @@ int sys_getpid(void)
 
 int sys_exit(void)
 {
+	int return_code = 1;
+	if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
 #ifdef DEBUG
-	cprintf("\n\n%s:%d $$$exiting$$$ -- standard exit call\n\n",
-			rproc->name, rproc->pid);
+	cprintf("\n\n%s:%d exiting -- status: %d\n\n",
+			rproc->name, rproc->pid, return_code);
 #endif
 
 	/* Acquire the ptable lock */
 	slock_acquire(&ptable_lock);
 
-	int return_code = 1;
-	if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
-	rproc->return_code = return_code;
+	/* The process exited */
+	rproc->return_code = (return_code & 0xFF) << 8;
 
 	/* Set state to zombie */
 	rproc->state = PROC_ZOMBIE;

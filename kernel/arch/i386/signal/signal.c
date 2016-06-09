@@ -205,11 +205,11 @@ int sig_handle(void)
 	struct signal_t* sig = rproc->sig_queue;
 	void (*sig_handler)(int sig_num) = 
 		rproc->sigactions[sig->signum].sa_handler;
-	uchar caught = 0; /* Did we catch the signal? */
-	uchar terminated = 0; /* Did we get terminated? */
-	uchar stopped = 0; /* Did we get stopped? */
-	uchar core = 0; /* Should we dump the core? */
-	uchar ignored = 0; /* Was the default action caught and ignored? */
+	int caught = 0; /* Did we catch the signal? */
+	int terminated = 0; /* Did we get terminated? */
+	int stopped = 0; /* Did we get stopped? */
+	int core = 0; /* Should we dump the core? */
+	int ignored = 0; /* Was the default action caught and ignored? */
 
 	/* Does the user want us to use the default action? */
 	if(rproc->sigactions[sig->signum].sa_handler == SIG_DFL)
@@ -351,6 +351,8 @@ int sig_handle(void)
 	if(stopped)
 	{
 		rproc->state = PROC_STOPPED;
+		/* Set status to stopped */
+		rproc->return_status = 0x7F;
 		sig_dequeue(rproc);
 		yield_withlock();
 	}
@@ -359,6 +361,7 @@ int sig_handle(void)
 	if(terminated)
 	{
 		cprintf("kernel: Process killed: %s\n", rproc->name);
+		rproc->return_status = sig->signum;
 		slock_release(&ptable_lock);
 		_exit(1);
 	}

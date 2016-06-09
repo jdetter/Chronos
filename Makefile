@@ -29,8 +29,8 @@ export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARC
 QEMU := qemu-system-$(BUILD_ARCH)
 
 # Uncomment this lines to turn off all output
-export CFLAGS := -DRELEASE $(CFLAGS)
-export AFLAGS := -DRELEASE $(AFLAGS)
+# export CFLAGS := -DRELEASE $(CFLAGS)
+# export AFLAGS := -DRELEASE $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
@@ -83,6 +83,7 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	./tools/bin/mkfs -i 8192 -s 134217728 -r fs $(FS_TYPE)
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
+.PHONY: ext2.img
 ext2.img: kernel/chronos.o $(USER_BUILD)
 	echo "Super user privileges are needed for loop mounting..."
 	sudo echo ""
