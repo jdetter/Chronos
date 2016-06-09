@@ -132,10 +132,14 @@ int waitpid_nolock(int pid, int* status, int options)
 
 			break;
 		} else {
+			/* Set the wait options */
+			rproc->wait_options = options;
+
 			/* Lets block ourself */
 			rproc->block_type = PROC_BLOCKED_WAIT;
 			rproc->b_pid = pid;
 			rproc->state = PROC_BLOCKED;
+
 			/* Wait for a signal. */
 			yield_withlock();
 			/* Reacquire ptable lock */
@@ -282,6 +286,25 @@ int sys_exit(void)
 	yield_withlock();
 	return 0;
 }
+
+void wake_parent(struct proc* p)
+{
+	/* Attempt to wakeup our parent */
+	if(p->orphan == 0)
+	{
+		if(p->parent->block_type == PROC_BLOCKED_WAIT)
+		{
+			if(p->parent->b_pid == -1 || p->parent->b_pid == p->pid)
+			{
+				/* Our parent is waiting on us, release the block. */
+				p->parent->block_type = PROC_BLOCKED_NONE;
+				p->parent->state = PROC_RUNNABLE;
+				p->parent->b_pid = 0;
+			}
+		}
+	}
+}
+
 
 void _exit(int return_code)
 {

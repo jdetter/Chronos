@@ -5,10 +5,12 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "kern/stdlib.h"
 #include "kern/signal.h"
@@ -27,7 +29,7 @@
 #include "cpu.h"
 #include "chronos.h"
 
-#include <signal.h>
+#define DEBUG
 
 /* Signal default action table */
 static int default_actions[NSIG];
@@ -342,26 +344,52 @@ int sig_handle(void)
 	if(core)
 	{
 		/* Dump memory for gdb analysis */
-		cprintf("CORE DUMPED: %s\n", rproc->name);
-		slock_release(&ptable_lock);
-		_exit(1);
+#ifdef DEBUG
+		cprintf("%s:%d: CORE DUMPED\n", rproc->name, rproc->pid);
+#endif
+		rproc->return_code = ((sig->signum & 0xFF) << 0x8) | 0x02;
+		rproc->state = PROC_ZOMBIE;
+		wake_parent(rproc);
+		yield_withlock();
 	}
 
 	/* If we got stopped, we will enter scheduler. */
 	if(stopped)
 	{
+#ifdef DEBUG
+		cprintf("%s:%d: process stopped.\n", rproc->name, rproc->pid);
+#endif
+
 		rproc->state = PROC_STOPPED;
-		/* Set status to stopped */
-		rproc->return_status = 0x7F;
+		rproc->return_code = ((sig->signum & 0xFF) << 0x08) | 0x04;
+		/* Should we wake the parent? */
+		if(!rproc->orphan && rproc->parent
+				&& (rproc->parent->wait_options & WUNTRACED))
+		{
+			wake_parent(rproc);
+		}
 		sig_dequeue(rproc);
 		yield_withlock();
+
+		/* Should we wake our parent now that we've continued */
+		if(!rproc->orphan && rproc->parent
+				&& (rproc->parent->wait_options & WCONTINUED))
+		{
+			wake_parent(rproc);
+		}
+
 	}
 
 	/* Check to see if we got terminated */
 	if(terminated)
 	{
-		cprintf("kernel: Process killed: %s\n", rproc->name);
-		rproc->return_status = sig->signum;
+#ifdef DEBUG
+		cprintf("%s:%d: Process killed by signal. No core dumped.\n", 
+				rproc->name, rproc->pid);
+#endif
+
+		rproc->return_code = ((sig->signum & 0xFF) << 0x08) | 0x01;
+		wake_parent(rproc);
 		slock_release(&ptable_lock);
 		_exit(1);
 	}

@@ -123,6 +123,7 @@ struct proc
 	/** Parent and debug information */
 	int orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */
+	int wait_options; /* Parent wait options (waitpid) */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME]; /* The name of the process */
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
@@ -230,6 +231,12 @@ int fd_new(struct proc* p, int index, int free);
  * Function descriptor debugging function
  */
 void fd_print_table(void);
+
+/**
+ * Wake up the parent of the given process if it's waiting on the given
+ * process.
+ */
+extern void wake_parent(struct proc* p);
 
 /**
  * Surrender a scheduling round.
