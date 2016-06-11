@@ -54,7 +54,6 @@ int log2_linux(int value)
 #define log2 __log2
 
 #endif
-
 #include <unistd.h>
 
 #include "file.h"
@@ -68,6 +67,9 @@ int log2_linux(int value)
 #include "cacheman.h"
 #include "vm.h"
 
+//FIXME: Create a linux definition of DEBUG so we don't need to import.
+#include "panic.h"
+
 #define EXT2_DIRECT_COUNT 12
 
 #define EXT2_MAX_PATH FILE_MAX_PATH
@@ -78,7 +80,7 @@ int log2_linux(int value)
 // #define DEBUG
 // #define DEBUG_FSCK
 #ifdef __BOOT_STRAP__
-#undef DEBUG
+//#undef DEBUG
 #undef DEBUG_FSCK
 #endif
 
@@ -1806,7 +1808,7 @@ static int ext2_fsck_file(inode* ino, context* context)
 		{
 			failure = 1;
 #ifdef DEBUG_FSCK
-			cprintf("ext2: Block %d is in use by file %s "
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: Block %d is in use by file %s "
 					"but not allocated.\n",
 					block, ino->path);
 #endif
@@ -2057,9 +2059,7 @@ int ext2_init(struct FSDriver* fs)
 
 inode* ext2_opened(const char* path, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: is file %s already opened? ", path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: is file %s already opened? ", path);
 	/* First lets try a query */
 	inode query_node;
 	strncpy(query_node.path, path, EXT2_MAX_PATH);
@@ -2068,8 +2068,8 @@ inode* ext2_opened(const char* path, context* context)
 	inode* result = cache_query(&query_node,
 			&context->inode_cache, context->fs);
 #ifdef DEBUG
-	if(result) cprintf("YES\n");
-	else cprintf("NO\n");
+	if(result) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "YES\n");
+	else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "NO\n");
 #endif
 	if(result)
 		return result;
@@ -2082,49 +2082,44 @@ inode* ext2_open(const char* path, context* context)
 	inode* result = ext2_opened(path, context);
 	if(result) return result;
 
-#ifdef DEBUG
-	cprintf("ext2: opening file: %s\n", path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: opening file: %s\n", path);
 	/* We have never seen this node before. */
 	int num = ext2_lookup(path, NULL, context);
 
 #ifdef DEBUG
-	if(num < 0) cprintf("ext2: file does not exist!\n");
-	else cprintf("Inode number for file: %d\n", num);
+	if(num < 0) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: file does not exist!\n");
+	else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "Inode number for file: %d\n", num);
 #endif
 
 	if(num < 0) return NULL;
 
 	inode* ino = cache_reference(num, 
 			&context->inode_cache, context->fs);
-#ifdef DEBUG
-	if(!ino) cprintf("ext2: WARNING: Inode cache full!\n");
-#endif
 
-	if(!ino) return NULL;
+	if(!ino) { 
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: Inode cache full!\n");
+			return NULL;
+	}
+
 	if(strlen(ino->path) == 0)
 		strncpy(ino->path, path, EXT2_MAX_PATH);
 
-#ifdef DEBUG
-	cprintf("ext2: File opened successfully: %s\n", path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: File opened successfully: %s\n", path);
 	return ino;
 }
 
 int ext2_close(inode* ino, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: closing file: %s\n", ino->path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: closing file: %s\n", ino->path);
+
 	return cache_dereference(ino, &context->inode_cache, 
 			context->fs);
 }
 
 int ext2_stat(inode* ino, struct stat* dst, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: Statting file: %s\n", ino->path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: Statting file: %s\n", ino->path);
+
 	uint64_t file_size = ino->ino->lower_size |
 		((uint64_t)ino->ino->upper_size << 32);
 
@@ -2149,18 +2144,14 @@ int ext2_stat(inode* ino, struct stat* dst, context* context)
 int ext2_create(const char* path, mode_t permissions, 
 		uid_t uid, gid_t gid, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: Attempting to create file: %s\n", path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: Attempting to create file: %s\n", path);
+
 	/* Does this file already exist? */
 	inode* file = ext2_open(path, context);
 
-#ifdef DEBUG
-	if(file) cprintf("ext2: WARNING: file already exists.\n");
-#endif
-
 	if(file)
 	{
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: file already exists.\n");
 		ext2_close(file, context);
 		return 0; /* Return no error */
 	}
@@ -2180,40 +2171,38 @@ int ext2_create(const char* path, mode_t permissions,
 	strncpy(name, path, EXT2_MAX_PATH);
 	if(file_path_name(name)) return -1;
 
-#ifdef DEBUG
-	cprintf("ext2: opening parent: %s\n", parent);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: opening parent: %s\n", parent);
+
 	inode* parent_inode = ext2_open(parent, context);
 
-#ifdef DEBUG
-	if(!parent_inode) cprintf("ext2: WARNING: parent doesn't exist!\n");
-#endif
-	if(!parent_inode) return -1;
+	if(!parent_inode) {
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: parent doesn't exist!\n");
+			return -1;
+	}
 
 	int new_file = ext2_find_free_inode(
 			parent_inode->inode_group, 0, context);
-#ifdef DEBUG
-	if(new_file < 0) cprintf("ext2: WARNING: no more free inodes!\n");
-#endif
-	if(new_file < 0) return -1;
+
+	if(new_file < 0) {
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: no more free inodes!\n");
+			return -1;
+	}
 
 	if(ext2_alloc_dirent(parent_inode->ino, new_file,
 				parent_inode->inode_group, name, 
 				EXT2_FILE_REG_FILE, context)) 
 	{
-#ifdef DEBUG
-		cprintf("ext2: WARNING: could not alloc dirent!\n");
-#endif
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: could not alloc dirent!\n");
 		return -1;
 	}
 
 	ext2_close(parent_inode, context); /* Clean up parent */
 
 	inode* ino = ext2_open(path, context);
-#ifdef DEBUG
-	if(!ino) cprintf("ext2: WARNING: could not open new file!\n");
-#endif
-	if(!ino) return -1;
+	if(!ino) { 
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: WARNING: could not open new file!\n");
+			return -1;
+	}
 	/* Lets create a new inode */
 	disk_inode* new_ino = ino->ino;
 	memset(new_ino, 0, sizeof(disk_inode));
@@ -2228,24 +2217,19 @@ int ext2_create(const char* path, mode_t permissions,
 	new_ino->hard_links = 1; /* Starts with one hard link */
 	new_ino->sectors = 0;
 
-#ifdef DEBUG
-	cprintf("Created file with permissions: 0x%x\n", permissions);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "Created file with permissions: 0x%x\n", permissions);
 
 	/* Close the child */
 	ext2_close(ino, context);
 
-#ifdef DEBUG
-	cprintf("ext2: create successful: %s\n", path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: create successful: %s\n", path);
 	return 0;
 }
 
 int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: changed ownership of file: %s\n", ino->path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: changed ownership of file: %s\n", ino->path);
+
 	ino->ino->owner = uid;
 	ino->ino->group = gid;
 
@@ -2258,10 +2242,8 @@ int ext2_chmod(inode* ino, mode_t mode, context* context)
 	ino->ino->mode &= ~0777;
 	ino->ino->mode |= mode;
 
-#ifdef DEBUG
-        cprintf("ext2: changed permission of file: %s to %x\n", 
+        DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: changed permission of file: %s to %x\n", 
                 ino->path, ino->ino->mode);
-#endif
 
 	/* Results will get written to disk when the file is closed.*/
 	return 0;
@@ -2269,17 +2251,15 @@ int ext2_chmod(inode* ino, mode_t mode, context* context)
 
 int ext2_truncate(inode* ino, int sz, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: truncating file: %s\n", ino->path);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: truncating file: %s\n", ino->path);
+
 	return _ext2_truncate(ino->ino, sz, context);
 }
 
 int ext2_link(const char* file, const char* link, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: creating hard link: %s --> %s\n", link, file);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: creating hard link: %s --> %s\n", link, file);
+
 	/* Get the parent directory */
 	char parent[EXT2_MAX_PATH];
 	strncpy(parent, link, EXT2_MAX_PATH);
@@ -2483,9 +2463,7 @@ int ext2_rename(const char* src, const char* dst, context* context)
 
 int ext2_unlink(const char* file, context* context)
 {
-#ifdef DEBUG
-	cprintf("ext2: unlinking file: %s\n", file);
-#endif
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: unlinking file: %s\n", file);
 
 	char parent_path[EXT2_MAX_NAME];
 	strncpy(parent_path, file, EXT2_MAX_NAME);
@@ -2504,9 +2482,7 @@ int ext2_unlink(const char* file, context* context)
 
 	if(!ino || !parent)
 	{
-#ifdef DEBUG
-		cprintf("ext2: could not remove file!\n");
-#endif
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: could not remove file!\n");
 
 		if(ino) ext2_close(ino, context);
 		if(parent) ext2_close(parent, context);
@@ -2517,11 +2493,8 @@ int ext2_unlink(const char* file, context* context)
 	/* There must be only one reference to this file! */
 	if(refs != 1)
 	{
-#ifdef DEBUG
-		cprintf("ext2: too many references to file! %d\n", refs);
-#endif
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: too many references to file! %d\n", refs);
 		return -1;
-
 	}
 
 	/* Remove the directory entry */
@@ -2530,9 +2503,7 @@ int ext2_unlink(const char* file, context* context)
 
 	if(success) 
 	{
-#ifdef DEBUG
-		cprintf("ext2: could not free dirent!\n");
-#endif
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: could not free dirent!\n");
 		return -1;
 	}
 
@@ -2553,9 +2524,7 @@ int ext2_unlink(const char* file, context* context)
 		/* Clear the inode and set clobber */
 		if(cache_set_clobber(ino, &context->inode_cache))
 		{
-#ifdef DEBUG
-			cprintf("ext2: clobber failed!\n");
-#endif
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "ext2: clobber failed!\n");
 		}
 		memset(ino, 0, sizeof(inode));
 	}

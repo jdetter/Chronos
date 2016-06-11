@@ -16,7 +16,7 @@
 // #define DEBUG
 
 #ifdef RELEASE
-# undef DEBUG
+//#undef DEBUG
 #endif
 
 int sys_sigaction(void)
@@ -37,7 +37,7 @@ int sys_sigaction(void)
 		return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: sigaction: for sig: %d\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: sigaction: for sig: %d\n",
 		rproc->name, rproc->pid, signum);
 #endif
 
@@ -58,7 +58,7 @@ int sys_sigaction(void)
 int sys_sigprocmask(void)
 {
 #ifdef DEBUG
-	cprintf("%s:%d: Sig proc mask: UNIMPLEMENTED.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Sig proc mask: UNIMPLEMENTED.\n",
 		rproc->name, rproc->pid);
 #endif
 	return 0;
@@ -67,7 +67,7 @@ int sys_sigprocmask(void)
 int sys_sigpending(void)
 {
 #ifdef DEBUG
-	cprintf("%s:%d: Sig pending: UNIMPLEMENTED.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Sig pending: UNIMPLEMENTED.\n",
 		rproc->name, rproc->pid);
 #endif
 	return 0;
@@ -97,7 +97,7 @@ int sys_signal(void)
 		return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: Setting signal handler for sig: %d\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Setting signal handler for sig: %d\n",
 		rproc->name, rproc->pid, signum);
 #endif
 
@@ -124,7 +124,7 @@ int sys_sigsuspend(void)
 		return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: Waiting for signal...\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Waiting for signal...\n",
 		rproc->name, rproc->pid);
 #endif
 
@@ -148,7 +148,7 @@ int sys_kill(void)
 	if(syscall_get_int(&sig, 1)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: Sending signal %d to process %d\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Sending signal %d to process %d\n",
 		rproc->name, rproc->pid,
 		sig, pid);
 #endif

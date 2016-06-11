@@ -23,9 +23,9 @@
 // #define DEBUG_CONTENT
 
 #ifdef RELEASE
-# undef DEBUG
-# undef DEBUG_SELECT
-# undef DEBUG_CONTENT
+//#undef DEBUG
+#undef DEBUG_SELECT
+#undef DEBUG_CONTENT
 #endif
 
 int sys_link(void)
@@ -37,7 +37,7 @@ int sys_link(void)
 
 #ifdef DEBUG
 	if(oldName && newName)
-		cprintf("%s: created soft link %s -> %s\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: created soft link %s -> %s\n",
 				rproc->name, oldName, newName);
 #endif
 
@@ -51,13 +51,13 @@ int sys_stat(void)
 	if(syscall_get_str_ptr(&path, 0)) return -1;
 	if(syscall_get_buffer_ptr((void**) &st, sizeof(struct stat), 1)) return -1;
 #ifdef DEBUG
-	if(path) cprintf("%s: statting file: %s\n", rproc->name, path);
+	if(path) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: statting file: %s\n", rproc->name, path);
 #endif
 	inode i = fs_open(path, O_RDONLY, 0, 0, 0);
 	if(i == NULL) 
 	{
 #ifdef DEBUG
-		cprintf("%s: permission denied.\n", rproc->name);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: permission denied.\n", rproc->name);
 #endif
 		return -1;
 	}
@@ -80,7 +80,7 @@ int sys_open(void)
 	if(fd == -1) return -1;
 
 #ifdef DEBUG
-	cprintf("%s: opening file %s\n", rproc->name, path);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: opening file %s\n", rproc->name, path);
 #endif
 
 	/* Lock this file descriptor */
@@ -156,7 +156,7 @@ int sys_open(void)
 
 	rproc->fdtab[fd]->seek = 0;
 #ifdef DEBUG
-	cprintf("%s: opened file %s with fd %d\n", rproc->name, path, fd);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: opened file %s with fd %d\n", rproc->name, path, fd);
 #endif
 
 	slock_release(&rproc->fdtab[fd]->lock);
@@ -171,7 +171,7 @@ int sys_close(void)
 	if(syscall_get_int(&fd, 0)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s: closing file %d\n", rproc->name, fd);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: closing file %d\n", rproc->name, fd);
 #endif
 
 	return close(fd);
@@ -220,9 +220,9 @@ int sys_read(void)
 	slock_acquire(&rproc->fdtab[fd]->lock);
 
 #ifdef DEBUG
-	cprintf("%s:%d: doing read  for %d bytes.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: doing read  for %d bytes.\n",
 			rproc->name, rproc->pid, sz);
-	cprintf("%s:%d: reading {%d} from file %s\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: reading {%d} from file %s\n",
 		rproc->name, rproc->pid,
 		fd, rproc->fdtab[fd]->path);
 #endif
@@ -231,7 +231,7 @@ int sys_read(void)
 	{
 		default:
 #ifdef DEBUG
-			cprintf("%s: invalid fd %d\n", rproc->name, fd);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: invalid fd %d\n", rproc->name, fd);
 #endif 
 			sz = -1;
 			break;
@@ -240,14 +240,14 @@ int sys_read(void)
 							rproc->fdtab[fd]->seek)) < 0) 
 			{
 #ifdef DEBUG
-				cprintf("READ FAILURE!\n");
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "READ FAILURE!\n");
 #endif
 				sz = -1;
 				break;
 			}
 
 #ifdef DEBUG
-			cprintf("%s: got %d bytes from read.\n", rproc->name, sz);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: got %d bytes from read.\n", rproc->name, sz);
 #endif
 			break;
 		case FD_TYPE_DEVICE:
@@ -271,8 +271,8 @@ int sys_read(void)
 		rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG_CONTENT
-	cprintf("%s: CONTENTS |%s|\n", rproc->name, dst);
-	cprintf("%s: new position in file: %d\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: CONTENTS |%s|\n", rproc->name, dst);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: new position in file: %d\n", 
 			rproc->name, rproc->fdtab[fd]->seek);
 #endif
 
@@ -295,9 +295,9 @@ int sys_write(void)
 	slock_acquire(&rproc->fdtab[fd]->lock);
 
 #ifdef DEBUG
-	cprintf("%s:%d: doing write for %d bytes.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: doing write for %d bytes.\n",
 			rproc->name, rproc->pid, sz);
-	cprintf("%s:%d: Writing {%d} file: %s\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Writing {%d} file: %s\n",
 		rproc->name, rproc->pid,
 		fd, rproc->fdtab[fd]->path);
 #endif
@@ -306,7 +306,7 @@ int sys_write(void)
 	{
 		default:
 #ifdef DEBUG
-			cprintf("%s: invalid fd %d\n", rproc->name, fd);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: invalid fd %d\n", rproc->name, fd);
 #endif 
 			sz = -1;
 			break;
@@ -315,7 +315,7 @@ int sys_write(void)
 						rproc->fdtab[fd]->seek)) < 0)
 			{
 #ifdef DEBUG
-				cprintf("%s: write to file %s failed!\n",
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: write to file %s failed!\n",
 						rproc->name, 
 						rproc->fdtab[fd]->path);
 #endif
@@ -340,7 +340,7 @@ int sys_write(void)
 		rproc->fdtab[fd]->seek += sz;
 
 #ifdef DEBUG
-	cprintf("%s:%d: New position in file: %d\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: New position in file: %d\n", 
 			rproc->name, rproc->pid,
 			rproc->fdtab[fd]->seek);
 #endif
@@ -360,10 +360,10 @@ int sys_lseek(void)
 	if(!fd_ok(fd)) return -1;
 	slock_acquire(&rproc->fdtab[fd]->lock);
 #ifdef DEBUG
-	cprintf("%s:%d: Seeking in file\n", rproc->name, rproc->pid);
-	cprintf("%s:%d: File {%d}  %s\n", rproc->name, rproc->pid,
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Seeking in file\n", rproc->name, rproc->pid);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: File {%d}  %s\n", rproc->name, rproc->pid,
 		fd, rproc->fdtab[fd]->path);
-	cprintf("%s:%d: whence: %d  offset: %d\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: whence: %d  offset: %d\n",
 		rproc->name, rproc->pid,
 		whence, offset);
 #endif
@@ -371,7 +371,7 @@ int sys_lseek(void)
 	int seek_pos;
 	if(whence == SEEK_CUR){
 #ifdef DEBUG
-		cprintf("%s:%d: Setting seek to: %d\n", 
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Setting seek to: %d\n", 
 			rproc->name, rproc->pid, 
 			offset + rproc->fdtab[fd]->seek);
 #endif
@@ -379,7 +379,7 @@ int sys_lseek(void)
 	}
 	else if(whence == SEEK_SET){
 #ifdef DEBUG
-		cprintf("%s:%d: Setting seek to: %d\n", 
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Setting seek to: %d\n", 
 			rproc->name, rproc->pid, offset);
 #endif
 
@@ -390,12 +390,12 @@ int sys_lseek(void)
 		fs_stat(rproc->fdtab[fd]->i, &stat);
 		seek_pos = stat.st_size + offset;
 #ifdef DEBUG
-		cprintf("%s:%d: Setting seek from end to: %d\n", 
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Setting seek from end to: %d\n", 
 			rproc->name, rproc->pid, stat.st_size + offset);
 #endif
 	} else {
 #ifdef DEBUG
-		cprintf("%s:%d: ILLEGAL SEEK!! : %d\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: ILLEGAL SEEK!! : %d\n",
 			rproc->name, rproc->pid, whence);
 #endif
 		seek_pos = -1;
@@ -405,7 +405,7 @@ int sys_lseek(void)
 		rproc->fdtab[fd]->seek = seek_pos;
 	else {
 #ifdef DEBUG
-		cprintf("%s:%d: TRIED TO SET NEGATIVE SEEK!\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: TRIED TO SET NEGATIVE SEEK!\n",
 			rproc->name, rproc->pid);
 #endif
 	}
@@ -421,7 +421,7 @@ int sys_chmod(void)
 	mode_t mode;
 
 #ifdef DEBUG
-	cprintf("%s: chmodding file\n", rproc->name);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: chmodding file\n", rproc->name);
 #endif
 
 	if(syscall_get_str_ptr(&path, 0)) return -1;
@@ -473,7 +473,7 @@ int sys_unlink(void)
 
 #ifdef DEBUG
 	if(file) 
-		cprintf("%s: unlinking file %s\n", rproc->name,
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: unlinking file %s\n", rproc->name,
 				file);
 #endif
 
@@ -508,7 +508,7 @@ int sys_fstat(void)
 	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: fstat on file fd: %d  path: %s\n", rproc->name, rproc->pid, 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: fstat on file fd: %d  path: %s\n", rproc->name, rproc->pid, 
 		fd, rproc->fdtab[fd]->path);
 #endif
 
@@ -525,7 +525,7 @@ int sys_fstat(void)
 		case FD_TYPE_DEVICE:
 		case FD_TYPE_PIPE:
 #ifdef DEBUG
-			cprintf("%s:%d: File is device.\n", rproc->name, rproc->pid);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: File is device.\n", rproc->name, rproc->pid);
 #endif
 			i = fs_open(rproc->fdtab[fd]->device->node, 
 					O_RDONLY, 0x0, 0x0, 0x0);
@@ -534,7 +534,7 @@ int sys_fstat(void)
 			break;
 		default:
 #ifdef DEBUG
-			cprintf("Fstat called on: %d\n", rproc->fdtab[fd]->type); 
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "Fstat called on: %d\n", rproc->fdtab[fd]->type); 
 #endif
 			break;
 	}
@@ -613,7 +613,7 @@ int sys_getdents(void)
 		return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: getdents on fd {%d} file: %s\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: getdents on fd {%d} file: %s\n", 
 		rproc->name, rproc->pid, fd, rproc->fdtab[fd]->path);
 #endif
 
@@ -623,7 +623,7 @@ int sys_getdents(void)
 	if(result < 0) 
 	{
 #ifdef DEBUG
-		cprintf("%s:%d: ERROR READING DIRECTORY ENTRY\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: ERROR READING DIRECTORY ENTRY\n",
 				rproc->name, rproc->pid);
 #endif
 		slock_release(&rproc->fdtab[fd]->lock);
@@ -634,7 +634,7 @@ int sys_getdents(void)
 	{
 		slock_release(&rproc->fdtab[fd]->lock);
 #ifdef DEBUG
-		cprintf("%s:%d: END OF DIRECTORY\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: END OF DIRECTORY\n",
 			rproc->name, rproc->pid);
 #endif
 		return 0;
@@ -884,7 +884,7 @@ int sys_access(void)
 	if(syscall_get_int((int*)&mode, 1)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: checking access to %s\n", rproc->name, rproc->pid,
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: checking access to %s\n", rproc->name, rproc->pid,
 		pathname);
 #endif
 
@@ -969,7 +969,7 @@ int sys_lstat(void)
 		return -1;
 
 #ifdef DEBUG
-	cprintf("%s:%d: lstatting file %s\n", rproc->name, rproc->pid,
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: lstatting file %s\n", rproc->name, rproc->pid,
 		path);
 #endif
 
@@ -977,7 +977,7 @@ int sys_lstat(void)
 	if(i == NULL) 
 	{
 #ifdef DEBUG
-		cprintf("%s:%d: Permission Denied.\n", 
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Permission Denied.\n", 
 			rproc->name, rproc->pid);
 #endif
 		return -1;
@@ -1014,7 +1014,7 @@ int sys_fcntl(void)
 	if(!fd_ok(fd)) return -1;
 
 #ifdef DEBUG
-	cprintf("%s: fcntl on fd %d, action %d, iarg: %d\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s: fcntl on fd %d, action %d, iarg: %d\n", 
 			rproc->name, fd, action, i_arg);
 #endif
 	slock_acquire(&rproc->fdtab[fd]->lock);
@@ -1078,7 +1078,7 @@ int sys_sysconf(void)
 			return (int)(1 << 22);
 		default:
 #ifdef DEBUG
-			cprintf("kernel: no such limit: %d\n", name);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kernel: no such limit: %d\n", name);
 #endif
 			break;
 	}

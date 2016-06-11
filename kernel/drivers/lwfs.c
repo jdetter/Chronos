@@ -34,7 +34,7 @@ typedef uint32_t sect_t;
 #endif
 
 #ifdef BOOT_STRAP
-#undef DEBUG
+//#undef DEBUG
 #endif
 
 #ifdef KTIME_PROVIDED

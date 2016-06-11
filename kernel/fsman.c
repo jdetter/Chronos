@@ -72,7 +72,7 @@ struct FSDriver* fs_alloc(void)
                 if(!fstable[x].valid)
                 {
 #ifdef CACHE_WATCH
-                        cprintf("FSDriver allocated: %d\n", x);
+                        DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "FSDriver allocated: %d\n", x);
 #endif
                         driver = fstable + x;
                         driver->valid = 1;
@@ -98,9 +98,9 @@ void fs_free(struct FSDriver* driver)
 int fs_add_inode_reference(struct inode_t* i)
 {
 #ifdef CACHE_WATCH
-	if(rproc) cprintf("INODE REFERENCE ADDED: %s process: %s pid: %d\n",
+	if(rproc) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE REFERENCE ADDED: %s process: %s pid: %d\n",
 				i->name, rproc->name, rproc->pid);
-	else cprintf("INODE REFERENCE ADDED: %s process: KERNEL\n",
+	else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE REFERENCE ADDED: %s process: KERNEL\n",
 				i->name);
 #endif
 
@@ -278,9 +278,9 @@ static struct inode_t* fs_find_inode(void)
 static void fs_free_inode(inode i)
 {
 #ifdef CACHE_WATCH
-        if(rproc) cprintf("INODE FREED: %s process: %s pid: %d\n",
+        if(rproc) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE FREED: %s process: %s pid: %d\n",
                                 i->name, rproc->name, rproc->pid);
-        else cprintf("INODE FREED: %s process: KERNEL\n",
+        else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE FREED: %s process: KERNEL\n",
                                 i->name);
 #endif
 	memset(i, 0, sizeof(struct inode_t));
@@ -319,7 +319,7 @@ inode fs_open(const char* path, int flags, mode_t permissions,
 {
 
 #ifdef DEBUG
-	cprintf("fsman: opening %s\n", path);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "fsman: opening %s\n", path);
 #endif
 	/* We need to use the driver function for this. */
 	char dst_path[FILE_MAX_PATH];
@@ -333,7 +333,7 @@ inode fs_open(const char* path, int flags, mode_t permissions,
 		return NULL;
 
 #ifdef DEBUG
-	cprintf("fsman: after resolving file: %s\n", dst_path);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "fsman: after resolving file: %s\n", dst_path);
 #endif
 
 	/* Find the file system for this path */
@@ -342,7 +342,7 @@ inode fs_open(const char* path, int flags, mode_t permissions,
 		return NULL; /* Invalid path */
 
 #ifdef DEBUG
-	cprintf("fsman: file lives on device mounted at %s\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "fsman: file lives on device mounted at %s\n",
 		fs->mount_point);
 #endif
 
@@ -351,7 +351,7 @@ inode fs_open(const char* path, int flags, mode_t permissions,
                 return NULL; /* Bad path */
 
 #ifdef DEBUG
-	cprintf("fsman: Final resolved path for file: %s\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "fsman: Final resolved path for file: %s\n",
 		fs_path);
 #endif
 
@@ -395,9 +395,9 @@ inode fs_open(const char* path, int flags, mode_t permissions,
 	if(inp == NULL)
 	{
 #ifdef CACHE_WATCH
-		if(rproc) cprintf("INODE ACCESS DENIED: %s process: %s pid: %d\n",
+		if(rproc) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE ACCESS DENIED: %s process: %s pid: %d\n",
 				i->name, rproc->name, rproc->pid);
-		else cprintf("INODE ACCESS DENIED: %s process: KERNEL\n",
+		else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE ACCESS DENIED: %s process: KERNEL\n",
 				i->name);
 #endif
 		fs_free_inode(i);
@@ -414,9 +414,9 @@ inode fs_open(const char* path, int flags, mode_t permissions,
 	fs_get_name(dst_path, i->name, FILE_MAX_NAME);
 
 #ifdef CACHE_WATCH
-	if(rproc) cprintf("FILE OPENED: %s process: %s pid: %d\n",
+	if(rproc) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "FILE OPENED: %s process: %s pid: %d\n",
 			i->name, rproc->name, rproc->pid);
-	else cprintf("FILE OPENED: %s process: KERNEL\n",
+	else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "FILE OPENED: %s process: KERNEL\n",
 			i->name);
 #endif
 
@@ -435,9 +435,9 @@ int fs_close(inode i)
 		return close_result;
 	} else {
 #ifdef CACHE_WATCH
-		if(rproc) cprintf("INODE DEREFERENCED: %s process: %s pid: %d\n",
+		if(rproc) DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE DEREFERENCED: %s process: %s pid: %d\n",
 				i->name, rproc->name, rproc->pid);
-		else cprintf("INODE DEREFERENCED: %s process: KERNEL\n",
+		else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "INODE DEREFERENCED: %s process: KERNEL\n",
 				i->name);
 #endif
 	}
@@ -762,7 +762,7 @@ int fs_pathconf(int config, const char* path)
 	if(!file) 
 	{
 #ifdef DEBUG
-		cprintf("pathconf: file doesn't exist.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "pathconf: file doesn't exist.\n");
 #endif
 		return -1;
 	}
@@ -770,7 +770,7 @@ int fs_pathconf(int config, const char* path)
 	if(!file->fs->pathconf)
 	{
 #ifdef DEBUG
-		cprintf("pathconf: file lives on system with no pathconf.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "pathconf: file lives on system with no pathconf.\n");
 #endif
 		return -1;
 	}

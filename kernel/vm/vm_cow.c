@@ -15,7 +15,7 @@
 int vm_uvm_cow(pgdir_t* dir)
 {
 #ifdef DEBUG
-	cprintf("cow: Marking page directory 0x%x as cow.\n", dir);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: Marking page directory 0x%x as cow.\n", dir);
 #endif
 
 	vmpage_t p;
@@ -29,7 +29,7 @@ int vm_uvm_cow(pgdir_t* dir)
 		if(flags & VM_TBL_COWR)
 		{
 #ifdef DEBUG
-			cprintf("cow: 0x%x was already cow.", p);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: 0x%x was already cow.", p);
 #endif
 			/* Add a ref to this page */
 			vm_pgshare(p, dir);
@@ -46,7 +46,7 @@ int vm_uvm_cow(pgdir_t* dir)
 			return -1;
 
 #ifdef DEBUG
-		cprintf("cow: 0x%x marked as COW\n", phy);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: 0x%x marked as COW\n", phy);
 #endif
 	}
 
@@ -69,7 +69,7 @@ int vm_uncow(pgdir_t* dir, vmpage_t page)
 	if(!vm_is_cow(dir, page))
 	{
 #ifdef DEBUG
-		cprintf("cow: page wasn't COW.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: page wasn't COW.\n");
 #endif
 		return -1;
 	}
@@ -85,7 +85,7 @@ int vm_uncow(pgdir_t* dir, vmpage_t page)
 	if(left <= 0)
 	{
 #ifdef DEBUG
-		cprintf("cow: there weren't any refs left for 0x%x\n", phy);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: there weren't any refs left for 0x%x\n", phy);
 #endif
 		/* Just mark the page as writable */
 		flags &= ~VM_TBL_COWR;
@@ -109,7 +109,7 @@ int vm_uncow(pgdir_t* dir, vmpage_t page)
 		/* Map in the new page */
 		vm_mappage(newpg, page, dir, dirflags, flags);
 #ifdef DEBUG
-		cprintf("cow: reference decremented for 0x%x\n", phy);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "cow: reference decremented for 0x%x\n", phy);
 #endif
 	}
 

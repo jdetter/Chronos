@@ -33,3 +33,6 @@ save/
 # Some system skeleton files
 sysskel/tests
 sysskel/testsuite
+
+# cscope/debugging files
+*.out
