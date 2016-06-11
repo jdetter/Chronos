@@ -29,7 +29,7 @@
 #include "cpu.h"
 #include "chronos.h"
 
-#define DEBUG
+//#define DEBUG
 
 /* Signal default action table */
 static int default_actions[NSIG];
