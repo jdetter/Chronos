@@ -48,7 +48,7 @@ static int tty_io_ready_read(void* context)
 		if(t->kbd_line.key_nls)
 		{
 #ifdef DEBUG
-			cprintf("TTY READY!\n");
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "TTY READY!\n");
 #endif
 			return 1;
 		}
@@ -58,7 +58,7 @@ static int tty_io_ready_read(void* context)
 				t->kbd_line.key_read)
 		{
 #ifdef DEBUG
-			cprintf("TTY READY!\n");
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "TTY READY!\n");
 #endif
 			return 1;
 		}
@@ -112,7 +112,7 @@ static int tty_io_pathconf(int conf, void* context)
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 {
 #ifdef DEBUG
-	cprintf("tty: ioctl called: %d 0x%x\n", (int)request, (int)request);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: ioctl called: %d 0x%x\n", (int)request, (int)request);
 #endif
 
 	unsigned int i = (unsigned int)arg;
@@ -290,7 +290,7 @@ static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)
 	}
 
 #ifdef DEBUG
-	cprintf("tty: ioctl successful!\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: ioctl successful!\n");
 #endif
 	return 0;	
 }
@@ -304,7 +304,7 @@ static struct proc* tty_dequeue(tty_t t)
 	{
 		p = t->io_queue;
 #ifdef QUEUE_DEBUG
-		cprintf("tty_queue: %s dequeued.\n", p->name);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty_queue: %s dequeued.\n", p->name);
 #endif
 		if(p)
 		{
@@ -315,7 +315,7 @@ static struct proc* tty_dequeue(tty_t t)
 		}
 	} else {
 #ifdef QUEUE_DEBUG
-		cprintf("tty_queue: NULL DEQUEUE!!.\n", p->name);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty_queue: NULL DEQUEUE!!.\n", p->name);
 #endif
 	}
 	slock_release(&t->io_queue_lock);
@@ -329,18 +329,18 @@ static void tty_enqueue(struct proc* p, tty_t t)
 	slock_acquire(&t->io_queue_lock);
 
 #ifdef QUEUE_DEBUG
-	cprintf("tty_queue: %s enqueued.\n", p->name);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty_queue: %s enqueued.\n", p->name);
 #endif
 
 	if(!t->io_queue)
 	{
 		t->io_queue = p;
 #ifdef QUEUE_DEBUG
-		cprintf("tty_queue: %s is first!\n", p->name);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty_queue: %s is first!\n", p->name);
 #endif
 	} else {
 #ifdef QUEUE_DEBUG
-		cprintf("tty_queue: %s is not first!.\n", p->name);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty_queue: %s is not first!.\n", p->name);
 #endif
 		struct proc* next = t->io_queue;
 		while(next->io_next)
@@ -374,14 +374,14 @@ io_sleep:
 	rproc->io_request = sz;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: %s:%d is now waiting for io.\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d is now waiting for io.\n", 
 		rproc->name, rproc->pid);
 #endif
 
 	yield_withlock();
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s:%d is now running again!\n",
+        DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d is now running again!\n",
                 rproc->name, rproc->pid);
 #endif
 
@@ -396,7 +396,7 @@ io_sleep:
 	}
 
 #ifdef KEY_DEBUG
-        cprintf("tty: %s:%d received %d 0x%x %c\n",
+        DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d received %d 0x%x %c\n",
                 rproc->name, rproc->pid, *dst, *dst, *dst);
 #endif
 	slock_release(&ptable_lock);
@@ -414,7 +414,7 @@ void tty_signal_io_ready(tty_t t)
 	if(!p)
 	{
 #ifdef KEY_DEBUG
-		cprintf("tty: signaled, nobody is waiting!\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: signaled, nobody is waiting!\n");
 #endif
 		return;
 	}
@@ -424,7 +424,7 @@ void tty_signal_io_ready(tty_t t)
 	int wake = 0; /* Wether or not to wake the process */
 
 #ifdef KEY_DEBUG
-	cprintf("tty: %s:%d starting read with %d bytes.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d starting read with %d bytes.\n",
 			p->name, p->pid, read_bytes);
 #endif
 
@@ -448,7 +448,7 @@ void tty_signal_io_ready(tty_t t)
 		if(!c) break;
 		/* Place character into dst */
 #ifdef KEY_DEBUG
-		cprintf("tty: %s:%d got %c %d\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d got %c %d\n",
 				p->name, p->pid, c, c);
 #endif
 		/**
@@ -475,7 +475,7 @@ void tty_signal_io_ready(tty_t t)
 	if(read_bytes > 0) wake = 1;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: %s:%d ended read with %d bytes.\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d ended read with %d bytes.\n",
 			p->name, p->pid, read_bytes);
 #endif
 
@@ -485,7 +485,7 @@ void tty_signal_io_ready(tty_t t)
 	if(wake)
 	{
 #ifdef KEY_DEBUG
-		cprintf("tty: %s:%d woke up!\n", p->name, p->pid);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: %s:%d woke up!\n", p->name, p->pid);
 #endif
 		p->state = PROC_RUNNABLE;
 		p->block_type = PROC_BLOCKED_NONE;

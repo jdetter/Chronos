@@ -250,9 +250,9 @@ int syscall_handler(int* esp)
 #ifdef DEBUG
 	if(syscall_table_names[syscall_number])
 	{
-		cprintf("%s:%d: syscall: %s\n", rproc->name, rproc->pid, 
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: syscall: %s\n", rproc->name, rproc->pid, 
 				syscall_table_names[syscall_number]);
-	} else cprintf("syscall: no information for this syscall.\n");
+	} else DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "syscall: no information for this syscall.\n");
 
 	fs_sync();
 #endif
@@ -260,7 +260,7 @@ int syscall_handler(int* esp)
 	return_value = syscall_table[syscall_number]();
 
 #ifdef DEBUG
-	cprintf("%s:%d: syscall: return value: %d\n", rproc->name,
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: syscall: return value: %d\n", rproc->name,
 		rproc->pid, return_value);
 #endif
 

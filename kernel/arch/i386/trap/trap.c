@@ -39,6 +39,7 @@
 
 // #define DEBUG
 
+//FIXME: Don't use debug to define
 #ifdef DEBUG
 #define TRAP_NAME_SZ 20
 char* trap_names[] = {
@@ -89,7 +90,7 @@ void trap_init(void)
 int trap_pf(uintptr_t address)
 {
 #ifdef DEBUG
-	cprintf("Fault address: 0x%x\n", address);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "Fault address: 0x%x\n", address);
 #endif
 	vmflags_t dir_flags = VM_DIR_USRP | VM_DIR_READ | VM_DIR_WRIT;
 	vmflags_t tbl_flags = VM_TBL_USRP | VM_TBL_READ | VM_TBL_WRIT;
@@ -151,14 +152,14 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 
 #ifdef DEBUG
 	if(trap < TRAP_NAME_SZ)
-		cprintf("trap: %s\n", trap_names[trap]);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "trap: %s\n", trap_names[trap]);
 #endif
 
 	handled = 1;
 	if(trap == TRAP_SC)
 	{
 #ifdef DEBUG
-		cprintf("trap: SYSTEM CALL\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "trap: SYSTEM CALL\n");
 #endif
 		strncpy(fault_string, "System Call", 64);
 		syscall_ret = syscall_handler((int*)tf->esp);
@@ -184,7 +185,7 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
 			handled = 1;
 			break;
-			// cprintf("Keyboard interrupt.\n");
+			// DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "Keyboard interrupt.\n");
 			/* Keyboard interrupt */
 			tty_keyboard_interrupt_handler();
 			pic_eoi(INT_PIC_TIMER_CODE);
@@ -294,9 +295,9 @@ TRAP_DONE:
 #ifdef DEBUG
 	if(ret_eip != rproc->tf->eip)
 	{
-		cprintf("%s:%d: WARNING: eip has changed!!\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "%s:%d: WARNING: eip has changed!!\n",
 			rproc->name, rproc->pid);
-		cprintf("\t\t0x%x --> 0x%x\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT "\t\t0x%x --> 0x%x\n",
 			ret_eip, rproc->tf->eip);
 	}
 #endif

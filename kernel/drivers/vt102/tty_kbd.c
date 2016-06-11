@@ -22,7 +22,7 @@ extern struct tty* active_tty;
 void tty_delete_char(tty_t t)
 {
 #ifdef KEY_DEBUG
-	cprintf("kbd: deleting character...\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: deleting character...\n");
 #endif
 	char serial_back[] = {0x08, ' ', 0x08};
 	switch(t->type)
@@ -50,7 +50,7 @@ void tty_delete_char(tty_t t)
 void tty_clear_input(tty_t t)
 {
 #ifdef KEY_DEBUG
-	cprintf("kbd: Input line cleared.\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: Input line cleared.\n");
 #endif
 	slock_acquire(&t->key_lock);
 	memset(&t->kbd_line, 0, sizeof(struct kbd_buff));
@@ -89,7 +89,7 @@ void tty_keyboard_interrupt_handler(void)
 
 		/* Got character. */
 #ifdef KEY_DEBUG
-		cprintf("Got character: %c\n", c);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "Got character: %c\n", c);
 #endif
 
 		tty_handle_char(c, active_tty);
@@ -103,7 +103,7 @@ void tty_keyboard_interrupt_handler(void)
 		if((t + x)->io_queue && (t + x)->driver->io_driver.ready_read(t + x))
 		{
 #ifdef KEY_DEBUG
-			cprintf("tty: tty %d needed to be woken up again!\n", x);
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: tty %d needed to be woken up again!\n", x);
 #endif
 			
 			tty_signal_io_ready(t + x);
@@ -136,9 +136,9 @@ static int tty_handle_char(char c, tty_t t)
 	char canon = t->term.c_lflag & ICANON;
 
 #ifdef KEY_DEBUG
-	cprintf("tty: tty %d received char %c\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: tty %d received char %c\n",
 			tty_num(t), c);
-	cprintf("tty: Canonical mode: %d\n", canon);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: Canonical mode: %d\n", canon);
 #endif
 
 	if(canon)
@@ -149,14 +149,14 @@ static int tty_handle_char(char c, tty_t t)
 			if(t->term.c_iflag & IGNCR) 
 			{
 #ifdef KEY_DEBUG
-				cprintf("tty: ignored cr.\n");
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: ignored cr.\n");
 #endif
 				return 0;
 			}
 			else if(t->term.c_iflag & ICRNL) 
 			{
 #ifdef KEY_DEBUG
-				cprintf("tty: swapped cr for nl\n");
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: swapped cr for nl\n");
 #endif
 				c = '\n';
 			}
@@ -165,7 +165,7 @@ static int tty_handle_char(char c, tty_t t)
 			if(t->term.c_iflag & INLCR) 
 			{
 #ifdef KEY_DEBUG
-				cprintf("tty: swapped nl for cr.\n");
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: swapped nl for cr.\n");
 #endif
 				c = 13; /* Carriage return */
 			}
@@ -178,7 +178,7 @@ static int tty_handle_char(char c, tty_t t)
 			if(c >= 'A' && c <= 'Z')
 			{
 #ifdef KEY_DEBUG
-				cprintf("tty: swapped upper case letter for"
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: swapped upper case letter for"
 						" lower case letter.\n");
 #endif
 				c += ('a' - 'A');
@@ -193,7 +193,7 @@ static int tty_handle_char(char c, tty_t t)
 		if(c == 0x7F || c == 0x08)
 		{
 #ifdef KEY_DEBUG
-			cprintf("tty: received delete char.\n");
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: received delete char.\n");
 #endif
 			if(!tty_keyboard_delete(t))
 				tty_delete_char(t);
@@ -206,7 +206,7 @@ static int tty_handle_char(char c, tty_t t)
 			{
 				/* A line delimiter was written */
 #ifdef KEY_DEBUG
-				cprintf("kbd: process signaled.\n");
+				DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: process signaled.\n");
 #endif
 				tty_signal_io_ready(t);
 			}
@@ -221,9 +221,9 @@ static int tty_handle_char(char c, tty_t t)
 	}
 
 #ifdef KEY_DEBUG
-	cprintf("kbd: NLS in line buffer: %d\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: NLS in line buffer: %d\n", 
 			t->kbd_line.key_nls);
-	cprintf("kbd: Line buffer: %s\n", 	
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: Line buffer: %s\n", 	
 			t->kbd_line.buffer +
 			t->kbd_line.key_read);
 #endif
@@ -235,18 +235,18 @@ static int tty_shandle(int pressed, int special, int val, int ctrl, int alt,
 		int shift, int caps, char ascii)
 {
 #ifdef DEBUG
-	cprintf("tty: special key received:\n");
-	cprintf("    + pressed:   %d\n", pressed);
-	cprintf("    + special:   %d\n", special);
-	cprintf("    + val:       %d\n", val);
-	cprintf("    + ctrl:      %d\n", ctrl);
-	cprintf("    + alt:       %d\n", alt);
-	cprintf("    + shift:     %d\n", shift);
-	cprintf("    + caps:      %d\n", caps);
-	cprintf("    + ascii:     %d  %c\n", ascii, ascii);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "tty: special key received:\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + pressed:   %d\n", pressed);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + special:   %d\n", special);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + val:       %d\n", val);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + ctrl:      %d\n", ctrl);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + alt:       %d\n", alt);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + shift:     %d\n", shift);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + caps:      %d\n", caps);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + ascii:     %d  %c\n", ascii, ascii);
 
 	if(!special)
-		cprintf("    + character: %c\n", (char)val);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "    + character: %c\n", (char)val);
 #endif
 
 	/** SPECIAL DEBUGGING KEYS HERE */
@@ -408,7 +408,7 @@ char tty_keyboard_delete(tty_t t)
 			!keyboard->key_full) 
 	{
 #ifdef KEY_DEBUG
-		cprintf("kbd: Tried to delete but buff is empty.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "kbd: Tried to delete but buff is empty.\n");
 #endif
 		return -1;
 	}

@@ -187,7 +187,7 @@ static void vm_share_free(vm_share_t* s)
 	if(!s || s < share_table || s >= share_table + MAX_SHARE) 
 	{
 #ifdef DEBUG
-		cprintf("vm_share: ERROR: tried to free invalid share.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: ERROR: tried to free invalid share.\n");
 #endif
 		return;
 	}
@@ -198,7 +198,7 @@ static void vm_share_free(vm_share_t* s)
 int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 {
 #ifdef DEBUG
-	cprintf("vm_share: starting share for page 0x%x\n", page);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: starting share for page 0x%x\n", page);
 #endif
 
 	slock_acquire(&share_table_lock);
@@ -206,7 +206,7 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 	if(!py) 
 	{
 #ifdef DEBUG
-		cprintf("vm_share: ERROR: page doesn't exist\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: ERROR: page doesn't exist\n");
 #endif
 		/* This page doesn't exist. */
 		slock_release(&share_table_lock);
@@ -217,17 +217,17 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 	if((st = vm_share_lookup(py)) != NULL)
 	{
 #ifdef DEBUG
-		cprintf("vm_share: Share already existed.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: Share already existed.\n");
 #endif
 		/* Just increment the ref count */
 		st->refs++;
 
 #ifdef DEBUG
-		cprintf("vm_share: new amount of refs: %d\n", st->refs);
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: new amount of refs: %d\n", st->refs);
 #endif
 	} else {
 #ifdef DEBUG
-		cprintf("vm_share: Creating new share.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: Creating new share.\n");
 #endif
 		/* Allocate a new share struct */
 		st = vm_share_alloc();
@@ -242,24 +242,24 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 	}
 
 #ifdef DEBUG
-	cprintf("vm_share: adjusting pgdir flags...\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: adjusting pgdir flags...\n");
 #endif
 
 	/* Adjust the page directory flags */
 	vmflags_t flags = vm_findpgflags(page, pgdir);
 #ifdef DEBUG
-	cprintf("vm_share: before flags: 0x%x\n", flags);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: before flags: 0x%x\n", flags);
 #endif
 	flags |= VM_TBL_SHAR;
 #ifdef DEBUG
-	cprintf("vm_share: after flags:  0x%x\n", flags);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: after flags:  0x%x\n", flags);
 #endif
 
 	/* Set the page table flags */
 	if(vm_setpgflags(page, pgdir, flags))
 	{
 #ifdef DEBUG
-		cprintf("vm_share: ERROR: couldn't set flags!\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: ERROR: couldn't set flags!\n");
 #endif
 		slock_release(&share_table_lock);
 		
@@ -269,7 +269,7 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 	}
 	
 #ifdef DEBUG
-	cprintf("vm_share: share completed successfully.\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: share completed successfully.\n");
 #endif
 
 	slock_release(&share_table_lock);
@@ -279,7 +279,7 @@ int vm_pgshare(vmpage_t page, pgdir_t* pgdir)
 int vm_isshared(vmpage_t page, pgdir_t* pgdir)
 {
 #ifdef DEBUG
-	cprintf("vm_share: is page 0x%x shared?\n", page);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: is page 0x%x shared?\n", page);
 #endif
 
 	slock_acquire(&share_table_lock);
@@ -289,7 +289,7 @@ int vm_isshared(vmpage_t page, pgdir_t* pgdir)
 	if(!py) 
 	{
 #ifdef DEBUG
-		cprintf("vm_share: page doesn't exist!\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: page doesn't exist!\n");
 #endif	
 		slock_release(&share_table_lock);
 		return 0;
@@ -302,19 +302,19 @@ int vm_isshared(vmpage_t page, pgdir_t* pgdir)
 	if(!flags)
 	{
 #ifdef DEBUG
-		cprintf("vm_share: starting paranoid check...\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: starting paranoid check...\n");
 #endif
 		vm_share_t* st = vm_share_lookup(py);
 		if(!st) 
 		{
 #ifdef DEBUG
-			cprintf("vm_share: paranoid check passed.\n");
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: paranoid check passed.\n");
 #endif
 			slock_release(&share_table_lock);
 			return 0;
 		} else {
 #ifdef DEBUG
-			cprintf("vm_share: ERROR: paranoid check failed!\n");
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: ERROR: paranoid check failed!\n");
 #endif
 			flags = 1;
 		}
@@ -322,7 +322,7 @@ int vm_isshared(vmpage_t page, pgdir_t* pgdir)
 #endif
 
 #ifdef DEBUG
-	cprintf("vm_share: Is page shared? %s\n", flags?"yes":"no");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: Is page shared? %s\n", flags?"yes":"no");
 #endif
 
 	slock_release(&share_table_lock);
@@ -333,7 +333,7 @@ int vm_pgunshare(pypage_t py)
 {
 	py = PGROUNDDOWN(py);
 #ifdef DEBUG
-	cprintf("vm_share: starting unshare for page 0x%x.\n", py);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: starting unshare for page 0x%x.\n", py);
 #endif
 	slock_acquire(&share_table_lock);
 
@@ -350,7 +350,7 @@ int vm_pgunshare(pypage_t py)
 	st->refs--;
 
 #ifdef DEBUG
-	cprintf("vm_share: new ref count: %d\n", st->refs);
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: new ref count: %d\n", st->refs);
 #endif
 	if(st->refs <= 0)
 	{
@@ -360,12 +360,12 @@ int vm_pgunshare(pypage_t py)
 		vm_share_free(st);
 
 #ifdef DEBUG
-		cprintf("vm_share: share has been unallocated.\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: share has been unallocated.\n");
 #endif
 	}
 
 #ifdef DEBUG
-	cprintf("vm_share: unshare complete!\n");
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "vm_share: unshare complete!\n");
 #endif
 
 	slock_release(&share_table_lock);

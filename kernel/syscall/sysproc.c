@@ -65,7 +65,7 @@ int waitpid(int pid, int* status, int options)
 int waitpid_nolock(int pid, int* status, int options)
 {
 #ifdef DEBUG
-	cprintf("%s:%d: Waiting for pid %d\n", rproc->name, rproc->pid,
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Waiting for pid %d\n", rproc->name, rproc->pid,
 		pid);
 #endif
 
@@ -85,7 +85,7 @@ int waitpid_nolock(int pid, int* status, int options)
 
 			int status_change = ptable[process].status_changed;
 #ifdef DEBUG
-			cprintf("%s:%d: Child changed status? %d\n",
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Child changed status? %d\n",
 					rproc->name, rproc->pid, status_change);
 #endif
 
@@ -96,7 +96,7 @@ int waitpid_nolock(int pid, int* status, int options)
 				status_change = 0;
 
 #ifdef DEBUG
-			cprintf("%s:%d: Listening to continues? %d\n",
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Listening to continues? %d\n",
 					rproc->name, rproc->pid, status_change);
 #endif
 
@@ -106,7 +106,7 @@ int waitpid_nolock(int pid, int* status, int options)
 				status_change = 0;
 
 #ifdef DEBUG
-			cprintf("%s:%d: Waiting for stops? %d\n",
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Waiting for stops? %d\n",
 					rproc->name, rproc->pid, status_change);
 #endif
 
@@ -125,7 +125,7 @@ int waitpid_nolock(int pid, int* status, int options)
 		if(!found)
 		{
 #ifdef DEBUG
-			cprintf("%s:%d: NO SUCH PROCESS FOUND.\n",
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: NO SUCH PROCESS FOUND.\n",
 				rproc->name, rproc->pid);
 #endif
 			return -1;
@@ -199,7 +199,7 @@ int waitpid_nolock(int pid, int* status, int options)
 	}
 
 #ifdef DEBUG
-	cprintf("%s:%d: wokeup on process with pid %d\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: wokeup on process with pid %d\n",
 			rproc->name, rproc->pid, ret_pid);
 #endif
 
@@ -310,7 +310,7 @@ int sys_exit(void)
 	int return_code = 1;
 	if(syscall_get_int(&return_code, 0)) ; /* Exit cannot fail */
 #ifdef DEBUG
-	cprintf("\n\n%s:%d exiting -- status: %d\n\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "\n\n%s:%d exiting -- status: %d\n\n",
 			rproc->name, rproc->pid, return_code);
 #endif
 
@@ -416,7 +416,7 @@ int sys_brk(void)
 			(uintptr_t)addr > rproc->stack_end)
 	{
 #ifdef DEBUG
-		cprintf("%s:%d: ERROR: program gave bad brk addr: 0x%x\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: ERROR: program gave bad brk addr: 0x%x\n",
 				rproc->name, rproc->pid, addr);
 #endif
 
@@ -427,7 +427,7 @@ int sys_brk(void)
 	rproc->heap_end = (uintptr_t)addr;
 
 #ifdef DEBUG
-	cprintf("%s:%d: Old program break: 0x%x\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Old program break: 0x%x\n", 
 			rproc->name, rproc->pid, rproc->heap_end);
 #endif
 
@@ -445,7 +445,7 @@ int sys_brk(void)
 	}
 
 #ifdef DEBUG
-	cprintf("%s:%d: New program break: 0x%x\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: New program break: 0x%x\n", 
 			rproc->name, rproc->pid, rproc->heap_end);
 #endif
 
@@ -464,7 +464,7 @@ int sys_sbrk(void)
 	if(increment == 0)
 	{
 #ifdef DEBUG
-		cprintf("%s:%d: checked program break: 0x%x\n",
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: checked program break: 0x%x\n",
 				rproc->name, rproc->pid, rproc->heap_end);
 #endif
 		return rproc->heap_end;
@@ -513,10 +513,10 @@ int sys_sbrk(void)
 	}
 
 #ifdef DEBUG
-	cprintf("%s:%d: Program used sbrk    0x%x --> 0x%x\n",
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d: Program used sbrk    0x%x --> 0x%x\n",
 			rproc->name, rproc->pid, old_end,
 			old_end + increment);
-	cprintf("%s:%d:\t\tHeap size change: %d KB\n", 
+	DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "%s:%d:\t\tHeap size change: %d KB\n", 
 			rproc->name, rproc->pid, (increment >> 12));
 #endif
 
@@ -952,7 +952,7 @@ int sys_vfork(void)
 		if(waitpid_nolock_noharvest(p) != p)
 		{
 #ifdef DEBUG
-			cprintf("chronos: vfork failed! 2\n");	
+			DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "chronos: vfork failed! 2\n");	
 			slock_release(&ptable_lock);
 			return -1;
 #endif
@@ -960,7 +960,7 @@ int sys_vfork(void)
 		slock_release(&ptable_lock);
 	} else {
 #ifdef DEBUG
-		cprintf("chronos: vfork failed!\n");
+		DEBUG(D_LEVEL_DEFAULT, D_SYSTEM_DEFAULT, "chronos: vfork failed!\n");
 		return -1;
 #endif
 	}
