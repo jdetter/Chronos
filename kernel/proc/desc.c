@@ -39,6 +39,7 @@
 #include "stdlock.h"
 #include "proc.h"
 #include "panic.h"
+//#include "debug.h"
 
 // #define DEBUG
 
@@ -94,11 +95,9 @@ static struct file_descriptor* fd_alloc(void)
 static void fd_free_native(struct file_descriptor * fd)
 {
 	if(!fd) return;
-#ifdef DEBUG
-	cprintf("desc: freeing fd: %s\n", fd->path);
-	cprintf("desc: ref count old: %d new: %d",
+	DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: freeing fd: %s\n", fd->path);
+	DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: ref count old: %d new: %d",
 		fd->refs, fd->refs - 1);
-#endif
 	fd->refs--;
         if(fd->refs <= 0)
                 memset(fd, 0, sizeof(struct file_descriptor));
@@ -121,9 +120,7 @@ void fd_free(struct proc* p, int fd)
 int fd_tab_free_native(struct proc* p)
 {
 	if(!p || !p->fdtab) return -1;
-#ifdef DEBUG
-        cprintf("desc: freeing table for proc %s\n", p->name);
-#endif
+        DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: freeing table for proc %s\n", p->name);
 
 	int x;
         for(x = 0;x < PROC_MAX_FDS;x++)
@@ -146,9 +143,7 @@ int fd_tab_free(struct proc* p)
 
 int fd_next_at(struct proc* p, int pos)
 {
-#ifdef DEBUG
-	cprintf("desc: %s is looking for a new fd\n", p->name);
-#endif
+	DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: %s is looking for a new fd\n", p->name);
 	int result = -1;
 	/* Acquire the fd table lock */
 	slock_acquire(p->fdtab_lock);
@@ -170,17 +165,13 @@ int fd_next_at(struct proc* p, int pos)
 	
 	slock_release(p->fdtab_lock);
 
-#ifdef DEBUG
-	cprintf("desc: %s got fd at index %d\n", p->name, result);
-#endif
+	DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: %s got fd at index %d\n", p->name, result);
 	return result;
 }
 
 int fd_tab_map(struct proc* dst, struct proc* src)
 {
-#ifdef DEBUG
-	cprintf("desc: mapping fdtab %s->%s\n", dst->name, src->name);
-#endif
+	DEBUG(D_LEVEL_SPEW, D_SYSTEM_DEFAULT, "desc: mapping fdtab %s->%s\n", dst->name, src->name);
 	if(!dst || !src) return -1;
 	/* Free dst's fdtab */
 	if(dst->fdtab)

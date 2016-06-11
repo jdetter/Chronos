@@ -23,9 +23,9 @@
 // #define DEBUG_CONTENT
 
 #ifdef RELEASE
-# undef DEBUG
-# undef DEBUG_SELECT
-# undef DEBUG_CONTENT
+//#undef DEBUG
+#undef DEBUG_SELECT
+#undef DEBUG_CONTENT
 #endif
 
 int sys_link(void)

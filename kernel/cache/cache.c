@@ -29,8 +29,8 @@ int log2_linux(int value); /* defined in ext2.c*/
 // #define CACHE_DEBUG_VER
 
 #ifdef __BOOT_2__
-#undef CACHE_DEBUG
-#undef CACHE_DEBUG_VER
+//#undef DEBUG
+#undef DEBUG_VER
 #endif
 
 struct cache_entry

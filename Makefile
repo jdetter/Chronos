@@ -16,7 +16,6 @@ TARGET_SYSROOT := ../sysroot
 export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
 
-
 # use host to configure the tools
 export CC=gcc
 export LD=ld
@@ -28,9 +27,15 @@ export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) 
 export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
 QEMU := qemu-system-$(BUILD_ARCH)
 
+# FIXME: This is no longer garunteed to work, progress should be made to only rely on defining
+# debug mode to show output instead:
 # Uncomment this lines to turn off all output
 # export CFLAGS := -DRELEASE $(CFLAGS)
 # export AFLAGS := -DRELEASE $(AFLAGS)
+
+# Enable to turn on debugging prints. Additonal options are defined in kernel/include/debug.h
+#export KERNEL_DEBUG_FLAGS := -DCONFIG_DEBUG=1 -DD_LEVEL=DEFAULT -DD_SYSTEM=DEFAULT $(DEBUG_FLAGS)
+
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img

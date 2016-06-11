@@ -27,7 +27,7 @@
 // #define DEBUG
 
 #ifdef RELEASE
-# undef DEBUG
+//#undef DEBUG
 #endif
 
 extern int k_ticks;

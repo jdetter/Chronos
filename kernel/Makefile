@@ -3,7 +3,11 @@
 export KINCLUDE_PATHS := \
 	$(shell readlink -e include)
 
-export KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
+export KINCLUDE :=  $(addprefix -I, $(KINCLUDE_PATHS))
+
+# FIXME: This also needs to automatically be included into kernel drivers!
+export KINCLUDE += -include $(shell readlink -e include/debug.h)
+
 
 # All files that need compiling (excluding drivers)
 KERNEL_BINS := \
@@ -94,5 +98,5 @@ chronos.o: $(KERNEL_OBJS)
 	$(CROSS_AS) $(AFLAGS) $(KINCLUDE) -c -o $@ $<
 
 %.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(KINCLUDE) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(KINCLUDE) $(KERNEL_DEBUG_FLAGS) -c -o $@ $<
 

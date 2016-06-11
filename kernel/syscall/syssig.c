@@ -16,7 +16,7 @@
 // #define DEBUG
 
 #ifdef RELEASE
-# undef DEBUG
+//#undef DEBUG
 #endif
 
 int sys_sigaction(void)
