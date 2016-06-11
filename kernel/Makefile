@@ -5,10 +5,6 @@ export KINCLUDE_PATHS := \
 
 export KINCLUDE :=  $(addprefix -I, $(KINCLUDE_PATHS))
 
-# FIXME: This also needs to automatically be included into kernel drivers!
-export KINCLUDE += -include $(shell readlink -e include/debug.h)
-
-
 # All files that need compiling (excluding drivers)
 KERNEL_BINS := \
 	syscall/syscall \

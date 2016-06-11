@@ -54,8 +54,6 @@ int log2_linux(int value)
 #define log2 __log2
 
 #endif
-#include "debug.h"
-
 #include <unistd.h>
 
 #include "file.h"
@@ -68,6 +66,9 @@ int log2_linux(int value)
 #include "diskcache.h"
 #include "cacheman.h"
 #include "vm.h"
+
+//FIXME: Create a linux definition of DEBUG so we don't need to import.
+#include "panic.h"
 
 #define EXT2_DIRECT_COUNT 12
 

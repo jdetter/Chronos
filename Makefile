@@ -33,7 +33,7 @@ QEMU := qemu-system-$(BUILD_ARCH)
 # export CFLAGS := -DRELEASE $(CFLAGS)
 # export AFLAGS := -DRELEASE $(AFLAGS)
 
-# Enable to turn on debugging prints. Additonal options are defined in kernel/include/debug.h
+# Enable to turn on debugging prints. Additonal options are defined in kernel/include/panic.h
 #export KERNEL_DEBUG_FLAGS := -DCONFIG_DEBUG=1 -DD_LEVEL=DEFAULT -DD_SYSTEM=DEFAULT $(DEBUG_FLAGS)
 
 
