@@ -347,6 +347,7 @@ int sig_handle(void)
 #ifdef DEBUG
 		cprintf("%s:%d: CORE DUMPED\n", rproc->name, rproc->pid);
 #endif
+		rproc->status_changed = 1;
 		rproc->return_code = ((sig->signum & 0xFF) << 0x8) | 0x02;
 		rproc->state = PROC_ZOMBIE;
 		wake_parent(rproc);
@@ -360,6 +361,7 @@ int sig_handle(void)
 		cprintf("%s:%d: process stopped.\n", rproc->name, rproc->pid);
 #endif
 
+		rproc->status_changed = 1;
 		rproc->state = PROC_STOPPED;
 		rproc->return_code = ((sig->signum & 0xFF) << 0x08) | 0x04;
 		/* Should we wake the parent? */
@@ -372,6 +374,7 @@ int sig_handle(void)
 		yield_withlock();
 
 		/* Should we wake our parent now that we've continued */
+		rproc->status_changed = 1;
 		if(!rproc->orphan && rproc->parent
 				&& (rproc->parent->wait_options & WCONTINUED))
 		{
@@ -388,10 +391,11 @@ int sig_handle(void)
 				rproc->name, rproc->pid);
 #endif
 
+		rproc->status_changed = 1;
 		rproc->return_code = ((sig->signum & 0xFF) << 0x08) | 0x01;
+		rproc->state = PROC_ZOMBIE;
 		wake_parent(rproc);
-		slock_release(&ptable_lock);
-		_exit(1);
+		yield_withlock();
 	}
 
 	if(ignored)

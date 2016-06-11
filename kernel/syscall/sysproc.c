@@ -24,7 +24,7 @@
 #include "elf.h"
 #include "sched.h"
 
-// #define DEBUG
+#define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG
@@ -47,11 +47,6 @@ int sys_waitpid(void)
 				(void**)&status, sizeof(int), 1))
 		return -1;
 	if(syscall_get_int(&options, 2)) return -1;
-
-#ifdef DEBUG
-	cprintf("%s:%d: Waiting for child %d.\n",
-		rproc->name, rproc->pid, pid);
-#endif
 
 	return waitpid(pid, status, options);
 }
@@ -78,7 +73,7 @@ int waitpid_nolock(int pid, int* status, int options)
 	struct proc* p = NULL;
 	while(1)
 	{
-		int found = 0;
+		int found = 0; /* Is there an elligible process? */
 		int process;
 		for(process = 0;process < PTABLE_SIZE;process++)
 		{
@@ -86,8 +81,36 @@ int waitpid_nolock(int pid, int* status, int options)
 			if((pid == ptable[process].pid || pid == -1)
 				&& ptable[process].parent == rproc)
 				found = 1;
+			else continue;
 
-			if(ptable[process].state == PROC_ZOMBIE
+			int status_change = ptable[process].status_changed;
+#ifdef DEBUG
+			cprintf("%s:%d: Child changed status? %d\n",
+					rproc->name, rproc->pid, status_change);
+#endif
+
+			/* Are we listening to continue events? */
+			if((ptable[process].state == PROC_RUNNABLE 
+					|| ptable[process].state == PROC_RUNNING)
+					&& ((options & WCONTINUED) == 0x0))
+				status_change = 0;
+
+#ifdef DEBUG
+			cprintf("%s:%d: Listening to continues? %d\n",
+					rproc->name, rproc->pid, status_change);
+#endif
+
+			/* Are we listening to stops? */
+			if(ptable[process].state == PROC_STOPPED
+					&& (options & WUNTRACED) == 0x0)
+				status_change = 0;
+
+#ifdef DEBUG
+			cprintf("%s:%d: Waiting for stops? %d\n",
+					rproc->name, rproc->pid, status_change);
+#endif
+
+			if((ptable[process].state == PROC_ZOMBIE || status_change)
 					&& ptable[process].parent == rproc)
 			{
 				if(pid == -1 || ptable[process].pid == pid)
@@ -110,25 +133,53 @@ int waitpid_nolock(int pid, int* status, int options)
 
 		if(p)
 		{
-			/* Harvest the child */
 			ret_pid = p->pid;
-			if(status)
-				*status = p->return_code;
-			/* Free used memory */
-			freepgdir(p->pgdir);
+			if(p->state == PROC_ZOMBIE)
+			{
+				/* Harvest the child */
+				if(status)
+					*status = p->return_code;
 
-			/* pushcli here */
-			/* change rproc to the child process so that we can close its files. */
-			struct proc* current = rproc;
-			rproc = p;
-			/* Close open files */
-			int file;
-			for(file = 0;file < PROC_MAX_FDS;file++)
-				close(file);
-			rproc = current;
+				/* Free used memory */
+				freepgdir(p->pgdir);
 
-			memset(p, 0, sizeof(struct proc));
-			p->state = PROC_UNUSED;
+				/* pushcli here */
+
+				/**
+				 * Change rproc to the child process so that we 
+				 * can close its files. 
+				 */
+				struct proc* current = rproc;
+				rproc = p;
+
+				/* Close open files */
+				int file;
+				for(file = 0;file < PROC_MAX_FDS;file++)
+					close(file);
+				rproc = current;
+
+				memset(p, 0, sizeof(struct proc));
+				p->state = PROC_UNUSED;
+			} else { /* The process wasn't ended */
+				p->status_changed = 0;
+
+				switch(rproc->state)
+				{
+					/* Continued */
+					case PROC_RUNNABLE:
+					case PROC_RUNNING:
+						*status = 0x05;
+						break;
+					/* Stopped */
+					case PROC_STOPPED:
+						*status = 0x04;
+						break;
+					default:
+						panic("kernel: tried to wakeup on "
+								"process we don't care about");
+						break;
+				}
+			}
 
 			break;
 		} else {
@@ -146,6 +197,11 @@ int waitpid_nolock(int pid, int* status, int options)
 			slock_acquire(&ptable_lock);
 		}
 	}
+
+#ifdef DEBUG
+	cprintf("%s:%d: wokeup on process with pid %d\n",
+			rproc->name, rproc->pid, ret_pid);
+#endif
 
 	return ret_pid;
 }

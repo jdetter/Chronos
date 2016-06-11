@@ -330,9 +330,6 @@ TRAP_DONE:
 		slock_release(&ptable_lock);
 	}
 
-	if(rproc->sig_queue && rproc->sig_handling)
-		cprintf("HERE");
-
 
 	/* Make sure that the interrupt flags is set */
 	tf->eflags |= EFLAGS_IF;

@@ -124,6 +124,7 @@ struct proc
 	int orphan; /* Whether or not the parent has been killed. */
 	int return_code; /* When the process finished, what did it return? */
 	int wait_options; /* Parent wait options (waitpid) */
+	int status_changed; /* Set by child, if set parent might wakeup */
 	struct proc* parent; /* The process that spawned this process */
 	char name[MAX_PROC_NAME]; /* The name of the process */
 	char cwd[MAX_PATH_LEN]; /* Current working directory */
