@@ -56,6 +56,8 @@ int log2_linux(int value)
 #endif
 #include "debug.h"
 
+#include <unistd.h>
+
 #include "file.h"
 #include "stdlock.h"
 #define NO_DEFINE_INODE
@@ -72,6 +74,7 @@ int log2_linux(int value)
 #define EXT2_MAX_PATH FILE_MAX_PATH
 #define EXT2_MAX_NAME FILE_MAX_NAME
 #define EXT2_MAX_PATH_SEGS 32
+#define EXT2_LINK_MAX 2048
 
 // #define DEBUG
 // #define DEBUG_FSCK
@@ -1853,34 +1856,35 @@ static int ext2_fsck_dir(inode* ino, context* context)
 	return failure;
 }
 
-inode* ext2_opened(const char* path, context* context);
-inode* ext2_open(const char* path, context* context);
-int ext2_close(inode* ino, context* context);
-int ext2_stat(inode* ino, struct stat* dst, context* context);
-int ext2_create(const char* path, mode_t permissions,
+static inode* ext2_opened(const char* path, context* context);
+static inode* ext2_open(const char* path, context* context);
+static int ext2_close(inode* ino, context* context);
+static int ext2_stat(inode* ino, struct stat* dst, context* context);
+static int ext2_create(const char* path, mode_t permissions,
 		uid_t uid, gid_t gid, context* context);
-int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context);
-int ext2_chmod(inode* ino, mode_t permission, context* context);
-int ext2_truncate(inode* ino, int sz, context* context);
-int ext2_link(const char* file, const char* link, context* context);
-int ext2_symlink(const char* file, const char* link,context* context);
-int ext2_mkdir(const char* path, mode_t permission,
+static int ext2_chown(inode* ino, uid_t uid, gid_t gid, context* context);
+static int ext2_chmod(inode* ino, mode_t permission, context* context);
+static int ext2_truncate(inode* ino, int sz, context* context);
+static int ext2_link(const char* file, const char* link, context* context);
+static int ext2_symlink(const char* file, const char* link,context* context);
+static int ext2_mkdir(const char* path, mode_t permission,
 		uid_t uid, gid_t gid, context* context);
-int ext2_rmdir(const char* path, context* context);
-int ext2_read(inode* ino, void* dst, fileoff_t start, size_t sz,
+static int ext2_rmdir(const char* path, context* context);
+static int ext2_read(inode* ino, void* dst, fileoff_t start, size_t sz,
 		context* context);
-int ext2_write(inode* ino, const void* src, fileoff_t start, size_t sz,
+static int ext2_write(inode* ino, const void* src, fileoff_t start, size_t sz,
 		context* context);
-int ext2_rename(const char* src, const char* dst, context* context);
-int ext2_unlink(const char* file, context* context);
-int ext2_readdir(inode* dir, int index, struct dirent* dst,
+static int ext2_rename(const char* src, const char* dst, context* context);
+static int ext2_unlink(const char* file, context* context);
+static int ext2_readdir(inode* dir, int index, struct dirent* dst,
 		context* context);
-int ext2_fsstat(struct fs_stat* dst, context* context);
-int ext2_getdents(inode* dir, struct dirent* dst_arr, int count,
+static int ext2_fsstat(struct fs_stat* dst, context* context);
+static int ext2_getdents(inode* dir, struct dirent* dst_arr, int count,
 		fileoff_t pos, context* context);
-void ext2_sync(context* context);
-int ext2_fsync(inode* ino, context* context);
-int ext2_fsck(context* context);
+static void ext2_sync(context* context);
+static int ext2_fsync(inode* ino, context* context);
+static int ext2_fsck(context* context);
+static int ext2_pathconf(int conf, const char* path, context* context);
 
 int ext2_test(context* context)
 {
@@ -2040,12 +2044,14 @@ int ext2_init(struct FSDriver* fs)
 	fs->write = (void*)ext2_write;
 	fs->link = (void*)ext2_link;
 	fs->rmdir = (void*)ext2_rmdir;
-	// fs->symlink = (void*)ext2_symlink;
+	fs->symlink = (void*)ext2_symlink;
+	fs->fsstat = (void*)ext2_fsstat;
 	fs->mkdir = (void*)ext2_mkdir;
 	fs->truncate = (void*)ext2_truncate;
 	fs->sync = (void*)ext2_sync;
 	fs->fsync = (void*)ext2_fsync;
 	fs->fsck = (void*)ext2_fsck;
+	fs->pathconf = (void*)ext2_pathconf;
 
 	return 0;
 }
@@ -2647,6 +2653,29 @@ int ext2_fsstat(struct fs_stat* dst, context* context)
 	return -1;
 }
 
+int ext2_pathconf(int conf, const char* path, context* context)
+{
+	switch(conf)
+	{
+		case _PC_LINK_MAX:
+			return EXT2_LINK_MAX;
+		case _PC_NAME_MAX:
+			return EXT2_MAX_NAME;
+		case _PC_PATH_MAX:
+			return EXT2_MAX_PATH;
+		case _PC_NO_TRUNC:
+			return 1;
+
+		case _PC_VDISABLE:
+		case _PC_CHOWN_RESTRICTED:
+		case _PC_PIPE_BUF:
+		default:
+			break;
+	}
+
+	return -1;
+}
+
 int ext2_fsck(context* context)
 {
 	int result;
@@ -2659,33 +2688,33 @@ int ext2_fsck(context* context)
 	result = ext2_fsck_dir(context->root, context);
 
 #ifdef DEBUG_FSCK
-        cprintf("+----------------------------------------------------+\n");
-        cprintf("+------------------- Inode Bitmap -------------------+\n");
-        cprintf("+----------------------------------------------------+\n");
+	cprintf("+----------------------------------------------------+\n");
+	cprintf("+------------------- Inode Bitmap -------------------+\n");
+	cprintf("+----------------------------------------------------+\n");
 
-        if(result)
-        {
-                int x;
-                for(x = 0;x < context->groupcount;x++)
-                {
-                        cprintf("Inode group %d: \n", x);
-                        ext2_print_inode_bitmap(x, context);
-                }
-        }
+	if(result)
+	{
+		int x;
+		for(x = 0;x < context->groupcount;x++)
+		{
+			cprintf("Inode group %d: \n", x);
+			ext2_print_inode_bitmap(x, context);
+		}
+	}
 
-        cprintf("+----------------------------------------------------+\n");
-        cprintf("+------------------- Block Bitmap -------------------+\n");
-        cprintf("+----------------------------------------------------+\n");
+	cprintf("+----------------------------------------------------+\n");
+	cprintf("+------------------- Block Bitmap -------------------+\n");
+	cprintf("+----------------------------------------------------+\n");
 
-        if(result)
-        {
-                int x;
-                for(x = 0;x < context->groupcount;x++)
-                {
-                        cprintf("Block group %d: \n", x);
-                        ext2_print_block_bitmap(x, context);
-                }
-        }
+	if(result)
+	{
+		int x;
+		for(x = 0;x < context->groupcount;x++)
+		{
+			cprintf("Block group %d: \n", x);
+			ext2_print_block_bitmap(x, context);
+		}
+	}
 
 #endif
 
