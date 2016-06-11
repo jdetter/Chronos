@@ -19,7 +19,7 @@
 #include "panic.h"
 #include "reboot.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG

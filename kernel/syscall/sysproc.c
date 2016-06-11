@@ -24,7 +24,7 @@
 #include "elf.h"
 #include "sched.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef RELEASE
 # undef DEBUG
