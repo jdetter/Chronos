@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "file.h"
 #include "stdlock.h"
@@ -19,6 +20,7 @@ static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* conte
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
 static int tty_io_ready_read(void* context);
 static int tty_io_ready_write(void* context);
+static int tty_io_pathconf(int conf, void* context);
 
 int tty_io_setup(struct IODriver* driver, int tty_num)
 {
@@ -31,6 +33,7 @@ int tty_io_setup(struct IODriver* driver, int tty_num)
 	driver->ioctl = (int (*)(unsigned long, void*, void*))tty_io_ioctl;
 	driver->ready_read = tty_io_ready_read;
 	driver->ready_write = tty_io_ready_write;
+	driver->pathconf = tty_io_pathconf;
 	return 0;
 }
 
@@ -92,6 +95,18 @@ static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* conte
 	for(x = 0;x < sz;x++, src_c++)
 		tty_putc(t, *src_c);
 	return sz;
+}
+
+static int tty_io_pathconf(int conf, void* context)
+{
+	switch(conf)
+	{
+		case _PC_VDISABLE:
+			return 1;
+		default: break;
+	}
+
+	return -1;
 }
 
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t t)

@@ -755,3 +755,45 @@ int fs_mknod(const char* path, dev_t dev, dev_t dev_type, mode_t perm)
 		return -1;
 	return 0;
 }
+
+int fs_pathconf(int config, const char* path)
+{
+    inode file = fs_open(path, O_RDONLY, 0000, 0x0, 0x0);
+	if(!file) 
+	{
+#ifdef DEBUG
+		cprintf("pathconf: file doesn't exist.\n");
+#endif
+		return -1;
+	}
+
+	if(!file->fs->pathconf)
+	{
+#ifdef DEBUG
+		cprintf("pathconf: file lives on system with no pathconf.\n");
+#endif
+		return -1;
+	}
+
+    int result = -1;
+    switch(config)
+    {
+        case _PC_PIPE_BUF:
+			return 8192;
+		case _PC_VDISABLE: /* FIXME: this should call the driver's pathconf */
+			return 0;
+		case _PC_MAX_CANON: /* FIXME: this should call the driver's pathconf */
+		case _PC_MAX_INPUT:
+			return 256;
+        case _PC_NO_TRUNC:
+        case _PC_LINK_MAX:
+        case _PC_NAME_MAX:
+        case _PC_PATH_MAX:
+        case _PC_CHOWN_RESTRICTED:
+		default:
+			result = file->fs->pathconf(config, path, file->fs);
+			break;
+    }
+
+    return result;
+}

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "panic.h"
 #include "cacheman.h"
@@ -39,6 +40,10 @@ typedef uint32_t sect_t;
 #ifdef KTIME_PROVIDED
 #include "ktime.h"
 #endif
+
+#define LWFS_LINK_MAX 2048
+#define LWFS_MAX_NAME FILE_MAX_NAME
+#define LWFS_MAX_PATH FILE_MAX_PATH
 
 struct lwfs_inode
 {
@@ -447,35 +452,36 @@ static inode* lwfs_lookup(const char* path, context* context)
 	return _lwfs_lookup(path, context->root, context);
 }
 
-void* lwfs_open(const char* path, context* context);
-int lwfs_close(inode* i, context* context);
-int lwfs_stat(inode* i, struct stat* dst, context* context);
-int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
+static void* lwfs_open(const char* path, context* context);
+static int lwfs_close(inode* i, context* context);
+static int lwfs_stat(inode* i, struct stat* dst, context* context);
+static int lwfs_create(const char* path, mode_t permission, uid_t uid, gid_t gid,
                 context* context);
-int lwfs_chown(inode* i, uid_t uid, gid_t gid, context* context);
-int lwfs_chmod(inode* i, mode_t permission, context* context);
-int lwfs_truncate(inode* i, size_t sz, context* context);
-int lwfs_link(const char* file, const char* link, context* context);
-int lwfs_symlink(const char* file, const char* link, context* context);
-int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
+static int lwfs_chown(inode* i, uid_t uid, gid_t gid, context* context);
+static int lwfs_chmod(inode* i, mode_t permission, context* context);
+static int lwfs_truncate(inode* i, size_t sz, context* context);
+static int lwfs_link(const char* file, const char* link, context* context);
+static int lwfs_symlink(const char* file, const char* link, context* context);
+static int lwfs_mkdir(const char* path, mode_t permission, uid_t uid, gid_t gid,
                 context* context);
-int lwfs_read(inode* inode, void* dst, uintptr_t start, size_t sz,
+static int lwfs_read(inode* inode, void* dst, uintptr_t start, size_t sz,
                 context* context);
-int lwfs_write(inode* ino, const void* src, intptr_t start, size_t sz,
+static int lwfs_write(inode* ino, const void* src, intptr_t start, size_t sz,
                 context* context);
-int lwfs_rename(const char* src, const char* dst, context* context);
-int lwfs_unlink(const char* file, context* context);
-int lwfs_readdir(inode* dir, int index, struct dirent* dst, context* context);
-int lwfs_getdents(inode* dir, struct dirent* dst_arr, size_t count,
+static int lwfs_rename(const char* src, const char* dst, context* context);
+static int lwfs_unlink(const char* file, context* context);
+static int lwfs_readdir(inode* dir, int index, struct dirent* dst, context* context);
+static int lwfs_getdents(inode* dir, struct dirent* dst_arr, size_t count,
                 off_t posistion, context* context);
-int lwfs_fsstat(struct fs_stat* dst, context* context);
-inode* lwfs_opened(const char* path, context* context);
-int lwfs_rmdir(const char* path, context* context);
-int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
+static int lwfs_fsstat(struct fs_stat* dst, context* context);
+static inode* lwfs_opened(const char* path, context* context);
+static int lwfs_rmdir(const char* path, context* context);
+static int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
                 mode_t permission, context* context);
-void lwfs_sync(void* context);
-int lwfs_fsync(void* i, void* context);
-int lwfs_fsck(context* context);
+static void lwfs_sync(void* context);
+static int lwfs_fsync(void* i, void* context);
+static int lwfs_fsck(context* context);
+static int lwfs_pathconf(int conf, const char* path, context* context);
 
 
 int lwfs_init(size_t size, struct FSDriver* driver)
@@ -621,6 +627,7 @@ int lwfs_init(size_t size, struct FSDriver* driver)
 	driver->sync = (void*)lwfs_sync;
 	driver->fsync = (void*)lwfs_fsync;
 	driver->fsck = (void*)lwfs_fsck;
+	driver->pathconf = (void*)lwfs_pathconf;
 	
 #ifdef DEBUG
 	cprintf("lwfs: inodes: %d\n", context->inode_count);
@@ -1117,6 +1124,29 @@ int lwfs_mknod(const char* path, dev_t dev_major, dev_t dev_minor,
 		return -1;
 
 	return 0;
+}
+
+int lwfs_pathconf(int conf, const char* path, context* context)
+{
+    switch(conf)
+    {
+        case _PC_LINK_MAX:
+            return LWFS_LINK_MAX;
+        case _PC_NAME_MAX:
+            return LWFS_MAX_NAME;
+        case _PC_PATH_MAX:
+            return LWFS_MAX_PATH;
+        case _PC_NO_TRUNC:
+            return 1;
+
+        case _PC_VDISABLE:
+        case _PC_CHOWN_RESTRICTED:
+        case _PC_PIPE_BUF:
+        default:
+            break;
+    }
+
+    return -1;	
 }
 
 void lwfs_sync(void* context){}

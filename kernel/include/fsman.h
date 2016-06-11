@@ -260,6 +260,13 @@ struct FSDriver
 	 */
 	int (*fsck)(void* context);
 
+	/**
+	 * Check the configuration value for the file located at the
+	 * given path. Returns the configuration value, -1 if the
+	 * configuration value doesn't exist.
+	 */
+	int (*pathconf)(int conf, const char* path, void* context);
+
 	/* Locals for the driver */
 	int valid; /* Whether or not this entry is valid. */
 	int type; /* Type of file system */
@@ -420,6 +427,13 @@ int fs_truncate(inode i, int sz);
  * Sync all file system data to disk. Return 0 on success.
  */
 int fs_sync(void);
+
+/**
+ * Get the configuration value for the given file. Returns the
+ * configuration value. If the configuration value doesn't exist,
+ * then -1 is returned.
+ */
+int fs_pathconf(int conf, const char* path);
 
 /**
  * Get rid of the macro declaration.

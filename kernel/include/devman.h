@@ -41,6 +41,14 @@ struct IODriver
 	 */
 	int (*ready_read)(void* context);
 	int (*ready_write)(void* context);
+
+	/**
+	 * Optional method for checking to see the values of different
+	 * configuration values (used in pathconf systemcall). Returns
+	 * the configuration value if it exists. Returns -1 if the
+	 * value doesn't exist.
+	 */
+	int (*pathconf)(int conf, void* context);
 };
 
 struct DeviceDriver
