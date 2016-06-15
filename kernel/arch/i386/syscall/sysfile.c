@@ -105,11 +105,11 @@ int sys_select(void)
 					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
 
 						/* Does this device support read 'peek'? */
-						if(rproc->fdtab[fd]->device->io_driver.ready_read)
+						if(rproc->fdtab[fd]->device->ready_read)
 						{
 							/* Does the device have something for us? */
-							if(rproc->fdtab[fd]->device->io_driver.ready_read(
-										rproc->fdtab[fd]->device->io_driver.context))
+							if(rproc->fdtab[fd]->device->ready_read(
+										rproc->fdtab[fd]->device->context))
 							{
 								FD_SET(fd, &ret_readfds);
 								dev_found = 1;
@@ -156,11 +156,11 @@ int sys_select(void)
 					case FD_TYPE_DEVICE: /** Going over the 80 limit here ---- */
 
 						/* Does this device support write 'peek'? */
-						if(rproc->fdtab[fd]->device->io_driver.ready_write)
+						if(rproc->fdtab[fd]->device->ready_write)
 						{
 							/* Is this output device ready? */
-							if(rproc->fdtab[fd]->device->io_driver.ready_write(
-										rproc->fdtab[fd]->device->io_driver.context))
+							if(rproc->fdtab[fd]->device->ready_write(
+										rproc->fdtab[fd]->device->context))
 							{
 								FD_SET(fd, &ret_writefds);
 								dev_found = 1;

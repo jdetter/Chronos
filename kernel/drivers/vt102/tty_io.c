@@ -14,7 +14,7 @@
 // #define KEY_DEBUG
 // #define QUEUE_DEBUG
 
-static int tty_io_init(struct IODriver* driver);
+static int tty_io_init(struct IODevice* device);
 static int tty_io_read(void* dst, fileoff_t start_read, size_t sz, void* context);
 static int tty_io_write(void* src, fileoff_t start_write, size_t sz, void* context);
 static int tty_io_ioctl(unsigned long request, void* arg, tty_t context);
@@ -22,18 +22,18 @@ static int tty_io_ready_read(void* context);
 static int tty_io_ready_write(void* context);
 static int tty_io_pathconf(int conf, void* context);
 
-int tty_io_setup(struct IODriver* driver, int tty_num)
+int tty_io_setup(struct IODevice* device, int tty_num)
 {
 	/* Get the tty */
 	tty_t t = tty_find(tty_num);
-	driver->context = t;
-	driver->init = tty_io_init;
-	driver->read = tty_io_read;
-	driver->write = tty_io_write;
-	driver->ioctl = (int (*)(unsigned long, void*, void*))tty_io_ioctl;
-	driver->ready_read = tty_io_ready_read;
-	driver->ready_write = tty_io_ready_write;
-	driver->pathconf = tty_io_pathconf;
+	device->context = t;
+	device->init = tty_io_init;
+	device->read = tty_io_read;
+	device->write = tty_io_write;
+	device->ioctl = (int (*)(unsigned long, void*, void*))tty_io_ioctl;
+	device->ready_read = tty_io_ready_read;
+	device->ready_write = tty_io_ready_write;
+	device->pathconf = tty_io_pathconf;
 	return 0;
 }
 
@@ -76,7 +76,7 @@ static int tty_io_ready_write(void* context)
 	return 1; /* Always ready for write */
 }
 
-static int tty_io_init(struct IODriver* driver)
+static int tty_io_init(struct IODevice* device)
 {
 	return 0;
 }

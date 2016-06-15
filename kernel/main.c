@@ -59,7 +59,7 @@ void main_stack(void)
 
 	/* Detect devices */
 	cprintf("Initilizing device manager...\n");
-	dev_init();
+	devman_init();
 
 	/* Initilize pipes */
 	cprintf("Initilizing pipes...\t\t\t\t\t\t\t");

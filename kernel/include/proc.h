@@ -41,7 +41,7 @@ struct file_descriptor
 	int flags; /* Any flags needed by the descriptor */
 	int seek; /* What is the offset into the file? */
 	inode i; /* The inode pointer */
-	struct DeviceDriver* device; /* The device driver (if dev) */
+	struct IODevice* device; /* The device driver (if dev) */
 	pipe_t pipe; /* The pointer to the pipe (if pipe) */
 	int pipe_type; /* The type of pipe (if pipe) */
 	char path[FILE_MAX_PATH]; /* Mount point on the file system */

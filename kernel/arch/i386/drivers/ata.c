@@ -234,22 +234,22 @@ int ata_writesect(void* src, uint sect, struct FSHardwareDriver* driver)
 	return 0;
 }
 
-/** ATA devices are io devices so they must define IODriver methods. */
-int ata_io_init(struct IODriver* driver);
+/** ATA devices are io devices so they must define IODevice methods. */
+int ata_io_init(struct IODevice* device);
 int ata_io_read(void* dst, uint start_read, size_t sz,
 		struct FSHardwareDriver* context);
 int ata_io_write(void* src, uint start_write, size_t sz, 
 		 struct FSHardwareDriver* context);
-int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata)
+int ata_io_setup(struct IODevice* device, struct FSHardwareDriver* ata)
 {
-	driver->context = ata;
-	driver->init = ata_io_init;
-	driver->read = (void*)ata_io_read;
-	driver->write = (void*)ata_io_write;
+	device->context = ata;
+	device->init = ata_io_init;
+	device->read = (void*)ata_io_read;
+	device->write = (void*)ata_io_write;
 	return 0;
 }
 
-int ata_io_init(struct IODriver* driver)
+int ata_io_init(struct IODevice* device)
 {
 	return 0;
 }

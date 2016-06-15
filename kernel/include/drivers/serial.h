@@ -29,7 +29,7 @@ char serial_read_noblock(void);
 /**
  * Setup io driver for this serial connection.
  */
-int serial_io_setup(struct IODriver* driver);
+int serial_io_setup(struct IODevice* device);
 
 /**
  * Is there something waiting to be read?

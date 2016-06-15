@@ -74,9 +74,9 @@ void tty_disable(tty_t t)
     t->active=0;
 }
 
-tty_t tty_check(struct DeviceDriver* driver)
+tty_t tty_check(struct IODevice* driver)
 {
-    uintptr_t addr = (uintptr_t)driver->io_driver.context;
+    uintptr_t addr = (uintptr_t)driver->context;
     if(addr >= (uintptr_t)ttys && addr < (uintptr_t)ttys + MAX_TTYS)
     {
         /**

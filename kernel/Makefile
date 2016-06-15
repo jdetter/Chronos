@@ -6,7 +6,7 @@ export KINCLUDE_PATHS := \
 export KINCLUDE := $(addprefix -I, $(KINCLUDE_PATHS))
 
 # All files that need compiling (excluding drivers)
-KERNEL_BINS := \
+KERNEL_OBJS := \
 	syscall/syscall \
 	syscall/sysnet \
 	syscall/syssig \
@@ -33,7 +33,8 @@ KERNEL_BINS := \
 	ioctl \
 	main \
 	stdlock \
-	reboot
+	reboot \
+	devman
 
 # Generic drivers 
 KERNEL_DRIVERS := \
@@ -50,7 +51,7 @@ KERNEL_DRIVERS := \
 KERNEL_DRIVERS := $(addprefix drivers/, $(KERNEL_DRIVERS))
 
 KERNEL_OBJS := \
-	$(KERNEL_BINS) \
+	$(KERNEL_OBJS) \
 	$(KERNEL_DRIVERS)
 
 KERNEL_OBJS := $(addsuffix .o, $(KERNEL_OBJS))

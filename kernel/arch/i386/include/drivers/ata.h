@@ -42,7 +42,7 @@ int ata_writesect(void* src, sect_t sect, struct FSHardwareDriver* driver);
 /**
  * For setting up generic io driver.
  */
-int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata);
+int ata_io_setup(struct IODevice* device, struct FSHardwareDriver* ata);
 
 #define ATA_DRIVER_COUNT 4
 extern struct FSHardwareDriver* ata_drivers[];
