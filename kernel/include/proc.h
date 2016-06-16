@@ -5,7 +5,7 @@
 #include <signal.h>
 #include "context.h"
 #include "fsman.h"
-#include "kern/signal.h"
+#include "ksignal.h"
 #include "vm.h"
 #include "trap.h"
 #include "pipe.h"

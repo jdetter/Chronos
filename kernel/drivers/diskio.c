@@ -12,7 +12,7 @@
 #else
 #include <string.h>
 #include <stdlib.h>
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #endif
 
 #include "file.h"

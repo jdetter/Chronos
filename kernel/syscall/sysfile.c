@@ -6,7 +6,7 @@
 #include <sys/select.h>
 #include <dirent.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdlock.h"
 #include "file.h"
 #include "devman.h"

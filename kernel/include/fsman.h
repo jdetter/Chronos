@@ -436,6 +436,17 @@ int fs_sync(void);
 int fs_pathconf(int conf, const char* path);
 
 /**
+ * Read a line from the given inode. A line is designated by a newline
+ * character. file_position should be updated by the caller when
+ * readline returns. dst_buffer must be at least sz bytes in size.
+ * Returns the amount of bytes read from the file. The newline
+ * character is included in this count AND is included in the buffer.
+ * Therefore, a blank link will return 1, which a newline character
+ * in the null character terminated buffer.
+ */
+int fs_readline(inode i, size_t file_position, void* dst_buffer, size_t sz);
+
+/**
  * Get rid of the macro declaration.
  */
 #ifdef NO_DEFINE_INODE

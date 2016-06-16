@@ -20,7 +20,7 @@ int log2_linux(int value); /* defined in ext2.c*/
 
 #include <stdlib.h>
 #include <string.h>
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 
 #endif
 

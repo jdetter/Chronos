@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "proc.h"
 #include "panic.h"
 #include "drivers/cmos.h"

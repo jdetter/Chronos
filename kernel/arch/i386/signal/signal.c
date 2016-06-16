@@ -12,8 +12,8 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "kern/stdlib.h"
-#include "kern/signal.h"
+#include "kstdlib.h"
+#include "ksignal.h"
 #include "x86.h"
 #include "stdarg.h"
 #include "stdlock.h"

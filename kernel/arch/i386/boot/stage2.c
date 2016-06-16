@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "x86.h"
 #include "file.h"
 #include "stdlock.h"

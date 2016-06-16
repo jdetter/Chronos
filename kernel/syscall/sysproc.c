@@ -7,7 +7,7 @@
 #include <sys/fcntl.h>
 #include <sys/wait.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "syscall.h"
 #include "file.h"
 #include "stdlock.h"

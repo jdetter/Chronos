@@ -1,5 +1,5 @@
-#ifndef _KERN_STDLIB_H_
-#define _KERN_STDLIB_H_
+#ifndef _KERNEL_STDLIB_H_
+#define _KERNEL_STDLIB_H_
 
 /* Dependant headers */
 #include <stdint.h>

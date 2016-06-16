@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"

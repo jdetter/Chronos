@@ -10,7 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "idt.h"
 #include "trap.h"
 #include "file.h"
