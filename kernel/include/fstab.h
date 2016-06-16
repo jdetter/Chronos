@@ -1,10 +1,12 @@
 #ifndef _FSTAB_H_
 #define _FSTAB_H_
 
+#include "file.h"
+
 struct fstab
 {
-	const char device[FILE_MAX_PATH];
-	const char mount[FILE_MAX_PATH];
+	char device[FILE_MAX_PATH];
+	char mount[FILE_MAX_PATH];
 	int type;
 	int options;
 	int dump;
@@ -30,5 +32,11 @@ struct fstab
 #define FSTAB_OPT_USERS		0x0080
 
 #define FSTAB_DEFAULTS 		0x0000
+
+/**
+ * Parse the system's file system table. The root partition must already
+ * be mounted and all disks must be ready.
+ */
+extern int fstab_init(void);
 
 #endif

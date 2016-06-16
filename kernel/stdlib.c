@@ -358,3 +358,94 @@ int __log2(int value)
 
 	return x;
 }
+
+
+/* Returns non zero if c is in delim, zero otherwise. */
+static int strtok_r_delimiter(char c, const char* delim)
+{
+	while(delim && *delim)
+	{
+		if(*delim == c) 
+			return 1;
+		delim++;
+	}
+
+	return 0;
+}
+
+/* Trims any delim characters from str */
+static char* strtok_r_initial_trim(char* str, const char* delim)
+{
+	/* Erase all prefixed delimiters */
+	while(*str && strtok_r_delimiter(*str, delim))
+	{
+		*str = 0;
+		str++;
+	}	
+
+	if(!strlen(str))
+		return str;
+
+	/* Erase all trailing delimiters */
+	char* end = str + strlen(str) - 1;
+	while(end > str && strtok_r_delimiter(*end, delim))
+	{
+		*end = 0;
+		end--;
+	}
+
+	return str;
+}
+
+char* strtok_r(char* str, const char* delim, char** state)
+{
+	/* Make sure we are in a valid state */
+	if(!state) return NULL;
+	if(!str && !state) return NULL;
+	if(!str && !*state) return NULL;
+
+	/* We are done when state is pointing to a null character */
+	char* search = NULL;
+	if(!str)
+	{
+		/* state must be pointing to something valid */
+		if(!*state) return NULL;
+
+		/* We saved our search criteria from a previous run */
+		search = *state;
+	} else {
+		/* Trim delimiters from start and end */
+		str = strtok_r_initial_trim(str, delim);
+
+		/* Was the string all delimiters? */
+		if(!*str) return NULL;
+
+		search = str;
+	}
+
+	/* Make sure our search criteria is non zero */
+	if(!search)
+		return NULL;
+
+	/* Make sure our search critera isn't the end of the string */
+	if(!*search)
+		return NULL;
+
+	/* Save the start of this string */
+	char* start = search;
+
+	/* Find the next delimiter */
+	while(*search && !strtok_r_delimiter(*search, delim)) search++;
+
+	/* Zero all delimiters until we hit a null or non delimiter */
+	while(*search && strtok_r_delimiter(*search, delim))
+	{
+		*search = 0;
+		search++;
+	}
+
+	/* Set the state */
+	*state = search;
+
+	return start;
+}

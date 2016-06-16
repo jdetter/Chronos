@@ -43,6 +43,7 @@ KERNEL_DRIVERS := \
 	lwfs \
 	raid \
 	tty \
+	fstab \
 	vt102/tty_display \
 	vt102/tty_codes \
 	vt102/tty_io \
