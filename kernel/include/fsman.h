@@ -21,9 +21,10 @@ typedef uint32_t fileoff_t; /* Offset into a file */
 struct FSHardwareDriver
 {
 	char valid; /* 1 = valid, 0 = invalid. */
-	int sectmax;
-	int sectshifter;
-	int sectsize;
+	int sectmax; /* The last sector */
+	int sectshifter; /* Turn an address into a sector */
+	int sectsize; /* Size of the disks sector */
+	int spp; /* Sectors per page */
 	struct cache cache;
 	int (*readsect)(void* dst, sect_t sect, struct FSHardwareDriver* driver); 
 	int (*writesect)(void* src, sect_t sect, struct FSHardwareDriver* driver);
