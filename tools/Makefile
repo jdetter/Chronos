@@ -1,8 +1,14 @@
 TOOLS := \
-	disk-part
+	cdisk \
+	ptabledump
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-TOOLS_CFLAGS := -D__LINUX__
+ifndef $(CC)
+	CC := gcc
+	CFLAGS := -ggdb -gdwarf-2
+endif
+
+TOOLS_CFLAGS := -D__LINUX__ -Iinclude/
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
 .PHONY: tools
