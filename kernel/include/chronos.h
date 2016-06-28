@@ -108,9 +108,11 @@
 // #define SYS_semtimedop	0x5E
 
 #ifndef __CHRONOS_ASM_ONLY__
+#ifndef __ASM_ONLY__
 extern int reboot(int type);
 
 extern int __chronos_syscall(int num, ...);
+#endif
 #endif
 
 #ifndef __CHRONOS_SYSCALLS_ONLY__

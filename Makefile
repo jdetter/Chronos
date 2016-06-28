@@ -34,9 +34,10 @@ QEMU := qemu-system-$(BUILD_ARCH)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
-FS_DD_BS := 4096
-FS_DD_COUNT := 262144
+FS_DD_BS := 512
+FS_DD_COUNT := 2097152
 FS_START := 2048
+DISK_SZ := 1074790400
 
 # Size of the second boot sector 
 BOOT_STAGE2_SECTORS := 140
@@ -55,10 +56,7 @@ chronos.img:
 	cd user ; \
 	make
 	make $(FS_TYPE)
-	dd if=/dev/zero of=chronos.img bs=512 count=2048
-	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
-	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
+	echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img --stage-2=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) ./chronos.img
 
 chronos-multiboot.img:
 	cd tools ; \

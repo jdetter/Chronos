@@ -228,8 +228,46 @@ static int file_transfer(int infd, int outfd, uint64_t* s, int zero_fill)
 		transferred += remaining;
 	}
 
+	free(buffer);
 	/* success */
 	return 0;
+}
+
+static int readall(int fd, void* dst, size_t sz)
+{
+	int r = 0;
+	while(r < sz)
+	{
+		int ret = read(fd, (char*)dst + r, sz - r);
+
+		if(ret == 0) /* EOF */
+			return r;
+		if(ret < 0)
+			return -1;
+
+
+		r += ret;
+	}
+
+	return sz;
+}
+
+static int writeall(int fd, void* src, size_t sz)
+{
+    int w = 0;
+    while(w < sz)
+    {
+        int ret = write(fd, (char*)src + w, sz - w);
+
+        if(ret == 0) /* EOF */
+            return w;
+        if(ret < 0)
+            return -1;
+
+        w += ret;
+    }
+
+    return sz;
 }
 
 typedef uint32_t sect_t;
@@ -358,7 +396,7 @@ int main(int argc, char** argv)
 								else usage(1, "Unknown file system", type);
 							} else tmppart.type = 0x00;
 
-							memcpy(partitions + part, &tmppart, 
+							memcpy(partitions + part, &tmppart,
 								sizeof(struct partinfo));
 						} else if(!strncmp(argv[x], "--stage-2", 9))
 						{
@@ -382,8 +420,6 @@ int main(int argc, char** argv)
 										file_start = last_start;
 									else if(!start_sector_start)
 										start_sector_start = last_start;
-									else if(!sectors_start)
-										sectors_start = last_start;
 									else usage(1, "Illegal boot stage 2 format",
 											argv[x]);
 
@@ -392,25 +428,29 @@ int main(int argc, char** argv)
 								}
 							}
 
+							if(sectors_start)
+								usage(1, "Illegal boot stage 2 format", argv[x]);
+							else sectors_start = last_start;
+
 							if(!sectors_start)
 								usage(1, "Illegal boot stage 2 format", argv[x]);
 
 							stage2.file = strdup(file_start);
+							printf("Boot stage 2 file: %s\n",
+									stage2.file);
 							if(strto32(start_sector_start, 
 									&stage2.start_sector) < 0)
 								usage(1, "Illegal boot stage 2 format", argv[x]);
-							if(strto32(sectors_start, 
-									&stage2.sectors) < 0)
-								usage(1, "Illegal boot stage 2 format", argv[x]);
-
-							printf("Boot stage 2 file: %s\n",
-									stage2.file);
 							printf("Sector start: %llu\n", 
 									(long long unsigned int)
 									stage2.start_sector);
+							if(strto32(sectors_start, 
+									&stage2.sectors) < 0)
+								usage(1, "Illegal boot stage 2 format", argv[x]);
 							printf("Sector count: %llu\n",
 									(long long unsigned int)
 									stage2.sectors);
+
 							stage2_setup = 1;
 						} else {
 							usage(1, "Unknown option", argv[x]);	
@@ -537,6 +577,9 @@ int main(int argc, char** argv)
 			printf("Please recompute your partition table entries.\n");
 			return 1;
 		}
+
+		printf("Disk size has been adjusted to %llu\n", 
+				(unsigned long long)disk_size);
 	}
 
 	int out_fd = open(output_file, O_CREAT | O_WRONLY, 0644);
@@ -585,6 +628,7 @@ int main(int argc, char** argv)
 
     /* Check for boot stage 1 */
     int boot1_fd = -1;
+	size_t boot1_sz = 0;
     if(boot1)
     {
         printf("Opening boot stage 1 file %s\n", boot1);
@@ -605,12 +649,15 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
+		boot1_sz = (size_t)end;
+
 		/* Go back to the start */
 		lseek(boot1_fd, 0, SEEK_SET);
     }
 
     /* Check for boot stage 2 */
     int boot2_fd = -1;
+	uint64_t boot2_sz = 0;
     if(stage2_setup)
     {
         printf("Opening boot stage 2 file %s\n",
@@ -623,8 +670,10 @@ int main(int argc, char** argv)
             perror("cdisk");
             return 1;
         }
+
+		/* Get the size */
+		boot2_sz = (uint64_t)lseek(boot2_fd, 0, SEEK_END);
     }
-	
 
 	/* Do the partitions */
 	for(x = 0;x < 4;x++)
@@ -644,50 +693,100 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
+		printf("Writing partition %d...\n", x + 1);
 		if(file_transfer(partition_files[x], out_fd, &size, 1))
 		{
 			printf("Failed to write partition %d.\n", x + 1);
 			return 1;
-		} else {
-			printf("Wrote partition %d\n", x + 1);
 		}
+	}
+
+	/* Do the boot stage 2 code */
+	if(boot2_fd > 0)
+	{
+		printf("Writing boot stage 2...\n");
+		/* Seek to start of file */
+		if(lseek(boot2_fd, 0, SEEK_SET) != 0)
+		{
+			perror("lseek");
+			return 1;
+		}
+
+		/* Seek the output file */
+		off_t stage2_start = stage2.start_sector * sect_size;
+		if(lseek(out_fd, stage2_start, SEEK_SET) != stage2_start)
+		{
+			perror("lseek");
+			return 1;
+		}
+
+		/* Write boot stage 2*/
+		if(file_transfer(boot2_fd, out_fd, &boot2_sz, 0))
+		{
+			printf("Failed to copy boot stage 2.\n");
+			return 1;
+		}
+
+		printf("Wrote boot stage 2.\n");
 	}
 
 	printf("Updating master boot record...\n");
 	struct master_boot_record mbr;
 	memset(&mbr, 0, sizeof(struct master_boot_record));
 
-	/* Roll back the output file to the beginning */
-	lseek(out_fd, 0, SEEK_SET);
 
-	/* Read in the boot code */
-	int total_read = MAX_BOOT1; /* How much to read */
-	int r = 0; /* The total amount read */
-	int ret = 0; /* temporary return value */
-	while(r < total_read && (ret = read(boot1_fd, mbr.bootstrap + r, 
-					total_read - r)) != 0)
+	/* Read the bootstrap */
+	if(boot1_fd > 0)
 	{
-		if(ret < 0)
+		if(lseek(boot1_fd, 0, SEEK_SET) != 0)
 		{
-			printf("READ FAULT\n");
-			perror("cdisk");
+			perror("lseek");
 			return 1;
 		}
 
-		r += ret;
+		int ret;
+		ret = readall(boot1_fd, mbr.bootstrap, boot1_sz);
+		if(ret < 0)
+		{
+			perror("read");
+			return 1;
+		} else if(ret != boot1_sz)
+		{
+			/* We couldn't read in the boot code. */
+			printf("Read fault during boot code read.\n");
+			return 1;
+		}
 	}
 
-	/* Set the partitions */
-	for(x = 0;x < 4;x++)
-	{
-		mbr.table[x].status = 0x00;
-		mbr.table[x].type = partitions[x].type;
-		memset(mbr.table[x].chs_first, 0, 3);
-		memset(mbr.table[x].chs_last, 0, 3);
-	}
+	/* Set the partitions in the mbr */
+    for(x = 0;x < 4;x++)
+    {
+        mbr.table[x].type = partitions[x].type;
+
+        if(partitions[x].type)
+        {
+            mbr.table[x].start_sector = partitions[x].startsect;
+            mbr.table[x].sectors = partitions[x].sectors;
+        }
+    }
 
 	/* Set the signature */
 	mbr.signature = 0xAA55;
+
+	/* Write the MBR to disk */
+	if(lseek(out_fd, 0, SEEK_SET) != 0)
+	{
+		perror("lseek");
+		return 1;
+	}
+
+	if(writeall(out_fd, &mbr, sizeof(struct master_boot_record)) !=
+				sizeof(struct master_boot_record))
+	{
+		/* We couldn't write the mbr */
+		printf("Write fault during mbr write.\n");
+		return 1;
+	}
 
 	printf("Success.\n");
 
