@@ -54,6 +54,9 @@ void panic(char* fmt, ...) __attribute__ ((noreturn));
  * you'll need to manually | DEBUG_SYSTEM with whatever D_SYSTEM_s you want to debug.
  * */
 
+#define DEVEL(level, fmt...)        //TODO: Print at level
+
+#define DEVEL_LEVEL(level)      //TODO: Define the level at PREVIOUS_DEVEL_LEVEL << 1
 
 /* Debug verbosity, higher number is more verbose! */
 #define _D_LEVEL_PREFIX									D_LEVEL_
