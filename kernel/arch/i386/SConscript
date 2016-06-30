@@ -3,12 +3,10 @@ import os
 CURDIR = str(Dir('.'))
 
 def get_subfolders(_dir):
-    subfolders = [tup[0] for tup in os.walk(_dir)]
+    return (tup[0] for tup in os.walk(_dir))
 
 def locate_objects(_dir):
-    subfolders = [os.path.join(CURDIR, _file) for _file in os.listdir(CURDIR)]
-    subfolders = filter(os.path.isdir, subfolders)
-    #subfolders = get_subfolders(_dir)
+    subfolders = get_subfolders(_dir)
 
     objects = []
     for folder in subfolders:
