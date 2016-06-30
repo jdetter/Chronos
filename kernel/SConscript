@@ -14,12 +14,7 @@ def recursive_get_subfolders(dir_):
     return (tup[0] for tup in os.walk(dir_))
 
 def locate_sources(dir_):
-    print(dir_)
-    # Check if we are using '.' since os.path.join doesn't work for it.
-    if os.path.join(dir_, '*.c').endswith('*.c'):
-        print(os.path.join(dir_,'*.c'))
-        return Glob(os.path.join(dir_,'*.c'))
-    return Glob('*.c')
+    return Glob(os.path.join(dir_,'*.c'))
 
 kinclude_paths = ['include']
 kinclude_paths = [Dir(path) for path in kinclude_paths]
