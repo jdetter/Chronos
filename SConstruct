@@ -1,4 +1,8 @@
 import os
+from SCons.Script import *
+
+def crosstool_path(tool):
+    return Join_path(tool_dir, target+tool)
 
 # TODO: Logic for deciding the actual target.
 target      = 'i686-pc-chronos-'
@@ -7,14 +11,12 @@ build_arch  = 'i386'
 # TODO: Take from the build environment. 
 tool_dir = os.path.abspath('../tools/bin')
 
-target_sysroot = os.path.join('..', 'sysroot')
+target_sysroot = Join_path('..', 'sysroot')
 
 subbuilds           = ['kernel']
 subbuild_scripts    = [str(os.path.join(subbuild, 'SConscript')) for subbuild in subbuilds]
 
 # Make the path to the tool os agnostic.
-def crosstool_path(tool):
-    return str(os.path.join(tool_dir, target+tool))
 
 cross_cc        = crosstool_path('gcc')
 cross_ld        = crosstool_path('ld')

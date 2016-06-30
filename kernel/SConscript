@@ -1,51 +1,20 @@
-import os
+from SCons.Script import *
 
 Import('build_arch')
 Import('cross_env')
-
-CURDIR = str(Dir('.'))
-
-# TODO: Create a general helper to import to define these.
-def get_folders(dir_):
-    files = os.listdir(dir_)
-    return filter(os.path.isdir, files)
-
-def recursive_get_subfolders(dir_):
-    return (tup[0] for tup in os.walk(dir_))
-
-def locate_sources(dir_):
-    return Glob(os.path.join(dir_,'*.c'))
 
 kinclude_paths = ['include']
 kinclude_paths = [Dir(path) for path in kinclude_paths]
 
 cross_env.Append(CPPPATH=kinclude_paths)
 
-subbuilds = [str(os.path.join('arch', build_arch))]
-# TODO: Make a shared library so I dont have to redo this
-subbuild_scripts = [str(os.path.join(subbuild, 'SConscript')) for subbuild in subbuilds]
+subbuilds = [Join_path('arch', build_arch)]
 
-SConscript(subbuild_scripts)
+SConscript(Get_subscripts(subbuilds))
 
-subdir_nobuild_list = ['arch', 'include']
+# Don't search arch or include for sources, we've added arch.
+dir_blacklist = ['arch', 'include']
 
-subdirs_to_build = [folder for folder in get_folders(CURDIR) 
-                    if folder not in subdir_nobuild_list]
-
-# Add all the subfolders of subfolders.
-inner_subdirs = []
-for subdir in subdirs_to_build:
-    subfolders = recursive_get_subfolders(subdir)
-    if subfolders is not None:
-        inner_subdirs.extend(subfolders)
-
-dirs_to_build = inner_subdirs + subdirs_to_build + [CURDIR]
-
-sources = []
-for dir_ in dirs_to_build:
-    dir_sources  = locate_sources(dir_)
-    print(dir_)
-    if dir_sources is not None:
-        sources.extend(dir_sources)
+sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
 
 cross_env.Object(sources)
