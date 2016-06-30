@@ -18,8 +18,9 @@ def locate_sources(dir_):
 
 kinclude_paths = ['include']
 kinclude_paths = [Dir(path) for path in kinclude_paths]
-
-cross_env.Append(CPPPATH=kinclude_paths)
+kernel_ldflags = ['-nostdlib', '--entry=main',
+        '--section-start=.text=0xFF000000']
+cross_env.Append(CPPPATH=kinclude_paths, LDFLAGS=kernel_ldflags)
 
 subbuilds = [str(os.path.join('arch', build_arch))]
 # TODO: Make a shared library so I dont have to redo this
@@ -48,4 +49,7 @@ for dir_ in dirs_to_build:
     if dir_sources is not None:
         sources.extend(dir_sources)
 
-cross_env.Object(sources)
+objects = cross_env.Object(sources)
+#print(dir(cross_env))
+#cross_env.Ld('chronos.o', objects)
+#cross_env.Objcopy('chronos.sym', 'chronos')

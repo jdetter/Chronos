@@ -1,5 +1,21 @@
 import os
 
+def objcopy_generator(source, target, env, for_signature):
+    return '$OBJCOPY $OBJCOPYFLAGS %s -o %s'%(source[0], target[0])
+
+#def ld_generator(source, target, env, for_signature):
+#    return '$LD $LDFLAGS %s -o %s'%(source[0], target[0])
+
+
+objcopy_builder = Builder(
+        generator=objcopy_generator,
+        suffix='',
+        src_suffix='.o')
+ld_builder = Builder(
+        action='$LD $LDFLAGS $SOURCES -o $TARGET',
+        suffix='',
+        src_suffix='.o')
+
 # TODO: Logic for deciding the actual target.
 target      = 'i686-pc-chronos-'
 build_arch  = 'i386'
@@ -50,16 +66,19 @@ asflags = [
 
 qemu = 'qemu-system-'+build_arch
 
+generic_env = Environment(BUILDERS = {'Objcopy': objcopy_builder, 'Ld':
+    ld_builder})
+
 # TODO: Separate scripts for other target stuff like making filesystem etc.
 
-cross_env = Environment(
+cross_env = generic_env.Clone(
         CC=cross_cc,
-        LDMODULE=cross_ld, # TODO: Might not be right, may need a builder
+        LD=cross_ld, # TODO: Might not be right, may need a builder
         CCFLAGS=ccflags, 
         ASFLAGS=asflags)
 #cross_objcopy #TODO: Need to create a builder
 
-host_env = Environment()
+host_env = generic_env.Clone()
 
 Export('cross_env', 'host_env', 'build_arch') 
 # Run all other builds.
