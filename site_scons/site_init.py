@@ -105,3 +105,16 @@ def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
             sources.extend(dir_sources)
 
     return sources
+
+def objcopy_generator(source, target, env, for_signature):
+    return '$OBJCOPY $OBJCOPYFLAGS %s -o %s'%(source[0], target[0])
+
+OBJCPY_BUILDER = Builder(
+        generator=objcopy_generator,
+        suffix='',
+        src_suffix='.o')
+
+LD_BUILDER = Builder(
+        action='$LD $LDFLAGS $SOURCES -o $TARGET',
+        suffix='',
+        src_suffix='.o')
