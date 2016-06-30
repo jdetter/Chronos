@@ -1,0 +1,15 @@
+import os
+
+Import('build_arch')
+Import('cross_env')
+
+kinclude_paths = ['include']
+kinclude_paths = [Dir(path) for path in kinclude_paths]
+
+cross_env.Append(CPPPATH=kinclude_paths)
+
+subbuilds = [str(os.path.join('arch', build_arch))]
+# TODO: Make a shared library so I dont have to redo this
+subbuild_scripts = [str(os.path.join(subbuild, 'SConscript')) for subbuild in subbuilds]
+
+SConscript(subbuild_scripts)

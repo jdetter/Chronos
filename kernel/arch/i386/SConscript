@@ -1,0 +1,30 @@
+import os
+
+CURDIR = str(Dir('.'))
+
+def get_subfolders(_dir):
+    subfolders = [tup[0] for tup in os.walk(_dir)]
+
+def locate_objects(_dir):
+    subfolders = [os.path.join(CURDIR, _file) for _file in os.listdir(CURDIR)]
+    subfolders = filter(os.path.isdir, subfolders)
+    #subfolders = get_subfolders(_dir)
+
+    objects = []
+    for folder in subfolders:
+        folder_objs = Glob(os.path.join(folder,'*.c'))
+        objects.extend(folder_objs)
+    return objects
+
+relocate_flags = ['-m elf_i386', '-r'] # Wot r these
+
+Import('cross_env')
+
+arch_include_paths = ['include']
+arch_include_paths = [Dir(path) for path in arch_include_paths]
+
+arch_env = cross_env.Clone()
+
+arch_env.Append(CPPPATH=arch_include_paths)
+
+arch_env.Object(locate_objects(CURDIR))
