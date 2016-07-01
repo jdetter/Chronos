@@ -14,8 +14,8 @@ typedef unsigned int sect_t;
  */
 struct ATAHardwareContext
 {
-	int primary; /* 1 = primary, 0 = secondary */
-	int master; /* 1 = master, 0 = slave*/
+        int primary; /* 1 = primary, 0 = secondary */
+        int master; /* 1 = master, 0 = slave*/
 };
 
 /**
@@ -24,10 +24,26 @@ struct ATAHardwareContext
 void ata_init(void);
 
 /**
+ * Read a hard drive sector into the destination buffer, dst. Returns the
+ * amount of bytes read from the disk. If there was an error return 0.
+ * Note: sector sizes will always be treated as 512 byte buffers, so the
+ * dst buffer is expected to be at least 512 bytes.
+ */
+int ata_readsect(void* dst, sect_t sect, struct FSHardwareDriver* driver);
+
+/**
+ * Write the bytes in src to a hard drive sector. Returns the amount of bytes
+ * written to the disk. If there was an error, returns 0.
+ * Note: sector sizes will always be treated as 512 byte buffers, so the
+ * src buffer is expected to be at least 512 bytes. 
+ */
+int ata_writesect(void* src, sect_t sect, struct FSHardwareDriver* driver);
+
+/**
  * For setting up generic io driver.
  */
-int ata_io_setup(struct IODevice* device, struct StorageDevice* ata);
+int ata_io_setup(struct IODriver* driver, struct FSHardwareDriver* ata);
 
 #define ATA_DRIVER_COUNT 4
-extern struct StorageDevice* ata_drivers[];
+extern struct FSHardwareDriver* ata_drivers[];
 #endif

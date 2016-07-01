@@ -39,10 +39,10 @@ $(BUILD_DIR)chronos.o: $(KERNEL_OBJS) $(ARCH_BUILD_DIR)arch.o
 
 $(BUILD_DIR)%.o: %.S
 	$(CROSS_AS) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_AS) $(AFLAGS) $(KINCLUDE) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
 
 $(BUILD_DIR)%.o: %.c
 	$(CROSS_CC) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_CC) $(CFLAGS) $(KINCLUDE) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
 
 -include $(KERNEL_SRCS:%.c=$(BUILD_DIR)%.d)

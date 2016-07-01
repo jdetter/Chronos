@@ -95,7 +95,7 @@ $(ARCH_BUILD_DIR)%.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_INCLUDE) -c -o $@ $<
 
 $(ARCH_BUILD_DIR)%.o: %.S
-	$(CROSS_AS) $(CFLAGS) $(KINCLUDE) -c -o $@ $<
+	$(CROSS_AS) $(CFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
 	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(i386_INCLUDE) -c -o $@ $<
 
 -include $(ARCH_SRCS:%.c=$(OBJDIR)%.d)
