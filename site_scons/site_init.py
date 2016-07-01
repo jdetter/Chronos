@@ -13,9 +13,9 @@ def Join_path(*subpath):
     return os.path.join(*subpath)
 
 def Build_include_paths(REAL_CURDIR, include_paths):
-    return [Get_include_path(REAL_CURDIR, path) for path in include_paths]
+    return [Get_real_path(REAL_CURDIR, path) for path in include_paths]
 
-def Get_include_path(REAL_CURDIR, path):
+def Get_real_path(REAL_CURDIR, path):
     return '#' + Join_path(REAL_CURDIR(), path)
 
 def Path(file_):

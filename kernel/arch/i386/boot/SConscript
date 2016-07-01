@@ -1,0 +1,63 @@
+# We need to manually define dependencies for boot image.
+# TODO: Make a better way to configure this than editing a python data
+# structure.
+Import('KERNEL_DIR')
+Import('ARCH_DIR')
+Import('arch_env')
+
+BOOT_DEPS = {
+        1 :{None},
+        2:{ 
+            ARCH_DIR: [
+                "stdlock",
+                "vm/asm",
+                "vm/pgdir",
+                "vm/vm_alloc",
+                "vm/vm_boot",
+                "drivers/serial",
+                "drivers/ata",
+                "drivers/pic",
+                "x86/asm",
+                "cpu"
+                ],
+            KERNEL_DIR:[
+                "drivers/diskio",
+                "drivers/ext2",
+                "cache/cache",
+                "cache/diskcache",
+                "cache/cacheman",
+                "stdlock",
+                "file",
+                "stdlib"
+                ]
+
+            }
+        }
+
+
+def get_boot_stage_dependencies(boot_stage):
+
+    dependency_files = []
+
+    for dir_, depslist in BOOT_DEPS[boot_stage].items():
+        for file_ in depslist:
+            #TODO: Use/make a script function to do this search..
+            file_ = Glob(Join_path('#'+dir_, file_+'.[c|S]'))
+
+            if file_ is not None:
+                dependency_files.extend(file_)
+
+    return dependency_files
+
+objs = get_boot_stage_dependencies(2)
+boot_env = arch_env.Clone()
+
+for val, obj in enumerate(objs):
+    boot_env.Object(str(val),obj)
+
+
+
+
+
+#for boot_stage in range(1,3):
+#

@@ -1,7 +1,7 @@
 #define __X86_ASM_ONLY__
-#include "x86.h"
+#include "arch/x86.h"
 #define __ASM_ONLY__
-#include "trap.h"
+#include "arch/trap.h"
 
 /* unsigned int x86_get_cr0(void) */
 .globl x86_get_cr0

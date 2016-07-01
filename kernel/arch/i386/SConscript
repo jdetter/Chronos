@@ -11,6 +11,7 @@ RELOCATE_FLAGS = [
 ARCH_INCLUDE_PATHS = ['include']
 ARCH_IGNORE_PATHS = ['^boot$']
 ARCH_GCC_SUFFIX = ['.c']
+SUBBUILDS = ['boot']
 
 def build_arch_env():
     arch_env = kernel_env.Clone()
@@ -31,6 +32,15 @@ ARCH_INCLUDE_PATHS = Build_include_paths(REAL_CURDIR, ARCH_INCLUDE_PATHS)
 
 arch_env = build_arch_env()
 
+Export('arch_env')
+
 build_arch_objects(arch_env)
+ARCH_DIR = REAL_CURDIR()
+Export('ARCH_DIR')
+
+for subbuild in SUBBUILDS:
+    REAL_CURDIR = lambda : Join_path(KERNEL_DIR, subbuild)
+    # FIXME:
+    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', variant_dir='boot-build', duplicate=0)
 
 Return('ARCH_INCLUDE_PATHS')

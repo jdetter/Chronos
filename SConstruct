@@ -71,3 +71,4 @@ Export('cross_env', 'host_env', 'build_arch')
 for subbuild in subbuilds:
     REAL_CURDIR = lambda : subbuild
     SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', variant_dir='build', duplicate=0)
+    #SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR')

@@ -14,6 +14,8 @@ KERNEL_LDFLAGS = [
         '--section-start=.text=0xFF000000'
         ]
 
+KERNEL_DIR_BLACKLIST = ['^arch$', '^include$']
+
 SUBBUILDS = [Join_path('arch',build_arch)]
 
 def create_kernel_env():
@@ -28,9 +30,9 @@ def create_kernel_env():
 
 def build_kernel_objects(kernel_env):
     # Don't search arch or include for sources, we've added arch.
-    dir_blacklist = ['^arch$', '^include$']
 
-    sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
+    sources = Get_sources_recursive(CURDIR(), suffixes='.c',
+            blacklist=KERNEL_DIR_BLACKLIST)
 
     return kernel_env.Object(sources)
 
@@ -45,12 +47,14 @@ def build_kernel_objects(kernel_env):
 kernel_env = create_kernel_env()
 
 Export('kernel_env')
+KERNEL_DIR = REAL_CURDIR()
+Export('KERNEL_DIR')
+
 ARCH_LIBS=None
 
 # Build the subdirs for the kernel.
 for subbuild in SUBBUILDS:
-    curdir = REAL_CURDIR()
-    REAL_CURDIR = lambda : Join_path(curdir, subbuild)
+    REAL_CURDIR = lambda : Join_path(KERNEL_DIR, subbuild)
     # FIXME:
     ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
     
