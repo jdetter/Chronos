@@ -6,9 +6,17 @@ relocate_flags = ['-m elf_i386', '-r'] # Wot r these
 
 arch_include_paths = ['include']
 arch_include_paths = [Dir(path) for path in arch_include_paths]
+print(type(Dir('boot')))
+
+arch_ignore_paths = ['^boot$']
 
 arch_env = cross_env.Clone()
 
 arch_env.Append(CPPPATH=arch_include_paths)
 
-arch_env.Object(Get_sources_recursive(CURDIR(), suffixes='.c'))
+print(arch_ignore_paths)
+
+sources = Get_sources_recursive(CURDIR(), suffixes='.c',
+        blacklist=arch_ignore_paths)
+
+arch_env.Object(sources)

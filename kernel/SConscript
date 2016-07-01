@@ -14,7 +14,7 @@ subbuilds = [Join_path('arch', build_arch)]
 SConscript(Get_subscripts(subbuilds))
 
 # Don't search arch or include for sources, we've added arch.
-dir_blacklist = ['arch', 'include']
+dir_blacklist = ['^arch$', '^include$']
 
 sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
 

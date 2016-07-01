@@ -1,4 +1,5 @@
 import os
+import re
 
 
 def Join_path(*subpath):
@@ -85,16 +86,26 @@ def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
         A list of regexes to avoid looking in for objects.
     """
 
-    # TODO: Use a regex.
-    dirs_to_build = [dir_ for dir_ in Get_dirs(start_dir) if dir_ and (dir_ not in blacklist)]
+    blacklist = [re.compile(entry) for entry in blacklist]
 
-    # Add all the subdirs of subdirs.
+    def not_in_blacklist(val):
+        if val is None:
+            return False
+
+        for entry in blacklist:
+            if entry.search(val):
+                return False
+        return True
+
+    dirs_to_build = [dir_ for dir_ in Get_dirs(start_dir) if not_in_blacklist(dir_)]
+
+    # Add all the subdirs of subdirs not in the blacklist
     inner_subdirs = []
     for dir_ in dirs_to_build:
         subdirs = Get_subdirs(dir_)
-        # TODO: Also check the blacklist doesn't match a dir.
-        if subdirs is not None:
-            inner_subdirs.extend(subdirs)
+        for subdir in subdirs:
+            if not_in_blacklist(subdir):
+                inner_subdirs.append(subdir)
 
     dirs_to_build = inner_subdirs + dirs_to_build + [dir_]
 
