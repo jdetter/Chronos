@@ -1,6 +1,7 @@
 from SCons.Script import *
 
 Import('kernel_env')
+Import('REAL_CURDIR')
 
 RELOCATE_FLAGS = [
         '-m elf_i386', 
@@ -14,7 +15,9 @@ ARCH_GCC_SUFFIX = ['.c']
 def build_arch_env():
     arch_env = kernel_env.Clone()
 
-    arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS)
+    arch_include_paths = Build_include_paths(REAL_CURDIR, ARCH_INCLUDE_PATHS)
+
+    arch_env.Append(CPPPATH=arch_include_paths)
 
     return arch_env
 

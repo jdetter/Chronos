@@ -2,6 +2,7 @@ from SCons.Script import *
 
 Import('build_arch')
 Import('cross_env')
+Import('REAL_CURDIR')
 
 KINCLUDE_PATHS = [
         'include'
@@ -13,10 +14,15 @@ KERNEL_LDFLAGS = [
         '--section-start=.text=0xFF000000'
         ]
 
+SUBBUILDS = [Join_path('arch',build_arch)]
+
 def create_kernel_env():
+    kinclude_paths = Build_include_paths(REAL_CURDIR, KINCLUDE_PATHS)
+
     kernel_env = cross_env.Clone()
 
-    kernel_env.Append(CPPPATH=KINCLUDE_PATHS, LDFLAGS=KERNEL_LDFLAGS)
+    kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=KERNEL_LDFLAGS)
+    #kernel_env.Append(CPPPATH=KINCLUDE_PATHS, LDFLAGS=KERNEL_LDFLAGS)
 
     return kernel_env
 
@@ -41,7 +47,10 @@ kernel_env = create_kernel_env()
 Export('kernel_env')
 
 # Build the subdirs for the kernel.
-subbuilds = [Join_path('arch', build_arch)]
-SConscript(Get_subscripts(subbuilds))
+
+for subbuild in SUBBUILDS:
+    curdir = REAL_CURDIR()
+    REAL_CURDIR = lambda : Join_path(curdir, subbuild)
+    SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
 
 build_kernel_objects(kernel_env)

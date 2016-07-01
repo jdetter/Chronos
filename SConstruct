@@ -13,7 +13,6 @@ tool_dir = os.path.abspath('../tools/bin')
 target_sysroot = Join_path('..', 'sysroot')
 
 subbuilds           = ['kernel']
-subbuild_scripts    = [Join_path(subbuild, 'SConscript') for subbuild in subbuilds]
 
 # Make the path to the tool os agnostic.
 
@@ -69,4 +68,6 @@ host_env = generic_env.Clone()
 Export('cross_env', 'host_env', 'build_arch') 
 
 # Run all other builds in a build dir..
-SConscript(subbuild_scripts, variant_dir='build', duplicate=0)
+for subbuild in subbuilds:
+    REAL_CURDIR = lambda : subbuild
+    SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', variant_dir='build', duplicate=0)
