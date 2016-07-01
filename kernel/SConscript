@@ -7,7 +7,12 @@ kinclude_paths = ['include']
 kinclude_paths = [Dir(path) for path in kinclude_paths]
 kernel_ldflags = ['-nostdlib', '--entry=main',
         '--section-start=.text=0xFF000000']
-cross_env.Append(CPPPATH=kinclude_paths, LDFLAGS=kernel_ldflags)
+
+kernel_env = cross_env.Clone()
+
+kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=kernel_ldflags)
+
+Export('kernel_env')
 
 subbuilds = [Join_path('arch', build_arch)]
 
@@ -18,7 +23,7 @@ dir_blacklist = ['^arch$', '^include$']
 
 sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
 
-objects = cross_env.Object(sources)
+objects = kernel_env.Object(sources)
 #print(dir(cross_env))
 #cross_env.Ld('chronos.o', objects)
 #cross_env.Objcopy('chronos.sym', 'chronos')
