@@ -17,7 +17,7 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "chronos.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "panic.h"
 #include "stdarg.h"
 #include "syscall.h"
@@ -26,12 +26,12 @@
 #include "pipe.h"
 #include "proc.h"
 #include "signal.h"
+#include "arch/vm.h"
 #include "vm.h"
-#include "k/vm.h"
-#include "drivers/pic.h"
-#include "drivers/pit.h"
-#include "drivers/cmos.h"
-#include "drivers/rtc.h"
+#include "arch/drivers/pic.h"
+#include "arch/drivers/pit.h"
+#include "arch/drivers/cmos.h"
+#include "arch/drivers/rtc.h"
 
 #define TRAP_COUNT 256
 #define INTERRUPT_TABLE_SIZE (sizeof(struct int_gate) * TRAP_COUNT)

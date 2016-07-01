@@ -12,8 +12,8 @@
 #include "stdlock.h"
 #include "syscall.h"
 #include "ktime.h"
-#include "x86.h"
-#include "drivers/rtc.h"
+#include "arch/x86.h"
+#include "arch/drivers/rtc.h"
 #include "elf.h"
 #include "panic.h"
 

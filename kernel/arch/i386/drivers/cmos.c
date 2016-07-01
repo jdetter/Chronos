@@ -3,10 +3,10 @@
 
 #include "stdlock.h"
 #include "cpu.h"
-#include "x86.h"
-#include "drivers/pic.h"
+#include "arch/x86.h"
+#include "arch/drivers/pic.h"
 #include "panic.h"
-#include "drivers/cmos.h"
+#include "arch/drivers/cmos.h"
 
 #define INT8_ENABLE_INTERVAL	0x40
 #define INT8_ENABLE_ALARM	0x20

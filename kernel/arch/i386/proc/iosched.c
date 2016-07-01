@@ -10,8 +10,8 @@
 #include "kstdlib.h"
 #include "proc.h"
 #include "panic.h"
-#include "drivers/cmos.h"
-#include "drivers/rtc.h"
+#include "arch/drivers/cmos.h"
+#include "arch/drivers/rtc.h"
 #include "ktime.h"
 
 // #define DEBUG

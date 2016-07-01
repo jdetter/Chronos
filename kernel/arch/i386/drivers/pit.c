@@ -4,8 +4,8 @@
  * Driver for the 80*86 Programmable Interval Timer.
  */
 
-#include "x86.h"
-#include "drivers/pic.h"
+#include "arch/x86.h"
+#include "arch/drivers/pic.h"
 
 #define TIMER_FREQ 1193182
 

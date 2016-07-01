@@ -18,8 +18,8 @@
 #include "tty.h"
 #include "pipe.h"
 #include "proc.h"
+#include "arch/vm.h"
 #include "vm.h"
-#include "k/vm.h"
 #include "panic.h"
 
 // #define DEBUG

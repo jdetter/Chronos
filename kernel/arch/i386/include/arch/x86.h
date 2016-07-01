@@ -107,8 +107,13 @@
 
 #ifndef __ASM_ONLY__
 
-#include "context.h"
-#include "vm.h"
+#include "arch/context.h"
+//#include "context.h"
+#include <vm.h>
+#ifndef _CONTEXT_H_
+#define break
+#define break
+#endif
 
 /* Unsigned types */
 typedef unsigned char uchar;

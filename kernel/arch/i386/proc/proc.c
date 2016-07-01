@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "drivers/rtc.h"
+#include "arch/drivers/rtc.h"
 #include "ktime.h"
 #include "stdlock.h"
 #include "proc.h"

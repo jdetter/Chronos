@@ -11,7 +11,7 @@
 #include "kstdlib.h"
 #include "drivers/cmos.h"
 #include "stdlock.h"
-#include "drivers/rtc.h"
+#include "arch/drivers/rtc.h"
 #include "panic.h"
 
 void rtc_update(struct rtc_t* dst)
