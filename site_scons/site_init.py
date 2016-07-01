@@ -3,6 +3,12 @@ import re
 
 Dir_t = type(Dir('#'))
 
+def Remove_file_extension(path):
+    return re.sub(r'[.].*$', '', path)
+
+def Basename(path):
+    return os.path.basename(path)
+
 def Join_path(*subpath):
     """
     Return the joined path of all strings given as args.

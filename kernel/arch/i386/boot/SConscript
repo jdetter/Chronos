@@ -4,60 +4,63 @@
 Import('KERNEL_DIR')
 Import('ARCH_DIR')
 Import('arch_env')
+Import('REAL_CURDIR')
 
 BOOT_DEPS = {
-        1 :{None},
-        2:{ 
+        'boot-stage1': {None:[]},
+        'boot-stage2': { 
             ARCH_DIR: [
-                "stdlock",
-                "vm/asm",
-                "vm/pgdir",
-                "vm/vm_alloc",
-                "vm/vm_boot",
-                "drivers/serial",
-                "drivers/ata",
-                "drivers/pic",
-                "x86/asm",
-                "cpu"
+                'stdlock',
+                'vm/asm',
+                'vm/pgdir',
+                'vm/vm_alloc',
+                'vm/vm_boot',
+                'drivers/serial',
+                'drivers/ata',
+                'drivers/pic',
+                'x86/asm',
+                'cpu'
                 ],
             KERNEL_DIR:[
-                "drivers/diskio",
-                "drivers/ext2",
-                "cache/cache",
-                "cache/diskcache",
-                "cache/cacheman",
-                "stdlock",
-                "file",
-                "stdlib"
+                'drivers/diskio',
+                'drivers/ext2',
+                'cache/cache',
+                'cache/diskcache',
+                'cache/cacheman',
+                'stdlock',
+                'file',
+                'stdlib'
+                ],
+            },
+        'multiboot':{
+            REAL_CURDIR():[
+                'multiboot/multiboot',
+                'multiboot/multiboot_header'
                 ]
-
             }
         }
 
-
-def get_boot_stage_dependencies(boot_stage):
-
-    dependency_files = []
-
-    for dir_, depslist in BOOT_DEPS[boot_stage].items():
-        for file_ in depslist:
-            #TODO: Use/make a script function to do this search..
-            file_ = Glob(Join_path('#'+dir_, file_+'.[c|S]'))
-
-            if file_ is not None:
-                dependency_files.extend(file_)
-
-    return dependency_files
-
-objs = get_boot_stage_dependencies(2)
+# TODO: Make environments for each boot image..
 boot_env = arch_env.Clone()
 
-for val, obj in enumerate(objs):
-    boot_env.Object(str(val),obj)
+#TODO: Refactor.
+def get_file_dependencies(boot_stage):
+
+    for dir_, depslist in BOOT_DEPS[boot_stage].items():
+        for depfile in depslist:
+            #TODO: Use/make a script function to do this search..
+            files = Glob(Join_path('#'+dir_, depfile+'.[c|S]'))
+
+            if files is not None:
+                for file_ in files:
+                    boot_env.Object(boot_object_name(stage,depfile), file_)
 
 
+def boot_object_name(stage, file_):
+    # FIXME: This should be os agnostic
+    file_ = Remove_file_extension(file_).replace('/','-')
+    return '-'.join([stage, file_])
 
 
-
-#for boot_stage in range(1,3):
-#
+for stage in BOOT_DEPS: 
+    objs = get_file_dependencies(stage)

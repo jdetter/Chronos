@@ -2,6 +2,7 @@ from SCons.Script import *
 
 Import('kernel_env')
 Import('REAL_CURDIR')
+Import('KERNEL_DIR')
 
 RELOCATE_FLAGS = [
         '-m elf_i386', 
@@ -37,9 +38,10 @@ Export('arch_env')
 build_arch_objects(arch_env)
 ARCH_DIR = REAL_CURDIR()
 Export('ARCH_DIR')
+Export('KERNEL_DIR')
 
 for subbuild in SUBBUILDS:
-    REAL_CURDIR = lambda : Join_path(KERNEL_DIR, subbuild)
+    REAL_CURDIR = lambda : Join_path(ARCH_DIR, subbuild)
     # FIXME:
     ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', variant_dir='boot-build', duplicate=0)
 
