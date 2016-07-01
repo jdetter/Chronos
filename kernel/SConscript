@@ -45,12 +45,15 @@ def build_kernel_objects(kernel_env):
 kernel_env = create_kernel_env()
 
 Export('kernel_env')
+ARCH_LIBS=None
 
 # Build the subdirs for the kernel.
-
 for subbuild in SUBBUILDS:
     curdir = REAL_CURDIR()
     REAL_CURDIR = lambda : Join_path(curdir, subbuild)
-    SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
+    # FIXME:
+    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
+    
+kernel_env.Append(CPPPATH=ARCH_LIBS)
 
 build_kernel_objects(kernel_env)

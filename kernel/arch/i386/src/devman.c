@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 #include "kern/stdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
@@ -25,16 +25,16 @@
 #include "diskcache.h"
 #include "cpu.h"
 #include "vm.h"
-#include "k/netman.h"
+#include "netman.h"
 #include "device.h"
-#include "drivers/ata.h"
-#include "drivers/pic.h"
-#include "drivers/fpu.h"
-#include "drivers/cmos.h"
-#include "drivers/pit.h"
-#include "k/drivers/keyboard.h"
-#include "k/drivers/serial.h"
-#include "k/drivers/console.h"
+#include "arch/drivers/ata.h"
+#include "arch/drivers/pic.h"
+#include "arch/drivers/fpu.h"
+#include "arch/drivers/cmos.h"
+#include "arch/drivers/pit.h"
+#include "drivers/keyboard.h"
+#include "drivers/serial.h"
+#include "drivers/console.h"
 
 
 extern pgdir_t* k_pgdir;

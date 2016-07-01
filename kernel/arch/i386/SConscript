@@ -15,9 +15,7 @@ ARCH_GCC_SUFFIX = ['.c']
 def build_arch_env():
     arch_env = kernel_env.Clone()
 
-    arch_include_paths = Build_include_paths(REAL_CURDIR, ARCH_INCLUDE_PATHS)
-
-    arch_env.Append(CPPPATH=arch_include_paths)
+    arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS)
 
     return arch_env
 
@@ -29,6 +27,10 @@ def build_arch_objects(arch_env):
             )
     return arch_env.Object(sources)
 
+ARCH_INCLUDE_PATHS = Build_include_paths(REAL_CURDIR, ARCH_INCLUDE_PATHS)
+
 arch_env = build_arch_env()
 
 build_arch_objects(arch_env)
+
+Return('ARCH_INCLUDE_PATHS')

@@ -1,6 +1,6 @@
 #include "cpu.h"
 #include "panic.h"
-#include "x86.h"
+#include "arch/x86.h"
 
 int x86_check_interrupt(void);
 

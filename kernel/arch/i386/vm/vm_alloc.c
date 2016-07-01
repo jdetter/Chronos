@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "kern/stdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "cpu.h"
 #include "file.h"
 #include "stdlock.h"
@@ -18,8 +18,8 @@
 #include "tty.h"
 #include "pipe.h"
 #include "proc.h"
+#include "arch/vm.h"
 #include "vm.h"
-#include "k/vm.h"
 #include "panic.h"
 
 // #define DEBUG

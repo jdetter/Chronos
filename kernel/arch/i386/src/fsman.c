@@ -1,8 +1,8 @@
 #include <string.h>
-#include "diskio.h"
+#include "drivers/diskio.h"
 #include "panic.h"
 #include "diskcache.h"
-#include "drivers/ata.h"
+#include "arch/drivers/ata.h"
 #include "drivers/ext2.h"
 #include "drivers/lwfs.h"
 

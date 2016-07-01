@@ -1,6 +1,6 @@
 #include "context.h"
 #include "proc.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "trap.h"
 #include "panic.h"
 
