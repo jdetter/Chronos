@@ -14,7 +14,7 @@ tool_dir = os.path.abspath('../tools/bin')
 target_sysroot = Join_path('..', 'sysroot')
 
 subbuilds           = ['kernel']
-subbuild_scripts    = [str(os.path.join(subbuild, 'SConscript')) for subbuild in subbuilds]
+subbuild_scripts    = [Join_path(subbuild, 'SConscript') for subbuild in subbuilds]
 
 # Make the path to the tool os agnostic.
 
@@ -61,7 +61,8 @@ cross_env = generic_env.Clone(
         CC=cross_cc,
         LD=cross_ld, # TODO: Might not be right, may need a builder
         CCFLAGS=ccflags, 
-        ASFLAGS=asflags)
+        ASFLAGS=asflags
+        )
 #cross_objcopy #TODO: Need to create a builder
 
 host_env = generic_env.Clone()

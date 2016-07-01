@@ -107,7 +107,7 @@ def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
             if not_in_blacklist(subdir):
                 inner_subdirs.append(subdir)
 
-    dirs_to_build = inner_subdirs + dirs_to_build + [dir_]
+    dirs_to_build = inner_subdirs + dirs_to_build + [start_dir]
 
     sources = []
     for dir_ in dirs_to_build:

@@ -3,27 +3,48 @@ from SCons.Script import *
 Import('build_arch')
 Import('cross_env')
 
-kinclude_paths = ['include']
-kinclude_paths = [Dir(path) for path in kinclude_paths]
-kernel_ldflags = ['-nostdlib', '--entry=main',
-        '--section-start=.text=0xFF000000']
+KINCLUDE_PATHS = [
+        'include'
+        ]
 
-kernel_env = cross_env.Clone()
+KERNEL_LDFLAGS = [
+        '-nostdlib', 
+        '--entry=main',
+        '--section-start=.text=0xFF000000'
+        ]
 
-kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=kernel_ldflags)
+def create_kernel_env():
+    kinclude_paths = [Dir(path) for path in KINCLUDE_PATHS]
+
+    kernel_env = cross_env.Clone()
+
+    kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=KERNEL_LDFLAGS)
+
+    return kernel_env
+
+def build_kernel_objects(kernel_env):
+
+    subbuilds = [Join_path('arch', build_arch)]
+
+    SConscript(Get_subscripts(subbuilds))
+
+    # Don't search arch or include for sources, we've added arch.
+    dir_blacklist = ['^arch$', '^include$']
+
+    sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
+
+    return kernel_env.Object(sources)
+
+    # TODO: Create kernel image, etc..
+    #print(dir(cross_env))
+    #cross_env.Ld('chronos.o', objects)
+    #cross_env.Objcopy('chronos.sym', 'chronos')
+
+#def build_boot_objects():
+#    pass
+
+kernel_env = create_kernel_env()
 
 Export('kernel_env')
 
-subbuilds = [Join_path('arch', build_arch)]
-
-SConscript(Get_subscripts(subbuilds))
-
-# Don't search arch or include for sources, we've added arch.
-dir_blacklist = ['^arch$', '^include$']
-
-sources = Get_sources_recursive(CURDIR(), suffixes='.c', blacklist=dir_blacklist)
-
-objects = kernel_env.Object(sources)
-#print(dir(cross_env))
-#cross_env.Ld('chronos.o', objects)
-#cross_env.Objcopy('chronos.sym', 'chronos')
+build_kernel_objects(kernel_env)

@@ -2,21 +2,32 @@ from SCons.Script import *
 
 Import('cross_env')
 
-relocate_flags = ['-m elf_i386', '-r'] # Wot r these
+RELOCATE_FLAGS = [
+        '-m elf_i386', 
+        '-r'
+        ] # Wot r these
 
-arch_include_paths = ['include']
-arch_include_paths = [Dir(path) for path in arch_include_paths]
-print(type(Dir('boot')))
+ARCH_INCLUDE_PATHS = ['include']
+ARCH_IGNORE_PATHS = ['^boot$']
+ARCH_GCC_SUFFIX = ['.c']
 
-arch_ignore_paths = ['^boot$']
+def build_arch_env():
+    arch_env = cross_env.Clone()
 
-arch_env = cross_env.Clone()
+    arch_include_paths = [Dir(path) for path in ARCH_INCLUDE_PATHS]
 
-arch_env.Append(CPPPATH=arch_include_paths)
+    arch_env.Append(CPPPATH=arch_include_paths)
 
-print(arch_ignore_paths)
+    return arch_env
 
-sources = Get_sources_recursive(CURDIR(), suffixes='.c',
-        blacklist=arch_ignore_paths)
+def build_arch_objects(arch_env):
+    sources = Get_sources_recursive(
+            CURDIR(), 
+            suffixes=ARCH_GCC_SUFFIX,
+            blacklist=ARCH_IGNORE_PATHS
+            )
+    return arch_env.Object(sources)
 
-arch_env.Object(sources)
+arch_env = build_arch_env()
+
+build_arch_objects(arch_env)
