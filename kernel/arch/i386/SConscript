@@ -1,6 +1,6 @@
 from SCons.Script import *
 
-Import('cross_env')
+Import('kernel_env')
 
 RELOCATE_FLAGS = [
         '-m elf_i386', 
@@ -12,11 +12,9 @@ ARCH_IGNORE_PATHS = ['^boot$']
 ARCH_GCC_SUFFIX = ['.c']
 
 def build_arch_env():
-    arch_env = cross_env.Clone()
+    arch_env = kernel_env.Clone()
 
-    arch_include_paths = [Dir(path) for path in ARCH_INCLUDE_PATHS]
-
-    arch_env.Append(CPPPATH=arch_include_paths)
+    arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS)
 
     return arch_env
 

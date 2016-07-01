@@ -1,6 +1,7 @@
 import os
 import re
 
+Dir_t = type(Dir('#'))
 
 def Join_path(*subpath):
     """
@@ -11,6 +12,11 @@ def Join_path(*subpath):
     """
     return os.path.join(*subpath)
 
+def Path(file_):
+    if file_ is str:
+        file_ = File(file_)
+    return Relpath(file_)
+
 def Get_subscripts(subdirs):
     """
     Return a list of all SConscripts in the given directories.
@@ -20,24 +26,41 @@ def Get_subscripts(subdirs):
     """
     return [Join_path(dir_, 'SConscript') for dir_ in subdirs]
 
-def Get_dirs(dir_):
+def Relpath(file_):
+    return CURDIR().rel_path(file_)
+
+def Glob_recursive(base_dir):
+    Get_subdirs(base_dir)
+
+def Get_dirs(base_dir):
     """
-    Return a list of directories in the given directory.
+    Return and generate a list of Node.FS.Dirs in the given directory.
 
     :param dir_:
-        The directory to list contained dirs of.
+        The directory to Glob and list contained dirs of.
     """
-    files = os.listdir(dir_)
-    return filter(os.path.isdir, files)
+    dirs = set((file_.abspath for file_ in Glob(Relpath(base_dir)+'/*') if type(file_) is Dir_t))
 
-def Get_subdirs(dir_):
+    link_dirs = set(filter(os.path.islink, dirs))
+
+    dirs -= link_dirs
+    dirs -= {CURDIR().abspath, os.path.dirname(CURDIR().abspath)}
+
+    dirs = [Dir(dir_) for dir_ in dirs]
+    return dirs
+
+def Get_subdirs(base_dir):
     """
-    Return a list of all subdirectories (any level of depth).
+    Return a list of all subdirectories (any level of depth) ignoring symlinks.
 
     :param dir_:
         The directory to list subdirs of.
     """
-    return (tup[0] for tup in os.walk(dir_))
+    dirs = []
+    for dir_ in Get_dirs(base_dir):
+        dirs.append(dir_)
+        dirs.extend(Get_subdirs(dir_))
+    return dirs
 
 def Get_sources_in_dir(dir_, suffixes='.c'):
     """
@@ -50,6 +73,8 @@ def Get_sources_in_dir(dir_, suffixes='.c'):
         A suffix or list of suffixes to Glob the dir_ for.
     """
 
+    dir_ = _make_file(dir_)
+
     # Accept a single suffix string as well as a list of them.
     if type(suffixes) is str:
         suffixes = [suffixes]
@@ -59,24 +84,24 @@ def Get_sources_in_dir(dir_, suffixes='.c'):
 
     sources = []
     for suffix in suffixes:
-        pattern_sources = Glob(os.path.join(dir_, suffix))
+        pattern_sources = Glob(Join_path(Relpath(dir_), suffix))
         if pattern_sources:
             sources.extend(pattern_sources)
     return sources
 
 def CURDIR():
     """Return the current directory."""
-    return Dir('.').abspath
+    return Dir('.')
 
-def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
+def Get_sources_recursive(base_dir, suffixes='.c', blacklist=[]):
     """
     Recursively search for all sources with the given suffix(es) in the
-    start_dir and contained folders. If folder paths match a regex in the
+    base_dir and contained folders. If folder paths match a regex in the
     blacklist, don't look within them for sources.
 
     Return a list of all sources that fit this criteria.
 
-    :param start_dir:
+    :param base_dir:
         The directory to start the recursive search in.
 
     :param suffixes:
@@ -88,26 +113,26 @@ def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
 
     blacklist = [re.compile(entry) for entry in blacklist]
 
-    def not_in_blacklist(val):
-        if val is None:
-            return False
+    def in_blacklist(file_):
+        if file_ is None:
+            return True
 
         for entry in blacklist:
-            if entry.search(val):
-                return False
-        return True
+            if entry.search(Relpath(file_)):
+                return True
+        return False
 
-    dirs_to_build = [dir_ for dir_ in Get_dirs(start_dir) if not_in_blacklist(dir_)]
+    dirs_to_build = [dir_ for dir_ in Get_dirs(base_dir) if not in_blacklist(dir_)]
 
     # Add all the subdirs of subdirs not in the blacklist
     inner_subdirs = []
     for dir_ in dirs_to_build:
         subdirs = Get_subdirs(dir_)
         for subdir in subdirs:
-            if not_in_blacklist(subdir):
+            if not in_blacklist(subdir):
                 inner_subdirs.append(subdir)
 
-    dirs_to_build = inner_subdirs + dirs_to_build + [start_dir]
+    dirs_to_build = inner_subdirs + dirs_to_build + [base_dir]
 
     sources = []
     for dir_ in dirs_to_build:
@@ -116,6 +141,11 @@ def Get_sources_recursive(start_dir, suffixes='.c', blacklist=[]):
             sources.extend(dir_sources)
 
     return sources
+
+def _make_file(file_):
+    if type(file_) is str:
+        file_ = File(file_)
+    return file_
 
 def objcopy_generator(source, target, env, for_signature):
     return '$OBJCOPY $OBJCOPYFLAGS %s -o %s'%(source[0], target[0])

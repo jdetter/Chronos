@@ -14,20 +14,13 @@ KERNEL_LDFLAGS = [
         ]
 
 def create_kernel_env():
-    kinclude_paths = [Dir(path) for path in KINCLUDE_PATHS]
-
     kernel_env = cross_env.Clone()
 
-    kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=KERNEL_LDFLAGS)
+    kernel_env.Append(CPPPATH=KINCLUDE_PATHS, LDFLAGS=KERNEL_LDFLAGS)
 
     return kernel_env
 
 def build_kernel_objects(kernel_env):
-
-    subbuilds = [Join_path('arch', build_arch)]
-
-    SConscript(Get_subscripts(subbuilds))
-
     # Don't search arch or include for sources, we've added arch.
     dir_blacklist = ['^arch$', '^include$']
 
@@ -46,5 +39,9 @@ def build_kernel_objects(kernel_env):
 kernel_env = create_kernel_env()
 
 Export('kernel_env')
+
+# Build the subdirs for the kernel.
+subbuilds = [Join_path('arch', build_arch)]
+SConscript(Get_subscripts(subbuilds))
 
 build_kernel_objects(kernel_env)

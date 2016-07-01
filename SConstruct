@@ -1,4 +1,3 @@
-import os
 from SCons.Script import *
 
 def crosstool_path(tool):
@@ -68,5 +67,6 @@ cross_env = generic_env.Clone(
 host_env = generic_env.Clone()
 
 Export('cross_env', 'host_env', 'build_arch') 
-# Run all other builds.
-SConscript(subbuild_scripts)
+
+# Run all other builds in a build dir..
+SConscript(subbuild_scripts, variant_dir='build', duplicate=0)
