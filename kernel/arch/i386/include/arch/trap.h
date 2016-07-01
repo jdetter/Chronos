@@ -14,7 +14,7 @@
 
 #ifndef __ASM_ONLY__
 
-#include "k/trap.h"
+#include "trap.h"
 
 #define TF_REGISTERS (0x08 << 2)
 typedef char fpu128_t[16];

@@ -4,7 +4,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "ktime.h"
-#include "drivers/rtc.h"
+#include "arch/drivers/rtc.h"
 
 int sys_select_next_fd(int curr_fd, fd_set* set, int max_fd)
 {

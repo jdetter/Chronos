@@ -1,7 +1,7 @@
 #ifndef _ARCH_CONTEXT_H
 #define _ARCH_CONTEXT_H
 
-#include "k/context.h"
+#include <context.h>
 
 struct context
 {

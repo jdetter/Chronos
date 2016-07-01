@@ -1,8 +1,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include "arch/vm.h"
 #include "vm.h"
-#include "k/vm.h"
 #include "panic.h"
 #include "stdlock.h"
 #include "file.h"

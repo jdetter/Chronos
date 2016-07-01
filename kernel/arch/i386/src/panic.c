@@ -2,8 +2,8 @@
 #include "stdlock.h"
 #include "devman.h"
 #include "tty.h"
-#include "k/drivers/console.h"
-#include "x86.h"
+#include "drivers/console.h"
+#include "arch/x86.h"
 
 void cprintf_init(void)
 {
