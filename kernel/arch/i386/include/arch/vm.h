@@ -368,7 +368,7 @@ extern void vm_set_stack(uintptr_t stack, void* callback) __attribute__ ((noretu
 #define __NO_VM_ARCH__
 
 #ifndef _VM_H_
-#include "k/vm.h"
+#include <vm.h>
 #endif
 
 #endif

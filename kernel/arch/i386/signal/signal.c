@@ -14,7 +14,7 @@
 
 #include "kstdlib.h"
 #include "ksignal.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "stdarg.h"
 #include "stdlock.h"
 #include "trap.h"

@@ -1,8 +1,8 @@
 #include <string.h>
-#include "storageio.h"
+#include "drivers/storageio.h"
 #include "panic.h"
 #include "storagecache.h"
-#include "drivers/ata.h"
+#include "arch/drivers/ata.h"
 #include "drivers/ext2.h"
 #include "drivers/lwfs.h"
 

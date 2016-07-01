@@ -1,7 +1,7 @@
 #include "panic.h"
 #include "vm.h"
 #include "trap.h"
-#include "idt.h"
+#include "arch/idt.h"
 
 extern pstack_t k_stack;
 

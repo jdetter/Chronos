@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "kstdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "file.h"
 #include "stdarg.h"
 #include "stdlock.h"
@@ -17,8 +17,8 @@
 #include "tty.h"
 #include "pipe.h"
 #include "proc.h"
+#include "arch/vm.h"
 #include "vm.h"
-#include "k/vm.h"
 #include "panic.h"
 #include "cpu.h"
 
