@@ -6,8 +6,12 @@ Import('ARCH_DIR')
 Import('arch_env')
 Import('REAL_CURDIR')
 
+LOAD_STAGES = {'boot-stage1', 'boot-stage2'}
+
 BOOT_DEPS = {
-        'boot-stage1': {REAL_CURDIR():['stage1/ata']},
+        'boot-stage1': {
+            #REAL_CURDIR():['stage1/ata']
+            },
         'boot-stage2': { 
             ARCH_DIR: [
                 'lock/stdlock',
@@ -31,21 +35,35 @@ BOOT_DEPS = {
                 'file',
                 'stdlib'
                 ],
-            REAL_CURDIR():[
-                'stage1',
-                'stage2',
-                'stage2_jmp'
-                ]
+            #REAL_CURDIR():[
+            #    #'stage1',
+            #    #'stage2',
+            #    #'stage2_jmp'
+            #    ]
             },
         'multiboot':{
             REAL_CURDIR():[
-                'multiboot/multiboot',
-                'multiboot/multiboot_header',
-                'stage1',
-                'stage2',
-                'stage2_jmp'
                 ]
             }
+        }
+
+ORDER_DEPENDANT_DEPS = {
+        'boot-stage1': [
+                ('stage1', REAL_CURDIR()),
+                ('stage1/ata', REAL_CURDIR()),
+            ],
+        'boot-stage2': [
+                ('stage2', REAL_CURDIR()),
+                ('stage2_jmp', REAL_CURDIR()),
+                ('stage1', REAL_CURDIR()),
+            ],
+        'multiboot': [
+                ('multiboot/multiboot', REAL_CURDIR()),
+                ('multiboot/multiboot_header', REAL_CURDIR()),
+                ('stage2', REAL_CURDIR()),
+                ('stage2_jmp', REAL_CURDIR()),
+                ('stage1', REAL_CURDIR()),
+                ]
         }
 
 COMMON_BOOT_DEPS = {}
@@ -81,27 +99,52 @@ def apply_common(stage_dict, common_dict):
                 stage_setting_dict[common_setting] = []
             stage_setting_dict[common_setting].extend(common_dict[common_setting])
 
+def copy_dependancies(source_stage, dest_stage):
+
+    for dir_, deplist in BOOT_DEPS[source_stage].items():
+        if dir_ not in dest_stage:
+            deps_in_dest = []
+        else:
+            deps_in_dest = BOOT_DEPS[dest_stage]
+
+        union = list(set(deplist) or set(deps_in_dest))
+
+        BOOT_DEPS[dest_stage][dir_] = union
+
+copy_dependancies('boot-stage2', 'multiboot')
+
 # Apply the common build settings.
 apply_common(STAGE_BUILD_SETTINGS, COMMON_BUILD_SETTINGS)
 #apply_common(BOOT_DEPS, COMMON_BOOT_DEPS)
 
 def build_dependencies(boot_stage):
     built_objects = []
+
+    def build_dep(source_dir, depfile):
+        # Take the file from the source_dir NOT of the variantdir
+        files = Glob(Join_path('#'+source_dir, depfile+'.[c|S]'))
+
+        # NOTE: If there is both an .S and a .c file of the same name and location
+        # we'll need to improve this logic.
+        if files is not None:
+            for file_ in files:
+                built_objects.extend(boot_env.Object(boot_object_name(boot_stage,depfile), file_))
+
+    # Build the order dependenant files first so they are listed and thus loaded first.
+    for (dep, source_dir) in ORDER_DEPENDANT_DEPS[boot_stage]:
+        build_dep(source_dir, dep)
+
     for source_dir, depslist in BOOT_DEPS[boot_stage].items():
         for depfile in depslist:
+            build_dep(source_dir, depfile)
 
-            # Take the file from the source_dir NOT of the variantdir
-            files = Glob(Join_path('#'+source_dir, depfile+'.[c|S]'))
-
-            # NOTE: If there is both an .S and a .c file of the same name and location
-            # we'll need to improve this logic.
-            if files is not None:
-                for file_ in files:
-                    built_objects.extend(boot_env.Object(boot_object_name(stage,depfile), file_))
     return built_objects
 
 def boot_object_name(stage, file_):
     return Join_path(stage,file_)
+
+def order_dependant_objects():
+    pass
 
 # Build each stage.
 for stage in BOOT_DEPS: 
@@ -113,6 +156,10 @@ for stage in BOOT_DEPS:
 
     objs = build_dependencies(stage)
 
-    boot_obj = boot_env.Ld(stage+'.o', source=objs)
+    if stage in LOAD_STAGES:
+        boot_obj = boot_env.Ld(stage+'.o', source=objs)
+    else:
+        # Special case made for multiboot (need to create a .o with CC) 
+        boot_obj = boot_env.Program(stage+'.o', source=objs)
 
     #boot_env.Objcopy(stage+'.img', boot_obj)
