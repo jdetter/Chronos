@@ -34,7 +34,7 @@ BOOT_DEPS = {
             REAL_CURDIR():[
                 'stage1',
                 'stage2',
-                'stage2_jump'
+                'stage2_jmp'
                 ]
             },
         'multiboot':{
@@ -43,7 +43,7 @@ BOOT_DEPS = {
                 'multiboot/multiboot_header',
                 'stage1',
                 'stage2',
-                'stage2_jump'
+                'stage2_jmp'
                 ]
             }
         }
@@ -67,15 +67,23 @@ STAGE_BUILD_SETTINGS = {
                 ]
             },
         'multiboot': {}
-        }
+}
 
-# Apply the common boot deps.
-for common_dir, common_sources in COMMON_BOOT_DEPS.items():
-    for key in BOOT_DEPS:
-        if common_dir not in BOOT_DEPS[key]:
-            BOOT_DEPS[key][common_dir] = []
-        BOOT_DEPS[key][common_dir].extend(common_sources)
+COMMON_BUILD_SETTINGS = {'CCFLAGS': [
+    '-D__BOOT_STRAP__'
+    ]
+    }
 
+def apply_common(stage_dict, common_dict):
+    for stage, stage_setting_dict in stage_dict.items():
+        for common_setting in common_dict:
+            if common_setting not in stage_setting_dict:
+                stage_setting_dict[common_setting] = []
+            stage_setting_dict[common_setting].extend(common_dict[common_setting])
+
+# Apply the common build settings.
+apply_common(STAGE_BUILD_SETTINGS, COMMON_BUILD_SETTINGS)
+#apply_common(BOOT_DEPS, COMMON_BOOT_DEPS)
 
 def build_dependencies(boot_stage):
     built_objects = []
@@ -102,6 +110,9 @@ for stage in BOOT_DEPS:
 
     boot_env = arch_env.Clone()
     boot_env.Append(**STAGE_BUILD_SETTINGS[stage])
+
     objs = build_dependencies(stage)
+
     boot_obj = boot_env.Ld(stage+'.o', source=objs)
+
     #boot_env.Objcopy(stage+'.img', boot_obj)
