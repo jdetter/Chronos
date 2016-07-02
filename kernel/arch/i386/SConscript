@@ -43,6 +43,6 @@ Export('KERNEL_DIR')
 for subbuild in SUBBUILDS:
     REAL_CURDIR = lambda : Join_path(ARCH_DIR, subbuild)
     # FIXME:
-    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', variant_dir='boot-build', duplicate=0)
+    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
 
 Return('ARCH_INCLUDE_PATHS')

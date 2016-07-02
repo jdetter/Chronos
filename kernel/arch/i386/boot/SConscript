@@ -41,10 +41,12 @@ BOOT_DEPS = {
         }
 
 # TODO: Make environments for each boot image..
-boot_env = arch_env.Clone()
 
 #TODO: Refactor.
 def get_file_dependencies(boot_stage):
+
+    # Build each boot sector in it's own build directory.
+    VariantDir(boot_stage, REAL_CURDIR(), duplicate=0)
 
     for dir_, depslist in BOOT_DEPS[boot_stage].items():
         for depfile in depslist:
@@ -55,12 +57,10 @@ def get_file_dependencies(boot_stage):
                 for file_ in files:
                     boot_env.Object(boot_object_name(stage,depfile), file_)
 
-
 def boot_object_name(stage, file_):
-    # FIXME: This should be os agnostic
-    file_ = Remove_file_extension(file_).replace('/','-')
-    return '-'.join([stage, file_])
+    return Join_path(stage,file_)
 
 
 for stage in BOOT_DEPS: 
+    boot_env = arch_env.Clone()
     objs = get_file_dependencies(stage)
