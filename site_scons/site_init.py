@@ -6,6 +6,12 @@ Dir_t = type(Dir('#'))
 def Remove_file_extension(path):
     return re.sub(r'[.].*$', '', path)
 
+def File_extension(path):
+    search_obj = re.search(r'[.](.*?)$', path)
+    if search_obj:
+        return search_obj.group(0)
+    return ''
+
 def Basename(path):
     return os.path.basename(path)
 

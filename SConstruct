@@ -50,8 +50,7 @@ asflags = [
 
 qemu = 'qemu-system-'+build_arch
 
-generic_env = Environment(BUILDERS = {'Objcopy': OBJCPY_BUILDER, 'Ld':
-    LD_BUILDER})
+generic_env = Environment(BUILDERS ={'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER})
 
 # TODO: Separate scripts for other target stuff like making filesystem etc.
 

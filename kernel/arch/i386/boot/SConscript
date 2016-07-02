@@ -1,6 +1,8 @@
 # We need to manually define dependencies for boot image.
 # TODO: Make a better way to configure this than editing a python data
 # structure.
+import subprocess
+
 Import('KERNEL_DIR')
 Import('ARCH_DIR')
 Import('arch_env')
@@ -88,6 +90,13 @@ COMMON_BUILD_SETTINGS = {'CCFLAGS': [
     ]
     }
 
+BOOT_SEGMENTS = {
+        '.text':(0,128), 
+        '.data':(128,4), 
+        '.rodata':(132,4), 
+        '.bss':(136,4)
+        }
+
 def apply_common(stage_dict, common_dict):
     for stage, stage_setting_dict in stage_dict.items():
         for common_setting in common_dict:
@@ -139,13 +148,48 @@ def build_dependencies(boot_stage):
 def boot_object_name(stage, file_):
     return Join_path(stage,file_)
 
+
+def dd_boot_stage2(target, source, env):
+
+    dd_command = 'dd if={infile} of={outfile} bs={bs} count={count} seek={seek}'
+
+    for file_ in source:
+        print('here')
+        segment = File_extension(file_.abspath)
+
+        (seek, count) = BOOT_SEGMENTS[segment] 
+
+        dd_args = {
+                'infile': file_.abspath,
+                'outfile': target[0].abspath,
+                'bs':str(512),
+                'count': count,
+                'seek': seek
+                }
+
+        command = dd_command.format(**dd_args).split(' ')
+        subprocess.call(command)
+
+
 def create_boot_stage2_img(env):
-    built_stages
-    segments = ['.text', '.data', '.rodata', '.bss']
-    for segment in segments:
-        env = env.Clone()
-        env.Replace(OBJCOPYFLAGS=['-O binary', '-j '+segment])
-        env.Objcopy(target=BOOT_STAGE2+segment, source=built_stages[BOOT_STAGE2])
+
+    segment_objs = []
+
+    for (segment, (segment_start, segment_length)) in BOOT_SEGMENTS.items():
+
+        env = env.Clone(OBJCOPYFLAGS=['-O binary', '-j '+segment])
+
+        objcopy_target = BOOT_STAGE2 + segment
+
+        objcopy_target = env.Objcopy(target=objcopy_target, source=built_stages[BOOT_STAGE2])
+
+        segment_objs.extend(objcopy_target)
+
+    Dd = Builder(action=dd_boot_stage2)
+
+    env = env.Clone(BUILDERS = {'Dd': Dd})
+
+    env.Dd(target=BOOT_STAGE2+'.img',   source=segment_objs)
 
 STAGE_CALLBACKS = {
         BOOT_STAGE2: [create_boot_stage2_img]
@@ -173,5 +217,3 @@ for stage in BOOT_DEPS:
 
     for callback in STAGE_CALLBACKS.get(stage, []):
         callback(boot_env)
-
-    #boot_env.Objcopy(stage+'.img', boot_obj)
