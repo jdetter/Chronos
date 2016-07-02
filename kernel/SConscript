@@ -1,6 +1,6 @@
 from SCons.Script import *
 
-Import('build_arch')
+Import('BUILD_ARCH')
 Import('cross_env')
 Import('REAL_CURDIR')
 
@@ -16,7 +16,7 @@ KERNEL_LDFLAGS = [
 
 KERNEL_DIR_BLACKLIST = ['^arch$', '^include$']
 
-SUBBUILDS = [Join_path('arch',build_arch)]
+SUBBUILDS = [Join_path('arch',BUILD_ARCH)]
 
 def create_kernel_env():
     kinclude_paths = Build_include_paths(REAL_CURDIR, KINCLUDE_PATHS)

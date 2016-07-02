@@ -149,26 +149,42 @@ def boot_object_name(stage, file_):
     return Join_path(stage,file_)
 
 
-def dd_boot_stage2(target, source, env):
 
-    dd_command = 'dd if={infile} of={outfile} bs={bs} count={count} seek={seek}'
 
-    for file_ in source:
-        print('here')
-        segment = File_extension(file_.abspath)
+def create_boot_stage1_img(env):
 
-        (seek, count) = BOOT_SEGMENTS[segment] 
+    env = env.Clone(OBJCOPYFLAGS=['-S', '-O binary', '-j .text'])
 
-        dd_args = {
-                'infile': file_.abspath,
-                'outfile': target[0].abspath,
-                'bs':str(512),
-                'count': count,
-                'seek': seek
-                }
+    sources = built_stages[BOOT_STAGE1]
+    
+    def objcopy_and_sign(target, source, env):
 
-        command = dd_command.format(**dd_args).split(' ')
-        subprocess.call(command)
+        # We need to manually call objcopy since the builder will break single
+        # target dependencies.
+        objcopy_path = env.get('OBJCOPY')
+        flags = env.get('OBJCOPYFLAGS')
+
+        # Since this is subprocess calls we only need the relative path.
+        #target = Relpath(target[0])
+        #target = target[0].abspath
+        target = Relpath(target[0])
+        source = Relpath(source[0])
+
+        objcopy_command = [objcopy_path]
+        objcopy_command.extend(flags)
+        objcopy_command.extend([source, target])
+
+        subprocess.call(' '.join(objcopy_command), shell=True)
+
+        #sign_tool = env.get('SIGN_TOOL')
+
+        #subprocess.call( [sign_tool, target])
+
+    obj_n_sign = Builder(action=objcopy_and_sign)
+
+    env = env.Clone(BUILDERS={'Sign':obj_n_sign})
+
+    env.Sign(source=sources, target=BOOT_STAGE1+'.img')
 
 
 def create_boot_stage2_img(env):
@@ -185,6 +201,27 @@ def create_boot_stage2_img(env):
 
         segment_objs.extend(objcopy_target)
 
+    def dd_boot_stage2(target, source, env):
+
+        dd_command = 'dd if={infile} of={outfile} bs={bs} count={count} seek={seek}'
+
+        for file_ in source:
+            # Assume the segment is the file extension.
+            segment = File_extension(Relpath(file_))
+
+            (seek, count) = BOOT_SEGMENTS[segment] 
+
+            dd_args = {
+                    'infile': Relpath(file_),
+                    'outfile': Relpath(target[0]),
+                    'bs':str(512),
+                    'count': count,
+                    'seek': seek
+                    }
+
+        command = dd_command.format(**dd_args).split(' ')
+        subprocess.call(command)
+
     Dd = Builder(action=dd_boot_stage2)
 
     env = env.Clone(BUILDERS = {'Dd': Dd})
@@ -192,6 +229,7 @@ def create_boot_stage2_img(env):
     env.Dd(target=BOOT_STAGE2+'.img',   source=segment_objs)
 
 STAGE_CALLBACKS = {
+        BOOT_STAGE1: [create_boot_stage1_img],
         BOOT_STAGE2: [create_boot_stage2_img]
         }
 

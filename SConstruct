@@ -1,14 +1,14 @@
 from SCons.Script import *
 
 def crosstool_path(tool):
-    return Join_path(tool_dir, target+tool)
+    return Join_path(TOOL_DIR, TARGET+tool)
 
 # TODO: Logic for deciding the actual target.
-target      = 'i686-pc-chronos-'
-build_arch  = 'i386'
+TARGET      = 'i686-pc-chronos-'
+BUILD_ARCH  = 'i386'
 
 # TODO: Take from the build environment. 
-tool_dir = os.path.abspath('../tools/bin')
+TOOL_DIR = os.path.abspath('../tools/bin')
 
 target_sysroot = Join_path('..', 'sysroot')
 
@@ -16,19 +16,20 @@ subbuilds           = ['kernel']
 
 # Make the path to the tool os agnostic.
 
-cross_cc        = crosstool_path('gcc')
-cross_ld        = crosstool_path('ld')
-cross_as        = crosstool_path('gcc')
-cross_objcopy   = crosstool_path('objcopy')
+CROSS_CC        = crosstool_path('gcc')
+CROSS_LD        = crosstool_path('ld')
+CROSS_AS        = crosstool_path('gcc')
+CROSS_OBJCOPY   = crosstool_path('objcopy')
+SIGN_TOOL       = Join_path(TOOL_DIR, 'boot-sign')
 
-host_cc         = 'gcc'
-host_ld         = 'ld'
-host_as         = 'gcc'
-host_objcopy    = 'objcopy'
+HOST_CC         = 'gcc'
+HOST_LD         = 'ld'
+HOST_AS         = 'gcc'
+HOST_OBJCOPY    = 'objcopy'
 
 # TODO: Debug mode, both by config or cli flag.
 
-ccflags = [
+CCFLAGS = [
          '-ggdb', 
          '-Werror', 
          '-Wall', 
@@ -36,36 +37,42 @@ ccflags = [
          '-fno-common',
          '-fno-builtin', 
          '-fno-stack-protector',
-         '-DARCH_'+build_arch, 
-         '-DARCH_STR='+build_arch,
+         '-DARCH_'+BUILD_ARCH, 
+         '-DARCH_STR='+BUILD_ARCH,
          ]
 
-asflags = [
+ASFLAGS = [
        '-ggdb',
        '-Werror',
        '-Wall',
-       '-DARCH_'+build_arch,
-       '-DARCH_STR='+build_arch
+       '-DARCH_'+BUILD_ARCH,
+       '-DARCH_STR='+BUILD_ARCH
        ]
 
-qemu = 'qemu-system-'+build_arch
+QEMU = 'qemu-system-'+BUILD_ARCH
 
-generic_env = Environment(BUILDERS ={'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER})
+generic_env = Environment(
+        SIGN_TOOL=SIGN_TOOL,
+        BUILDERS ={'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER}
+        )
 
-# TODO: Separate scripts for other target stuff like making filesystem etc.
+host_env = generic_env.Clone(
+        CC=HOST_CC,
+        LD=HOST_LD,
+        OBJCOPY=HOST_OBJCOPY,
+        CCFLAGS=CCFLAGS, 
+        ASFLAGS=ASFLAGS
+        )
 
 cross_env = generic_env.Clone(
-        CC=cross_cc,
-        LD=cross_ld, # TODO: Might not be right, may need a builder
-        OBJCOPY=cross_objcopy,
-        CCFLAGS=ccflags, 
-        ASFLAGS=asflags
+        CC=CROSS_CC,
+        LD=CROSS_LD,
+        OBJCOPY=CROSS_OBJCOPY,
+        CCFLAGS=CCFLAGS, 
+        ASFLAGS=ASFLAGS
         )
-#cross_objcopy #TODO: Need to create a builder
 
-host_env = generic_env.Clone()
-
-Export('cross_env', 'host_env', 'build_arch') 
+Export('cross_env', 'host_env', 'BUILD_ARCH') 
 
 # Run all other builds in a build dir..
 for subbuild in subbuilds:
