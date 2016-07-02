@@ -4,14 +4,14 @@
 #include <stdarg.h>
 
 #include "kern/stdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
 #include "elf.h"
 #include "drivers/serial.h"
 #include "fsman.h"
-#include "drivers/ata.h"
+#include "arch/drivers/ata.h"
 #include "stdlib.h"
 #include "drivers/console.h"
 #include "drivers/keyboard.h"
@@ -19,7 +19,7 @@
 #include "proc.h"
 #include "vm.h"
 #include "panic.h"
-#include "diskio.h"
+#include "drivers/diskio.h"
 #include "diskcache.h"
 #include "cacheman.h"
 

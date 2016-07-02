@@ -7,10 +7,10 @@ Import('arch_env')
 Import('REAL_CURDIR')
 
 BOOT_DEPS = {
-        'boot-stage1': {None:[]},
+        'boot-stage1': {REAL_CURDIR():['stage1/ata']},
         'boot-stage2': { 
             ARCH_DIR: [
-                'stdlock',
+                'lock/stdlock',
                 'vm/asm',
                 'vm/pgdir',
                 'vm/vm_alloc',
@@ -19,7 +19,7 @@ BOOT_DEPS = {
                 'drivers/ata',
                 'drivers/pic',
                 'x86/asm',
-                'cpu'
+                'src/cpu'
                 ],
             KERNEL_DIR:[
                 'drivers/diskio',
@@ -31,36 +31,77 @@ BOOT_DEPS = {
                 'file',
                 'stdlib'
                 ],
+            REAL_CURDIR():[
+                'stage1',
+                'stage2',
+                'stage2_jump'
+                ]
             },
         'multiboot':{
             REAL_CURDIR():[
                 'multiboot/multiboot',
-                'multiboot/multiboot_header'
+                'multiboot/multiboot_header',
+                'stage1',
+                'stage2',
+                'stage2_jump'
                 ]
             }
         }
 
-# TODO: Make environments for each boot image..
+COMMON_BOOT_DEPS = {}
 
-#TODO: Refactor.
-def get_file_dependencies(boot_stage):
+STAGE_BUILD_SETTINGS = {
+        'boot-stage1': {
+            'LDFLAGS': [
+                '--section-start=.text=0x7c00',
+                '--entry=start'
+                ]
+            },
+        'boot-stage2': {
+            'LDFLAGS': [
+                '--entry=main',
+                '--section-start=.text=0x7E00',
+                '--section-start=.data=0x17E00',
+                '--section-start=.rodata=0x18600',
+                '--section-start=.bss=0x18e00'
+                ]
+            },
+        'multiboot': {}
+        }
 
-    # Build each boot sector in it's own build directory.
-    VariantDir(boot_stage, REAL_CURDIR(), duplicate=0)
+# Apply the common boot deps.
+for common_dir, common_sources in COMMON_BOOT_DEPS.items():
+    for key in BOOT_DEPS:
+        if common_dir not in BOOT_DEPS[key]:
+            BOOT_DEPS[key][common_dir] = []
+        BOOT_DEPS[key][common_dir].extend(common_sources)
 
-    for dir_, depslist in BOOT_DEPS[boot_stage].items():
+
+def build_dependencies(boot_stage):
+    built_objects = []
+    for source_dir, depslist in BOOT_DEPS[boot_stage].items():
         for depfile in depslist:
-            #TODO: Use/make a script function to do this search..
-            files = Glob(Join_path('#'+dir_, depfile+'.[c|S]'))
 
+            # Take the file from the source_dir NOT of the variantdir
+            files = Glob(Join_path('#'+source_dir, depfile+'.[c|S]'))
+
+            # NOTE: If there is both an .S and a .c file of the same name and location
+            # we'll need to improve this logic.
             if files is not None:
                 for file_ in files:
-                    boot_env.Object(boot_object_name(stage,depfile), file_)
+                    built_objects.extend(boot_env.Object(boot_object_name(stage,depfile), file_))
+    return built_objects
 
 def boot_object_name(stage, file_):
     return Join_path(stage,file_)
 
-
+# Build each stage.
 for stage in BOOT_DEPS: 
+    # Build each boot sector in it's own build directory.
+    VariantDir(stage, REAL_CURDIR(), duplicate=0)
+
     boot_env = arch_env.Clone()
-    objs = get_file_dependencies(stage)
+    boot_env.Append(**STAGE_BUILD_SETTINGS[stage])
+    objs = build_dependencies(stage)
+    boot_obj = boot_env.Ld(stage+'.o', source=objs)
+    #boot_env.Objcopy(stage+'.img', boot_obj)
