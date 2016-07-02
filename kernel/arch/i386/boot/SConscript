@@ -6,13 +6,16 @@ Import('ARCH_DIR')
 Import('arch_env')
 Import('REAL_CURDIR')
 
-LOAD_STAGES = {'boot-stage1', 'boot-stage2'}
+BOOT_STAGE1 = 'boot-stage1'
+BOOT_STAGE2 = 'boot-stage2'
+MULTIBOOT   = 'multiboot'
+
+LOAD_STAGES = {BOOT_STAGE1, BOOT_STAGE2}
 
 BOOT_DEPS = {
-        'boot-stage1': {
-            #REAL_CURDIR():['stage1/ata']
+        BOOT_STAGE1: {
             },
-        'boot-stage2': { 
+        BOOT_STAGE2: { 
             ARCH_DIR: [
                 'lock/stdlock',
                 'vm/asm',
@@ -35,29 +38,22 @@ BOOT_DEPS = {
                 'file',
                 'stdlib'
                 ],
-            #REAL_CURDIR():[
-            #    #'stage1',
-            #    #'stage2',
-            #    #'stage2_jmp'
-            #    ]
             },
-        'multiboot':{
-            REAL_CURDIR():[
-                ]
+        MULTIBOOT:{ # Copy all our sources from boot-stage2
             }
         }
 
 ORDER_DEPENDANT_DEPS = {
-        'boot-stage1': [
+        BOOT_STAGE1: [
                 ('stage1', REAL_CURDIR()),
                 ('stage1/ata', REAL_CURDIR()),
             ],
-        'boot-stage2': [
+        BOOT_STAGE2: [
                 ('stage2', REAL_CURDIR()),
                 ('stage2_jmp', REAL_CURDIR()),
                 ('stage1', REAL_CURDIR()),
             ],
-        'multiboot': [
+        MULTIBOOT: [
                 ('multiboot/multiboot', REAL_CURDIR()),
                 ('multiboot/multiboot_header', REAL_CURDIR()),
                 ('stage2', REAL_CURDIR()),
@@ -69,22 +65,22 @@ ORDER_DEPENDANT_DEPS = {
 COMMON_BOOT_DEPS = {}
 
 STAGE_BUILD_SETTINGS = {
-        'boot-stage1': {
+        BOOT_STAGE1: {
             'LDFLAGS': [
                 '--section-start=.text=0x7c00',
                 '--entry=start'
                 ]
             },
-        'boot-stage2': {
+        BOOT_STAGE2: {
             'LDFLAGS': [
                 '--entry=main',
                 '--section-start=.text=0x7E00',
                 '--section-start=.data=0x17E00',
                 '--section-start=.rodata=0x18600',
                 '--section-start=.bss=0x18e00'
-                ]
+                ],
             },
-        'multiboot': {}
+        MULTIBOOT: {}
 }
 
 COMMON_BUILD_SETTINGS = {'CCFLAGS': [
@@ -111,7 +107,7 @@ def copy_dependancies(source_stage, dest_stage):
 
         BOOT_DEPS[dest_stage][dir_] = union
 
-copy_dependancies('boot-stage2', 'multiboot')
+copy_dependancies(BOOT_STAGE2, MULTIBOOT)
 
 # Apply the common build settings.
 apply_common(STAGE_BUILD_SETTINGS, COMMON_BUILD_SETTINGS)
@@ -143,8 +139,19 @@ def build_dependencies(boot_stage):
 def boot_object_name(stage, file_):
     return Join_path(stage,file_)
 
-def order_dependant_objects():
-    pass
+def create_boot_stage2_img(env):
+    built_stages
+    segments = ['.text', '.data', '.rodata', '.bss']
+    for segment in segments:
+        env = env.Clone()
+        env.Replace(OBJCOPYFLAGS=['-O binary', '-j '+segment])
+        env.Objcopy(target=BOOT_STAGE2+segment, source=built_stages[BOOT_STAGE2])
+
+STAGE_CALLBACKS = {
+        BOOT_STAGE2: [create_boot_stage2_img]
+        }
+
+built_stages = {}
 
 # Build each stage.
 for stage in BOOT_DEPS: 
@@ -161,5 +168,10 @@ for stage in BOOT_DEPS:
     else:
         # Special case made for multiboot (need to create a .o with CC) 
         boot_obj = boot_env.Program(stage+'.o', source=objs)
+
+    built_stages[stage] = boot_obj
+
+    for callback in STAGE_CALLBACKS.get(stage, []):
+        callback(boot_env)
 
     #boot_env.Objcopy(stage+'.img', boot_obj)

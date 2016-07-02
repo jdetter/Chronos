@@ -58,6 +58,7 @@ generic_env = Environment(BUILDERS = {'Objcopy': OBJCPY_BUILDER, 'Ld':
 cross_env = generic_env.Clone(
         CC=cross_cc,
         LD=cross_ld, # TODO: Might not be right, may need a builder
+        OBJCOPY=cross_objcopy,
         CCFLAGS=ccflags, 
         ASFLAGS=asflags
         )

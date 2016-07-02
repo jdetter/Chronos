@@ -160,7 +160,7 @@ def _make_file(file_):
     return file_
 
 def objcopy_generator(source, target, env, for_signature):
-    return '$OBJCOPY $OBJCOPYFLAGS %s -o %s'%(source[0], target[0])
+    return '$OBJCOPY ' + ' '.join(env.get('OBJCOPYFLAGS', [])) + ' %s %s'%(source[0], target[0])
 
 OBJCPY_BUILDER = Builder(
         generator=objcopy_generator,
