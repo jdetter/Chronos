@@ -3,6 +3,12 @@ from SCons.Script import *
 def crosstool_path(tool):
     return Join_path(TOOL_DIR, TARGET+tool)
 
+# TODO: Move to using a global context object instead of multiple Imports and
+# Exports.
+
+#GlobalContext = GlobalContextObject()
+#Export(GlobalContext)
+
 # TODO: Logic for deciding the actual target.
 TARGET      = 'i686-pc-chronos-'
 BUILD_ARCH  = 'i386'
@@ -53,8 +59,17 @@ QEMU = 'qemu-system-'+BUILD_ARCH
 
 generic_env = Environment(
         SIGN_TOOL=SIGN_TOOL,
-        BUILDERS ={'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER}
+        BUILDERS = {'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER}
         )
+
+InitCallbackListBuilder(generic_env)
+
+# Example of how to the the Callback list hack
+#generic_env.AddCall('ls', '-l', 'kernel')
+#
+#generic_env.AlwaysBuild('FakeTarget')
+#generic_env.RunCalls('FakeTarget', None)
+
 
 host_env = generic_env.Clone(
         CC=HOST_CC,
@@ -72,6 +87,7 @@ cross_env = generic_env.Clone(
         ASFLAGS=ASFLAGS
         )
 
+#GlobalContext.Environments = [host_env, cross_env]
 Export('cross_env', 'host_env', 'BUILD_ARCH') 
 
 # Run all other builds in a build dir..
