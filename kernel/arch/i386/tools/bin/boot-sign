@@ -21,7 +21,7 @@ def main():
     print('*************** Boot Sign Utility ***************')
 
     try:
-        file_ =open(filename, "r+b")
+        file_ = open(filename, "r+b")
         filesize = os.stat(filename).st_size
 
         # If we can fit in the boot sign, write it.
@@ -49,7 +49,7 @@ def main():
     except:
         print('Unable to open file!')
     else:
-        close(file_)
+        file_.close()
         return 0
 
     return 1
