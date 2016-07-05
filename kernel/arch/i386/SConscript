@@ -13,11 +13,12 @@ ARCH_INCLUDE_PATHS = ['include']
 ARCH_IGNORE_PATHS = ['^boot$']
 ARCH_GCC_SUFFIX = ['.c']
 SUBBUILDS = ['boot']
+SIGN_TOOL = [Join_path(REAL_CURDIR(),'tools','bin','boot-sign')]
 
 def build_arch_env():
     arch_env = kernel_env.Clone()
 
-    arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS)
+    arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS, SIGN_TOOL=SIGN_TOOL)
 
     return arch_env
 

@@ -26,7 +26,6 @@ CROSS_CC        = crosstool_path('gcc')
 CROSS_LD        = crosstool_path('ld')
 CROSS_AS        = crosstool_path('gcc')
 CROSS_OBJCOPY   = crosstool_path('objcopy')
-SIGN_TOOL       = Join_path(TOOL_DIR, 'boot-sign')
 
 HOST_CC         = 'gcc'
 HOST_LD         = 'ld'
@@ -58,7 +57,6 @@ ASFLAGS = [
 QEMU = 'qemu-system-'+BUILD_ARCH
 
 generic_env = Environment(
-        SIGN_TOOL=SIGN_TOOL,
         BUILDERS = {'Objcopy': OBJCPY_BUILDER, 'Ld': LD_BUILDER}
         )
 

@@ -1,4 +1,5 @@
 # We need to manually define dependencies for boot image.
+import time
 # TODO: Make a better way to configure this than editing a python data
 # structure.
 import subprocess
@@ -153,7 +154,8 @@ def boot_object_name(stage, file_):
 
 def create_boot_stage1_img(env):
 
-    env = env.Clone(OBJCOPYFLAGS=['-S', '-O binary', '-j .text'])
+    #env = env.Clone(OBJCOPYFLAGS=['-S', '-O binary', '-j .text'])
+    env = env.Clone(OBJCOPYFLAGS=['-S', '-O', 'binary', '-j', '.text'])
 
     sources = built_stages[BOOT_STAGE1]
     
@@ -165,8 +167,6 @@ def create_boot_stage1_img(env):
         flags = env.get('OBJCOPYFLAGS')
 
         # Since this is subprocess calls we only need the relative path.
-        #target = Relpath(target[0])
-        #target = target[0].abspath
         target = Relpath(target[0])
         source = Relpath(source[0])
 
@@ -174,17 +174,19 @@ def create_boot_stage1_img(env):
         objcopy_command.extend(flags)
         objcopy_command.extend([source, target])
 
-        subprocess.call(' '.join(objcopy_command), shell=True)
+        sign_tool = env.get('SIGN_TOOL')[0]
 
-        #sign_tool = env.get('SIGN_TOOL')
+        # Call objcopy
+        subprocess.check_call(objcopy_command)
 
-        #subprocess.call( [sign_tool, target])
+        # Call the sign tool
+        subprocess.check_call([sign_tool, target])
 
     obj_n_sign = Builder(action=objcopy_and_sign)
 
     env = env.Clone(BUILDERS={'Sign':obj_n_sign})
 
-    env.Sign(source=sources, target=BOOT_STAGE1+'.img')
+    env.Sign(source=sources, target=(BOOT_STAGE1+'.img'))
 
 
 def create_boot_stage2_img(env):
