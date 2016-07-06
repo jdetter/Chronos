@@ -3,23 +3,24 @@ import time
 # TODO: Make a better way to configure this than editing a python data
 # structure.
 import subprocess
+Import('GlobalContext')
 
-Import('KERNEL_DIR')
-Import('ARCH_DIR')
-Import('arch_env')
-Import('REAL_CURDIR')
+arch_env = GlobalContext.Environments['arch_env']
+REAL_CURDIR = GlobalContext.REAL_CURDIR
 
 BOOT_STAGE1 = 'boot-stage1'
 BOOT_STAGE2 = 'boot-stage2'
 MULTIBOOT   = 'multiboot'
 
 LOAD_STAGES = {BOOT_STAGE1, BOOT_STAGE2}
+print(GlobalContext.ARCH_DIR)
+print(GlobalContext.KERNEL_DIR)
 
 BOOT_DEPS = {
         BOOT_STAGE1: {
             },
         BOOT_STAGE2: { 
-            ARCH_DIR: [
+            GlobalContext.ARCH_DIR: [
                 'lock/stdlock',
                 'vm/asm',
                 'vm/pgdir',
@@ -31,7 +32,7 @@ BOOT_DEPS = {
                 'x86/asm',
                 'src/cpu'
                 ],
-            KERNEL_DIR:[
+            GlobalContext.KERNEL_DIR:[
                 'drivers/diskio',
                 'drivers/ext2',
                 'cache/cache',
@@ -257,3 +258,5 @@ for stage in BOOT_DEPS:
 
     for callback in STAGE_CALLBACKS.get(stage, []):
         callback(boot_env)
+
+#print([[Relpath(i) for i in item]for item in built_stages.values()])

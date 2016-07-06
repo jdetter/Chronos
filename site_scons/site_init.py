@@ -296,6 +296,5 @@ LD_BUILDER = Builder(
         action='$LD $LDFLAGS $SOURCES -o $TARGET',
         suffix='',
         src_suffix='.o')
-##
 ## Builders
 ################################################################################

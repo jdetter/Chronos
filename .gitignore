@@ -23,6 +23,7 @@ tmp/
 kernel/idt.S
 *.sym
 *.sconsign.dblite
+*.pyc
 build/
 
 # binaries for building (obtain from developer website)

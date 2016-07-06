@@ -1,8 +1,7 @@
 from SCons.Script import *
+from mkvect import generate_idt
 
-Import('kernel_env')
-Import('REAL_CURDIR')
-Import('KERNEL_DIR')
+Import('GlobalContext')
 
 RELOCATE_FLAGS = [
         '-m elf_i386', 
@@ -13,10 +12,14 @@ ARCH_INCLUDE_PATHS = ['include']
 ARCH_IGNORE_PATHS = ['^boot$']
 ARCH_GCC_SUFFIX = ['.c']
 SUBBUILDS = ['boot']
-SIGN_TOOL = [Join_path(REAL_CURDIR(),'tools','bin','boot-sign')]
+
+TRAP_IDT_FILE = Join_path(Path(CURDIR()), 'trap', 'idt.S')
+
+SIGN_TOOL = [Join_path(GlobalContext.REAL_CURDIR(),'tools','bin','boot-sign')]
+MKVECT_TOOL= [Join_path(GlobalContext.REAL_CURDIR(),'tools','bin','mkvect')]
 
 def build_arch_env():
-    arch_env = kernel_env.Clone()
+    arch_env = GlobalContext.Environments['kernel_env'].Clone()
 
     arch_env.Append(CPPPATH=ARCH_INCLUDE_PATHS, SIGN_TOOL=SIGN_TOOL)
 
@@ -30,20 +33,22 @@ def build_arch_objects(arch_env):
             )
     return arch_env.Object(sources)
 
-ARCH_INCLUDE_PATHS = Build_include_paths(REAL_CURDIR, ARCH_INCLUDE_PATHS)
+ARCH_INCLUDE_PATHS = Build_include_paths(GlobalContext.REAL_CURDIR, ARCH_INCLUDE_PATHS)
 
 arch_env = build_arch_env()
 
-Export('arch_env')
+# Generate the trap idt table.
+arch_env.Command(source=None, target=TRAP_IDT_FILE, action=generate_idt)
+
+# Attach the ARCH_INCLUDE_PATHS to the kernel environment since it will need
+# arch headers.
+GlobalContext.Environments['kernel_env'].Append(CPPPATH=ARCH_INCLUDE_PATHS)
+GlobalContext.ARCH_INCLUDE_PATHS = ARCH_INCLUDE_PATHS
+
+GlobalContext.Environments['arch_env'] = arch_env
 
 build_arch_objects(arch_env)
-ARCH_DIR = REAL_CURDIR()
-Export('ARCH_DIR')
-Export('KERNEL_DIR')
 
 for subbuild in SUBBUILDS:
-    REAL_CURDIR = lambda : Join_path(ARCH_DIR, subbuild)
-    # FIXME:
-    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
-
-Return('ARCH_INCLUDE_PATHS')
+    GlobalContext.REAL_CURDIR = lambda : Join_path(GlobalContext.ARCH_DIR, subbuild)
+    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), duplicate=0)

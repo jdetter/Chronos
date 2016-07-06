@@ -1,8 +1,5 @@
 from SCons.Script import *
-
-Import('BUILD_ARCH')
-Import('cross_env')
-Import('REAL_CURDIR')
+Import('GlobalContext')
 
 KINCLUDE_PATHS = [
         'include'
@@ -16,15 +13,16 @@ KERNEL_LDFLAGS = [
 
 KERNEL_DIR_BLACKLIST = ['^arch$', '^include$']
 
-SUBBUILDS = [Join_path('arch',BUILD_ARCH)]
+ARCH_DIR = Join_path('arch', GlobalContext.BUILD_ARCH)
+
+SUBBUILDS = [ARCH_DIR]
 
 def create_kernel_env():
-    kinclude_paths = Build_include_paths(REAL_CURDIR, KINCLUDE_PATHS)
+    kinclude_paths = Build_include_paths(GlobalContext.REAL_CURDIR, KINCLUDE_PATHS)
 
-    kernel_env = cross_env.Clone()
+    kernel_env = GlobalContext.Environments['cross_env'].Clone()
 
     kernel_env.Append(CPPPATH=kinclude_paths, LDFLAGS=KERNEL_LDFLAGS)
-    #kernel_env.Append(CPPPATH=KINCLUDE_PATHS, LDFLAGS=KERNEL_LDFLAGS)
 
     return kernel_env
 
@@ -36,28 +34,18 @@ def build_kernel_objects(kernel_env):
 
     return kernel_env.Object(sources)
 
-    # TODO: Create kernel image, etc..
-    #print(dir(cross_env))
-    #cross_env.Ld('chronos.o', objects)
-    #cross_env.Objcopy('chronos.sym', 'chronos')
-
-#def build_boot_objects():
-#    pass
+# TODO: Create kernel image, etc..
 
 kernel_env = create_kernel_env()
 
-Export('kernel_env')
-KERNEL_DIR = REAL_CURDIR()
-Export('KERNEL_DIR')
-
-ARCH_LIBS=None
+# Export any variables needed globally.
+GlobalContext.Environments['kernel_env'] = kernel_env
+GlobalContext.KERNEL_DIR = GlobalContext.REAL_CURDIR()
+GlobalContext.ARCH_DIR   = Join_path(GlobalContext.KERNEL_DIR, ARCH_DIR)
 
 # Build the subdirs for the kernel.
 for subbuild in SUBBUILDS:
-    REAL_CURDIR = lambda : Join_path(KERNEL_DIR, subbuild)
-    # FIXME:
-    ARCH_LIBS = SConscript(Join_path(subbuild,'SConscript'), exports='REAL_CURDIR', duplicate=0)
+    GlobalContext.REAL_CURDIR = lambda : Join_path(GlobalContext.KERNEL_DIR, subbuild)
+    SConscript(Join_path(subbuild,'SConscript'), duplicate=0)
     
-kernel_env.Append(CPPPATH=ARCH_LIBS)
-
 build_kernel_objects(kernel_env)
