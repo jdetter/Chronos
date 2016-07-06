@@ -1,14 +1,10 @@
 TOOLS := \
 	cdisk \
-	ptabledump
+	ptabledump \
+	boot-imager
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-ifndef $(CC)
-	CC := gcc
-	CFLAGS := -ggdb -gdwarf-2
-endif
-
-TOOLS_CFLAGS := -D__LINUX__ -Iinclude/
+TOOLS_CFLAGS := -D__LINUX__ -DARCH_$(BUILD_ARCH) -Iinclude/
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
 .PHONY: tools
@@ -21,4 +17,4 @@ bin:
 	mkdir -p bin
 
 bin/%: src/%.c
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -o $@ $<
+	$(CC) $(TOOLS_CFLAGS) -o $@ $<

@@ -1,6 +1,7 @@
 #define __ASM_ONLY__
 #include "x86.h"
 #include "chronos.h"
+#include "vm.h"
 
 # Load the kernel and jump into it.
 
@@ -10,17 +11,16 @@
 #define KEYBOARD_DATA 0x60
 #define KEYBOARD_COMM 0x64
 
-#define KEYBOARD_DATA_FILL 	0x02
+#define KEYBOARD_DATA_FILL 		0x02
 #define KEYBOARD_CONTROL_READ 	0xD0
 #define KEYBOARD_CONTROL_WRITE 	0xD1
-#define A20_ENABLE_FLAG 	0x02
+#define A20_ENABLE_FLAG 		0x02
 
 #define PROTECT_EN 0x01
 
 # segments in the gdt, see below
-#define STAGE2_ADDR		0x7E00
 
-#define KEYBOARD_LIGHT_COMM	0xED
+#define KEYBOARD_LIGHT_COMM		0xED
 #define KEYBOARD_SCROLL_LOCK 	0x0
 #define KEYBOARD_SCROLL_NUM  	0x1
 #define KEYBOARD_SCROLL_CAPS 	0x2
@@ -89,43 +89,53 @@ protected_mode:
 	movw    %ax, %gs                # -> GS
 
 	movl 	$start, %esp
-	movl 	%esp, %ebp
 
 	subl 	$4, %esp # local for our current sector
 	subl 	$4, %esp # local for our current location in memory
 
-	movl 	$STAGE2_ADDR, %eax # initial location in memory
-	movl 	%eax, (%esp)
-	movl	$1, 0x4(%esp) # initial sector we need to read
+	movl 	%esp, %ebp
+
+	movl 	$BOOT2_TEXT_S, %eax # initial location in memory
+
+	movl	$1, 0x00(%ebp) # initial sector we need to read
+	movl 	%eax, 0x04(%ebp) # save the current location
 
 READ_SECT:
-	movl 	-4(%ebp), %eax # current sector we are reading 
-	movl 	-8(%ebp), %ecx # current location in memory
+	movl 	0x00(%ebp), %eax # current sector we are reading 
+	movl 	0x04(%ebp), %ecx # current location in memory
 
-	subl 	$8, %esp
-	movl 	%eax, (%esp)
-	movl 	%ecx, 4(%esp)
+	# Push arguments for ata_readsect
+	push 	%ecx
+	push 	%eax
+
 	call 	ata_readsect
 
 	# get rid of stack parameters
 	addl 	$8, %esp
 	
 	# increment address and sector.
-	movl 	-4(%ebp), %eax # current sector we are reading 
-	movl 	-8(%ebp), %ecx # current location in memory
+	movl 	0x00(%ebp), %eax # current sector we are reading 
+	movl 	0x04(%ebp), %ecx # current location in memory
 
 	addl 	$1, %eax
 	addl 	$512, %ecx
 
 	# Save values
-	movl 	%eax, -4(%ebp) # current sector we are reading 
-	movl 	%ecx, -8(%ebp) # current location in memory
+	movl 	%eax, 0x00(%ebp) # current sector we are reading 
+	movl 	%ecx, 0x04(%ebp) # current location in memory
 
-	cmpl 	$STAGE2_FINAL_SECT, %eax
+	# Are we done?
+	cmpl 	$BOOT2_E, %ecx
 	jne 	READ_SECT
 
 STAGE2_JMP:
-	ljmp    $(SEG_KERNEL_CODE << 3), $STAGE2_ADDR
+
+	# Setup the boot 2 stack
+	movl	$BOOT2_STACK_TOP, %esp
+	# Round up to a page boundary
+	movl	%esp, %ebp
+
+	ljmp    $(SEG_KERNEL_CODE << 3), $BOOT2_S
 
 PANIC_32:
 	jmp PANIC_32

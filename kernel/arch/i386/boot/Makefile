@@ -6,11 +6,11 @@ BOOT_STAGE1_DEPS := $(addsuffix .o, $(BOOT_STAGE1_DEPS))
 BOOT_STAGE2_DEPS := \
 	stage2/stage2 \
 	stage2/stage2_jmp \
+	stage2/vm \
 	arch/stdlock \
 	arch/vm/asm \
 	arch/vm/pgdir \
 	arch/vm/vm_alloc \
-	arch/vm/vm_boot \
 	arch/drivers/serial \
 	arch/drivers/ata \
 	arch/drivers/pic \
@@ -49,7 +49,7 @@ BOOT_STAGE2_LDFLAGS := \
 BOOT_STAGE2_TEXT_START := 0
 BOOT_STAGE2_TEXT_SZ := 128
 # How many sectors do our data sections get?
-BOOT_STAGE2_SECT_COUNT := 4
+BOOT_STAGE2_DATA_SZ := 4
 # Where do each of the simple sections start on disk?
 BOOT_STAGE2_DATA_START := 128
 BOOT_STAGE2_RODATA_START := 132
@@ -58,10 +58,10 @@ BOOT_STAGE2_BSS_START := 136
 BOOT_STAGE2_SECTORS := 140
 
 BOOT_CLEAN := \
-	boot-stage2.bss \
-	boot-stage2.data \
-	boot-stage2.rodata \
-	boot-stage2.text
+	boot-stage2.o.bss \
+	boot-stage2.o.data \
+	boot-stage2.o.rodata \
+	boot-stage2.o.text
 
 .PHONY: boot-clean
 boot-clean:
@@ -75,22 +75,7 @@ boot-stage1.img: $(BOOT_STAGE1_DEPS)
 	$(CROSS_OBJCOPY) -S -O binary -j .text boot-stage1.o boot-stage1.img
 
 boot-stage2.img: $(BOOT_STAGE2_DEPS)
-	# Link the second boot stage 
-	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE2_LDFLAGS) -o boot-stage2.o $(BOOT_STAGE2_DEPS)
-	# Extract the program parts
-	$(CROSS_OBJCOPY) -O binary -j .text boot-stage2.o boot-stage2.text
-	$(CROSS_OBJCOPY) -O binary -j .data boot-stage2.o boot-stage2.data
-	$(CROSS_OBJCOPY) -O binary -j .rodata boot-stage2.o boot-stage2.rodata
-	$(CROSS_OBJCOPY) -O binary -j .bss boot-stage2.o boot-stage2.bss
-	../tools/bin/boot2-verify
-	dd if=boot-stage2.text of=boot-stage2.img bs=512 \
-		count=$(BOOT_STAGE2_TEXT_SZ) seek=0
-	dd if=boot-stage2.data of=boot-stage2.img bs=512 \
-		count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_DATA_START)
-	dd if=boot-stage2.rodata of=boot-stage2.img bs=512 \
-		count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_RODATA_START)
-	dd if=boot-stage2.bss of=boot-stage2.img bs=512 \
-		count=$(BOOT_STAGE2_SECT_COUNT) seek=$(BOOT_STAGE2_BSS_START)
+	$(BOOT2_IMAGER) -o boot-stage2.img $(BOOT_STAGE2_DEPS)
 
 multiboot.o: $(MULTIBOOT_DEPS) $(BOOT_STAGE2_DEPS)
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o multiboot.o $(MULTIBOOT_DEPS) $(BOOT_STAGE2_DEPS)

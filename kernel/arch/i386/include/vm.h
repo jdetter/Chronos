@@ -89,9 +89,9 @@
  * ^^  Bottom of the page pool ^^
  *
  * 0x00001000 Kernel page directory
- * 0x00000958 Current video mode 
- * 0x00000954 Available pages in the memory pool
- * 0x00000950 Pointer to the first page in the memory pool
+ * 0x000009F0 Current video mode 
+ * 0x000009D0 Available pages in the memory pool
+ * 0x000009C0 Pointer to the first page in the memory pool
  * 0x00000500 Memory map (boot stage 1)
  * ...
  * All memory here left untouched (real mode IDT, bios data)
@@ -106,10 +106,10 @@
 /** Definitions for the above memory map **/
 
 #define VM_LAYOUT_PROVIDED
-#define VM_MAX		0xFFFFFFFF /* Maximum possible address */
+#define VM_MAX			0xFFFFFFFF /* Maximum possible address */
 
 #define KVM_DISK_E      0xFFFFF000 /* End of disk caching space */
-#define KVM_DISK_S	0xFFA00000 /* Start of the disk caching space */
+#define KVM_DISK_S		0xFFA00000 /* Start of the disk caching space */
 #define KVM_KERN_E      0xFF9FFFFF /* Kernel binary ends */
 #define KVM_KERN_S      0xFF000000 /* Kernel binary starts*/
 
@@ -136,13 +136,31 @@
 #define KVM_HARDWARE_E  0xFDFF7FFF /* End of hardware mappings */
 #define KVM_HARDWARE_S  0xFD000000 /* Start of hardware mappings */
 
-#define KVM_BOOT2_E	0x00019600 /* Start of the second boot stage binary */
-#define KVM_BOOT2_S	0x00007E00 /* Start of the second boot stage binary */
+/* Booting addresses */
+
+/* The end of the second stage boot loader (exclusive) */
+#define BOOT2_E			0x00020000 
+
+#define BOOT2_BSS_E		0x0001AFFF /* End of BSS section */
+#define BOOT2_BSS_S		0x0001A000 /* Start of BSS section */
+#define BOOT2_DATA_E	0x00019FFF /* End of data section */
+#define BOOT2_DATA_S	0x00019000 /* Start of data section */
+#define BOOT2_RODATA_E	0x00018FFF /* End of read only data section */
+#define BOOT2_RODATA_S	0x00018000 /* Start of the read only data section */
+#define BOOT2_TEXT_E	0x00017FFF /* End of the code section */
+#define BOOT2_TEXT_S	0x00008000 /* Start of the code section */
+#define BOOT2_STACK_TOP	0x00008000 /* Where the second boot stage stack starts */
+#define BOOT2_STACK_BOT	0x00007000 /* The page boundary for the boot stage 2 stack */
+#define BOOT2_E820_E	0x00006FFF /* The end of the e820 table */
+#define BOOT2_E820_S	0x00006000 /* The start of the e820 table */
+#define BOOT2_KARGS		0x00005000 /* Page of kernel arguments */
+
+#define BOOT2_S			0x00005000 /* The first page of the stage 2 loader */
 
 #define KVM_KPGDIR      0x00001000 /* The kernel page directory */
-#define KVM_VMODE    	0x00000958 /* The current video mode */
-#define KVM_PAGE_CT    	0x00000954 /* Amount of pages in the page pool */
-#define KVM_POOL_PTR    0x00000950 /* Pointer to the first page in mem pool*/
+#define KVM_VMODE    	0x00005000 /* The current video mode */
+#define KVM_PAGE_CT    	0x00005004 /* Amount of pages in the page pool */
+#define KVM_POOL_PTR    0x00005008 /* Pointer to the first page in mem pool*/
 
 /* Quickly calculate the difference between the normal and swap stacks. */
 #define SVM_DISTANCE (UVM_KSTACK_S - SVM_KSTACK_S)
@@ -234,7 +252,7 @@
 // #define __ALLOW_VM_SHARE__
 #endif
 
-#ifndef __VM_ASM_ONLY__
+#ifndef __ASM_ONLY__
 
 #include <stdint.h>
 

@@ -25,12 +25,13 @@ ata_wait:
 	pushl 	%edx
 ata_wait_loop:
 	movl	$PRIMARY_ATA_COMMAND, %edx
-	in		%dx, %al
+	inb		%dx
 	movl 	$ATA_RDY_OR_BSY, %ecx
 	andl 	%eax, %ecx
 	movl 	$ATA_BSY, %eax
 	cmpl 	%eax, %ecx
 	je 		ata_wait_loop
+
 	popl	%edx
 	ret
 
@@ -48,33 +49,40 @@ ata_readsect:
 	movl	$PRIMARY_ATA_SECTOR_COUNT, %edx
 	outb	%al, %dx
 
-	mov		0x08(%ebp), %eax
+	# Put the register count into eax
+	movl	0x08(%ebp), %eax
 	movl	$PRIMARY_ATA_SECTOR_NUMBER, %edx
 	outb	%al, %dx
 
+	# Shift right by 8
 	shrl	$0x08, %eax
 	movl	$PRIMARY_ATA_CYLINDER_LOW, %edx
 	outb	%al, %dx
 
+	# Shift right by 8
 	shrl	$0x08, %eax
 	movl	$PRIMARY_ATA_CYLINDER_HIGH, %edx
 	outb	%al, %dx
 
+	# Shift right by 8 and and with 0xE0 (1110 0000)
 	shrl	$0x08, %eax
 	andl	$0xE0, %eax
 	movl	$PRIMARY_ATA_CYLINDER_HIGH, %edx
 	outb	%al, %dx
 
+	# Send the command
 	movl	$0x20, %eax
-	movl	$PRIMARY_ATA_COMMAND, %eax
+	movl	$PRIMARY_ATA_COMMAND, %edx
 	outb	%al, %dx
 
+	# wait for the disk to be ready
 	call 	ata_wait
 
 	movl	$128, %ecx
 	movl	0x0C(%ebp), %edi
 	movl	$PRIMARY_ATA_DATA, %edx
 
+	cld
 	rep insl
 
 	popl	%edi

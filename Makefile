@@ -15,13 +15,13 @@ export CROSS_OBJCOPY := $(shell readlink -e $(CROSS_OBJCOPY))
 TARGET_SYSROOT := ../sysroot
 export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
-
+export BOOT2_IMAGER := $(shell pwd)/tools/bin/boot-imager
 
 # use host to configure the tools
-export CC=gcc
-export LD=ld
-export AS=gcc
-export OBJCOPY=objcopy
+export CC := gcc
+export LD := ld
+export AS := gcc
+export OBJCOPY := objcopy
 
 export LDFLAGS := 
 export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
@@ -136,8 +136,10 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 # Launch current build recipes
 run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
+
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
+
 run-gdb: user/bin $(USER_BUILD)
 	cd kernel ; \
 	make kernel-symbols ; \
@@ -146,6 +148,7 @@ run-gdb: user/bin $(USER_BUILD)
 	make user-symbols ; \
 	mv bin/*.sym ..
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
+
 run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 

@@ -6,7 +6,7 @@ int main(int argc, char** argv)
 	puts(".globl tp_mktf");
 	
 	int x;
-	for(x = 0;x < 255;x++)
+	for(x = 0;x < 256;x++)
 	{
 		printf(".globl handle_int_%d\n", x);
 		printf("handle_int_%d:\n", x);
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 	printf("trap_handlers:\n");
 	
 	/* Create array */
-	for(x = 0;x < 255;x++)
+	for(x = 0;x < 256;x++)
 		printf("\t.long handle_int_%d\n", x);
 
 	return 0;
