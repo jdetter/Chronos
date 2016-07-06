@@ -55,17 +55,20 @@ ata_readsect:
 	outb	%al, %dx
 
 	# Shift right by 8
+	movl	0x08(%ebp), %eax
 	shrl	$0x08, %eax
 	movl	$PRIMARY_ATA_CYLINDER_LOW, %edx
 	outb	%al, %dx
 
 	# Shift right by 8
-	shrl	$0x08, %eax
+	movl	0x08(%ebp), %eax
+	shrl	$0x10, %eax
 	movl	$PRIMARY_ATA_CYLINDER_HIGH, %edx
 	outb	%al, %dx
 
 	# Shift right by 8 and and with 0xE0 (1110 0000)
-	shrl	$0x08, %eax
+	movl	0x08(%ebp), %eax
+	shrl	$0x18, %eax
 	andl	$0xE0, %eax
 	movl	$PRIMARY_ATA_CYLINDER_HIGH, %edx
 	outb	%al, %dx

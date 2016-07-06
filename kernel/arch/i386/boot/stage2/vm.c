@@ -41,12 +41,10 @@ struct mem_region
  * added to the page pool so anything that the boot loader is going
  * to use should be added to this table. 
  */
-#define VM_IGNORE_TABLE_COUNT 5
+#define VM_IGNORE_TABLE_COUNT 3
 struct mem_region vm_ignore_table[] = {
 	{PGROUNDDOWN(UVM_KVM_S), PGROUNDUP(UVM_KVM_E)}, /* Kernel mapping */
-	{PGROUNDDOWN(BOOT2_S), PGROUNDUP(BOOT2_E)}, /* Boot stage 2 code and data */
-	{PGROUNDDOWN(BOOT2_STACK_BOT), PGROUNDUP(BOOT2_STACK_TOP)}, /* Boot stage 2 stack */
-	{PGROUNDDOWN(BOOT2_E820_S), PGROUNDUP(BOOT2_E820_E)}, /* E820 table */
+	{PGROUNDDOWN(BOOT2_S), PGROUNDUP(BOOT2_E - 1)}, /* Boot stage 2 code and data */
 	{0x00000000, 0x00002000} /* Null page + k_pgdir_t*/
 };
 

@@ -86,8 +86,18 @@ static void add_file_list(struct file_list** head, const char* name)
 	struct file_list* l = malloc(sizeof(struct file_list));
 	memset(l, 0, sizeof(struct file_list));
 	strncpy(l->name, name, 255);
-	l->next = *head;
-	*head = l;
+	l->next = NULL;
+
+	struct file_list* list = *head;
+
+	if(!*head)
+		*head = l;
+	else {
+		while(list->next)
+			list = list->next;
+
+		list->next = l;
+	}
 }
 
 static int len_file_list(struct file_list* head)
@@ -275,10 +285,10 @@ int main(int argc, char** argv)
 
 	dd(text_section, out_file, block_size, text_sz / block_size, position / block_size);
 	position += text_sz;
-	dd(data_section, out_file, block_size, data_sz / block_size, position / block_size);
-	position += data_sz;
 	dd(rodata_section, out_file, block_size, rodata_sz / block_size, position / block_size);
 	position += rodata_sz;
+	dd(data_section, out_file, block_size, data_sz / block_size, position / block_size);
+	position += data_sz;
 	position += bss_sz; /* BSS is zeroed when it starts*/
 
 	return 0;

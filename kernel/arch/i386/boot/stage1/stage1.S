@@ -132,10 +132,12 @@ STAGE2_JMP:
 
 	# Setup the boot 2 stack
 	movl	$BOOT2_STACK_TOP, %esp
-	# Round up to a page boundary
+
+	/* Create a new stack */
+	subl	$0x04, %esp
 	movl	%esp, %ebp
 
-	ljmp    $(SEG_KERNEL_CODE << 3), $BOOT2_S
+	ljmp    $(SEG_KERNEL_CODE << 3), $BOOT2_TEXT_S
 
 PANIC_32:
 	jmp PANIC_32
