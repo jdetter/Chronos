@@ -1,5 +1,2 @@
-* Need to create a global object, or some way of passing items around.
-  This should be idiomatic, global scope and files can get very confusing.
-  That, or keep some sort of system/spec for returning from subbuilds.
-
-* Move `Ld()` to `Program()`, this is the scons method of ldmodules.
+* Move the arch build into the kernel, and include both arch and kernel objects for arch.o, but just kernel objects for kernel. 
+  Use a Variantdir for the arch build.
