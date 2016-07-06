@@ -1,5 +1,5 @@
 #define __ASM_ONLY__
-#include "trap.h"
+#include "arch/trap.h"
 
 # Make a trap frame on the current stack.
 .globl tp_mktf

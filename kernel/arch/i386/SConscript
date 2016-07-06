@@ -10,7 +10,7 @@ RELOCATE_FLAGS = [
 
 ARCH_INCLUDE_PATHS = ['include']
 ARCH_IGNORE_PATHS = ['^boot$']
-ARCH_GCC_SUFFIX = ['.c']
+ARCH_GCC_SUFFIX = ['.c','.S']
 SUBBUILDS = ['boot']
 
 TRAP_IDT_FILE = Join_path(Path(CURDIR()), 'trap', 'idt.S')

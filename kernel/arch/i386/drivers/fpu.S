@@ -1,5 +1,5 @@
 #define __X86_ASM_ONLY__
-#include "x86.h"
+#include "arch/x86.h"
 
 # void fpu_init(void)
 .globl fpu_init
