@@ -139,7 +139,7 @@
 /* Booting addresses */
 
 /* The end of the second stage boot loader (exclusive) */
-#define BOOT2_E			0x00020000 
+#define BOOT2_E			0x0001B000
 
 #define BOOT2_BSS_E		0x0001AFFF /* End of BSS section */
 #define BOOT2_BSS_S		0x0001A000 /* Start of BSS section */
