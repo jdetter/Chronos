@@ -259,16 +259,16 @@ static void setup_boot2_pgdir(void)
 	vm_dir_mappages(BOOT2_S, BOOT2_E, k_pgdir, dir_flags, tbl_flags);
 
 	/* Directly map the current stack */
-	vm_dir_mappages(BOOT2_STACK_BOT, BOOT2_STACK_TOP, k_pgdir, 
-			dir_flags, tbl_flags);
+	// vm_dir_mappages(BOOT2_STACK_BOT, BOOT2_STACK_TOP, k_pgdir, 
+			// dir_flags, tbl_flags);
 
 	/* Directly map the kernel page directory */
 	vm_dir_mappages(KVM_KPGDIR, KVM_KPGDIR + PGSIZE, k_pgdir, 
 			dir_flags, tbl_flags);
 
 	/* Directly map the e820 table (kernel will cleanup when booted) */
-	vm_dir_mappages(BOOT2_E820_S, BOOT2_E820_E, k_pgdir, 
-			dir_flags, tbl_flags);
+	// vm_dir_mappages(BOOT2_E820_S, BOOT2_E820_E, k_pgdir, 
+			// dir_flags, tbl_flags);
 
 	/* Map null page temporarily */
 	vm_dir_mappages(0x0, PGSIZE, k_pgdir, dir_flags, tbl_flags);
