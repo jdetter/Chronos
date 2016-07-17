@@ -50,7 +50,7 @@ i386_OBJS := \
 	$(i386_CONTEXT_OBJS)
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))
 
-arch.o: $(i386_OBJS)
+arch.o: arch-tools $(i386_OBJS)
 	$(CROSS_LD) $(RELOCATE_FLAGS) $(i386_OBJS) -o arch.o
 
 .PHONY: boot-stage1.img
@@ -68,9 +68,15 @@ arch-clean:
 	cd boot ; \
 	make boot-clean
 	cd tools ; \
+	make tools-clean
 	rm -f $(i386_OBJS) arch.o trap/idt.S
 
-trap/idt.S:
+.PHONY: arch-tools
+arch-tools:
+	cd tools ; \
+	make tools
+
+trap/idt.S: arch-tools
 	./tools/bin/mkvect > ./trap/idt.S
 
 %.o: %.c
