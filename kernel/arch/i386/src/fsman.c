@@ -33,7 +33,6 @@ void fsman_init(void)
 	/* Assign a root file system */
 	struct FSDriver* ext2 = fs_alloc();
 	ext2->driver = ata;
-	storageio_setup(ext2);
 	ext2->fs_start = 2048;
 	storage_cache_init(ext2);
 

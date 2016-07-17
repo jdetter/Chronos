@@ -1919,8 +1919,7 @@ int ext2_init(struct FSDriver* fs)
 	/* Read the superblock */
 	int superblock_start = 1024;
 	char super_buffer[1024];
-	if(fs->storage_read(super_buffer, superblock_start, 
-				1024, fs) != 1024)
+	if(storageio_read(super_buffer, superblock_start, 1024, fs) != 1024)
 		return -1;
 	struct ext2_base_superblock* base = (void*) super_buffer;
 	struct ext2_extended_base_superblock* extended_base =

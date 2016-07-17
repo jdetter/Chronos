@@ -230,17 +230,6 @@ struct FSDriver
 
 	size_t blocksize; /* What is the block size of this fs? */
 	int blockshift; /* Turn a block address into an id */
-	/* Read and write block functions */
-	int (*readblock)(void* dst, blk_t block, struct FSDriver* driver);
-	int (*writeblock)(void* src, blk_t block,struct FSDriver* driver);
-	int (*readblocks)(void* dst, blk_t startblock, int count,
-			struct FSDriver* driver);
-	int (*writeblocks)(void* src, blk_t startblock, int count,
-			struct FSDriver* driver);
-	int (*storage_read)(void* dst, fileoff_t start, size_t sz,
-			struct FSDriver* driver);
-	int (*storage_write)(void* src, fileoff_t start, size_t sz,
-			struct FSDriver* driver);
 
 	void* (*reference)(blk_t block, struct FSDriver* driver);
 	void* (*addreference)(blk_t block, struct FSDriver* driver);

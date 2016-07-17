@@ -116,6 +116,7 @@ void ata_init(void)
 		ata_drivers[x]->sectshifter = 9;
 		/* TODO: calculate the last sector */
 		ata_drivers[x]->sectors = (uint)-1;
+		ata_drivers[x]->spp = PGSIZE / ata_drivers[x]->sectsize;
 
 		switch(x)
 		{

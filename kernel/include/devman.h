@@ -88,7 +88,7 @@ struct StorageDevice
 	 * otherwise.
 	 */
 	int (*readsects)(sect_t start_sect, int sectors, void* dst, size_t sz,
-			void* context);
+			struct StorageDevice* device);
 
 	/**
 	 * Write to a given sector (sector) on the storage device. The
@@ -105,7 +105,7 @@ struct StorageDevice
 	 * passed as the last parameter.
 	 */
 	int (*writesects)(sect_t start_sect, int sectors, void* src, size_t sz,
-			void* context);
+			struct StorageDevice* device);
 
 	void* context; /* Context for this StorageDevice */
 
@@ -113,6 +113,7 @@ struct StorageDevice
 	size_t sectors; /* How many sectors are on this storage device? */
 	int sectshifter; /* Shifter to turn an address into a sector number */
 	size_t sectsize; /* The size of a single sector */
+	int spp; /* How many sectors fit on a hardware page? */
 	struct cache cache; /* The cache for this device */
 };
 

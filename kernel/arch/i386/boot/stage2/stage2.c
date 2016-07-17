@@ -89,7 +89,6 @@ int main(void)
 	cprintf("\n");
 
 	cprintf("Starting EXT2 driver...\t\t\t\t\t\t\t");
-	storageio_setup(&fs);
 
 	/* Initilize the file system driver */
 	fs.valid = 1;
