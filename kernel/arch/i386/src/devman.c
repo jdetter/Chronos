@@ -22,7 +22,7 @@
 #include "pipe.h"
 #include "proc.h"
 #include "cacheman.h"
-#include "diskcache.h"
+#include "storagecache.h"
 #include "cpu.h"
 #include "vm.h"
 #include "k/netman.h"
@@ -147,7 +147,7 @@ int dev_init()
 		/* Set a real name for the cache */
 		snprintf(ata_drivers[x]->cache.name, CACHE_DEBUG_NAME_LEN,
 				"ATA DRIVE %d", (x + 1));
-		disk_cache_hardware_init(ata_drivers[x]);
+		storage_cache_hardware_init(ata_drivers[x]);
 	}
 
 	serial_init(0);

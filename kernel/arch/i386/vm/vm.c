@@ -59,9 +59,6 @@ int vm_init(void)
 	for(x = boot2_s;x < boot2_e;x += PGSIZE)
 		pfree(x);	
 
-	/* Add E820 table to memory pool */
-	pfree(BOOT2_E820_S);
-
 	/* Clear the TLB */
 	vm_enable_paging(k_pgdir);
 

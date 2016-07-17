@@ -18,8 +18,8 @@
 #include "drivers/ext2.h"
 #include "proc.h"
 #include "vm.h"
-#include "diskio.h"
-#include "diskcache.h"
+#include "storageio.h"
+#include "storagecache.h"
 #include "cacheman.h"
 #include "panic.h"
 
@@ -43,7 +43,7 @@ static char* fail = "[FAIL]\n";
 #define EXT2_INODE_CACHE_SZ 0x10000
 
 extern pgdir_t* k_pgdir;
-extern struct FSHardwareDriver* ata_drivers[];
+extern struct StorageDevice* ata_drivers[];
 static struct FSDriver fs;
 
 int main(void)
@@ -89,13 +89,13 @@ int main(void)
 	cprintf("\n");
 
 	cprintf("Starting EXT2 driver...\t\t\t\t\t\t\t");
-	diskio_setup(&fs);
+	storageio_setup(&fs);
 
 	/* Initilize the file system driver */
 	fs.valid = 1;
 	fs.type = 1; /* EXT2 type here */
 	fs.driver = ata_drivers[0];
-	fs.start = EXT2_SUPER;
+	fs.fs_start = EXT2_SUPER;
 
 	/* Setup the cache */
 	size_t cache_sz = ATA_CACHE_SZ;
@@ -105,8 +105,8 @@ int main(void)
 	{
 		panic(fail);
 	}
-	disk_cache_init(&fs);
-	disk_cache_hardware_init(fs.driver);
+	storage_cache_init(&fs);
+	storage_cache_hardware_init(fs.driver);
 
 	/* Start the driver */
 	if(ext2_init(&fs))

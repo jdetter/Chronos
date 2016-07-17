@@ -7,12 +7,12 @@ struct cache
 {
 	int entry_count; /* How many entries / slabs are there? */
 	int entry_shift; /* Use shifts instead of multiplication */
-        struct cache_entry* entries; /* List of entries */
+	struct cache_entry* entries; /* List of entries */
 	uintptr_t last_entry; /* the address of the last entry */
-        char* slabs; /* Pointer to the first slab */
+	char* slabs; /* Pointer to the first slab */
 	int slab_shift; /* Quick shift is available for log2(slab)*/
-        size_t slab_sz; /* How big are the slabs? */
-        slock_t lock; /* Lock needed to change the cache */
+	size_t slab_sz; /* How big are the slabs? */
+	slock_t lock; /* Lock needed to change the cache */
 	int clock; /* Points to the last entry allocated */
 	char name[CACHE_DEBUG_NAME_LEN]; /* name of the cache (DEBUG) */
 	int cache_hits; /* How many times have we gotten a cache hit? */

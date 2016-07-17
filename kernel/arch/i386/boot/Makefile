@@ -16,10 +16,10 @@ BOOT_STAGE2_DEPS := \
 	arch/drivers/pic \
 	arch/x86/asm \
 	arch/cpu \
-	kern/drivers/diskio \
+	kern/drivers/storageio \
 	kern/drivers/ext2 \
 	kern/cache/cache \
-	kern/cache/diskcache \
+	kern/cache/storagecache \
 	kern/cache/cacheman \
 	kern/stdlock \
 	kern/file \

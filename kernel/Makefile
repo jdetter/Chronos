@@ -14,7 +14,7 @@ KERNEL_OBJS := \
 	syscall/sysfile \
 	syscall/sysutil \
 	syscall/sysmmap \
-	cache/diskcache \
+	cache/storagecache \
 	cache/cacheman \
 	cache/cache \
 	vm/vm_share \
@@ -39,11 +39,10 @@ KERNEL_OBJS := \
 # Generic drivers 
 KERNEL_DRIVERS := \
 	ext2 \
-	diskio \
+	storageio \
 	lwfs \
 	raid \
 	tty \
-	fstab \
 	vt102/tty_display \
 	vt102/tty_codes \
 	vt102/tty_io \

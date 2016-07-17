@@ -6,6 +6,6 @@
 /**
  * Enable the hardware driver to use the read and write functions.
  */
-void diskio_setup(struct FSDriver* driver);
+void storageio_setup(struct FSDriver* driver);
 
 #endif

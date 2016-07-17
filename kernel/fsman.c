@@ -21,10 +21,9 @@
 #include "chronos.h"
 #include "proc.h"
 #include "panic.h"
-#include "diskcache.h"
+#include "storagecache.h"
 #include "drivers/ext2.h"
 #include "drivers/lwfs.h"
-#include "drivers/diskio.h"
 
 // #define DEBUG
 
@@ -61,6 +60,7 @@ extern struct inode_t itable[];
 /* File system table */
 extern slock_t fstable_lock;
 extern struct FSDriver fstable[];
+char root_partition[FILE_MAX_PATH];
 
 struct FSDriver* fs_alloc(void)
 {

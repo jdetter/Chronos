@@ -1,8 +1,7 @@
 #include <string.h>
-#include "fstab.h"
-#include "diskio.h"
+#include "storageio.h"
 #include "panic.h"
-#include "diskcache.h"
+#include "storagecache.h"
 #include "drivers/ata.h"
 #include "drivers/ext2.h"
 #include "drivers/lwfs.h"
@@ -19,26 +18,27 @@ void fsman_init(void)
 	memset(&itable, 0, sizeof(struct inode_t) * FS_INODE_MAX);
 
 	/* Get a running driver */
-	struct FSHardwareDriver* ata = NULL;
+	struct StorageDevice* ata = NULL;
 	int x;
 	for(x = 0;x < ATA_DRIVER_COUNT;x++)
+	{
 		if(ata_drivers[x]->valid)
 		{
 			ata = ata_drivers[x];
 			break;
 		}
+	}
 	if(ata == NULL) panic("No ata driver available.\n");
 
 	/* Assign a root file system */
 	struct FSDriver* ext2 = fs_alloc();
 	ext2->driver = ata;
-	diskio_setup(ext2);
-	ext2->start = 2048;
-	disk_cache_init(ext2);
+	storageio_setup(ext2);
+	ext2->fs_start = 2048;
+	storage_cache_init(ext2);
 
 	/* Set our ext2 as the root file system. */
 	ext2_init(ext2);
-	// ext2->fsck(ext2->context);
 	ext2->valid = 1;
 	ext2->type = 0;
 	strncpy(ext2->mount_point, "/", FILE_MAX_PATH);
@@ -57,7 +57,7 @@ void fsman_init(void)
 		if(!ino)
 		{
 			/* If we can't open dev the file system is currupt */
-			return;
+			panic("EXT2 files system currupt.");
 		}
 
 		ext2->chmod(ino,
@@ -78,8 +78,4 @@ void fsman_init(void)
 	dev->type = 0;
 	dev->valid = 1;
 	strncpy(dev->mount_point, "/dev/", FILE_MAX_PATH);
-
-	int i = fstab_init();
-	cprintf("\n\n%d fstab entries detected.\n", i);
-	panic("");
 }
