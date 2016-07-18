@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "panic.h"
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdlock.h"
 #include "pipe.h"
 #include "file.h"

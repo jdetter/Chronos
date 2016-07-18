@@ -1,12 +1,6 @@
 #ifndef _VM_H_
 #define _VM_H_
 
-
-#if (defined _VM_ASM_ONLY_ || defined __VM_ASM_ONLY__)
-#warn "Please use __ASM_ONLY__ instead of _*_ASM_ONLY_"
-#define __ASM_ONLY__
-#endif
-
 /* Include the architecture independant header */
 #ifndef __NO_VM_ARCH__
 

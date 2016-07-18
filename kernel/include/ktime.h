@@ -3,6 +3,19 @@
 
 #include <sys/time.h>
 
+struct tms
+{
+    clock_t tms_utime; /* user time */
+    clock_t tms_stime; /* system time */
+    clock_t tms_cutime; /* user time of children */
+    clock_t tms_cstime; /* system time of children */
+};
+
+/* Seconds in a normal year */
+#define T_SECONDS_YEAR 31557600
+/* Seconds in a leap year */
+#define T_SECONDS_LYEAR 31622400
+
 /**
  * Initilize the kernel time keeping mechanism.
  */

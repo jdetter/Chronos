@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "x86.h"
 #include "stdlock.h"
 #include "trap.h"
@@ -24,7 +24,8 @@
 
 context_t k_context; /* The kernel context */
 pstack_t k_stack; /* Kernel stack */
-extern pgdir_t* k_pgdir; /* Kernel page directory */
+pgdir_t* k_pgdir; /* Kernel page directory */
+int video_mode; /* The video mode dectected on boot */
 extern slock_t global_mem_lock;
 
 int vm_init(void)
@@ -50,9 +51,9 @@ int vm_init(void)
 	vm_mappages(KVM_KSTACK_S, KVM_KSTACK_E - KVM_KSTACK_S, k_pgdir, 
 		dir_flags, tbl_flags);
 
-	/* Add bootstrap code to the memory pool */
-	int boot2_s = PGROUNDDOWN(KVM_BOOT2_S) + PGSIZE;
-	int boot2_e = PGROUNDUP(KVM_BOOT2_E);
+	/* Add bootstrap code to the memory pool (includes stack) */
+	int boot2_s = PGROUNDDOWN(BOOT2_S) + PGSIZE;
+	int boot2_e = PGROUNDUP(BOOT2_E);
 
 	int x;
 	for(x = boot2_s;x < boot2_e;x += PGSIZE)
@@ -65,7 +66,8 @@ int vm_init(void)
 }
 
 #define GDT_SIZE (sizeof(struct vm_segment_descriptor) * SEG_COUNT)
-struct vm_segment_descriptor global_descriptor_table[] ={
+struct vm_segment_descriptor global_descriptor_table[] = 
+{
 	MKVMSEG_NULL, 
 	MKVMSEG(SEG_KERN, SEG_EXE, SEG_READ,  0x0, VM_MAX),
 	MKVMSEG(SEG_KERN, SEG_DATA, SEG_WRITE, 0x0, VM_MAX),

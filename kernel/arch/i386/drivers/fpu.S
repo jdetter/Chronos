@@ -1,4 +1,4 @@
-#define __X86_ASM_ONLY__
+#define __ASM_ONLY__
 #include "x86.h"
 
 # void fpu_init(void)

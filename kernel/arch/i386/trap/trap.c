@@ -10,7 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "idt.h"
 #include "trap.h"
 #include "file.h"
@@ -38,6 +38,7 @@
 #define STACK_TOLERANCE 16
 
 // #define DEBUG
+// #define PANIC_ON_ANY_FAULT
 
 #ifdef DEBUG
 #define TRAP_NAME_SZ 20
@@ -178,7 +179,6 @@ void trap_handler(struct trap_frame* tf, void* ret_frame)
 
 	if(handled) goto TRAP_DONE;
 
-
 	switch(trap)
 	{
 		case INT_PIC_KEYBOARD: case INT_PIC_COM1:
@@ -307,6 +307,10 @@ TRAP_DONE:
 		cprintf("%s: EIP: 0x%x ESP: 0x%x EBP: 0x%x\n",
 			rproc->name, rproc->tf->eip,
 			rproc->tf->esp, rproc->tf->ebp);
+
+#ifdef PANIC_ON_ANY_FAULT
+		user_problem = 0;
+#endif
 
 		if(user_problem && rproc && !kernel_fault)
 		{

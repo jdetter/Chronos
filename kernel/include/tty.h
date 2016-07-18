@@ -132,7 +132,7 @@ struct tty
 	struct kbd_buff kbd_line; /* Current line buffer */
 	slock_t key_lock; /* The lock needed in order to read from keybaord */
 
-	struct DeviceDriver* driver; /* driver for standard in/out */
+	struct IODevice* driver; /* driver for standard in/out */
 	slock_t io_queue_lock; /* Lock needed to touch the io queue */
 	struct proc* io_queue; /* Process currently waiting for io */
 
@@ -186,7 +186,7 @@ void tty_init(tty_t t, int num, char type, int cursor_enabled,
 /**
  * Setup an io driver for a specific tty.
  */
-int tty_io_setup(struct IODriver* driver, int tty_num);
+int tty_io_setup(struct IODevice* device, int tty_num);
 
 /**
  * Returns the number of this tty.
@@ -269,7 +269,7 @@ void tty_clear_input(tty_t t);
  * Checks to see if the device is a tty. If it is a tty, it returns a pointer
  * to the tty_t struct. Otherwise it returns null.
  */
-tty_t tty_check(struct DeviceDriver* driver);
+tty_t tty_check(struct IODevice* driver);
 
 /**
  * Kill the current line (erase the line). On success, returns

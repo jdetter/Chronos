@@ -105,7 +105,7 @@
 
 #define ATA_CACHE_SZ 0x30000 /* HDD cache sz per drive */
 
-#ifndef __X86_ASM_ONLY__
+#ifndef __ASM_ONLY__
 
 #include "context.h"
 #include "vm.h"
@@ -336,7 +336,7 @@ extern void x86_shutdown(void);
 #define INT_PIC_ATA1_CODE       0x0E
 #define INT_PIC_ATA2_CODE       0x0F
 
-#ifndef __X86_ASM_ONLY__
+#ifndef __ASM_ONLY__
 struct task_segment
 {
 	uint16_t previous_task_link; /* Segment selector of prev task*/

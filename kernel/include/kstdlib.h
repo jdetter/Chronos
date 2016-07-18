@@ -1,5 +1,5 @@
-#ifndef _KERN_STDLIB_H_
-#define _KERN_STDLIB_H_
+#ifndef _KERNEL_STDLIB_H_
+#define _KERNEL_STDLIB_H_
 
 /* Dependant headers */
 #include <stdint.h>
@@ -37,5 +37,7 @@ int __log2(int val);
  * Convert a bcd coded byte into its binary equivalent.
  */
 char bcdtobin(char val);
+
+
 
 #endif

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "proc.h"
 #include "panic.h"
 #include "drivers/cmos.h"
@@ -42,7 +42,7 @@ void iosched_check(void)
 void iosched_check_sleep(void)
 {
 	slock_acquire(&ptable_lock);
-	uint time = ktime_seconds();
+	time_t time = ktime_seconds();
 
 	int x;
 	for(x = 0;x < PTABLE_SIZE;x++)

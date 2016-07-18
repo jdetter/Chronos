@@ -1,0 +1,4 @@
+# All lines starting with a # are comments.
+
+# Device	Mount Point		Type	Options		Dump	Pass
+/dev/hda 	/ 				ext2 	defaults 	0 		1

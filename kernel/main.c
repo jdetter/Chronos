@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "file.h"
 #include "stdarg.h"
 #include "stdlock.h"
@@ -28,7 +28,8 @@ extern void arch_init(void (*function)(void));
 /* Entry point for the kernel */
 int main(void)
 {
-	
+	/* First copy over the root partition argument */
+	// strncpy(root_partition, root_part, FILE_MAX_PATH - 1);
 	arch_init(main_stack);
 
 	panic("main_stack returned.\n");
@@ -59,7 +60,7 @@ void main_stack(void)
 
 	/* Detect devices */
 	cprintf("Initilizing device manager...\n");
-	dev_init();
+	devman_init();
 
 	/* Initilize pipes */
 	cprintf("Initilizing pipes...\t\t\t\t\t\t\t");

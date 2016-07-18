@@ -11,52 +11,9 @@
 #include "file.h"
 #include "stdlock.h"
 #include "cache.h"
+#include "devman.h"
 
 #define FS_INODE_CACHE_SZ 0x10000 /* Per file system cache */
-
-typedef uint32_t blk_t; /* A block number */
-typedef uint32_t sect_t; /* A sector number */
-typedef uint32_t fileoff_t; /* Offset into a file */
-
-struct FSHardwareDriver
-{
-	char valid; /* 1 = valid, 0 = invalid. */
-	int sectmax; /* The last sector */
-	int sectshifter; /* Turn an address into a sector */
-	int sectsize; /* Size of the disks sector */
-	int spp; /* Sectors per page */
-	struct cache cache;
-	int (*readsect)(void* dst, sect_t sect, struct FSHardwareDriver* driver); 
-	int (*writesect)(void* src, sect_t sect, struct FSHardwareDriver* driver);
-	int (*readsects)(void* dst, sect_t sectstart, int sectcount,
-                struct FSHardwareDriver* driver);
-        int (*writesects)(void* src, sect_t sectstart, int sectcount,
-                struct FSHardwareDriver* driver);
-	void* context; /* Pointer to driver specified context */
-};
-
-/**
- * Needed functions in the driver interface:
- * seek: change position in file
- * open: open and possibly create a file
- * close: close an open file
- * create: create a file
- * chown: change ownership of file
- * chmod: change permissions of file
- * stat: get stat on file
- * sync: flush file to disk
- * truncate: truncate a file to a length
- * link: create a soft link
- * mkdir: create a directory
- * mknod: make a device node
- * read: read from a file
- * readdir: read a directory entry
- * rename: move a file
- * rmdir: remove a directory
- * unlink: delete a file reference
- * mount: create a new file system instance
- * unmount: close file system instance
- */
 
 #define FS_INODE_MAX 256 /* Number of inodes in the inode table */
 #define FS_TABLE_MAX 4 /* Maximum number of mounted file systems */
@@ -102,14 +59,6 @@ struct fs_stat
 
 struct FSDriver
 {
-	/**
-	 * Initilize the hardware and context needed for the file system
-	 * to function.
-	 */
-	int (*init)(sect_t start_sector, sect_t end_sector, size_t sectsize,
-			size_t cache_sz, char* cache, 
-			struct FSDriver* driver, void* context);
-
 	/**
 	 * Required file system driver function that opens a file
 	 * given a path, some flags and an open mode. The mode and
@@ -271,32 +220,27 @@ struct FSDriver
 	/* Locals for the driver */
 	int valid; /* Whether or not this entry is valid. */
 	int type; /* Type of file system */
-	struct FSHardwareDriver* driver; /* HDriver for this file system*/
+	struct StorageDevice* driver; /* The underlying storage device */
 	char mount_point[FILE_MAX_PATH]; /* Mounted directory */
 	char context[FS_CONTEXT_SIZE]; /* Space for locals */
 	char* inode_cache; /* Pointer into the inode cache */
 	size_t inode_cache_sz; /* How big is the cache in bytes? */
-	int bpp; /* How many fs blocks fit onto a page? */
-	sect_t start; /* The sector where this file system starts */
+	int bpp; /* How many fs blocks fit onto a memory page? */
+	sect_t fs_start; /* The sector where this file system starts */
 
 	size_t blocksize; /* What is the block size of this fs? */
 	int blockshift; /* Turn a block address into an id */
-	/* Read and write block functions */
-	int (*readblock)(void* dst, blk_t block, struct FSDriver* driver);
-	int (*writeblock)(void* src, blk_t block,struct FSDriver* driver);
-	int (*readblocks)(void* dst, blk_t startblock, int count,
-			struct FSDriver* driver);
-	int (*writeblocks)(void* src, blk_t startblock, int count,
-			struct FSDriver* driver);
-	int (*disk_read)(void* dst, fileoff_t start, size_t sz,
-			struct FSDriver* driver);
-	int (*disk_write)(void* src, fileoff_t start, size_t sz,
-			struct FSDriver* driver);
 
 	void* (*reference)(blk_t block, struct FSDriver* driver);
 	void* (*addreference)(blk_t block, struct FSDriver* driver);
 	int (*dereference)(void* ref, struct FSDriver* driver);
 };
+
+/**
+ * The location of the device for the root partition on
+ * disk.
+ */
+extern char root_partition[];
 
 /**
  * Detect all disks and file systems.
@@ -425,7 +369,8 @@ int fs_mknod(const char* path, dev_t dev, dev_t dev_type, mode_t perm);
 int fs_truncate(inode i, int sz);
 
 /**
- * Sync all file system data to disk. Return 0 on success.
+ * Sync all file system data to the underlying storage device. 
+ * Return 0 on success.
  */
 int fs_sync(void);
 
@@ -435,6 +380,17 @@ int fs_sync(void);
  * then -1 is returned.
  */
 int fs_pathconf(int conf, const char* path);
+
+/**
+ * Read a line from the given inode. A line is designated by a newline
+ * character. file_position should be updated by the caller when
+ * readline returns. dst_buffer must be at least sz bytes in size.
+ * Returns the amount of bytes read from the file. The newline
+ * character is included in this count AND is included in the buffer.
+ * Therefore, a blank link will return 1, which a newline character
+ * in the null character terminated buffer.
+ */
+int fs_readline(inode i, size_t file_position, void* dst_buffer, size_t sz);
 
 /**
  * Get rid of the macro declaration.

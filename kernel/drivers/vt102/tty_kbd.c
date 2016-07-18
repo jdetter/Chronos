@@ -100,7 +100,7 @@ void tty_keyboard_interrupt_handler(void)
 	int x;
 	for(x = 0;x < MAX_TTYS;x++)
 	{
-		if((t + x)->io_queue && (t + x)->driver->io_driver.ready_read(t + x))
+		if((t + x)->io_queue && (t + x)->driver->ready_read(t + x))
 		{
 #ifdef KEY_DEBUG
 			cprintf("tty: tty %d needed to be woken up again!\n", x);

@@ -7,6 +7,7 @@
 #include "vm.h"
 
 #define ELF_MAGIC {0x7F, 'E', 'L', 'F'}
+#define ELF_MAGIC_INT 0x464C457F
 
 /* os_abi options*/
 #define ELF_OS_ABI_SYSTEM_V 	0x00

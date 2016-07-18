@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/fcntl.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "file.h"
 #include "elf.h"
 #include "stdlock.h"

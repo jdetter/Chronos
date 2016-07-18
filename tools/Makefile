@@ -1,8 +1,10 @@
 TOOLS := \
-	disk-part
+	cdisk \
+	ptabledump \
+	boot-imager
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-TOOLS_CFLAGS := -D__LINUX__
+TOOLS_CFLAGS := -D__LINUX__ -DARCH_$(BUILD_ARCH) -Iinclude/
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
 .PHONY: tools
@@ -15,4 +17,4 @@ bin:
 	mkdir -p bin
 
 bin/%: src/%.c
-	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -o $@ $<
+	$(CC) $(TOOLS_CFLAGS) -o $@ $<

@@ -120,18 +120,18 @@ char serial_read_noblock(void)
 	return 0;
 }
 
-int serial_io_init(struct IODriver* driver);
+int serial_io_init(struct IODevice* device);
 int serial_io_read(void* dst, fileoff_t start_read, size_t sz, void* context);
 int serial_io_write(void* src, fileoff_t start_write, size_t sz, void* context);
-int serial_io_setup(struct IODriver* driver)
+int serial_io_setup(struct IODevice* device)
 {
-	driver->init = serial_io_init;
-	driver->read = serial_io_read;
-	driver->write = serial_io_write;
+	device->init = serial_io_init;
+	device->read = serial_io_read;
+	device->write = serial_io_write;
 	return 0;
 }
 
-int serial_io_init(struct IODriver* driver)
+int serial_io_init(struct IODevice* device)
 {
 	return 0;
 }

@@ -6,7 +6,7 @@
 #include <sys/select.h>
 #include <dirent.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdlock.h"
 #include "file.h"
 #include "devman.h"
@@ -252,12 +252,12 @@ int sys_read(void)
 			break;
 		case FD_TYPE_DEVICE:
 			/* Check for read support */
-			if(rproc->fdtab[fd]->device->io_driver.read)
+			if(rproc->fdtab[fd]->device->read)
 			{
 				/* read is supported */
-				sz = rproc->fdtab[fd]->device->io_driver.read(dst,
+				sz = rproc->fdtab[fd]->device->read(dst,
 						rproc->fdtab[fd]->seek, sz,
-						rproc->fdtab[fd]->device->io_driver.context);
+						rproc->fdtab[fd]->device->context);
 			} else sz = -1;
 			break;
 		case FD_TYPE_PIPE:
@@ -328,10 +328,10 @@ int sys_write(void)
 			else sz = -1;
 			break;
 		case FD_TYPE_DEVICE:
-			if(rproc->fdtab[fd]->device->io_driver.write)
-				sz = rproc->fdtab[fd]->device->io_driver.write(src,
+			if(rproc->fdtab[fd]->device->write)
+				sz = rproc->fdtab[fd]->device->write(src,
 						rproc->fdtab[fd]->seek, sz, 
-						rproc->fdtab[fd]->device->io_driver.context);
+						rproc->fdtab[fd]->device->context);
 			else sz = -1;
 			break;
 	}
@@ -862,14 +862,14 @@ int sys_ioctl(void)
 	}
 
 	/* Does this device support ioctl? */
-	if(!rproc->fdtab[fd]->device->io_driver.ioctl)
+	if(!rproc->fdtab[fd]->device->ioctl)
 	{
 		slock_release(&rproc->fdtab[fd]->lock);
 		return -1;
 	}
 
-	int result = rproc->fdtab[fd]->device->io_driver.ioctl(request, 
-			arg, rproc->fdtab[fd]->device->io_driver.context);
+	int result = rproc->fdtab[fd]->device->ioctl(request, 
+			arg, rproc->fdtab[fd]->device->context);
 
 	slock_release(&rproc->fdtab[fd]->lock);
 	return result;

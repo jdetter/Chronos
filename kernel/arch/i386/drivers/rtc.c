@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "drivers/cmos.h"
 #include "stdlock.h"
 #include "drivers/rtc.h"

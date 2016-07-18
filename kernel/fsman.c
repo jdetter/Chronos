@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sys/fcntl.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"
@@ -21,10 +21,9 @@
 #include "chronos.h"
 #include "proc.h"
 #include "panic.h"
-#include "diskcache.h"
+#include "storagecache.h"
 #include "drivers/ext2.h"
 #include "drivers/lwfs.h"
-#include "drivers/diskio.h"
 
 // #define DEBUG
 
@@ -61,6 +60,7 @@ extern struct inode_t itable[];
 /* File system table */
 extern slock_t fstable_lock;
 extern struct FSDriver fstable[];
+char root_partition[FILE_MAX_PATH];
 
 struct FSDriver* fs_alloc(void)
 {
@@ -796,4 +796,41 @@ int fs_pathconf(int config, const char* path)
     }
 
     return result;
+}
+
+int fs_readline(inode i, size_t curr_offset, void* buffer, size_t sz)
+{
+	char* buff_c = buffer;
+	/* fill the buffer */
+	int result = fs_read(i, buff_c, sz - 1, curr_offset);
+
+	if(result > sz - 1)
+		panic("kernel: file system wrote too much!!\n");
+
+	/* Check for read error */
+	if(result < 0) return -1;
+
+	/* Check for EOF */
+	if(result == 0)
+	{
+		*buff_c = 0;
+		return 0;
+	}
+
+	/* Find first newline (if it exists) */
+	int x;
+	for(x = 0;x < result - 1;x++)
+	{
+		if(!buff_c[x]) break;
+		if(buff_c[x] == '\n')
+		{
+			x++;
+			break;
+		}
+	}
+
+	/* put null character into the buffer */
+	buff_c[x] = 0;
+
+	return x;
 }

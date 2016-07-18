@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdlock.h"
 #include "file.h"
 #include "syscall.h"

@@ -24,19 +24,19 @@
 int log2_linux(int value)
 {
 	if(value == 0) return -1;
-        int value_orig = value;
-        /* Shift to the right until we hit a 1 */
-        int x = 0;
-        while(value != 1)
-        {
-                value >>= 1;
-                x++;
-        }
+	int value_orig = value;
+	/* Shift to the right until we hit a 1 */
+	int x = 0;
+	while(value != 1)
+	{
+		value >>= 1;
+		x++;
+	}
 
-        /* Check work */
-        if(1 << x != value_orig) return -1;
+	/* Check work */
+	if(1 << x != value_orig) return -1;
 
-        return x;
+	return x;
 }
 
 
@@ -47,7 +47,7 @@ int log2_linux(int value)
 #include <stdlib.h>
 #include <string.h>
 
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdarg.h"
 #include "panic.h"
 
@@ -62,9 +62,9 @@ int log2_linux(int value)
 #define NO_DEFINE_INODE
 #include "fsman.h"
 #include "drivers/ext2.h"
-#include "drivers/diskio.h"
+#include "drivers/storageio.h"
 #include "cache.h"
-#include "diskcache.h"
+#include "storagecache.h"
 #include "cacheman.h"
 #include "vm.h"
 
@@ -102,18 +102,18 @@ struct ext2_linux_specific
 
 struct ext2_hurd_specific
 {
-        uint8_t fragment_number;
-        uint8_t fragment_size;
-        uint16_t mode_high;
-        uint16_t userid_high;
-        uint16_t groupid_high;
-        uint32_t author_id;
+	uint8_t fragment_number;
+	uint8_t fragment_size;
+	uint16_t mode_high;
+	uint16_t userid_high;
+	uint16_t groupid_high;
+	uint32_t author_id;
 };
 
 struct ext2_masix_specific
 {
-        uint8_t fragment_number;
-        uint8_t fragment_size;
+	uint8_t fragment_number;
+	uint8_t fragment_size;
 	uint8_t reserved[10];
 };
 
@@ -139,7 +139,7 @@ struct ext2_disk_inode
 	uint32_t acl;
 	uint32_t upper_size;
 	uint32_t fragment;
-	
+
 	union
 	{
 		struct ext2_linux_specific linux_specific;
@@ -304,7 +304,7 @@ struct ext2_context
 	int super_offset;
 
 	/* hardware driver */
-	struct FSHardwareDriver* driver;
+	struct StorageDevice* driver;
 	/* File system metadata */
 	struct FSDriver* fs;	
 
@@ -549,7 +549,7 @@ static int ext2_find_free_inode(int hint, int dir, context* context)
 }
 
 static int ext2_alloc_block_old(int block_group, 
-	int blockid, context* context)
+		int blockid, context* context)
 {
 	char* block;
 	/* Get the block group descriptor table */
@@ -597,7 +597,7 @@ static int ext2_alloc_block_old(int block_group,
 
 static int ext2_alloc_block(blkid block_num, context* context)
 {
-        char* block = NULL;
+	char* block = NULL;
 	int block_group = (block_num - context->firstgroupstart)
 		>> context->blockspergroupshift;
 
@@ -605,14 +605,14 @@ static int ext2_alloc_block(blkid block_num, context* context)
 	if(block_group < 0 || block_group > context->groupcount)
 		return -1;
 
-        /* Get the block group descriptor table */
-        struct ext2_block_group_table table;
-        if(ext2_read_bgdt(block_group, &table, context))
-                return -1;
+	/* Get the block group descriptor table */
+	struct ext2_block_group_table table;
+	if(ext2_read_bgdt(block_group, &table, context))
+		return -1;
 
 	/* Calculate meta size */
 	blkid group_start = (block_group 
-		<< context->blockspergroupshift)
+			<< context->blockspergroupshift)
 		+ context->firstgroupstart;
 	blkid group_end = group_start + (1 << context->blockspergroupshift);
 	blkid meta_last = table.inode_table + 1 + context->inodeblocks;
@@ -623,39 +623,39 @@ static int ext2_alloc_block(blkid block_num, context* context)
 	/* Does this block address make sense? */
 	if(block_num > group_end) return -1;
 
-        /* Is the block free? */
-        block = context->fs->reference(table.block_bitmap_address,
-                        context->fs);
-        if(!block) return -1;
+	/* Is the block free? */
+	block = context->fs->reference(table.block_bitmap_address,
+			context->fs);
+	if(!block) return -1;
 
-        /* Is the block already allocated? */
-        if(ext2_get_bit(block, block_id, context))
-        {
-                context->fs->dereference(block, context->fs);
-                return -1; /* Already allocated!*/
-        }
+	/* Is the block already allocated? */
+	if(ext2_get_bit(block, block_id, context))
+	{
+		context->fs->dereference(block, context->fs);
+		return -1; /* Already allocated!*/
+	}
 
-        /* Set the bit */
-        if(ext2_set_bit(block, block_id, 1, context))
-        {
-                context->fs->dereference(block, context->fs);
-                return -1;
-        }
+	/* Set the bit */
+	if(ext2_set_bit(block, block_id, 1, context))
+	{
+		context->fs->dereference(block, context->fs);
+		return -1;
+	}
 
-        /* update block group table metadata (free blocks - 1)*/
-        table.free_blocks--;
-        if(ext2_write_bgdt(block_group, &table, context))
-        {
-                context->fs->dereference(block, context->fs);
-                return -1;
-        }
+	/* update block group table metadata (free blocks - 1)*/
+	table.free_blocks--;
+	if(ext2_write_bgdt(block_group, &table, context))
+	{
+		context->fs->dereference(block, context->fs);
+		return -1;
+	}
 
-        /* Update the superblock */
-        context->base_superblock.free_block_count--;
+	/* Update the superblock */
+	context->base_superblock.free_block_count--;
 
-        context->fs->dereference(block, context->fs);
+	context->fs->dereference(block, context->fs);
 
-        return 0;
+	return 0;
 }
 
 static int ext2_free_block(int block_num, context* context)
@@ -729,7 +729,7 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	size_t inode_table_sz = (context->inodeblocks) >> context->blockshift;
 	/* We are starting the search just after the end of the metadata. */
 	int meta = (table.inode_table 
-		+ inode_table_sz) - group_start;
+			+ inode_table_sz) - group_start;
 	int x = meta;
 	for(;x < context->blockspergroup;x++)
 	{
@@ -772,7 +772,7 @@ static int ext2_find_free_blocks_rec(int group, int contiguous,
 	for(x = 0;x < sequence;x++)
 	{
 		if(ext2_alloc_block_old(group, range_start + x,
-				 context))
+					context))
 		{
 			context->fs->dereference(block, context->fs);
 			return -1;
@@ -1418,31 +1418,31 @@ static int _ext2_readdir(struct ext2_dirent* dst, int pos,
 }
 
 static int ext2_modify_dirent_type(disk_inode* dir, char* name, int group,
-	uint8_t type, context* context)
+		uint8_t type, context* context)
 {
-	 if(!dir || !name) return -1;
+	if(!dir || !name) return -1;
 
-        uint64_t dir_size = dir->lower_size |
-                ((uint64_t)dir->upper_size << 32);
+	uint64_t dir_size = dir->lower_size |
+		((uint64_t)dir->upper_size << 32);
 
-        fileoff_t pos = 0;
-        struct ext2_dirent current;
+	fileoff_t pos = 0;
+	struct ext2_dirent current;
 
-        while(pos < dir_size)
-        {
-                _ext2_readdir(&current, pos, dir, context);
+	while(pos < dir_size)
+	{
+		_ext2_readdir(&current, pos, dir, context);
 
 		if(!strcmp(current.name, name))
 		{
 			current.type = type;
 			if(_ext2_write(&current, pos, 8, group,
-				dir, context) != 8) return -1;
+						dir, context) != 8) return -1;
 			return 0;
 		}
-                
+
 		/* Keep searching. */
-                pos += current.size;
-        }
+		pos += current.size;
+	}
 
 	return -1;
 }
@@ -1743,11 +1743,11 @@ static int ext2_print_block_bitmap(int group, context* context)
 {
 	char* block;
 	struct ext2_block_group_table table;
-        if(ext2_read_bgdt(group, &table, context))
-                return -1;
+	if(ext2_read_bgdt(group, &table, context))
+		return -1;
 
 	block = context->fs->reference(table.block_bitmap_address,
-                        context->fs);
+			context->fs);
 	int x;
 	for(x = 0;x < context->blockspergroup;x++)
 	{
@@ -1758,7 +1758,7 @@ static int ext2_print_block_bitmap(int group, context* context)
 			cprintf("1");
 		else cprintf("0");
 	}
-	
+
 	cprintf("\n");
 
 	return 0;
@@ -1766,27 +1766,27 @@ static int ext2_print_block_bitmap(int group, context* context)
 
 static int ext2_print_inode_bitmap(int group, context* context)
 {
-        char* block;
-        struct ext2_block_group_table table;
-        if(ext2_read_bgdt(group, &table, context))
-                return -1;
+	char* block;
+	struct ext2_block_group_table table;
+	if(ext2_read_bgdt(group, &table, context))
+		return -1;
 
-        block = context->fs->reference(table.inode_bitmap_address,
-                        context->fs);
-        int x;
-        for(x = 0;x < context->base_superblock.inodes_per_group;x++)
-        {
-                if((x & (64 - 1)) == 0)
-                        cprintf("\n0x%x:", x);
+	block = context->fs->reference(table.inode_bitmap_address,
+			context->fs);
+	int x;
+	for(x = 0;x < context->base_superblock.inodes_per_group;x++)
+	{
+		if((x & (64 - 1)) == 0)
+			cprintf("\n0x%x:", x);
 
-                if(ext2_get_bit(block, x, context))
-                        cprintf("1");
-                else cprintf("0");
-        }
+		if(ext2_get_bit(block, x, context))
+			cprintf("1");
+		else cprintf("0");
+	}
 
 	cprintf("\n");
 
-        return 0;
+	return 0;
 }
 #endif
 
@@ -1794,7 +1794,7 @@ static int ext2_fsck_file(inode* ino, context* context)
 {
 	/* Check to make sure all blocks are allocated */
 	uint64_t file_size = ino->ino->lower_size |
-                ((uint64_t)ino->ino->upper_size << 32);
+		((uint64_t)ino->ino->upper_size << 32);
 	uint64_t pos;
 	int failure = 0;
 	for(pos = 0;pos < file_size;pos += context->blocksize)
@@ -1902,7 +1902,10 @@ int ext2_init(struct FSDriver* fs)
 	size_t cache_sz = FS_INODE_CACHE_SZ;
 	void* inode_cache = cman_alloc(FS_INODE_CACHE_SZ);
 
-	struct FSHardwareDriver* driver = fs->driver;
+	if(!inode_cache)
+		panic("Not enough RAM for ext2 inode cache.");
+
+	struct StorageDevice* driver = fs->driver;
 	fs->valid = 1;
 	fs->type = 0; /* TODO: assign a number to ext2 */
 	memset(fs->context, 0, FS_CONTEXT_SIZE);
@@ -1916,8 +1919,7 @@ int ext2_init(struct FSDriver* fs)
 	/* Read the superblock */
 	int superblock_start = 1024;
 	char super_buffer[1024];
-	if(fs->disk_read(super_buffer, superblock_start, 
-				1024, fs) != 1024)
+	if(storageio_read(super_buffer, superblock_start, 1024, fs) != 1024)
 		return -1;
 	struct ext2_base_superblock* base = (void*) super_buffer;
 	struct ext2_extended_base_superblock* extended_base =
@@ -2006,7 +2008,7 @@ int ext2_init(struct FSDriver* fs)
 	context->inode_cache.eject = ext2_inode_cache_eject;
 
 	/* Enable the fs driver to do disk caching functions */
-	if(disk_cache_init(context->fs))
+	if(storage_cache_init(context->fs))
 		return -1;
 
 	/* Setup the superblock context pointer */
@@ -2259,8 +2261,8 @@ int ext2_chmod(inode* ino, mode_t mode, context* context)
 	ino->ino->mode |= mode;
 
 #ifdef DEBUG
-        cprintf("ext2: changed permission of file: %s to %x\n", 
-                ino->path, ino->ino->mode);
+	cprintf("ext2: changed permission of file: %s to %x\n", 
+			ino->path, ino->ino->mode);
 #endif
 
 	/* Results will get written to disk when the file is closed.*/
@@ -2672,7 +2674,7 @@ void ext2_sync(context* context)
 	}
 
 	/* Sync the data blocks */
-	cache_sync_all(&context->driver->cache, context->fs);
+	cache_sync_all(&context->driver->cache, context->fs->driver);
 }
 
 int ext2_fsync(inode* ino, context* context)

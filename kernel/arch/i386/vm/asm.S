@@ -1,5 +1,4 @@
-#define __VM_ASM_ONLY__
-#define __X86_ASM_ONLY__
+#define __ASM_ONLY__
 #include "vm.h"
 #include "x86.h"
 

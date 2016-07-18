@@ -15,13 +15,13 @@ export CROSS_OBJCOPY := $(shell readlink -e $(CROSS_OBJCOPY))
 TARGET_SYSROOT := ../sysroot
 export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
-
+export BOOT2_IMAGER := $(shell pwd)/tools/bin/boot-imager
 
 # use host to configure the tools
-export CC=gcc
-export LD=ld
-export AS=gcc
-export OBJCOPY=objcopy
+export CC := gcc
+export LD := ld
+export AS := gcc
+export OBJCOPY := objcopy
 
 export LDFLAGS := 
 export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
@@ -32,11 +32,16 @@ QEMU := qemu-system-$(BUILD_ARCH)
 # export CFLAGS := -DRELEASE $(CFLAGS)
 # export AFLAGS := -DRELEASE $(AFLAGS)
 
+# Uncomment these lines to turn on all output (log flood)
+# export CFLAGS := -DDEBUG $(CFLAGS)
+# export AFLAGS := -DDEBUG $(AFLAGS)
+
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
-FS_DD_BS := 4096
-FS_DD_COUNT := 262144
+FS_DD_BS := 512
+FS_DD_COUNT := 2097152
 FS_START := 2048
+DISK_SZ := 1074790400
 
 # Size of the second boot sector 
 BOOT_STAGE2_SECTORS := 140
@@ -55,10 +60,7 @@ chronos.img:
 	cd user ; \
 	make
 	make $(FS_TYPE)
-	dd if=/dev/zero of=chronos.img bs=512 count=2048
-	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
-	dd if=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img of=chronos.img count=$(BOOT_STAGE2_SECTORS) bs=512 conv=notrunc seek=1
-	dd if=$(FS_TYPE) of=chronos.img bs=512 conv=notrunc seek=$(FS_START)
+	echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img --stage-2=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) ./chronos.img
 
 chronos-multiboot.img:
 	cd tools ; \
@@ -138,8 +140,10 @@ QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 # Launch current build recipes
 run:
 	$(QEMU) -nographic $(QEMU_OPTIONS)
+
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
+
 run-gdb: user/bin $(USER_BUILD)
 	cd kernel ; \
 	make kernel-symbols ; \
@@ -148,6 +152,7 @@ run-gdb: user/bin $(USER_BUILD)
 	make user-symbols ; \
 	mv bin/*.sym ..
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
+
 run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 

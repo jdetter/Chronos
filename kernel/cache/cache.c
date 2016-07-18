@@ -18,7 +18,7 @@ int log2_linux(int value); /* defined in ext2.c*/
 #else
 #include <string.h>
 #include <stdlib.h>
-#include "kern/stdlib.h"
+#include "kstdlib.h"
 #include "stdlock.h"
 #include "panic.h"
 #endif
