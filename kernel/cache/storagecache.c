@@ -34,7 +34,6 @@ int log2_linux(int value); /* defined in ext2.c*/
 static int storage_cache_sync(void* ptr, sect_t sect_start, 
 		struct cache* cache, void* context)
 {
-	cprintf("SYNC %d\n", sect_start);
 	struct StorageDevice* device = context;
 	int sectors = PGSIZE >> device->sectshifter;
 	return storageio_readsects(sect_start, sectors, ptr, PGSIZE, device);
@@ -43,7 +42,6 @@ static int storage_cache_sync(void* ptr, sect_t sect_start,
 static int storage_cache_populate(void* ptr, sect_t sect_start, 
 		void* context)
 {
-	cprintf("POPULATE %d\n", sect_start);
 	struct StorageDevice* device = context;
 	int sectors = PGSIZE >> device->sectshifter;
 	return storageio_readsects(sect_start, sectors, ptr, PGSIZE, device);
@@ -52,12 +50,8 @@ static int storage_cache_populate(void* ptr, sect_t sect_start,
 void* storage_cache_reference_global(sect_t sect, 
 		struct StorageDevice* device)
 {
-	cprintf("GLOBAL REFERENCE %d\n", sect);
-
 	/* Round down to a page boundary */
 	sect_t start_sect = sect & ~(device->spp - 1);
-	if(start_sect != sect)
-		cprintf("\tROUNDED DOWN TO %d\n", start_sect);
 	/* Get the distance to the boundary */
 	int diff = (sect - start_sect) << device->sectshifter;
 	char* ptr = cache_reference(start_sect, &device->cache, device);
@@ -69,15 +63,11 @@ void* storage_cache_reference_global(sect_t sect,
 static void* storage_cache_reference(blk_t block_id, 
 		struct FSDriver* driver)
 {
-	cprintf("REFERENCE BLOCK %d\n", block_id);
-
 	struct StorageDevice* device = driver->driver;
 	/* Save the original requested block_id */
 	blk_t block_id_start = block_id;
 	/* Round block_id down to a page boundary */
 	block_id &= ~(driver->bpp - 1);
-	if(block_id != block_id_start)
-		cprintf("\tROUNDED DOWN TO %d\n", block_id);
 	/* How many blocks were lost when we rounded down? */
 	int diff = block_id_start - block_id;
 	/* What sector is this? */
@@ -85,7 +75,6 @@ static void* storage_cache_reference(blk_t block_id,
 		(driver->blockshift - device->sectshifter);
 	/* Get the global address of the sector */
 	sect_start += driver->fs_start;
-	cprintf("\tPASSING SECTOR %d TO GLOBAL REFERENCE.\n", sect_start);
 
 	/* reference the blocks - pointer points to start of page */
 	char* ptr = cache_reference(sect_start, &device->cache, device);
@@ -99,13 +88,7 @@ void* storage_cache_addreference_global(sect_t sect,
 		struct StorageDevice* device)
 {
 	/* Make sure this sector is on a page boundary */
-
-	cprintf("GLOBAL ADDREFERENCE %d\n", sect);
-
-	/* Round down to a page boundary */
 	sect_t start_sect = sect & ~(device->spp - 1);
-	if(start_sect != sect)
-		cprintf("\tROUNDED DOWN TO %d\n", start_sect);
 	/* Get the distance to the boundary */
 	int diff = (sect - start_sect) << device->sectshifter;
 	char* ptr = cache_addreference(start_sect, &device->cache, device);
@@ -128,7 +111,6 @@ static void* storage_cache_addreference(blk_t block_id,
 	sect_t sect_start = block_id << 
 		(driver->blockshift - device->sectshifter);
 	sect_start += driver->fs_start;
-	cprintf("ADD REFERENCE: %d\n", sect_start);
 
 	char* ptr = cache_addreference(sect_start, &device->cache, driver);
 	memset(ptr, 0, driver->blocksize); /* Clear the block */

@@ -2674,7 +2674,7 @@ void ext2_sync(context* context)
 	}
 
 	/* Sync the data blocks */
-	cache_sync_all(&context->driver->cache, context->fs);
+	cache_sync_all(&context->driver->cache, context->fs->driver);
 }
 
 int ext2_fsync(inode* ino, context* context)

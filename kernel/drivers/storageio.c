@@ -24,8 +24,8 @@
 int storageio_read(void* dst, fileoff_t start, size_t sz, 
 		struct FSDriver* driver)
 {
-	start += (driver->fs_start << driver->driver->sectshifter);
 	if(sz == 0) return 0;
+	start += (driver->fs_start << driver->driver->sectshifter);
 	int shifter = driver->driver->sectshifter;
 	size_t sectsize = driver->driver->sectsize;
 	int mask = sectsize - 1;
@@ -75,10 +75,10 @@ int storageio_write(void* src, fileoff_t start, size_t sz,
 int storageio_readsects(sect_t start_sect, int sectors, void* dst, 
 		size_t sz, struct StorageDevice* device)
 {
-	int result;
-	if(device->readsects)
+	if(device->readsects && sectors > 1)
 	{
-		result = device->readsects(start_sect, sectors, dst, sz, device);
+		if(device->readsects(start_sect, sectors, dst, sz, device))
+			return -1;
 	} else {
 		if(!device->readsect) return -1;
 
@@ -92,18 +92,19 @@ int storageio_readsects(sect_t start_sect, int sectors, void* dst,
 
 			pos += device->sectsize;
 		}
+
 	}
 
-	return result;
+	return 0;
 }
 
 int storageio_writesects(sect_t start_sect, int sectors, void* src,
 		size_t sz, struct StorageDevice* device)
 {
-	int result;
 	if(device->writesects)
 	{
-		result = device->writesects(start_sect, sectors, src, sz, device);
+		if(device->writesects(start_sect, sectors, src, sz, device))
+			return -1;
 	} else {
 		if(!device->writesect) return -1;
 
@@ -119,5 +120,5 @@ int storageio_writesects(sect_t start_sect, int sectors, void* src,
 		}
 	}
 
-	return result;
+	return 0;
 }

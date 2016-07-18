@@ -33,8 +33,8 @@ QEMU := qemu-system-$(BUILD_ARCH)
 # export AFLAGS := -DRELEASE $(AFLAGS)
 
 # Uncomment these lines to turn on all output (log flood)
-export CFLAGS := -DDEBUG $(CFLAGS)
-export AFLAGS := -DDEBUG $(AFLAGS)
+# export CFLAGS := -DDEBUG $(CFLAGS)
+# export AFLAGS := -DDEBUG $(AFLAGS)
 
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
