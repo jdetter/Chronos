@@ -6,7 +6,7 @@
  * boot and must be called before any raid drivers are initlized. Returns
  * 0 on success.
  */
-int raid_init(void);
+void raid_init(void);
 
 /**
  * Initliize the raid driver with the array of drivers. driver_count is the

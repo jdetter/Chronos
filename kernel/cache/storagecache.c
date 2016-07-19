@@ -35,7 +35,7 @@ static int storage_cache_sync(void* ptr, sect_t sect_start,
 		struct cache* cache, void* context)
 {
 	struct StorageDevice* device = context;
-	int sectors = PGSIZE >> device->sectshifter;
+	int sectors = device->spp;
 	return storageio_readsects(sect_start, sectors, ptr, PGSIZE, device);
 }
 
@@ -43,7 +43,7 @@ static int storage_cache_populate(void* ptr, sect_t sect_start,
 		void* context)
 {
 	struct StorageDevice* device = context;
-	int sectors = PGSIZE >> device->sectshifter;
+	int sectors = device->spp;
 	return storageio_readsects(sect_start, sectors, ptr, PGSIZE, device);
 }
 
