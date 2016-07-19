@@ -231,23 +231,33 @@ struct StorageDevice* raid1_init(struct StorageDevice** devices,
 	return driver;
 }
 
-static int raid1_cache_sync(void* ptr, sect_t sect_start, 
-		struct cache* cache, void* context)
+static int raid1_cache_sync(void* src, sect_t sector, struct cache* cache,
+		void* context)
 {
 	struct StorageDevice* raid_device = context;
 	struct raid_context* raid = raid_device->context;
 	/* How many sectors fit on a page? */
 	int sectors = raid_device->spp;
+
+	int x;
+	for(x = 0;x < raid->disk_count;x++)
+	{
+		if(raid->disks[x]->writesects(sector, sectors, src, PGSIZE, raid->disks[x]))
+			return -1;
+	}
 
 	return 0;
 }
 
-static int raid1_cache_populate(void* ptr, sect_t sect_start, void* context)
+static int raid1_cache_populate(void* dst, sect_t sector, void* context)
 {
 	struct StorageDevice* raid_device = context;
 	struct raid_context* raid = raid_device->context;
 	/* How many sectors fit on a page? */
 	int sectors = raid_device->spp;
+
+	if(raid->disks[0]->readsects(sector, sectors, dst, PGSIZE, raid->disks[0]))
+		return -1;
 
 	return 0;
 }
