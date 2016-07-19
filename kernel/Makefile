@@ -34,7 +34,8 @@ KERNEL_OBJS := \
 	main \
 	stdlock \
 	reboot \
-	devman
+	devman \
+	storage
 
 # Generic drivers 
 KERNEL_DRIVERS := \

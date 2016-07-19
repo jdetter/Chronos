@@ -1,6 +1,9 @@
 #ifndef _CACHE_H_
 #define _CACHE_H_
 
+#include <stdint.h>
+#include "stdlock.h"
+
 #define CACHE_DEBUG_NAME_LEN 64
 
 struct cache
