@@ -36,7 +36,7 @@ kernel-clean: arch-clean
 	rm -f $(KERNEL_CLEAN)
 
 $(BUILD_DIR)chronos.o: $(KERNEL_OBJS) $(ARCH_OUT_PATH)arch.o
-	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $^
+	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o $@ $^
 
 $(BUILD_DIR)%.o: %.S %.d
 	$(CROSS_AS) $(DEPS_FLAGS) $(AFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<

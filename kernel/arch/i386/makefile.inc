@@ -1,7 +1,7 @@
 d := $(dir)
 ARCH_DIR := $(d)
 
-ALL_DIRS += ARCH_OUT_PATH
+ALL_DIRS += $(ARCH_OUT_PATH)
 
 ARCH_INCLUDE += -I$(d)include
 KERNEL_INCLUDE += $(ARCH_INCLUDE)

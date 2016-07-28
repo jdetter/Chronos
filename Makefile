@@ -16,21 +16,21 @@ export CROSS_LD := $(shell readlink -e "$(CROSS_LD)")
 export CROSS_AS := $(shell readlink -e "$(CROSS_AS)")
 export CROSS_OBJCOPY := $(shell readlink -e "$(CROSS_OBJCOPY)")
 
-CROSS_CC := ./test.sh
-CROSS_LD := ./test.sh
-CROSS_AS := ./test.sh
-CROSS_OBJCOPY := ./test.sh
+CROSS_CC := ~/test.sh
+CROSS_LD := ~/test.sh
+CROSS_AS := ~/test.sh
+CROSS_OBJCOPY := ~/test.sh
 
-export HOST_CC	   :=gcc
-export HOST_LD	   :=ld
-export HOST_AS	   :=gcc
-export HOST_OBJCOPY:=objcopy
+export CC	   :=gcc
+export LD	   :=ld
+export AS	   :=gcc
+export OBJCOPY:=objcopy
 
 
 TARGET_SYSROOT := ../sysroot
 export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
-export BOOT2_IMAGER := $(shell pwd)/tools/bin/boot-imager
+export BOOT2_IMAGER := $(CURDIR)/tools/bin/boot-imager
 
 DEPS_FLAGS=-MM -MMD -MT $@
 
@@ -46,6 +46,8 @@ endif
 
 PHONY := all build-dirs clean dist-clean
 all: kernel
+
+kernel: tools
 
 dir:=kernel/
 include kernel/makefile.inc
@@ -93,17 +95,15 @@ BOOT_STAGE2_SECTORS := 140
 all: chronos.img
 
 .PHONY: chronos.img
-chronos.img: 
-	cd tools/ ; \
-	make tools || exit 1
-	cd kernel/ ; \
-	make chronos.o || exit 1 ; \
-	make boot-stage1.img || exit 1 ; \
-	make boot-stage2.img || exit 1 ;
-	cd user ; \
-	make
-	make $(FS_TYPE)
-	echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img --stage-2=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) ./chronos.img
+chronos.img: $(BUILD_DIR)chronos.o $(BUILD_DIR)boot-stage1.img $(BUILD_DIR)boot-stage2.img 
+#cd user ; \
+#make
+#make $(FS_TYPE)
+#echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img --stage-2=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) ./chronos.img
+
+PHONY += tools
+tools:
+	cd tools && $(MAKE) || exit 1
 
 chronos-multiboot.img:
 	cd tools ; \

@@ -16,8 +16,6 @@ BOOT_STAGE1_KERNEL_OBJS := $(addprefix $(KERNEL_DIR), $(BOOT_STAGE1_KERNEL_OBJS)
 BOOT_STAGE1_OBJS += $(BOOT_STAGE1_KERNEL_OBJS ) $(BOOT_STAGE1_BOOT_OBJS)
 BOOT_STAGE1_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(BOOT_STAGE1_OBJS)))
 
-$(info $(BOOT_STAGE1_OBJS))
-
 
 BOOT_STAGE2_BOOT_OBJS := \
 	stage2/stage2 \
@@ -35,15 +33,13 @@ BOOT_STAGE2_KERNEL_OBJS :=\
 	stdlib
 
 BOOT_STAGE2_ARCH_OBJS :=\
-	stdlock \
 	vm/asm \
 	vm/pgdir \
 	vm/vm_alloc \
 	drivers/serial \
 	drivers/ata \
 	drivers/pic \
-	x86/asm \
-	cpu
+	x86/asm
 
 BOOT_STAGE2_BOOT_OBJS := $(addprefix $(d), $(BOOT_STAGE2_BOOT_OBJS))
 BOOT_STAGE2_KERNEL_OBJS := $(addprefix $(KERNEL_DIR), $(BOOT_STAGE2_KERNEL_OBJS))
@@ -51,6 +47,8 @@ BOOT_STAGE2_ARCH_OBJS := $(addprefix $(ARCH_DIR), $(BOOT_STAGE2_ARCH_OBJS))
 
 BOOT_STAGE2_OBJS += $(BOOT_STAGE2_KERNEL_OBJS) $(BOOT_STAGE2_ARCH_OBJS) $(BOOT_STAGE2_BOOT_OBJS)
 BOOT_STAGE2_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(BOOT_STAGE2_OBJS)))
+
+$(info $(BOOT_STAGE2_OBJS))
 
 
 MULTIBOOT_BOOT_OBJS := \
@@ -60,8 +58,6 @@ MULTIBOOT_BOOT_OBJS := \
 MULTIBOOT_BOOT_OBJS := $(addprefix $(d),$(MULTIBOOT_BOOT_OBJS))
 MULTIBOOT_OBJS += $(MULTIBOOT_BOOT_OBJS)
 MULTIBOOT_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(MULTIBOOT_OBJS)))
-
-$(info $(MULTIBOOT_OBJS))
 
 
 # Stage 1 configuration
@@ -87,15 +83,15 @@ BOOT_STAGE2_BSS_START := 136
 BOOT_STAGE2_SECTORS := 140
 
 
-$(BOOT_BUILD_DIR)boot-stage1.img: $(BOOT_STAGE1_OBJS)
+$(BUILD_DIR)boot-stage1.img: $(BOOT_STAGE1_OBJS)
 	$(CROSS_LD) $(LDFLAGS) $(BOOT_STAGE1_LDFLAGS) -o ./boot-stage1.o $(BOOT_STAGE1_OBJS)
-	$(CROSS_OBJCOPY) -S -O binary -j .text boot-stage1.o boot-stage1.img
+	$(CROSS_OBJCOPY) -S -O binary -j .text boot-stage1.o $@
 
-$(BOOT_BUILD_DIR)boot-stage2.img: $(BOOT_STAGE2_OBJS)
-	$(BOOT2_IMAGER) -o boot-stage2.img $(BOOT_STAGE2_OBJS)
+$(BUILD_DIR)boot-stage2.img: tools $(BOOT_STAGE2_OBJS)
+	$(BOOT2_IMAGER) -o $@ $(BOOT_STAGE2_OBJS)
 
-$(BOOT_BUILD_DIR)multiboot.o: $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o multiboot.o $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
+$(BUILD_DIR)multiboot.o: $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o $@ $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
 
 # Dir specific builds
 $(BOOT_BUILD_DIR)%.o: %.S
@@ -105,7 +101,7 @@ $(BOOT_BUILD_DIR)%.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_INCLUDE) -c -o $@ $<
 
 BOOT_CLEAN += boot-stage1.o boot-stage1.img \
-		 boot-stage2.o boot-stage2.img $(BOOT_CLEAN) \
+		 boot-stage2.o boot-stage2.img \
 		 $(BOOT_STAGE2_OBJS) $(BOOT_STAGE1_OBJS) $(MULTIBOOT_OBJS) \
 		 boot-stage2.o.bss \
 		 boot-stage2.o.data \

@@ -1,5 +1,5 @@
 #ifdef ARCH_i386
-#include "../../kernel/arch/i386/include/vm.h"
+#include "arch/vm.h"
 #else
 #error "Invalid architecture."
 #endif
