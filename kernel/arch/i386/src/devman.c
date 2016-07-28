@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 #include "kstdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "file.h"
 #include "stdlock.h"
 #include "devman.h"

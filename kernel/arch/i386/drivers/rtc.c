@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 #include "kstdlib.h"
-#include "drivers/cmos.h"
+#include "arch/drivers/cmos.h"
 #include "stdlock.h"
 #include "arch/drivers/rtc.h"
 #include "panic.h"

@@ -32,9 +32,9 @@ export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
 export BOOT2_IMAGER := $(shell pwd)/tools/bin/boot-imager
 
+DEPS_FLAGS=-MM -MMD -MT $@
 
 # use host to configure the tools
-
 export LDFLAGS := 
 export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
 export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)

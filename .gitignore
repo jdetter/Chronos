@@ -22,6 +22,7 @@ fs/
 tmp/
 kernel/idt.S
 *.sym
+build/
 
 # binaries for building (obtain from developer website)
 tools/build

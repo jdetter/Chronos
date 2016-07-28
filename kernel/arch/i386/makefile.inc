@@ -2,8 +2,9 @@ d := $(dir)
 
 ALL_DIRS += $(ARCH_BUILD_DIR)$(d)
 
-ARCH_INCLUDE := $(d)include
+ARCH_INCLUDE += -I$(d)include
 KERNEL_INCLUDE += $(ARCH_INCLUDE)
+ARCH_INCLUDE := $(KERNEL_INCLUDE)
 
 #TODO
 ARCH_SRCS += $(wildcard $(d)*.c)
@@ -11,11 +12,6 @@ ARCH_SRCS += $(wildcard $(d)*.c)
 #KERNEL_SRCS += $(filter-out %main-arch.c, $(ARCH_SRCS))
 
 arch: $(ARCH_OBJS)
-
-$(ARCH_OBJ_DIR)%.o:%.c
-	@echo $@
-	$(CROSS_CC) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_CC) $< -c -o $@ $(KERNEL_INCLUDE)
 
 export RELOCATE_FLAGS := -m elf_i386 -r
 
@@ -69,10 +65,10 @@ ARCH_OBJS += $(i386_OBJS)
 ARCH_OBJS += $(patsubst %.c,$(ARCH_BUILD_DIR)%.o,$(ARCH_SRCS))
 ARCH_OBJS += $(patsubst %.S,$(ARCH_BUILD_DIR)%.o,$(ARCH_SRCS))
 
-ALL_DIRS += $(addprefix $(ARCH_BUILD_DIR),$(dir $(ARCH_OBJS)))
-
 $(ARCH_BUILD_DIR)arch.o:  $(ARCH_OBJS) arch-tools
 	$(CROSS_LD) $(RELOCATE_FLAGS) $(ARCH_OBJS) -o arch.o
+
+ALL_DIRS += $(dir $(i386_OBJS))
 
 PHONY += arch-clean
 arch-clean:
@@ -93,13 +89,14 @@ $(ARCH_BUILD_DIR)$(d)trap/idt.S: arch-tools
 
 # More rules for ARCH specific targets.
 $(ARCH_BUILD_DIR)%.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
+	@pwd
+	$(CROSS_CC) $(CFLAGS) $(DEPS_FLAGS) $(BUILD_CFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 $(ARCH_BUILD_DIR)%.o: %.S
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(DEPS_FLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 # Rule to build generated .S files.
 $(ARCH_BUILD_DIR)%.o: $(ARCH_BUILD_DIR)%.S
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(DEPS_FLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 -include $(ARCH_SRCS:%.c=$(OBJDIR)%.d)

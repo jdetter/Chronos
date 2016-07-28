@@ -1,11 +1,10 @@
 d := $(dir)
 
-ARCH_PATH ?= $(d)arch/$(ARCH)
-ARCH_BUILD_DIR ?= $(BUILD_DIR)$(ARCH)/
-ALL_DIRS += $(ARCH_OBJ_DIR)
-
 KERNEL_SRCS := $(wildcard $(d)*.c)
 KERNEL_INCLUDE := -I$(d)include
+
+ARCH_PATH ?= $(d)arch/$(ARCH)
+ARCH_BUILD_DIR ?= $(BUILD_DIR)$(ARCH)-build/
 
 KERNEL_SUBSYSTEMS := $(filter-out %include %arch, $(shell find $(d) -mindepth 1 -maxdepth 1 -type d))
 KERNEL_SUBSYSTEMS += $(ARCH_PATH)
@@ -37,12 +36,12 @@ kernel-clean: arch-clean
 $(BUILD_DIR)chronos.o: $(KERNEL_OBJS) $(ARCH_BUILD_DIR)arch.o
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $^
 
-$(BUILD_DIR)%.o: %.S
-	$(CROSS_AS) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_AS) $(AFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
+$(BUILD_DIR)%.o: %.S %.d
+	$(CROSS_AS) $(DEPS_FLAGS) $(AFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
 
-$(BUILD_DIR)%.o: %.c
-	$(CROSS_CC) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_CC) $(CFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
+$(BUILD_DIR)%.o: %.c %.d
+	$(CROSS_CC) $(DEPS_FLAGS) $(CFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
+
+%.d:;
 
 -include $(KERNEL_SRCS:%.c=$(BUILD_DIR)%.d)
