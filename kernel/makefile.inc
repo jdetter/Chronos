@@ -1,10 +1,12 @@
 d := $(dir)
+KERNEL_DIR := $(d)
 
 KERNEL_SRCS := $(wildcard $(d)*.c)
 KERNEL_INCLUDE := -I$(d)include
 
 ARCH_PATH ?= $(d)arch/$(ARCH)
 ARCH_BUILD_DIR ?= $(BUILD_DIR)$(ARCH)-build/
+ARCH_OUT_PATH := $(ARCH_BUILD_DIR)$(ARCH_PATH)/
 
 KERNEL_SUBSYSTEMS := $(filter-out %include %arch, $(shell find $(d) -mindepth 1 -maxdepth 1 -type d))
 KERNEL_SUBSYSTEMS += $(ARCH_PATH)
@@ -33,7 +35,7 @@ PHONY += kernel-clean
 kernel-clean: arch-clean
 	rm -f $(KERNEL_CLEAN)
 
-$(BUILD_DIR)chronos.o: $(KERNEL_OBJS) $(ARCH_BUILD_DIR)arch.o
+$(BUILD_DIR)chronos.o: $(KERNEL_OBJS) $(ARCH_OUT_PATH)arch.o
 	$(CROSS_LD) $(LDFLAGS) $(KERNEL_LDFLAGS) -o chronos.o $^
 
 $(BUILD_DIR)%.o: %.S %.d
