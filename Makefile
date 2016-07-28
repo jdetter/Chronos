@@ -1,31 +1,74 @@
 # Use the new tool chain to build executables.
-TARGET=i686-pc-chronos-
+export TARGET=i686-pc-chronos-
+export ARCH=i386
+export BUILD_DIR:=build/
+export TARGET_TRIPLE=i686-pc-chronos-
 export BUILD_ARCH := i386
 TOOL_DIR=../tools/bin
 
 
 CROSS_CC := $(TOOL_DIR)/$(TARGET)gcc
-export CROSS_CC := $(shell readlink -e "$(CROSS_CC)")
 CROSS_LD := $(TOOL_DIR)/$(TARGET)ld
-export CROSS_LD := $(shell readlink -e $(CROSS_LD))
 CROSS_AS := $(TOOL_DIR)/$(TARGET)gcc
-export CROSS_AS := $(shell readlink -e $(CROSS_AS))
 CROSS_OBJCOPY := $(TOOL_DIR)/$(TARGET)objcopy
-export CROSS_OBJCOPY := $(shell readlink -e $(CROSS_OBJCOPY))
+export CROSS_CC := $(shell readlink -e "$(CROSS_CC)")
+export CROSS_LD := $(shell readlink -e "$(CROSS_LD)")
+export CROSS_AS := $(shell readlink -e "$(CROSS_AS)")
+export CROSS_OBJCOPY := $(shell readlink -e "$(CROSS_OBJCOPY)")
+
+CROSS_CC := ./test.sh
+CROSS_LD := ./test.sh
+CROSS_AS := ./test.sh
+CROSS_OBJCOPY := ./test.sh
+
+export HOST_CC	   :=gcc
+export HOST_LD	   :=ld
+export HOST_AS	   :=gcc
+export HOST_OBJCOPY:=objcopy
+
+
 TARGET_SYSROOT := ../sysroot
 export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
 export BOOT2_IMAGER := $(shell pwd)/tools/bin/boot-imager
 
+
 # use host to configure the tools
-export CC := gcc
-export LD := ld
-export AS := gcc
-export OBJCOPY := objcopy
 
 export LDFLAGS := 
 export CFLAGS := -ggdb -Werror -Wall -gdwarf-2 -fno-common -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) -fno-builtin -fno-stack-protector $(CFLAGS)
 export AFLAGS := -ggdb -Werror -Wall -DARCH_$(BUILD_ARCH) -DARCH_STR=$(BUILD_ARCH) $(AFLAGS)
+
+# If the target isn't a clean, make the build dir.
+ifneq ($(filter %clean ,$(MAKECMDGOALS)),)
+NOMAKEDIR:=1
+endif
+
+PHONY := all build-dirs clean dist-clean
+all: kernel
+
+dir:=kernel/
+include kernel/makefile.inc
+
+ALL_SRCS += $(KERNEL_SRCS)
+ALL_SRC_DIRS += $(dir $(ALL_SRCS))
+ALL_DIRS += $(addprefix $(BUILD_DIR),$(ALL_SRC_DIRS))
+
+clean:
+	rm -rf $(CLEAN)
+
+dist-clean:
+	$(MAKE) clean
+	rm -rf $(OBJDIR)
+
+ifndef NOMAKEDIR
+$(shell mkdir -p $(OBJDIR) $(ALL_DIRS))
+endif
+
+#TODO: FIX below here.
+#TODO: Fix PHONY
+#######################
+
 QEMU := qemu-system-$(BUILD_ARCH)
 
 # Uncomment this lines to turn off all output
@@ -170,6 +213,8 @@ export-logs: export-fs
 	sudo chown -R $(USER):$(USER) ./logs
 	sudo chmod 700 ./logs
 
+PHONY +=export-logs export-fs run-x-gdb run-gdb run-x run
+
 soft-clean:
 	rm -rf $(USER_CLEAN) $(KERNEL_CLEAN) $(TOOLS_CLEAN)
 
@@ -198,12 +243,14 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 	./tools/bin/fsck -s 64 chronos.img cp kernel/chronos.o /boot/chronos.elf
 
-.PHONY: clean
-clean: 
-	cd tools ; \
-	make tools-clean
-	cd kernel ; \
-	make kernel-clean
-	cd user; \
-	make clean
-	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img *.sym
+PHONY+=clean patch deploy-x-gdb deploy-x deploy dploy-base-gdb deploy-base soft-clean
+#clean: 
+#	cd tools ; \
+#	make tools-clean
+#	cd kernel ; \
+#	make kernel-clean
+#	cd user; \
+#	make clean
+#	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img *.sym
+
+.PHONY: $(PHONY)
