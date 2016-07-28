@@ -2,7 +2,7 @@ d := $(dir)
 
 ALL_DIRS += $(ARCH_BUILD_DIR)$(d)
 
-ARCH_INCLUDE := $(d)/include
+ARCH_INCLUDE := $(d)include
 KERNEL_INCLUDE += $(ARCH_INCLUDE)
 
 #TODO
@@ -63,11 +63,13 @@ i386_OBJS := \
 	$(i386_x86_OBJS) \
 	$(i386_CONTEXT_OBJS)
 i386_OBJS := $(addsuffix .o, $(i386_OBJS))
-i386_OBJS := $(addprefix $(d), $(i386_OBJS))
+i386_OBJS := $(addprefix $(ARCH_BUILD_DIR)$(d), $(i386_OBJS))
 
-ARCH_OBJS += $(patsubst %.S,$(ARCH_BUILD_DIR)%.o,$(i386_OBJS))
+ARCH_OBJS += $(i386_OBJS)
 ARCH_OBJS += $(patsubst %.c,$(ARCH_BUILD_DIR)%.o,$(ARCH_SRCS))
 ARCH_OBJS += $(patsubst %.S,$(ARCH_BUILD_DIR)%.o,$(ARCH_SRCS))
+
+ALL_DIRS += $(addprefix $(ARCH_BUILD_DIR),$(dir $(ARCH_OBJS)))
 
 $(ARCH_BUILD_DIR)arch.o:  $(ARCH_OBJS) arch-tools
 	$(CROSS_LD) $(RELOCATE_FLAGS) $(ARCH_OBJS) -o arch.o
@@ -91,11 +93,9 @@ trap/idt.S: arch-tools
 
 # More rules for ARCH specific targets.
 $(ARCH_BUILD_DIR)%.o: %.c
-	$(CROSS_CC) $< -MM -MT $(patsubst %.d,%.o,$@) $(KERNEL_INCLUDE) >$@
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(i386_INCLUDE) -c -o $@ $<
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 $(ARCH_BUILD_DIR)%.o: %.S
-	$(CROSS_AS) $(CFLAGS) $(KERNEL_INCLUDE) -c -o $@ $<
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(i386_INCLUDE) -c -o $@ $<
+	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 -include $(ARCH_SRCS:%.c=$(OBJDIR)%.d)
