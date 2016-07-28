@@ -1,3 +1,5 @@
+SHELL := /bin/sh
+
 # Use the new tool chain to build executables.
 export TARGET=i686-pc-chronos-
 export ARCH=i386
@@ -44,7 +46,7 @@ ifneq ($(filter %clean ,$(MAKECMDGOALS)),)
 NOMAKEDIR:=1
 endif
 
-PHONY := all build-dirs clean dist-clean
+PHONY := all build-dirs clean
 all: kernel
 
 kernel: tools
@@ -56,20 +58,15 @@ ALL_SRCS += $(KERNEL_SRCS)
 ALL_SRC_DIRS += $(dir $(ALL_SRCS))
 ALL_DIRS += $(addprefix $(BUILD_DIR),$(ALL_SRC_DIRS))
 
+SUBMAKES := user tools
+
 clean:
 	rm -rf $(CLEAN)
-
-dist-clean:
-	$(MAKE) clean
-	rm -rf $(OBJDIR)
+	$(foreach submake,$(SUBMAKES),$(MAKE) -C $(submake) clean;)
 
 ifndef NOMAKEDIR
 $(shell mkdir -p $(OBJDIR) $(ALL_DIRS))
 endif
-
-#TODO: FIX below here.
-#TODO: Fix PHONY
-#######################
 
 QEMU := qemu-system-$(BUILD_ARCH)
 
@@ -81,6 +78,7 @@ QEMU := qemu-system-$(BUILD_ARCH)
 # export CFLAGS := -DDEBUG $(CFLAGS)
 # export AFLAGS := -DDEBUG $(AFLAGS)
 
+#TODO: Should be a .config option
 # Create a 128MB Hard drive
 FS_TYPE := ext2.img
 FS_DD_BS := 512
@@ -91,34 +89,35 @@ DISK_SZ := 1074790400
 # Size of the second boot sector 
 BOOT_STAGE2_SECTORS := 140
 
-.PHONY: all
+PHONY += all
 all: chronos.img
 
-.PHONY: chronos.img
-chronos.img: $(BUILD_DIR)chronos.o $(BUILD_DIR)boot-stage1.img $(BUILD_DIR)boot-stage2.img 
-#cd user ; \
-#make
-#make $(FS_TYPE)
-#echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b kernel/arch/$(BUILD_ARCH)/boot/boot-stage1.img --stage-2=kernel/arch/$(BUILD_ARCH)/boot/boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) ./chronos.img
+PHONY += chronos.img
+chronos.img: $(BUILD_DIR)chronos.o tools $(BUILD_DIR)boot-stage1.img $(BUILD_DIR)boot-stage2.img  user filesystem
+	echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b $(BUILD_DIR)boot-stage1.img --stage-2=$(BUILD_DIR)boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) $@
 
 PHONY += tools
 tools:
-	cd tools && $(MAKE) || exit 1
+	$(MAKE) -C $(CURDIR)/tools
 
-chronos-multiboot.img:
-	cd tools ; \
-	make tools || exit 1
-	cd kernel/ ; \
-	make chronos.o || exit 1 ; \
-	make multiboot.o || exit 1
-	cd user ; \
-	make
-	make $(FS_TYPE)
+PHONY += chronos-multiboot.img
+chronos-multiboot.img: tools $(BUILD_DIR)chronos.o $(BUILD_DIR)multiboot.o user $(FS_TYPE)
 
+PHONY += user
+user:
+	$(MAKE) -C $(CURDIR)/user
+
+PHONY += virtualbox
 virtualbox: tools chronos.img
 	./tools/virtualbox.sh
 
-vsfs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
+PHONY += filesystem
+filesystem: $(FS_TYPE)
+
+# TODO: Below here likely needs a lot of work.
+
+PHONY += vsfs.img
+vsfs.img: $(TOOLS_BUILD) kernel/chronos.o user
 	mkdir -p fs
 	mkdir -p fs/boot
 	mkdir -p fs/bin
@@ -128,10 +127,10 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o $(USER_BUILD)
 	./tools/bin/mkfs -i 8192 -s 134217728 -r fs $(FS_TYPE)
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
-.PHONY: ext2.img
-ext2.img: kernel/chronos.o $(USER_BUILD)
-	echo "Super user privileges are needed for loop mounting..."
-	sudo echo ""
+PHONY += ext2.img
+ext2.img: $(BUILD_DIR)chronos.o user
+	@echo "Super user privileges are needed for loop mounting..."
+	@sudo echo ""
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
 	echo "yes" | mkfs.ext2 ./ext2.img
 	rm -rf tmp
@@ -144,13 +143,14 @@ ext2.img: kernel/chronos.o $(USER_BUILD)
 	mkdir -p ./tmp/bin
 	cp -R ./user/bin/* ./tmp/bin/
 	mkdir -p ./tmp/boot
-	cp ./kernel/chronos.o ./tmp/boot/chronos.elf
+	cp $(BUILD_DIR)chronos.o ./tmp/boot/chronos.elf
 	cd tmp
 	sync
 	cd ..
 	sudo umount -l ./tmp
 	rm -rf tmp
 
+PHONY += ext2-grub.img
 ext2-grub.img:
 	echo "Super user privileges are needed for loop mounting..."
 	sudo echo ""
@@ -178,7 +178,7 @@ QEMU_MAX_RAM := -m 512M
 
 QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
 
-.PHONY: qemu qemu-gdb qemu-x qemu-x-gdb
+PHONY += qemu qemu-gdb qemu-x qemu-x-gdb
 
 # Launch current build recipes
 run:
@@ -187,7 +187,7 @@ run:
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
 
-run-gdb: user/bin $(USER_BUILD)
+run-gdb: user/bin user
 	cd kernel ; \
 	make kernel-symbols ; \
 	mv *.sym ..
@@ -196,7 +196,7 @@ run-gdb: user/bin $(USER_BUILD)
 	mv bin/*.sym ..
 	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
 
-run-x-gdb: kernel-symbols user/bin $(USER_BUILD) user-symbols
+run-x-gdb: kernel-symbols user/bin user user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
 # Export entire file system
@@ -237,20 +237,13 @@ deploy-gdb: deploy-base-gdb
 deploy-x-gdb: deploy-base-gdb
 	$(QEMU) $(QEMU_OPTIONS) -s -S
 
-patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot-stage2.img $(USER_BUILD)
+patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot-stage2.img user
 	tools/bin/boot-sign kernel/boot/boot-stage1.img
 	dd if=kernel/boot/boot-stage1.img of=chronos.img count=1 bs=512 conv=notrunc seek=0
 	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 	./tools/bin/fsck -s 64 chronos.img cp kernel/chronos.o /boot/chronos.elf
 
+
 PHONY+=clean patch deploy-x-gdb deploy-x deploy dploy-base-gdb deploy-base soft-clean
-#clean: 
-#	cd tools ; \
-#	make tools-clean
-#	cd kernel ; \
-#	make kernel-clean
-#	cd user; \
-#	make clean
-#	rm -rf $(KERNEL_CLEAN) $(TOOLS_CLEAN) $(LIBS_CLEAN) $(USER_CLEAN) fs fs.img chronos.img $(USER_LIB_CLEAN) .bochsrc bochsout.txt chronos.vdi tmp ext2.img *.sym
 
 .PHONY: $(PHONY)
