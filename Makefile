@@ -46,7 +46,7 @@ ifneq ($(filter %clean ,$(MAKECMDGOALS)),)
 NOMAKEDIR:=1
 endif
 
-PHONY := all build-dirs clean
+PHONY := all clean
 all: kernel
 
 kernel: tools
@@ -62,11 +62,7 @@ SUBMAKES := user tools
 
 clean:
 	rm -rf $(CLEAN)
-	$(foreach submake,$(SUBMAKES),$(MAKE) -C $(submake) clean;)
-
-ifndef NOMAKEDIR
-$(shell mkdir -p $(OBJDIR) $(ALL_DIRS))
-endif
+	@$(foreach submake,$(SUBMAKES),$(MAKE) -C $(submake) clean;)
 
 QEMU := qemu-system-$(BUILD_ARCH)
 
@@ -98,14 +94,14 @@ chronos.img: $(BUILD_DIR)chronos.o tools $(BUILD_DIR)boot-stage1.img $(BUILD_DIR
 
 PHONY += tools
 tools:
-	$(MAKE) -C $(CURDIR)/tools
+	@$(MAKE) -C $(CURDIR)/tools
 
 PHONY += chronos-multiboot.img
 chronos-multiboot.img: tools $(BUILD_DIR)chronos.o $(BUILD_DIR)multiboot.o user $(FS_TYPE)
 
 PHONY += user
 user:
-	$(MAKE) -C $(CURDIR)/user
+	@$(MAKE) -C $(CURDIR)/user
 
 PHONY += virtualbox
 virtualbox: tools chronos.img
@@ -129,8 +125,8 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o user
 
 PHONY += ext2.img
 ext2.img: $(BUILD_DIR)chronos.o user
-	@echo "Super user privileges are needed for loop mounting..."
-	@sudo echo ""
+	@suudo echo "" || \
+	printf "\n*** Super user privileges are needed for loop mounting... ***\n" && exit 1
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
 	echo "yes" | mkfs.ext2 ./ext2.img
 	rm -rf tmp
@@ -152,8 +148,8 @@ ext2.img: $(BUILD_DIR)chronos.o user
 
 PHONY += ext2-grub.img
 ext2-grub.img:
-	echo "Super user privileges are needed for loop mounting..."
-	sudo echo ""
+	@sudo echo "" || \
+	printf "\n*** Super user privileges are needed for loop mounting... ***"
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
 # Create the partition table
 	printf "n\n\n\n\n\nw\n" | fdisk -b 512 ext2.img
@@ -243,7 +239,10 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 	dd if=kernel/boot/boot-stage2.img of=chronos.img count=62 bs=512 conv=notrunc seek=1
 	./tools/bin/fsck -s 64 chronos.img cp kernel/chronos.o /boot/chronos.elf
 
+PHONY+=patch deploy-x-gdb deploy-x deploy deploy-base-gdb deploy-base soft-clean
 
-PHONY+=clean patch deploy-x-gdb deploy-x deploy dploy-base-gdb deploy-base soft-clean
+ifndef NOMAKEDIR
+$(shell mkdir -p $(OBJDIR) $(ALL_DIRS))
+endif
 
 .PHONY: $(PHONY)
