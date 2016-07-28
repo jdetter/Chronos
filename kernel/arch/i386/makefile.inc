@@ -88,7 +88,7 @@ arch-tools:
 	cd tools ; \
 	make tools
 
-trap/idt.S: arch-tools
+$(ARCH_BUILD_DIR)$(d)trap/idt.S: arch-tools
 	./tools/bin/mkvect > ./trap/idt.S
 
 # More rules for ARCH specific targets.
@@ -96,6 +96,10 @@ $(ARCH_BUILD_DIR)%.o: %.c
 	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 $(ARCH_BUILD_DIR)%.o: %.S
+	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
+
+# Rule to build generated .S files.
+$(ARCH_BUILD_DIR)%.o: $(ARCH_BUILD_DIR)%.S
 	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 -include $(ARCH_SRCS:%.c=$(OBJDIR)%.d)
