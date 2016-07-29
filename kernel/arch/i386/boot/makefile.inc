@@ -5,16 +5,17 @@ BOOT_BUILD_DIR := $(ARCH_BUILD_DIR)$(d)
 BOOT_INCLUDE := $(ARCH_INCLUDE)
 
 BOOT_STAGE1_KERNEL_OBJS :=\
-	drivers/ata
 
 BOOT_STAGE1_BOOT_OBJS :=\
 	stage1/stage1 \
+	stage1/ata
 
 BOOT_STAGE1_BOOT_OBJS := $(addprefix $(d), $(BOOT_STAGE1_BOOT_OBJS))
 BOOT_STAGE1_KERNEL_OBJS := $(addprefix $(KERNEL_DIR), $(BOOT_STAGE1_KERNEL_OBJS))
 
 BOOT_STAGE1_OBJS += $(BOOT_STAGE1_KERNEL_OBJS ) $(BOOT_STAGE1_BOOT_OBJS)
 BOOT_STAGE1_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(BOOT_STAGE1_OBJS)))
+ALL_OBJS += $(BOOT_STAGE1_OBJS)
 
 
 BOOT_STAGE2_BOOT_OBJS := \
@@ -39,6 +40,8 @@ BOOT_STAGE2_ARCH_OBJS :=\
 	drivers/serial \
 	drivers/ata \
 	drivers/pic \
+	lock/stdlock \
+	src/cpu \
 	x86/asm
 
 BOOT_STAGE2_BOOT_OBJS := $(addprefix $(d), $(BOOT_STAGE2_BOOT_OBJS))
@@ -47,6 +50,7 @@ BOOT_STAGE2_ARCH_OBJS := $(addprefix $(ARCH_DIR), $(BOOT_STAGE2_ARCH_OBJS))
 
 BOOT_STAGE2_OBJS += $(BOOT_STAGE2_KERNEL_OBJS) $(BOOT_STAGE2_ARCH_OBJS) $(BOOT_STAGE2_BOOT_OBJS)
 BOOT_STAGE2_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(BOOT_STAGE2_OBJS)))
+ALL_OBJS += $(BOOT_STAGE2_OBJS)
 
 
 MULTIBOOT_BOOT_OBJS := \
@@ -56,6 +60,7 @@ MULTIBOOT_BOOT_OBJS := \
 MULTIBOOT_BOOT_OBJS := $(addprefix $(d),$(MULTIBOOT_BOOT_OBJS))
 MULTIBOOT_OBJS += $(MULTIBOOT_BOOT_OBJS)
 MULTIBOOT_OBJS := $(addprefix $(ARCH_BUILD_DIR), $(addsuffix .o, $(MULTIBOOT_OBJS)))
+ALL_OBJS += $(MULTIBOOT_OBJS)
 
 
 # Stage 1 configuration
@@ -87,17 +92,17 @@ $(BUILD_DIR)boot-stage1.img: $(BOOT_STAGE1_OBJS)
 
 #TODO: FIXME
 $(BUILD_DIR)boot-stage2.img: tools $(BOOT_STAGE2_OBJS)
-	@echo $(BOOT2_IMAGER) -o $@ $(BOOT_STAGE2_OBJS)
+	$(BOOT2_IMAGER) -o $@ $(BOOT_STAGE2_OBJS)
 
 $(BUILD_DIR)multiboot.o: $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o $@ $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CLAGS) $(DEPS_FLAGS) $(BOOT_INCLUDE) $(i386_INCLUDE) -o $@ $(MULTIBOOT_OBJS) $(BOOT_STAGE2_OBJS)
 
 # Dir specific builds
-$(BOOT_BUILD_DIR)%.o: %.S
-	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(BOOT_INCLUDE) -D__BOOT_STRAP__ -c -o $@ $<
-
-$(BOOT_BUILD_DIR)%.o: %.c
-	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(BOOT_INCLUDE) -c -o $@ $<
+$(BOOT_BUILD_DIR)%.o: %.S %.d
+	$(CROSS_AS) $(AFLAGS) $(BUILD_AFLAGS) $(DEPS_FLAGS) $(BOOT_INCLUDE) -D__BOOT_STRAP__ -c -o $@ $<
+                                                        
+$(BOOT_BUILD_DIR)%.o: %.c %.d
+	$(CROSS_CC) $(CFLAGS) $(BUILD_CFLAGS) $(DEPS_FLAGS) $(BOOT_INCLUDE) -c -o $@ $<
 
 BOOT_CLEAN += boot-stage1.o boot-stage1.img \
 		 boot-stage2.o boot-stage2.img \
@@ -111,8 +116,6 @@ PHONY += boot-clean
 boot-clean:
 	rm -f $(BOOT_CLEAN)
 
-
 CLEAN += $(BOOT_CLEAN)
 
 #TODO: Add -include on deps
-

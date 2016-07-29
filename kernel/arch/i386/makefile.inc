@@ -15,7 +15,9 @@ ARCH_SRCS += $(wildcard $(d)*.c)
 dir:= $(d)boot/
 include $(dir)makefile.inc
 
-arch: $(ARCH_OUT_PATH)arch.o
+arch: $(ARCH_BUILD_DIR)$(ARCH_DIR)arch.o
+$(info $(ARCH_BUILD_DIR)$(ARCH_DIR))
+$(info $(ARCH_OUT_PATH))
 
 export RELOCATE_FLAGS := -m elf_i386 -r
 
@@ -70,7 +72,7 @@ ARCH_OBJS += $(patsubst %.c,$(ARCH_OUT_PATH)%.o,$(ARCH_SRCS))
 ARCH_OBJS += $(patsubst %.S,$(ARCH_OUT_PATH)%.o,$(ARCH_SRCS))
 
 $(ARCH_OUT_PATH)arch.o:  $(ARCH_OBJS)
-	$(CROSS_LD) $(RELOCATE_FLAGS) $(ARCH_OBJS) -o arch.o
+	$(CROSS_LD) $(RELOCATE_FLAGS) $(ARCH_OBJS) -o $@
 
 ALL_DIRS += $(dir $(i386_OBJS))
 
@@ -87,20 +89,18 @@ ALL_DIRS += $(dir $(i386_OBJS))
 #	cd tools ; \
 #	make tools
 
-#FIXME:
 $(ARCH_OUT_PATH)trap/idt.S: arch-tools
-	#./tools/bin/mkvect > ./trap/idt.S
-	touch $@
+	./tools/arch-tools/bin/mkvect > $@
 
 # More rules for ARCH specific targets.
-$(ARCH_BUILD_DIR)%.o: %.c
-	@pwd
+$(ARCH_BUILD_DIR)%.o: %.c %.d
 	$(CROSS_CC) $(CFLAGS) $(DEPS_FLAGS) $(BUILD_CFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
-$(ARCH_BUILD_DIR)%.o: %.S
+$(ARCH_BUILD_DIR)%.o: %.S %.d
 	$(CROSS_AS) $(AFLAGS) $(DEPS_FLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
 
 # Rule to build generated .S files.
 $(ARCH_BUILD_DIR)%.o: $(ARCH_BUILD_DIR)%.S
 	$(CROSS_AS) $(AFLAGS) $(DEPS_FLAGS) $(BUILD_AFLAGS) $(ARCH_INCLUDE) -c -o $@ $<
--include $(ARCH_SRCS:%.c=$(OBJDIR)%.d)
+
+-include $(ARCH_SRCS:$(d)%.c=$(ARCH_BUILD_DIR)%.d)

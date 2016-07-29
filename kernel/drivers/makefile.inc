@@ -1,3 +1,2 @@
 d := $(dir)
-
-KERNEL_SRCS += $(wildcard $(d)*.c)
+KERNEL_SRCS += $(shell find $(d) -name *.c)

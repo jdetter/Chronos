@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include "kstdlib.h"
-#include "idt.h"
+#include "arch/idt.h"
 #include "trap.h"
 #include "file.h"
 #include "stdlock.h"

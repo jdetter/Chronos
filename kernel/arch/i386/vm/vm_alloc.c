@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "kstdlib.h"
-#include "x86.h"
+#include "arch/x86.h"
 #include "cpu.h"
 #include "file.h"
 #include "stdlock.h"

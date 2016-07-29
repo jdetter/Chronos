@@ -16,6 +16,9 @@ define INCLUDE_template
  include $(1)
 endef
 
+# Include files
+KERNEL_LDFLAGS := -nostdlib --entry=main --section-start=.text=0xFF000000
+
 SUBSYSTEMS:=$(addsuffix /makefile.inc,$(KERNEL_SUBSYSTEMS))
 
 $(foreach subsystem,$(SUBSYSTEMS),$(eval $(call INCLUDE_template, $(subsystem))))

@@ -1,5 +1,5 @@
 TOOLS := \
-        mkvect \
+    mkvect \
 	boot-sign \
 	boot2-verify
 

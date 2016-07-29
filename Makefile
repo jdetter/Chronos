@@ -18,10 +18,10 @@ export CROSS_LD := $(shell readlink -e "$(CROSS_LD)")
 export CROSS_AS := $(shell readlink -e "$(CROSS_AS)")
 export CROSS_OBJCOPY := $(shell readlink -e "$(CROSS_OBJCOPY)")
 
-CROSS_CC := ~/test.sh
-CROSS_LD := ~/test.sh
-CROSS_AS := ~/test.sh
-CROSS_OBJCOPY := ~/test.sh
+#CROSS_CC := ~/test.sh
+#CROSS_LD := ~/test.sh
+#CROSS_AS := ~/test.sh
+#CROSS_OBJCOPY := ~/test.sh
 
 export CC	   :=gcc
 export LD	   :=ld
@@ -34,7 +34,7 @@ export TARGET_SYSROOT := $(shell readlink -e $(TARGET_SYSROOT))
 export USER := $(shell whoami)
 export BOOT2_IMAGER := $(CURDIR)/tools/bin/boot-imager
 
-DEPS_FLAGS=-MM -MMD -MT $@
+DEPS_FLAGS=-MMD -MT $@
 
 # use host to configure the tools
 export LDFLAGS := 
@@ -53,10 +53,6 @@ kernel: tools
 
 dir:=kernel/
 include kernel/makefile.inc
-
-ALL_SRCS += $(KERNEL_SRCS)
-ALL_SRC_DIRS += $(dir $(ALL_SRCS))
-ALL_DIRS += $(addprefix $(BUILD_DIR),$(ALL_SRC_DIRS))
 
 SUBMAKES := user tools
 
@@ -96,6 +92,10 @@ PHONY += tools
 tools:
 	@$(MAKE) -C $(CURDIR)/tools
 
+PHONY += arch-tools
+arch-tools:
+	@$(MAKE) -C $(CURDIR)/tools/arch-tools
+
 PHONY += chronos-multiboot.img
 chronos-multiboot.img: tools $(BUILD_DIR)chronos.o $(BUILD_DIR)multiboot.o user $(FS_TYPE)
 
@@ -125,8 +125,8 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o user
 
 PHONY += ext2.img
 ext2.img: $(BUILD_DIR)chronos.o user
-	@suudo echo "" || \
-	printf "\n*** Super user privileges are needed for loop mounting... ***\n" && exit 1
+	@printf "\n*** Super user privileges are needed for loop mounting... ***\n"
+	@sudo echo 
 	dd if=/dev/zero of=./ext2.img bs=$(FS_DD_BS) count=$(FS_DD_COUNT) seek=0
 	echo "yes" | mkfs.ext2 ./ext2.img
 	rm -rf tmp
@@ -241,8 +241,15 @@ patch: soft-clean kernel/chronos.o kernel/boot/boot-stage1.img  kernel/boot/boot
 
 PHONY+=patch deploy-x-gdb deploy-x deploy deploy-base-gdb deploy-base soft-clean
 
+
+ALL_SRCS += $(KERNEL_SRCS)
+ALL_DIRS += $(dir $(ALL_OBJS))
+ALL_SRC_DIRS += $(dir $(ALL_SRCS))
+ALL_DIRS += $(addprefix $(BUILD_DIR),$(ALL_SRC_DIRS))
+
 ifndef NOMAKEDIR
 $(shell mkdir -p $(OBJDIR) $(ALL_DIRS))
 endif
 
+-include $(ALL_OBJS:%.o=%.d)
 .PHONY: $(PHONY)
