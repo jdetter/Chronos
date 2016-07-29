@@ -46,9 +46,8 @@ ifneq ($(filter %clean ,$(MAKECMDGOALS)),)
 NOMAKEDIR:=1
 endif
 
-PHONY := all clean
+PHONY := all clean kernel
 all: kernel
-
 kernel: tools
 
 dir:=kernel/
@@ -81,11 +80,8 @@ DISK_SZ := 1074790400
 # Size of the second boot sector 
 BOOT_STAGE2_SECTORS := 140
 
-PHONY += all
-all: chronos.img
-
 PHONY += chronos.img
-chronos.img: $(BUILD_DIR)chronos.o tools $(BUILD_DIR)boot-stage1.img $(BUILD_DIR)boot-stage2.img  user filesystem
+chronos.img: kernel $(BUILD_DIR)chronos.o tools $(BUILD_DIR)boot-stage1.img $(BUILD_DIR)boot-stage2.img  user filesystem
 	echo "yes" | ./tools/bin/cdisk --part1=$(FS_START),$(FS_DD_COUNT),$(FS_TYPE),EXT2 -s $(DISK_SZ) -l 512 -b $(BUILD_DIR)boot-stage1.img --stage-2=$(BUILD_DIR)boot-stage2.img,1,$(BOOT_STAGE2_SECTORS) $@
 
 PHONY += tools
@@ -123,7 +119,7 @@ vsfs.img: $(TOOLS_BUILD) kernel/chronos.o user
 	./tools/bin/mkfs -i 8192 -s 134217728 -r fs $(FS_TYPE)
 #	./tools/bin/mkfs -i 128 -s 16777216 -r fs fs.img
 
-PHONY += ext2.img
+CLEAN += ext2.img
 ext2.img: $(BUILD_DIR)chronos.o user
 	@printf "\n*** Super user privileges are needed for loop mounting... ***\n"
 	@sudo echo 
@@ -170,27 +166,27 @@ fsck: fs.img tools/bin/fsck
 QEMU_CPU_COUNT := -smp 1
 QEMU_BOOT_DISK := chronos.img
 QEMU_MAX_RAM := -m 512M
-# QEMU_NOX := -nographic
+QEMU_NOX := -nographic
 
-QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_NOX) $(QEMU_BOOT_DISK)
+QEMU_OPTIONS := $(QEMU_CPU_COUNT) $(QEMU_MAX_RAM) $(QEMU_BOOT_DISK)
 
 PHONY += qemu qemu-gdb qemu-x qemu-x-gdb
 
 # Launch current build recipes
 run:
-	$(QEMU) -nographic $(QEMU_OPTIONS)
+	$(QEMU) $(QEMU_NOX) $(QEMU_OPTIONS)
 
 run-x:
 	$(QEMU) $(QEMU_OPTIONS)
 
-run-gdb: user/bin user
-	cd kernel ; \
-	make kernel-symbols ; \
-	mv *.sym ..
-	cd user ; \
-	make user-symbols ; \
-	mv bin/*.sym ..
-	$(QEMU) -nographic $(QEMU_OPTIONS) -s -S
+run-gdb: kernel user/bin user
+	#cd kernel ; \
+	#make kernel-symbols ; \
+	#mv *.sym ..
+	#cd user ; \
+	#make user-symbols ; \
+	#mv bin/*.sym ..
+	$(QEMU) -nographic $(QEMU_OPTIONS) -gdb tcp::4321 -S
 
 run-x-gdb: kernel-symbols user/bin user user-symbols
 	$(QEMU) $(QEMU_OPTIONS) -s -S
