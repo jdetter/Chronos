@@ -115,7 +115,7 @@ while num_subbuilds != 0:
     SConscript(subbuild, variant_dir=variant_dir, duplicate=0)
     num_subbuilds = len(subbuilds)
 
-host_env.Append(CPPPATH = kinclude)
+host_env.Append(CPPPATH= kinclude)
 host_env.Object(GLOBALS['k_src'])
 
 for file_ in GLOBALS['k_src']:

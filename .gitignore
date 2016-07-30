@@ -18,6 +18,7 @@
 *.o
 *.img
 *.vdi
+*.pyc
 fs/
 tmp/
 kernel/idt.S

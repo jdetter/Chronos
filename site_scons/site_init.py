@@ -20,9 +20,27 @@ class _StringArray(list):
         else:
             raise Exception("Unable to append anything but strings or lists.")
 
-SubbuildArray = lambda : _StringArray(lambda string
-        : File(join_path(string,'SConscript')).srcnode().path)
-SubdirArray = lambda : _StringArray(lambda string: Dir(string).srcnode().path)
+class SubbuildArray(_StringArray):
+    """ _StringArray that will make each given string or list of strings a SConscript
+    appended to the given string path.
+    """
+
+    def __init__(self):
+        def append_path_sconscript(string):
+            return File(join_path(string,'SConscript')).srcnode().path
+        super(SubbuildArray, self).__init__(append_path_sconscript)
+
+class SubdirArray (_StringArray):
+    """ _StringArray that will make each given string or list of strings a Dir()
+    in the source tree.
+    """
+    def __init__(self):
+        def get_srcpath (string):
+            return Dir(string).srcnode().path
+        super(SubdirArray, self).__init__(get_srcpath)
+
+class ToolArray():
+
 join_path = os.path.join
 
 ################################################################################
