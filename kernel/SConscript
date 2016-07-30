@@ -1,0 +1,8 @@
+Import('GlobalContext')
+GlobalContext.import_globals(globals())
+
+kinclude += 'include'
+k_src += Glob('*.c')
+
+subbuilds += [join_path('arch', BUILD_ARCH)]
+subbuilds += [ 'drivers', 'proc', 'syscall', 'vm']

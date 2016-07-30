@@ -1,0 +1,7 @@
+Import('GlobalContext')
+GlobalContext.import_globals(globals())
+Glob('*.c')
+
+k_src += Glob('*.c')
+
+subbuilds += [join_path('arch', BUILD_ARCH)]

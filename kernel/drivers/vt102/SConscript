@@ -1,0 +1,4 @@
+Import('GlobalContext')
+GlobalContext.import_globals(globals())
+
+k_src += Glob('*.c')

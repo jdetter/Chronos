@@ -22,6 +22,8 @@ fs/
 tmp/
 kernel/idt.S
 *.sym
+.sconsign.dblite
+build
 
 # binaries for building (obtain from developer website)
 tools/build
