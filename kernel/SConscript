@@ -6,3 +6,6 @@ k_src += Glob('*.c')
 
 subbuilds += [join_path('arch', BUILD_ARCH)]
 subbuilds += [ 'drivers', 'proc', 'syscall', 'vm']
+
+# TODO: Also start the ARCH target here since we will need to include kernel
+# files within the arch.

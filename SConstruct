@@ -1,20 +1,11 @@
 import os
-from SCons.Script import GlobalContext, SubdirArray
+from SCons.Script import ObjectTarget, GlobalContext, SubdirArray, SrcArray,\
+DefaultEnvironment, init_site
+
 #from SCons.Script import GlobalContext, StringArray
 GlobalContext = GlobalContext()
 Export('GlobalContext')
-
-#kinclude    = StringArry()
-kinclude    = SubdirArray()
-subbuilds   = SubbuildArray()
-
-GLOBALS = {
-        'kinclude':kinclude,
-        'k_src':[],
-        'subbuilds':subbuilds
-        }
-
-GlobalContext.add_globals(GLOBALS)
+init_site()
 
 def crosstool_path(tool):
     return join_path(TOOL_DIR, TARGET+tool)
@@ -97,27 +88,23 @@ cross_env = generic_env.Clone(
         ASFLAGS=ASFLAGS
         )
 
+
+kernel = ObjectTarget('kernel.o')
+
+GLOBALS = {
+        'kinclude':kernel.include,
+        'k_src':kernel.sources,
+        'subbuilds':kernel.subbuilds
+        }
+GlobalContext.add_globals(GLOBALS)
+GlobalContext.import_globals(globals())
+
 subbuilds   += 'kernel'
 
-num_subbuilds = len(subbuilds)
-#num_subbuilds = 0
-# Run all other builds recursively through the list.
-while num_subbuilds != 0:
-    subbuild = subbuilds.pop(len(subbuilds) - 1)
-    print('Build: ' + str(subbuild))
+kernel.collect_subbuilds()
+host_env.Append(CPPPATH=kernel.include)
+host_env.Object(kernel.sources)
 
-    # For use if we don't want to use sconscripts as "File"s
-    #SConscript(join_path(subbuild,'SConscript'))
-
-    variant_dir = join_path('build', subbuild)
-    variant_dir = variant_dir.rstrip('SConscript')
-
-    SConscript(subbuild, variant_dir=variant_dir, duplicate=0)
-    num_subbuilds = len(subbuilds)
-
-host_env.Append(CPPPATH= kinclude)
-host_env.Object(GLOBALS['k_src'])
-
-for file_ in GLOBALS['k_src']:
+for file_ in kernel.sources:
     pass
     #print(file_.rfile())

@@ -1,0 +1,3 @@
+#!/bin/bash
+rm -f site_scons/*.pyc
+rm -f *.pyc

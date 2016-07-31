@@ -1,47 +1,46 @@
-import os
 from context import *
+from wrappers import *
+from collections import UserList
+_build_targets = None
 
-class _StringArray(list):
-    def __init__(self, string_callback):
-        super(_StringArray, self).__init__()
-        self.string_callback = string_callback
+def init_site():
+    global _build_targets
+    _build_targets = []
 
-    def __iadd__(self, item):
-        self.append(item)
-        return self
+class BaseTarget(object):
+    def __init__(self, name, env=None):
+        if _build_targets is None:
+            raise UninitilizedException('_build_targets hasn\'t been initilized, did you call init_site()?')
+        _build_targets.append(self)
+        self.name               = name
+        self.sources            = SrcArray()
+        self.include            = SubdirArray()
+        self.subbuilds          = SubbuildArray()
+        self.env                = DefaultEnvironment
+        self.target_location    = self.name
 
-    def append(self, item):
-        if isinstance(item, str):
-            item = self.string_callback(item)
-            super(_StringArray, self).append(item)
-        elif isinstance(item, list):
-            for list_item in item:
-                self.append(list_item)
-        else:
-            raise Exception("Unable to append anything but strings or lists.")
+    def collect_subbuilds(self):
+        num_subbuilds = len(self.subbuilds)
+        # num_subbuilds = 0
+        # Run all other builds recursively through the list.
+        while num_subbuilds != 0:
+            subbuild = self.subbuilds.pop(len(self.subbuilds) - 1)
+            print('Build: ' + str(subbuild))
 
-class SubbuildArray(_StringArray):
-    """ _StringArray that will make each given string or list of strings a SConscript
-    appended to the given string path.
-    """
+            variant_dir = join_path('build', subbuild)
+            variant_dir = variant_dir.rstrip('SConscript')
 
-    def __init__(self):
-        def append_path_sconscript(string):
-            return File(join_path(string,'SConscript')).srcnode().path
-        super(SubbuildArray, self).__init__(append_path_sconscript)
+            SConscript(subbuild, variant_dir=variant_dir, duplicate=0)
+            num_subbuilds = len(self.subbuilds)
 
-class SubdirArray (_StringArray):
-    """ _StringArray that will make each given string or list of strings a Dir()
-    in the source tree.
-    """
-    def __init__(self):
-        def get_srcpath (string):
-            return Dir(string).srcnode().path
-        super(SubdirArray, self).__init__(get_srcpath)
+class ObjectTarget(BaseTarget):
+    def __init__(self, name, *args, **kwargs):
+        super(ObjectTarget, self).__init__(name, *args, **kwargs)
+        self.output = SrcObject(self.target_location)
 
-class ToolArray():
+    def link_all_srcs(self):
+        self.env.Object(target=self.target_location, sources=self.sources)
 
-join_path = os.path.join
 
 ################################################################################
 ## HAXs
@@ -108,3 +107,6 @@ def InitCallbackListBuilder(env):
 #
 # CallList hack
 ###############################
+
+class UninitilizedException(Exception):
+    pass
