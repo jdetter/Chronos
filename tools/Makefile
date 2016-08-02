@@ -4,7 +4,7 @@ TOOLS := \
 	boot-imager
 TOOLS_BINARIES := $(addprefix bin/, $(TOOLS))
 
-TOOLS_CFLAGS := -D__LINUX__ -DARCH_$(BUILD_ARCH) -Iinclude/
+TOOLS_CFLAGS := -ggdb -Wall -Werror -D__LINUX__ -DARCH_$(BUILD_ARCH) -Iinclude/
 TOOLS_CLEAN := bin/ $(TOOLS_BINARIES)
 
 .PHONY: tools

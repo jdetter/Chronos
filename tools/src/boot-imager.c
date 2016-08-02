@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/wait.h>
 
 #define perror() perror("boot-imager")
 
@@ -253,12 +254,18 @@ int main(int argc, char** argv)
 	}
 
 	if(!out_file)
+	{
+		usage();
 		err("You must specify an output file with -o.");
+	}
 	if(!in_files)
+	{
+		usage();
 		err("You must specify an input file.");
+	}
 
 	size_t position = 0x0000;
-	size_t start = BOOT2_TEXT_S;
+	// size_t start = BOOT2_TEXT_S;
 
 	size_t text_sz = PGROUNDUP(BOOT2_TEXT_E - BOOT2_TEXT_S);
 	size_t bss_sz = PGROUNDUP(BOOT2_BSS_E - BOOT2_BSS_S);
