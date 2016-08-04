@@ -2,10 +2,10 @@ Import('GlobalContext')
 GlobalContext.import_globals(globals())
 
 kinclude += 'include'
-k_src += Glob('*.c')
+ksrc += Glob('*.c')
 
-subbuilds += [join_path('arch', BUILD_ARCH)]
-subbuilds += [ 'drivers', 'proc', 'syscall', 'vm']
+include([join_path('arch', BUILD_ARCH)])
+#include([ 'drivers', 'proc', 'syscall', 'vm'])
 
 # TODO: Start the any arch specific targets here since we will need to include kernel
 # files within the arch, define it and sources based on the arch target. Attach any 

@@ -1,5 +1,7 @@
 from context import *
 from wrappers import *
+from objects import *
+from util import *
 from collections import UserList
 _build_targets = None
 
@@ -7,39 +9,42 @@ def init_site():
     global _build_targets
     _build_targets = []
 
-class BaseTarget(object):
-    def __init__(self, name, env=None):
-        if _build_targets is None:
-            raise UninitilizedException('_build_targets hasn\'t been initilized, did you call init_site()?')
-        _build_targets.append(self)
-        self.name               = name
-        self.sources            = SrcArray()
-        self.include            = SubdirArray()
-        self.subbuilds          = SubbuildArray()
-        self.env                = DefaultEnvironment
-        self.target_location    = self.name
+def include(include_path):
+    return call_on_each(include_path, lambda include_path: SConscript(join_path(include_path, 'SConscript')))
 
-    def collect_subbuilds(self):
-        num_subbuilds = len(self.subbuilds)
-        # num_subbuilds = 0
-        # Run all other builds recursively through the list.
-        while num_subbuilds != 0:
-            subbuild = self.subbuilds.pop(len(self.subbuilds) - 1)
-            print('Build: ' + str(subbuild))
-
-            variant_dir = join_path('build', subbuild)
-            variant_dir = variant_dir.rstrip('SConscript')
-
-            SConscript(subbuild, variant_dir=variant_dir, duplicate=0)
-            num_subbuilds = len(self.subbuilds)
-
-class ObjectTarget(BaseTarget):
-    def __init__(self, name, *args, **kwargs):
-        super(ObjectTarget, self).__init__(name, *args, **kwargs)
-        self.output = SrcObject(self.target_location)
-
-    def link_all_srcs(self):
-        self.env.Object(target=self.target_location, sources=self.sources)
+#class BaseTarget(object):
+#    def __init__(self, name, env=None):
+#        if _build_targets is None:
+#            raise UninitilizedException('_build_targets hasn\'t been initilized, did you call init_site()?')
+#        _build_targets.append(self)
+#        self.name               = name
+#        self.sources            = SrcArray()
+#        self.include            = SubdirArray()
+#        self.subbuilds          = SubbuildArray()
+#        self.env                = DefaultEnvironment
+#        self.target_location    = self.name
+#
+#    def collect_subbuilds(self):
+#        num_subbuilds = len(self.subbuilds)
+#        # num_subbuilds = 0
+#        # Run all other builds recursively through the list.
+#        while num_subbuilds != 0:
+#            subbuild = self.subbuilds.pop(len(self.subbuilds) - 1)
+#            print('Build: ' + str(subbuild))
+#
+#            variant_dir = join_path('build', subbuild)
+#            variant_dir = variant_dir.rstrip('SConscript')
+#
+#            SConscript(subbuild, variant_dir=variant_dir, duplicate=0)
+#            num_subbuilds = len(self.subbuilds)
+#
+#class ObjectTarget(BaseTarget):
+#    def __init__(self, name, *args, **kwargs):
+#        super(ObjectTarget, self).__init__(name, *args, **kwargs)
+#        self.output = SrcObject(self.target_location)
+#
+#    def link_all_srcs(self):
+#        self.env.Object(target=self.target_location, sources=self.sources)
 
 
 ################################################################################

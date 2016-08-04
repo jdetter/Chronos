@@ -1,6 +1,5 @@
 import os
-from SCons.Script import ObjectTarget, GlobalContext, SubdirArray, SrcArray,\
-DefaultEnvironment, init_site
+from SCons.Script import *
 
 #from SCons.Script import GlobalContext, StringArray
 GlobalContext = GlobalContext()
@@ -89,21 +88,19 @@ cross_env = generic_env.Clone(
         )
 
 
-kernel = ObjectTarget('kernel.o')
+kernel = LinkedBuildObject(cross_env, 'kernel.o')
 
 GLOBALS = {
         'kinclude':kernel.include,
-        'k_src':kernel.sources,
-        'subbuilds':kernel.subbuilds
+        'ksrc':kernel.sources,
         }
 GlobalContext.add_globals(GLOBALS)
 GlobalContext.import_globals(globals())
 
-subbuilds   += 'kernel'
+include('kernel')
 
-kernel.collect_subbuilds()
-host_env.Append(CPPPATH=kernel.include)
-host_env.Object(kernel.sources)
+kernel.env.Append(CPPPATH=kernel.include)
+kernel.Build(cross_env)
 
 for file_ in kernel.sources:
     pass

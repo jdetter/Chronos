@@ -1,30 +1,28 @@
 from SCons.Script import *
-from util import CLVar
-from copy import deepcopy
+from util import *
 
 class _BaseTargetObject(object):
 
-    def __init__(self, environment, target):
+    def __init__(self, target, env):
         """The callback called to build us."""
-        self._BuildRecipe  = None
-        self._BuildSources = CLVar()
+        self._BuildSources = SrcList()
 
         """What we need build before us."""
-        self._BuildDependancies # A list of _BaseTargetObject
+        self._BuildDependancies = []# A list of _BaseTargetObject
 
         """What we will use as a target to self.Build(target)"""
         self._TargetOutput  = target
-        self._BuildOutput
+        #self._BuildOutput
 
         """Modify anything we need to know to build."""
-        self.env = environment
+        self.env = env
 
-    def Build(self, sources, target, *args, **kwargs):
+    def Build(self, *args, **kwargs):
         """
         Will initiate a call to build each source, which will do
         the same to their respective source(s).
         """
-        self._BuildRecipe(*args, **kwargs)
+        return self._BuildRecipe(*args, **kwargs)
 
     def AddSource(self, source):
         """Convinience method to add an item used within the actual self.Build()"""
@@ -47,17 +45,29 @@ class BasicObjectTarget(_BaseTargetObject):
 
     What if we need special flags for this object?..
     """
-    def __init__(self, parent_env, name_or_path):
-        super(BasicObjectTarget, self).__init__(parent_env, name_or_path)
-        self._BuildDependancies = []
-        self._BuildSources
+    def __init__(self, target, env=None):
+        self.sources = None
+        self.include = IncludeList()
+        super(BasicObjectTarget, self).__init__(target, env)
 
-    def Build(self):
+        self._BuildDependancies = []
+
+        self.sources = self._BuildSources
+
+        print(target)
+        #TODO: Change to a detect
+        source = replace_ext(target, '.c')
+
+        self.sources += source
+
+    def _BuildRecipe(self, env=None):
         """
         Override _BaseTargetObject.Build with a simple call to Object using
         the given env.
         """
-        return self.env.Object(self._BuildSources)
+        build_env = self.env if self.env else env
+
+        return env.Object(self._BuildSources)
 
 class ToolTarget(_BaseTargetObject):
     """
@@ -76,8 +86,26 @@ class LinkedBuildObject(_BaseTargetObject):
     Build an object that might have complex dependancies, but in the end is
     linked together using env.LD
     """
-    def __init__(self, target):
-        super(LinkedBuildObject, self).__init__()
+    def __init__(self, target, env=None):
+        self.include = IncludeList()
+        self.sources = None
+        super(LinkedBuildObject, self).__init__(env, target)
+        self.sources = self._BuildSources
+
+    def _BuildRecipe(self, env=None):
+        sources = []
+
+        build_env = self.env if self.env else env
+
+        for item in self._BuildSources:
+            if not isinstance(item, _BaseTargetObject):
+                # Assume that it is a basic object file
+                item = BasicObjectTarget(get_srcpath(item))
+
+            sources.append(item.Build(build_env)) # Hand our environment as default
+        print(sources)
+        return build_env.Program(self._TargetOutput, sources)
+
 
 # To create an .img target, use a Genric Image target and set _BuildRecipie to
 # self.env.Objcopy(sources=self._BuildSources)
@@ -86,5 +114,5 @@ class LinkedBuildObject(_BaseTargetObject):
 ###      Self Testing     ###
 #############################
 
-kernel_obj = LinkedBuildObject(target='kernel.o')
-kernel_obj.sources += 'kernel/devman.c'
+#kernel_obj = LinkedBuildObject(target='kernel.o')
+#kernel_obj.sources += 'kernel/devman.c'
