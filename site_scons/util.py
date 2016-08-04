@@ -24,3 +24,24 @@ class CLVar(UserList):
         return (self, CLVar(other))
     def __str__(self):
         return ' '.join(self.data)
+
+class SrcArray(CLVar):
+
+    def __init__(self):
+
+    def append(self, item):
+        """ Overrides the _TypeArray `append` method to first check if the type
+        is a string, if so instatiates as a File().
+        """
+        if isinstance(item, list):
+            self.extend(item)
+        #elif not isinstance(item, _File_t):
+        elif not is_src_object(item):
+            item = SrcObject(item)
+        super(SrcArray, self).append(item)
+
+def SrcObject(path_or_file):
+    file_ = File(path_or_file)
+    file_.tagged = True
+    file_.env = DefaultEnvironment
+    return file_
